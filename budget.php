@@ -4,8 +4,8 @@ require_once __DIR__ . '/inc/auth.php';
 require_once __DIR__ . '/inc/openbanking.php';
 
 // Nur für angemeldete Admins sichtbar – alle anderen landen beim Login
-require_admin_page();
-guard_post();
+require_permission('budget.access');
+guard_post('budget.access');
 
 // Dateipfade
 $data_file = __DIR__ . '/budget_data.json';
@@ -733,7 +733,7 @@ if ($selected_archive && is_file($archive_dir . basename($selected_archive))) {
         <div class="nav-bar">
             <a href="index.php" class="nav-back">&larr; ZURÜCK ZUM INDEX</a>
             <div class="nav-tabs">
-                <a href="admin.php" class="nav-tab" title="Admin-Zentrale">⚙ <?php echo e(auth_user()); ?></a>
+                <a href="admin.php" class="nav-tab" title="Mein Konto">⚙ <?php echo e(user_label()); ?></a>
                 <a href="budget.php" class="nav-tab <?php echo ($view_mode === 'active') ? 'active' : ''; ?>">Aktueller Monat</a>
                 <a href="budget.php?view=bank" class="nav-tab <?php echo ($view_mode === 'bank') ? 'active' : ''; ?>">🏦 Bank-Sync<?php echo ob_connected($ob) ? ' ●' : ''; ?></a>
                 <a href="budget.php?view=import" class="nav-tab <?php echo ($view_mode === 'import') ? 'active' : ''; ?>">CSV-Import</a>

@@ -42,6 +42,21 @@ function collect_hub_links(): array {
             }
         }
     }
+    // Eigene Seiten mit der Vorlage "Link-Hub"
+    try {
+        require_once __DIR__ . '/pages.php';
+        require_once __DIR__ . '/hub.php';
+        foreach (site_db()->query("SELECT slug, title FROM pages WHERE kind = 'custom' AND template = 'links'") as $p) {
+            foreach (hub_load('page_' . $p['slug'], []) as $category => $items) {
+                foreach ($items as $item) {
+                    $links[$item['url']]['title'] = $item['title'];
+                    $links[$item['url']]['category'] = $category;
+                    $links[$item['url']]['hubs'][] = $p['title'];
+                    $links[$item['url']]['nsfw'] = !empty($links[$item['url']]['nsfw']) || !empty($item['nsfw']) || (bool)preg_match('/\b(nsfw|adult)\b|18\+/i', $category);
+                }
+            }
+        }
+    } catch (Throwable $e) { /* Datenbank (noch) nicht verfügbar */ }
     return $links;
 }
 

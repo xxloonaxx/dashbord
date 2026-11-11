@@ -474,14 +474,14 @@ hub_handle_post(__FILE__, $categories);
         <?php hub_flash(); ?>
 
         <div id="contentWrapper">
-            <?php if (!$categories && is_admin()): ?>
+            <?php if (!$categories && can('links.edit')): ?>
                 <div class="hub-empty">Noch keine Kategorien – <button type="button" data-hub-open="category">erste Kategorie anlegen</button></div>
             <?php endif; ?>
             <?php $cat_pos = 0; foreach ($categories as $catName => $tools): $cat_index = $cat_pos++; if (!hub_category_visible($catName, $tools)) continue; ?>
                 <div class="category-section">
                     <div class="category-title hub-editable"><span><?php echo htmlspecialchars($catName); ?></span><?php hub_category_actions($catName, $cat_index, count($categories)); ?></div>
                     <div class="grid">
-                        <?php if (!$tools && is_admin()): ?>
+                        <?php if (!$tools && can('links.edit')): ?>
                             <div class="hub-empty">Noch keine Links – <button type="button" data-hub-open="link" data-category="<?php echo htmlspecialchars($catName); ?>">jetzt hinzufügen</button></div>
                         <?php endif; ?>
                         <?php foreach ($tools as $i => $tool): if (!nsfw_visible($tool, $catName)) continue; ?>

@@ -181,7 +181,7 @@ function is_valid_feed(string $url): bool {
     return $xml && (isset($xml->channel->item) || isset($xml->entry));
 }
 
-guard_post();   // Feed-Quellen ändern nur mit Login
+guard_post('feed.edit');   // Feed-Quellen ändern nur mit Recht
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['feed_action'])) {
     $msg = '';
@@ -573,7 +573,7 @@ $cache_time = is_file($cache_file) ? date('H:i', filemtime($cache_file)) : '--:-
             <div class="feed-status">
                 <span><?php echo count($feed_items); ?> Meldungen &bull; Stand <?php echo e($cache_time); ?> Uhr<?php if ($fetch_failed): ?> &bull; <span style="color: var(--accent-red);">Aktualisierung fehlgeschlagen – zeige Cache</span><?php endif; ?></span>
                 <span class="feed-actions">
-                    <?php if (is_admin()): ?><button type="button" class="refresh-btn add-btn" onclick="openSourceModal()">＋ Feed-Quelle</button><?php endif; ?>
+                    <?php if (can('feed.edit')): ?><button type="button" class="refresh-btn add-btn" onclick="openSourceModal()">＋ Feed-Quelle</button><?php endif; ?>
                     <a href="feed.php?refresh=1" class="refresh-btn" title="Feeds jetzt neu laden">&#x21bb; Aktualisieren</a>
                 </span>
             </div>
@@ -593,7 +593,7 @@ $cache_time = is_file($cache_file) ? date('H:i', filemtime($cache_file)) : '--:-
         <?php if (!empty($_GET['msg'])): ?><div class="feed-flash ok" role="status"><?php echo e($_GET['msg']); ?></div><?php endif; ?>
         <?php if (!empty($_GET['error'])): ?><div class="feed-flash err" role="alert"><?php echo e($_GET['error']); ?></div><?php endif; ?>
 
-        <?php if (is_admin()): ?>
+        <?php if (can('feed.edit')): ?>
         <details class="sources">
             <summary>Feed-Quellen verwalten (<?php echo array_sum(array_map('count', $feed_sources)); ?>)</summary>
             <?php foreach ($feed_sources as $cat => $list): ?>

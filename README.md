@@ -26,24 +26,44 @@ Der Webserver braucht Schreibrechte im Ordner, damit die JSON-Dateien und Archiv
 Die Datendateien (`*_data.json`, `links_*.json`, `feed_sources.json`, `feed_cache.json`, `linkcheck_cache.json`, `archive*/`) sind per `.gitignore` vom Repository ausgeschlossen
 und werden beim ersten Aufruf automatisch erzeugt.
 
-## Admin-Login & Schutz
+## Benutzer, Rollen & Rechte
 
-Beim **allerersten Aufruf** der Seite erscheint die Einrichtung: Benutzername und Passwort festlegen.
-Wer das zuerst ausfüllt, wird Admin – also direkt nach dem Hochladen erledigen.
+Beim **allerersten Aufruf** legt man das erste Konto an – es wird Administrator. Wer von einer Vorversion
+aktualisiert, wird automatisch übernommen (gleicher Benutzername, gleiches Passwort, Protokoll und NSFW-Einstellung).
 
-- **Budget, Con-Rechner und Backup** sind nur angemeldet sichtbar.
-- **Alle Änderungen** (Links, Kategorien, Countdowns, Feed-Quellen, Link-Check starten …) gehen nur angemeldet.
-  Besucher sehen keine Bearbeiten-Knöpfe; abgeschickte Formulare ohne Login werden abgelehnt.
-- **NSFW-Schalter**: auf der Startseite (Admin-Leiste) und in `admin.php`. Ist er aus, sehen Besucher keine
-  NSFW-Links (markiert per Haken „NSFW / 18+“ oder in Kategorien mit „NSFW“/„Adult“ im Namen). Admins sehen sie immer mit 18+-Markierung.
-- **Admin-Zentrale** (`admin.php`): Übersicht, NSFW-Schalter, Passwort/Benutzername ändern, alle anderen Geräte abmelden,
-  Hub zurücksetzen, Feed neu laden, Systemstatus und Zugriffsprotokoll.
-- Nach 5 falschen Passwörtern wird die IP für 10 Minuten gesperrt.
-- Die Zugangsdaten liegen als Hash (bcrypt) in `.admin_auth.php` – die Datei gibt bei direktem Aufruf nichts preis.
+Alles liegt in der SQLite-Datenbank `data/site_<zufall>.sqlite`; Passwörter nur als bcrypt-Hash.
 
-**Passwort vergessen?** Per FTP die Datei `.admin_auth.php` löschen – beim nächsten Aufruf erscheint wieder die Einrichtung.
+- **Benutzer** (Admin-Zentrale → Benutzer): anlegen, Rolle zuweisen, deaktivieren, Passwort neu setzen
+  (mit Generator), Sitzungen beenden, löschen. Der letzte aktive Administrator kann nicht entmachtet werden.
+- **Rollen & Rechte**: Administrator (immer alles), Redakteur, Mitglied – eigene Rollen beliebig anlegen.
+  18 Einzelrechte, z. B. `budget.access`, `con.access`, `calendar.edit`, `calendar.private`, `links.edit`,
+  `pages.manage`, `users.manage`, `nsfw.view`, `settings.nsfw`, `system.manage`, `audit.view`.
+- Rollenwechsel, Deaktivierung und Passwortänderung melden den Benutzer überall ab.
+- Nach 5 falschen Passwörtern wird die IP für 10 Minuten gesperrt (in „System“ aufhebbar).
+- Jeder Benutzer hat unter „Mein Konto“ Profil, Passwort, seine Rechte und seine letzten Aktivitäten.
 
-Unbedingt **HTTPS** beim Hoster aktivieren, sonst wird das Passwort unverschlüsselt übertragen (die Admin-Zentrale warnt dann).
+**Passwort vergessen?** Ein anderer Administrator setzt es unter „Benutzer“ neu. Gibt es keinen:
+per FTP die Datei `data/site_….sqlite` umbenennen → beim nächsten Aufruf erscheint die Einrichtung
+(Seiten-Einstellungen, Benutzer und Protokoll beginnen dann neu; alle anderen Daten bleiben).
+
+## Startseite: Kategorien, Sortierung & eigene Seiten
+
+- Seiten erscheinen nach **Kategorien** mit Icon, Titel, **Beschreibung** und optionalen Live-Infos.
+- **✎ Bearbeiten** (Recht `pages.manage`, Taste `E`): Kacheln per Drag & Drop sortieren und zwischen
+  Kategorien verschieben, Kategorien anlegen/umbenennen/verschieben/löschen, jede Seite bearbeiten
+  (Titel, Beschreibung, Icon, Kategorie, Zugriff, verstecken).
+- **＋ Neue Seite** aus Vorlagen: **Link-Hub**, **Notizen** (Formatierung wie Markdown), **Checkliste**,
+  **Externer Link**. Eigene Seiten liegen unter `page.php?p=<name>`.
+- **Zugriff pro Seite**: 🌍 öffentlich · 🔑 nur angemeldet · 🛡️ nur bestimmte Rollen.
+  Gäste sehen geschützte Seiten mit Schloss und werden zur Anmeldung geleitet.
+
+## Admin-Zentrale
+
+Übersicht (Kennzahlen, Aktivitäts-Diagramm 14 Tage, letzte Ereignisse, Team), Benutzer, Rollen & Rechte (Matrix),
+Seiten, Protokoll (Suche, Filter, CSV-Export), System (Seitentitel, **Wartungsmodus**, Systemstatus, Speicherbelegung,
+Werkzeuge), Mein Konto. **Befehlspalette** mit `Strg+K`. Auf dem Handy wird die Seitenleiste zur Reiterleiste.
+
+**HTTPS** beim Hoster aktivieren, sonst werden Passwörter unverschlüsselt übertragen (die Admin-Zentrale warnt dann).
 
 ## Kalender (`calendar.php`, SQLite)
 
@@ -89,7 +109,7 @@ Automatischer Abgleich beim Öffnen des Budgets höchstens alle 6 Std. Die Freig
 
 ## Links & Kategorien im Browser bearbeiten
 
-Jeder Link-Hub hat oben die Knöpfe **＋ Link hinzufügen** und **＋ Kategorie** (Tastenkürzel: `n` = neuer Link).
+Jeder Link-Hub hat (mit Recht `links.edit`) oben die Knöpfe **＋ Link hinzufügen** und **＋ Kategorie** (Tastenkürzel: `n` = neuer Link).
 Beim Überfahren einer Karte bzw. Kategorie erscheinen außerdem ✎ (bearbeiten), ✕ (löschen) und ▲▼ (Kategorie verschieben).
 
 Die Links im `$categories`-Array der Hub-Datei sind nur der **Startbestand**. Sobald im Browser etwas geändert wird,

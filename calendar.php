@@ -6,8 +6,21 @@ require_once __DIR__ . '/inc/calendar.php';
 require_once __DIR__ . '/inc/calendar_ics.php';
 require_once __DIR__ . '/inc/auth.php';
 
+// Abo-Link fürs Handy: muss ohne Login funktionieren, deshalb vor der Zugriffsprüfung
+if (isset($_GET['feed'])) {
+    $kind = cal_feed_kind_for_token((string)$_GET['feed']);
+    if (!$kind) { http_response_code(404); exit('Unbekannter Kalender-Link.'); }
+    header('Content-Type: text/calendar; charset=utf-8');
+    header('Cache-Control: private, max-age=900');
+    header('Content-Disposition: inline; filename="ghostnode.ics"');
+    echo cal_export_ics($kind === 'private', cal_setting('feed_include_subs', '0') === '1');
+    exit;
+}
+
 auth_require_setup();
-$admin = is_admin();
+$admin = can('calendar.edit');                              // Termine anlegen/bearbeiten
+$see_private = $admin || can('calendar.private');           // private Termine sehen
+$manage_subs = can('calendar.subscriptions');               // Abos & Abo-Links verwalten
 
 $WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 $WEEKDAYS_LONG = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
@@ -28,7 +41,8 @@ function cal_back(array $extra = []): string {
 
 // ---------- Änderungen (nur Admin) ----------
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    guard_post();
+    $act = $_POST['action'] ?? '';
+    guard_post(in_array($act, ['sub_save', 'sub_sync', 'sub_delete', 'feed_token'], true) ? 'calendar.subscriptions' : 'calendar.edit');
     $msg = ''; $err = '';
     try {
         switch ($_POST['action'] ?? '') {
@@ -168,25 +182,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 if (($_GET['export'] ?? '') === 'ics') {
     header('Content-Type: text/calendar; charset=utf-8');
     header('Content-Disposition: attachment; filename="kalender_' . date('Y-m-d') . '.ics"');
-    echo cal_export_ics($admin, !empty($_GET['subs']));
-    exit;
-}
-
-// Abo-Link für Handy-/Desktop-Kalender: calendar.php?feed=<geheimer Token>
-if (isset($_GET['feed'])) {
-    $kind = cal_feed_kind_for_token((string)$_GET['feed']);
-    if (!$kind) { http_response_code(404); exit('Unbekannter Kalender-Link.'); }
-    header('Content-Type: text/calendar; charset=utf-8');
-    header('Cache-Control: private, max-age=900');
-    header('Content-Disposition: inline; filename="ghostnode.ics"');
-    echo cal_export_ics($kind === 'private', cal_setting('feed_include_subs', '0') === '1');
+    echo cal_export_ics($see_private, !empty($_GET['subs']));
     exit;
 }
 
 // Einzelner Termin als .ics
 if (isset($_GET['ics_event'])) {
     $ev = cal_get((int)$_GET['ics_event']);
-    if (!$ev || ($ev['private'] && !$admin)) { http_response_code(404); exit('Nicht gefunden.'); }
+    if (!$ev || ($ev['private'] && !$see_private)) { http_response_code(404); exit('Nicht gefunden.'); }
     header('Content-Type: text/calendar; charset=utf-8');
     header('Content-Disposition: attachment; filename="' . (preg_replace('/[^A-Za-z0-9äöüÄÖÜß_-]+/u', '-', $ev['title']) ?: 'termin') . '.ics"');
     echo cal_export_ics(true, true, (int)$ev['id']);
@@ -199,7 +202,7 @@ if (isset($_GET['reminders'])) {
     header('Cache-Control: no-store');
     $now = new DateTimeImmutable();
     $list = [];
-    foreach (cal_items($now->setTime(0, 0), $now->modify('+8 days'), $admin, ['events']) as $it) {
+    foreach (cal_items($now->setTime(0, 0), $now->modify('+8 days'), $see_private, ['events']) as $it) {
         if ($it['cancelled'] || $it['start'] < $now) continue;
         $remind = $it['reminder'] > 0 ? $it['start']->modify('-' . $it['reminder'] . ' minutes') : null;
         if ($it['start']->getTimestamp() - $now->getTimestamp() > 86400 && (!$remind || $remind->getTimestamp() - $now->getTimestamp() > 86400)) continue;
@@ -246,7 +249,7 @@ switch ($view) {
         $label = $MONTHS[(int)$first->format('n')] . ' ' . $first->format('Y');
 }
 
-$items = cal_items($from, $to, $admin);
+$items = cal_items($from, $to, $see_private);
 $cats = cal_categories();
 $subs = cal_subscriptions();
 $sub_errors = array_filter($subs, function ($x) { return $x['enabled'] && $x['last_status'] === 'fehler'; });
@@ -255,7 +258,7 @@ $self_url = (((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_
 $state = cal_setting('state', '');
 
 // Seitenleiste: heute + demnächst
-$upcoming = array_values(array_filter(cal_items($today, $today->modify('+90 days'), $admin), function ($it) {
+$upcoming = array_values(array_filter(cal_items($today, $today->modify('+90 days'), $see_private), function ($it) {
     return $it['end'] >= new DateTimeImmutable();
 }));
 $today_items = cal_items_on($upcoming, $today->format('Y-m-d'));
@@ -263,7 +266,7 @@ $today_items = cal_items_on($upcoming, $today->format('Y-m-d'));
 // Suche (Titel, Ort, Beschreibung)
 $search_results = [];
 if ($q !== '') {
-    $st = cal_db()->prepare('SELECT * FROM events WHERE (title LIKE :q OR location LIKE :q OR description LIKE :q)' . ($admin ? '' : ' AND private = 0') . ' ORDER BY start_at DESC LIMIT 100');
+    $st = cal_db()->prepare('SELECT * FROM events WHERE (title LIKE :q OR location LIKE :q OR description LIKE :q)' . ($see_private ? '' : ' AND private = 0') . ' ORDER BY start_at DESC LIMIT 100');
     $st->execute([':q' => '%' . str_replace(['%', '_'], ['\\%', '\\_'], $q) . '%']);
     foreach ($st->fetchAll() as $ev) {
         // nächstes Vorkommen ab heute, sonst das erste
@@ -561,7 +564,7 @@ $flash_err = $_GET['error'] ?? '';
                 <label class="toggle"><input type="checkbox" data-cat-toggle="0" checked> <span class="sw" style="background: #8b949e;"></span> Ohne Kategorie</label>
                 <?php if ($subs): ?>
                     <hr>
-                    <?php foreach ($subs as $sb): if (!$sb['enabled'] || ($sb['private'] && !$admin)) continue; ?>
+                    <?php foreach ($subs as $sb): if (!$sb['enabled'] || ($sb['private'] && !$see_private)) continue; ?>
                         <label class="toggle"><input type="checkbox" data-cat-toggle="s<?php echo (int)$sb['id']; ?>" checked> <span class="sw" style="background: <?php echo e($sb['color']); ?>;"></span> 📡 <?php echo e($sb['name'] ?: 'Abo'); ?> <small><?php echo (int)$sb['event_count']; ?></small></label>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -573,7 +576,7 @@ $flash_err = $_GET['error'] ?? '';
                 <p class="side-note" id="notifyNote">Bei Terminen mit Erinnerung meldet sich der Browser, solange Startseite oder Kalender geöffnet sind.</p>
             </div>
 
-            <?php if ($admin): ?>
+            <?php if ($manage_subs): ?>
                 <div class="panel">
                     <div class="panel-title"><span>// 📡 Kalender-Abos</span><button type="button" class="btn btn-sm btn-gold" data-sub-edit="new" title="Kalender per URL abonnieren">＋</button></div>
                     <?php if (!$subs): ?><p class="side-note" style="margin-top: 0;">Fremde Kalender per Link abonnieren – z. B. Forum-Kalender (WoltLab), Google, Outlook, Nextcloud. Sie werden automatisch aktuell gehalten.</p><?php endif; ?>
@@ -617,7 +620,7 @@ $flash_err = $_GET['error'] ?? '';
             <div class="panel">
                 <div class="panel-title"><span>// Export<?php echo $admin ? ' &amp; Import' : ''; ?></span></div>
                 <a class="btn btn-sm" style="width: 100%; text-align: center;" href="calendar.php?export=ics">⬇ Kalender als .ics</a>
-                <p class="side-note">Für Google, Apple, Outlook, Thunderbird.<?php echo $admin ? ' Enthält auch private Termine.' : ''; ?></p>
+                <p class="side-note">Für Google, Apple, Outlook, Thunderbird.<?php echo $see_private ? ' Enthält auch private Termine.' : ''; ?></p>
                 <?php if ($admin): ?>
                     <form method="POST" enctype="multipart/form-data" class="side-form">
                         <input type="hidden" name="action" value="import_ics"><input type="hidden" name="view" value="<?php echo $view; ?>"><input type="hidden" name="date" value="<?php echo $anchor->format('Y-m-d'); ?>">
@@ -754,6 +757,8 @@ $flash_err = $_GET['error'] ?? '';
     </form>
 </div>
 
+<?php endif; ?>
+<?php if ($manage_subs): ?>
 <div class="modal-overlay" id="subModal" role="dialog" aria-modal="true">
     <form method="POST" class="modal-box event-form" id="subForm">
         <button type="button" class="modal-close" data-close aria-label="Schließen">&times;</button>
@@ -779,6 +784,8 @@ $flash_err = $_GET['error'] ?? '';
     </form>
 </div>
 
+<?php endif; ?>
+<?php if ($admin): ?>
 <form method="POST" id="moveForm" hidden>
     <input type="hidden" name="action" value="move_event"><input type="hidden" name="id"><input type="hidden" name="to_day">
     <input type="hidden" name="view" value="<?php echo $view; ?>"><input type="hidden" name="date" value="<?php echo $anchor->format('Y-m-d'); ?>">

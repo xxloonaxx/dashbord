@@ -3,8 +3,8 @@ require_once __DIR__ . '/inc/countdown.php';
 require_once __DIR__ . '/inc/auth.php';
 
 auth_require_setup();
-guard_post();   // Anlegen/Bearbeiten/Löschen nur mit Login
-$admin = is_admin();
+guard_post('countdown.edit');   // Anlegen/Bearbeiten/Löschen nur mit Recht
+$admin = can('countdown.edit');
 
 $data = load_countdowns();
 

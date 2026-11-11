@@ -3,8 +3,8 @@ require_once __DIR__ . '/inc/common.php';
 require_once __DIR__ . '/inc/auth.php';
 
 // Nur für angemeldete Admins sichtbar – alle anderen landen beim Login
-require_admin_page();
-guard_post();
+require_permission('con.access');
+guard_post('con.access');
 
 // Dateipfade
 $data_file = __DIR__ . '/con_data.json';
@@ -580,7 +580,7 @@ if ($selected_archive) {
         <div class="nav-bar">
             <a href="index.php" class="nav-back">&larr; ZURÜCK ZUM INDEX</a>
             <div class="nav-tabs">
-                <a href="admin.php" class="nav-tab" title="Admin-Zentrale">⚙ <?php echo e(auth_user()); ?></a>
+                <a href="admin.php" class="nav-tab" title="Mein Konto">⚙ <?php echo e(user_label()); ?></a>
                 <a href="con.php" class="nav-tab <?php echo ($view_mode === 'active' && !$selected_archive) ? 'active' : ''; ?>">Aktive Con</a>
                 <a href="con.php?view=archive" class="nav-tab <?php echo ($view_mode === 'archive' || $selected_archive) ? 'active' : ''; ?>">Archiv-Reader</a>
             </div>

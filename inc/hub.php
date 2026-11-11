@@ -55,9 +55,9 @@ function hub_find_url(array $categories, string $url, ?array $except = null): ?s
 }
 
 /** POST-Aktionen der Hub-Seite verarbeiten (Hinzufügen, Bearbeiten, Löschen) und zurückleiten. */
-function hub_handle_post(string $hub_file, array $categories): void {
+function hub_handle_post(string $hub_file, array $categories, ?string $redirect = null): void {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_POST['hub_action'])) return;
-    guard_post();   // Änderungen nur mit Admin-Login
+    guard_post('links.edit');   // Änderungen nur mit Recht "Links bearbeiten"
 
     $msg = '';
     $error = '';
@@ -144,13 +144,15 @@ function hub_handle_post(string $hub_file, array $categories): void {
     if (!$error) save_json(hub_data_file($hub_file), $categories);
 
     $query = $error ? ['error' => $error] : ($msg ? ['msg' => $msg] : []);
-    header('Location: ' . basename($hub_file) . ($query ? '?' . http_build_query($query) : ''));
+    if (!$error) audit('Link-Hub geändert', basename($hub_file) . ': ' . ($msg ?: $action));
+    $target = $redirect ?? basename($hub_file);
+    header('Location: ' . $target . ($query ? (strpos($target, '?') === false ? '?' : '&') . http_build_query($query) : ''));
     exit;
 }
 
 /** Soll die Kategorie angezeigt werden? Besucher sehen keine leeren bzw. komplett ausgeblendeten Kategorien. */
 function hub_category_visible(string $name, array $links): bool {
-    if (is_admin()) return true;
+    if (can('links.edit')) return true;
     foreach ($links as $l) if (nsfw_visible($l, $name)) return true;
     return false;
 }
@@ -170,7 +172,7 @@ function hub_flash(): void {
 
 /** Werkzeugleiste mit den Hinzufügen-Knöpfen */
 function hub_toolbar(): void {
-    if (!is_admin()) return; ?>
+    if (!can('links.edit')) return; ?>
     <div class="hub-toolbar">
         <button type="button" class="hub-btn hub-btn-main" data-hub-open="link">＋ Link hinzufügen</button>
         <button type="button" class="hub-btn" data-hub-open="category">＋ Kategorie</button>
@@ -179,7 +181,7 @@ function hub_toolbar(): void {
 
 /** Bearbeiten-Knöpfe einer Kategorie */
 function hub_category_actions(string $name, int $pos, int $total): void {
-    if (!is_admin()) return; ?>
+    if (!can('links.edit')) return; ?>
     <span class="hub-cat-actions">
         <button type="button" class="hub-icon-btn" title="Link in diese Kategorie" data-hub-open="link" data-category="<?php echo e($name); ?>">＋</button>
         <button type="button" class="hub-icon-btn" title="Umbenennen" data-hub-rename="<?php echo e($name); ?>">✎</button>
@@ -192,7 +194,7 @@ function hub_category_actions(string $name, int $pos, int $total): void {
 
 /** Bearbeiten-/Löschen-Knöpfe einer Link-Karte (liegen über der Karte, nicht im Link selbst) */
 function hub_link_actions(string $category, int $index, array $link): void {
-    if (!is_admin()) return; ?>
+    if (!can('links.edit')) return; ?>
     <div class="hub-card-actions">
         <button type="button" class="hub-icon-btn" title="Bearbeiten" data-hub-edit="<?php echo e(json_encode($link + ['category' => $category, 'index' => $index])); ?>">✎</button>
         <form method="POST" class="hub-inline" onsubmit="return confirm(<?php echo e(json_encode('Link „' . $link['title'] . '“ löschen?', JSON_UNESCAPED_UNICODE)); ?>);"><input type="hidden" name="hub_action" value="delete_link"><input type="hidden" name="orig_category" value="<?php echo e($category); ?>"><input type="hidden" name="orig_index" value="<?php echo $index; ?>"><button type="submit" class="hub-icon-btn danger" title="Löschen">✕</button></form>
@@ -204,7 +206,7 @@ function hub_dialogs(array $categories): void {
     auth_corner();
     echo '<link rel="stylesheet" href="assets/hub-admin.css">';
     echo '<style>.nsfw-badge{display:inline-block;font-size:.6rem;font-weight:800;letter-spacing:1px;color:#ff5555;border:1px solid rgba(255,85,85,.6);padding:0 4px;margin-left:4px;vertical-align:middle}.nsfw-badge.hidden-for-guests{border-style:dashed;opacity:.75}</style>';
-    if (!is_admin()) return;
+    if (!can('links.edit')) return;
     $icons = ['🔗', '⭐', '🛠️', '📚', '🎮', '🎥', '🎵', '🛒', '🐾', '🦊', '💻', '🐧', '🌐', '📰', '🔒', '🎨', '🥽', '🛡️', '💬', '📦'];
     ?>
 

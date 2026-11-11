@@ -3,7 +3,7 @@ require_once __DIR__ . '/inc/linkcheck.php';
 require_once __DIR__ . '/inc/auth.php';
 
 auth_require_setup();
-guard_post();   // Prüfung starten nur mit Login
+guard_post('linkcheck.run');   // Prüfung starten nur mit Recht
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['run_check'])) {
     @set_time_limit(180);
@@ -106,7 +106,7 @@ $problems = $counts['dead'] + $counts['broken'];
                 <strong style="color: #fff;"><?php echo $report['checked_at'] ? e(german_datetime((int)$report['checked_at'])) : 'noch nie'; ?></strong><br>
                 Dauert ca. 15–30 Sekunden, alle Links werden parallel abgefragt.
             </p>
-            <?php if (is_admin()): ?>
+            <?php if (can('linkcheck.run')): ?>
             <form method="POST" onsubmit="document.getElementById('running').style.display='block'; this.querySelector('button').disabled=true;">
                 <button type="submit" name="run_check" class="btn btn-gold">Jetzt prüfen</button>
                 <div id="running">⟳ Prüfe Links… bitte warten</div>

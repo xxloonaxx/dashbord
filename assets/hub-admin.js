@@ -104,7 +104,7 @@
     // Hinweis nach dem Speichern nach ein paar Sekunden ausblenden und URL aufräumen
     const flash = document.querySelector('.hub-flash');
     if (flash) {
-        history.replaceState(null, '', location.pathname);
+        const u = new URL(location.href); u.searchParams.delete('msg'); u.searchParams.delete('error'); history.replaceState(null, '', u);
         if (flash.classList.contains('ok')) setTimeout(() => flash.remove(), 4000);
     }
 })();
