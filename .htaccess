@@ -1,0 +1,5 @@
+# Datendateien (Budget, Con, Feed-Cache, Archive) nicht direkt über den Browser abrufbar machen
+<FilesMatch "\.(json|tmp)$">
+    Require all denied
+</FilesMatch>
+Options -Indexes

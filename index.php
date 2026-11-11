@@ -1,93 +1,129 @@
 <?php
+require_once __DIR__ . '/inc/common.php';
+
 // Der aktuelle Ordner, in dem das Skript liegt
 $dir = __DIR__;
 $allowed_extensions = ['php', 'html', 'htm'];
 
-$files = scandir($dir);
-$clean_links = [];
-
-// Con-Daten für die Live-Vorschau auf der Karte laden
-$con_json_path = __DIR__ . '/con_data.json';
-$con_preview_text = "Keine aktiven Con-Daten gefunden";
-if (file_exists($con_json_path)) {
-    $con_data = json_decode(file_get_contents($con_json_path), true);
-    if ($con_data) {
-        $c_name = $con_data['con_name'] ?? 'Unbenannt';
-        $c_budget = $con_data['total_budget'] ?? 0;
-        $c_spent = 0;
-        if (!empty($con_data['expenses'])) {
-            foreach ($con_data['expenses'] as $ex) {
-                $c_spent += $ex['amount'];
-            }
-        }
-        $c_rem = $c_budget - $c_spent;
-        $con_preview_text = "AKTIVE CON: {$c_name} // BUDGET: " . number_format($c_budget, 2, ',', '.') . " € // AUSGABEN: " . number_format($c_spent, 2, ',', '.') . " € // REST: " . number_format($c_rem, 2, ',', '.') . " €";
-    }
+/** Live-Vorschau für die Con-Karte */
+function con_preview(): string {
+    $con = load_json(__DIR__ . '/con_data.json', null);
+    if (!$con) return 'Keine aktiven Con-Daten gefunden';
+    $budget = (float)($con['total_budget'] ?? 0);
+    $spent = 0;
+    foreach ($con['expenses'] ?? [] as $ex) $spent += (float)($ex['amount'] ?? 0);
+    return 'AKTIVE CON: ' . ($con['con_name'] ?? 'Unbenannt')
+        . ' // BUDGET: ' . eur($budget) . ' € // AUSGABEN: ' . eur($spent) . ' € // REST: ' . eur($budget - $spent) . ' €';
 }
 
-foreach ($files as $file) {
-    if ($file === '.' || $file === '..' || $file === basename(__FILE__)) {
+/** Live-Vorschau für die Budget-Karte */
+function budget_preview(): string {
+    $b = load_json(__DIR__ . '/budget_data.json', null);
+    if (!$b) return 'Noch keine Monatsdaten vorhanden';
+    $inc = 0; $exp = 0; $open = 0;
+    foreach ($b['entries'] ?? [] as $e) {
+        $amt = (float)($e['amount'] ?? 0);
+        if (($e['section'] ?? 'other') === 'income') $inc += $amt; else $exp += $amt;
+        if (($e['status'] ?? '') === 'Offen' && ($e['section'] ?? '') !== 'income') $open += $amt;
+    }
+    $txt = 'MONAT: ' . ($b['month_name'] ?? '?') . ' // NETTO: ' . eur($inc - $exp) . ' €';
+    if ($open > 0) $txt .= ' // OFFEN: ' . eur($open) . ' €';
+    return $txt;
+}
+
+/** Live-Vorschau für den Feed */
+function feed_preview(): string {
+    $cache = __DIR__ . '/feed_cache.json';
+    $items = load_json($cache, []);
+    if (!$items) return 'Noch kein Feed-Cache vorhanden';
+    return count($items) . ' MELDUNGEN IM CACHE // STAND: ' . date('d.m. H:i', filemtime($cache)) . ' UHR';
+}
+
+/** Linkdaten eines Hubs laden (die Hub-Dateien liefern bei LINKS_ONLY nur ihr Array zurück). */
+function load_hub_links(string $path): ?array {
+    if (strpos((string)file_get_contents($path), "defined('LINKS_ONLY')") === false) return null;
+    if (!defined('LINKS_ONLY')) define('LINKS_ONLY', true);
+    $result = (function () use ($path) { return include $path; })();
+    return is_array($result) ? $result : null;
+}
+
+$clean_links = [];
+$global_sub_links = [];
+$seen_urls = [];
+
+foreach (scandir($dir) as $file) {
+    if ($file[0] === '.' || $file === basename(__FILE__) || !is_file($dir . '/' . $file)) {
         continue;
     }
     $file_info = pathinfo($file);
-    if (isset($file_info['extension']) && in_array(strtolower($file_info['extension']), $allowed_extensions)) {
-        $filename = $file_info['filename'];
-        $sort_order = 999;
-        $clean_filename = $filename;
-
-        if (preg_match('/^(\d+)[\s_\-]*(.*)$/', $filename, $matches)) {
-            $sort_order = (int)$matches[1];
-            $clean_filename = $matches[2];
-        }
-
-        if (trim($clean_filename) === '') {
-            $clean_filename = $filename;
-        }
-        
-        $clean_name = strtoupper(str_replace(['_', '-'], ' ', $clean_filename));
-        
-        // Spezifische Beschreibung für con.php mit Live-Daten versehen
-        $desc = 'Zentrale Hauptseite / Datenknoten';
-        if (strtolower($file) === 'con.php') {
-            $desc = $con_preview_text;
-        }
-
-        $clean_links[] = [
-            'url' => $file,
-            'name' => $clean_name,
-            'sort' => $sort_order,
-            'desc' => $desc,
-            'category' => 'SYSTEM NODES'
-        ];
+    if (!isset($file_info['extension']) || !in_array(strtolower($file_info['extension']), $allowed_extensions)) {
+        continue;
     }
+
+    $filename = $file_info['filename'];
+    $sort_order = 999;
+    $clean_filename = $filename;
+
+    if (preg_match('/^(\d+)[\s_\-]*(.*)$/', $filename, $matches)) {
+        $sort_order = (int)$matches[1];
+        $clean_filename = $matches[2];
+    }
+    if (trim($clean_filename) === '') {
+        $clean_filename = $filename;
+    }
+    $clean_name = mb_strtoupper(str_replace(['_', '-'], ' ', $clean_filename), 'UTF-8');
+
+    // Seitentitel aus dem <title>-Tag als Untertitel verwenden
+    $page_title = '';
+    if (preg_match('#<title>(.*?)</title>#is', (string)file_get_contents($dir . '/' . $file), $m)) {
+        $page_title = trim(html_entity_decode($m[1], ENT_QUOTES, 'UTF-8'));
+    }
+
+    // Beschreibung: Live-Daten für bekannte Module, Linkanzahl für Hubs
+    $desc = '';
+    $lower = strtolower($file);
+    if ($lower === 'con.php') {
+        $desc = con_preview();
+    } elseif ($lower === 'budget.php') {
+        $desc = budget_preview();
+    } elseif ($lower === 'feed.php') {
+        $desc = feed_preview();
+    } elseif ($hub = load_hub_links($dir . '/' . $file)) {
+        $count = 0;
+        foreach ($hub as $category => $links) {
+            foreach ($links as $l) {
+                $count++;
+                $key = rtrim(strtolower($l['url']), '/');
+                if (isset($seen_urls[$key])) continue;
+                $seen_urls[$key] = true;
+                $global_sub_links[] = [
+                    'title' => $l['title'],
+                    'url' => $l['url'],
+                    'desc' => $l['desc'] ?? '',
+                    'icon' => $l['icon'] ?? '🔗',
+                    'category' => $category,
+                    'hub' => $page_title ?: $clean_name,
+                ];
+            }
+        }
+        $desc = $count . ' LINKS IN ' . count($hub) . ' KATEGORIEN';
+    }
+
+    $clean_links[] = [
+        'url' => $file,
+        'name' => $clean_name,
+        'title' => $page_title,
+        'sort' => $sort_order,
+        'desc' => $desc,
+    ];
 }
 
-usort($clean_links, function($a, $b) {
-    if ($a['sort'] == $b['sort']) {
-        return strcmp($a['name'], $b['name']);
-    }
-    return ($a['sort'] < $b['sort']) ? -1 : 1;
+usort($clean_links, function ($a, $b) {
+    return [$a['sort'], $a['name']] <=> [$b['sort'], $b['name']];
 });
 
-// Interne Datenbank aller Unter-Links aus deinen Hubs für die globale Suche
-$global_sub_links = [
-    ["title" => "Südstaatenfurs (S-S-F)", "url" => "https://s-s-f.de/", "desc" => "Offizielle Website & Portal der Südstaatenfurs für Stammtische, Treffen und Events.", "category" => "Regionale Stammtische"],
-    ["title" => "Eurofurence", "url" => "https://www.eurofurence.org", "desc" => "Die größte Furry-Convention Europas (Hamburg).", "category" => "Conventions"],
-    ["title" => "NordicFuzzCon", "url" => "https://nordicfuzzcon.org", "desc" => "Skandinavische Convention in Malmö.", "category" => "Conventions"],
-    ["title" => "Furality Online Xperience", "url" => "https://furality.org", "desc" => "Weltgrößte virtuelle VR-Convention in VRChat.", "category" => "Online & VR"],
-    ["title" => "FurPlanet", "url" => "https://furplanet.com", "desc" => "Verlag und Online-Shop für Romane und Comics.", "category" => "SFW-Shops & Verlage"],
-    ["title" => "Hyena Agenda", "url" => "https://hyena-agenda.com/", "desc" => "Hochwertiges Streetwear- und Apparel-Label.", "category" => "SFW-Shops & Verlage"],
-    ["title" => "Pawprint Press", "url" => "https://store.pawprint.press/", "desc" => "Verlag für Comics (Lackadaisy) und Artbooks.", "category" => "SFW-Shops & Verlage"],
-    ["title" => "IllumiCyberwear", "url" => "https://illumicyberwear.com/", "desc" => "Cyberpunk- und LED-Apparel & Fursuit-Illumination.", "category" => "SFW-Shops & Verlage"],
-    ["title" => "e621 (NSFW)", "url" => "https://e621.net", "desc" => "Tag-basiertes Archiv für Adult Art und Animationen.", "category" => "NSFW & Adult"],
-    ["title" => "Bad Dragon", "url" => "https://bad-dragon.com", "desc" => "Spezialshop für Adult-Toys und Silikon-Produkte.", "category" => "NSFW & Adult"],
-    ["title" => "FurAffinity", "url" => "https://www.furaffinity.net", "desc" => "Größte Plattform für Furry-Kunst und Geschichten.", "category" => "Art & Galerien"],
-    ["title" => "WikiFur (Deutsch)", "url" => "https://de.wikifur.com", "desc" => "Freie Enzyklopädie rund um das Furry-Fandom.", "category" => "Wissen & Tools"]
-];
-
 $total_nodes = count($clean_links) + count($global_sub_links);
-?>
-<!DOCTYPE html>
+?><!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
@@ -247,7 +283,7 @@ $total_nodes = count($clean_links) + count($global_sub_links);
             box-shadow: 0 0 10px var(--accent-glow);
         }
 
-        input[type="text"].search-input {
+        input[type="search"].search-input {
             flex: 1;
             background-color: rgba(4, 6, 9, 0.95);
             border: 1px solid var(--border-color);
@@ -259,7 +295,7 @@ $total_nodes = count($clean_links) + count($global_sub_links);
             transition: all 0.2s ease;
         }
 
-        input[type="text"].search-input:focus {
+        input[type="search"].search-input:focus {
             border-color: var(--accent-cyan);
             box-shadow: 0 0 15px var(--accent-glow);
         }
@@ -384,6 +420,50 @@ $total_nodes = count($clean_links) + count($global_sub_links);
             font-size: 0.85rem;
             text-transform: uppercase;
         }
+        .file-link[hidden], .empty-msg[hidden] { display: none; }
+        .file-link.sub-item { border-left-color: var(--accent-cyan); }
+
+        .file-link:focus-visible {
+            outline: 2px solid var(--accent-cyan);
+            outline-offset: 2px;
+            border-left-color: var(--accent-cyan);
+        }
+
+        .search-hint {
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        kbd {
+            display: inline-block;
+            padding: 1px 6px;
+            border: 1px solid var(--border-color);
+            background: rgba(56, 213, 230, 0.06);
+            color: var(--accent-cyan);
+            font-family: inherit;
+            font-size: 0.7rem;
+        }
+
+        .file-details { min-width: 0; }
+        .file-desc { overflow-wrap: anywhere; }
+
+        @media (max-width: 640px) {
+            body { padding: 20px 14px; }
+            h1 { font-size: 1.8rem; letter-spacing: 3px; }
+            .telemetry-bar { flex-wrap: wrap; gap: 4px 14px; font-size: 0.65rem; letter-spacing: 1px; }
+            .search-box { padding: 14px; }
+            .search-controls { flex-wrap: wrap; }
+            select#search-engine { flex: 1 1 100%; }
+            input[type="search"].search-input { min-width: 0; }
+            button.search-btn { padding: 12px 16px; }
+            .file-link { padding: 14px 16px; }
+            .file-link:hover { transform: none; }
+            .action-zone span:first-child { display: none; }
+            .search-hint { display: none; }
+            #modeIndicator { display: none; }
+        }
     </style>
 </head>
 <body>
@@ -398,21 +478,24 @@ $total_nodes = count($clean_links) + count($global_sub_links);
         <header>
             <div class="hud-tag">System // Central Terminal</div>
             <h1>Startseite</h1>
-            <p class="subtitle">Zentrale Schnittstelle &amp; Datenknoten</p>
+            <p class="subtitle" id="greeting">Zentrale Schnittstelle &amp; Datenknoten</p>
         </header>
 
         <div class="search-box">
-            <form id="searchForm" action="https://www.google.com/search" method="GET" class="search-form" onsubmit="return handleSearchSubmit(event)">
+            <form id="searchForm" action="https://www.google.com/search" method="GET" class="search-form" role="search">
                 <div class="search-controls">
-                    <select id="search-engine" onchange="updateSearchEngine(this.value)">
+                    <select id="search-engine" aria-label="Suchmaschine">
                         <option value="google" selected>Google</option>
                         <option value="duckduckgo">DuckDuckGo</option>
                         <option value="ecosia">Ecosia</option>
                         <option value="bing">Bing</option>
                         <option value="internal">// LOKAL (ALLE NODES &amp; LINKS)</option>
                     </select>
-                    <input type="text" id="searchInput" name="q" class="search-input" placeholder="Suchbegriff eingeben..." autofocus autocomplete="off" onkeyup="filterLocalLinks()">
+                    <input type="search" id="searchInput" name="q" class="search-input" placeholder="Suchbegriff eingeben..." autofocus autocomplete="off" aria-label="Suchbegriff">
                     <button type="submit" id="searchBtn" class="search-btn">Suchen</button>
+                </div>
+                <div class="search-hint" id="searchHint">
+                    Tippen zeigt sofort passende Links aus allen Hubs &bull; <kbd>/</kbd> Suche &bull; <kbd>Esc</kbd> leeren &bull; <kbd>Enter</kbd> Websuche
                 </div>
             </form>
         </div>
@@ -424,14 +507,18 @@ $total_nodes = count($clean_links) + count($global_sub_links);
 
         <!-- Kombinierte Liste aller lokalen Seiten und Unter-Links -->
         <div class="list-container" id="linkList">
+            <?php if (empty($clean_links)): ?>
+                <div class="empty-msg">Keine weiteren Seiten im Verzeichnis gefunden.</div>
+            <?php endif; ?>
+
             <!-- Lokale PHP/HTML Hauptseiten -->
             <?php foreach ($clean_links as $link): ?>
-                <a href="<?php echo htmlspecialchars($link['url']); ?>" class="file-link search-item" data-search-text="<?php echo strtolower($link['name'] . ' ' . $link['url'] . ' ' . $link['desc']); ?>">
+                <a href="<?php echo e($link['url']); ?>" class="file-link search-item node-item" data-search-text="<?php echo e(mb_strtolower($link['name'] . ' ' . $link['title'] . ' ' . $link['url'] . ' ' . $link['desc'], 'UTF-8')); ?>">
                     <div class="file-details">
-                        <span class="file-name"><?php echo htmlspecialchars($link['name']); ?></span>
-                        <span class="file-meta">TARGET: <?php echo htmlspecialchars($link['url']); ?></span>
-                        <?php if (strtolower($link['url']) === 'con.php'): ?>
-                            <span class="file-desc"><?php echo htmlspecialchars($link['desc']); ?></span>
+                        <span class="file-name"><?php echo e($link['name']); ?></span>
+                        <span class="file-meta">TARGET: <?php echo e($link['url']); ?><?php if ($link['title']): ?> // <?php echo e($link['title']); ?><?php endif; ?></span>
+                        <?php if ($link['desc'] !== ''): ?>
+                            <span class="file-desc"><?php echo e($link['desc']); ?></span>
                         <?php endif; ?>
                     </div>
                     <div class="action-zone">
@@ -441,119 +528,141 @@ $total_nodes = count($clean_links) + count($global_sub_links);
                 </a>
             <?php endforeach; ?>
 
-            <!-- Globale Unter-Links aus den Hubs -->
+            <!-- Alle Unter-Links aus den Hubs (werden automatisch aus den Hub-Seiten gelesen) -->
             <?php foreach ($global_sub_links as $sub): ?>
-                <a href="<?php echo htmlspecialchars($sub['url']); ?>" target="_blank" class="file-link search-item" data-search-text="<?php echo strtolower($sub['title'] . ' ' . $sub['desc'] . ' ' . $sub['category']); ?>" style="display: none; border-left-color: var(--accent-cyan);">
+                <a href="<?php echo e($sub['url']); ?>" target="_blank" rel="noopener noreferrer" class="file-link search-item sub-item" hidden data-search-text="<?php echo e(mb_strtolower($sub['title'] . ' ' . $sub['desc'] . ' ' . $sub['category'] . ' ' . $sub['hub'] . ' ' . $sub['url'], 'UTF-8')); ?>">
                     <div class="file-details">
-                        <span class="file-name"><?php echo htmlspecialchars($sub['title']); ?></span>
-                        <span class="file-meta">HUB LINK // <?php echo htmlspecialchars($sub['category']); ?></span>
-                        <span class="file-desc"><?php echo htmlspecialchars($sub['desc']); ?></span>
+                        <span class="file-name"><?php echo e($sub['icon']); ?> <?php echo e($sub['title']); ?></span>
+                        <span class="file-meta">HUB LINK // <?php echo e($sub['hub']); ?> // <?php echo e($sub['category']); ?></span>
+                        <?php if ($sub['desc'] !== ''): ?>
+                            <span class="file-desc"><?php echo e($sub['desc']); ?></span>
+                        <?php endif; ?>
                     </div>
                     <div class="action-zone">
                         <span>OPEN</span>
-                        <span class="arrow">&rarr;</span>
+                        <span class="arrow">&nearr;</span>
                     </div>
                 </a>
             <?php endforeach; ?>
+
+            <div class="empty-msg" id="noResults" hidden>Keine lokalen Treffer – <kbd>Enter</kbd> sucht im Web.</div>
         </div>
     </div>
 
     <script>
+        // ---------- Uhr & Begrüßung ----------
         function updateClock() {
             const now = new Date();
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
-            document.getElementById('liveClock').textContent = `${hours}:${minutes}:${seconds}`;
+            document.getElementById('liveClock').textContent =
+                [now.getHours(), now.getMinutes(), now.getSeconds()].map(n => String(n).padStart(2, '0')).join(':');
         }
         setInterval(updateClock, 1000);
         updateClock();
 
+        (function greet() {
+            const h = new Date().getHours();
+            const text = h < 5 ? 'Gute Nacht' : h < 11 ? 'Guten Morgen' : h < 17 ? 'Guten Tag' : h < 22 ? 'Guten Abend' : 'Gute Nacht';
+            const date = new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+            document.getElementById('greeting').textContent = text + ' // ' + date;
+        })();
+
+        // ---------- Suche ----------
+        const ENGINES = {
+            google:     'https://www.google.com/search',
+            duckduckgo: 'https://duckduckgo.com/',
+            ecosia:     'https://www.ecosia.org/search',
+            bing:       'https://www.bing.com/search'
+        };
+        const ENGINE_NAMES = { google: 'Google', duckduckgo: 'DuckDuckGo', ecosia: 'Ecosia', bing: 'Bing' };
+
+        const form = document.getElementById('searchForm');
+        const input = document.getElementById('searchInput');
+        const select = document.getElementById('search-engine');
+        const btn = document.getElementById('searchBtn');
+        const modeInd = document.getElementById('modeIndicator');
+        const header = document.getElementById('sectionHeader');
+        const hint = document.getElementById('searchHint');
+        const noResults = document.getElementById('noResults');
+        const items = Array.from(document.querySelectorAll('.search-item'));
+
+        function storage(key, value) {
+            try {
+                if (value === undefined) return localStorage.getItem(key);
+                localStorage.setItem(key, value);
+            } catch (e) { return null; }
+        }
+
         function updateSearchEngine(engine) {
-            const form = document.getElementById('searchForm');
-            const input = document.getElementById('searchInput');
-            const btn = document.getElementById('searchBtn');
-            const modeInd = document.getElementById('modeIndicator');
-            const items = document.querySelectorAll('.search-item');
-
-            if (engine === 'internal') {
-                input.placeholder = "Tippen zum Durchsuchen von Nodes & Links...";
-                btn.style.display = 'none';
-                modeInd.textContent = '[SEARCH MODE]';
-                
-                // Im Suchmodus erst mal alle Unter-Links ausblenden bis getippt wird
-                items.forEach(i => {
-                    if (!i.getAttribute('href').includes('con.php')) {
-                        i.style.display = 'none';
-                    }
-                });
-                input.value = '';
-                input.focus();
-            } else {
-                btn.style.display = 'block';
-                modeInd.textContent = '[EXECUTE MODE]';
-                
-                // Bei Web-Suche wieder normal alle Hauptseiten anzeigen, Unter-Links verstecken
-                items.forEach(i => {
-                    if (i.getAttribute('target') === '_blank') {
-                        i.style.display = 'none';
-                    } else {
-                        i.style.display = 'flex';
-                    }
-                });
-
-                if (engine === 'google') {
-                    form.action = 'https://www.google.com/search';
-                    input.name = 'q';
-                } else if (engine === 'duckduckgo') {
-                    form.action = 'https://duckduckgo.com/';
-                    input.name = 'q';
-                } else if (engine === 'ecosia') {
-                    form.action = 'https://www.ecosia.org/search';
-                    input.name = 'q';
-                } else if (engine === 'bing') {
-                    form.action = 'https://www.bing.com/search';
-                    input.name = 'q';
-                }
-            }
+            const internal = engine === 'internal';
+            btn.textContent = internal ? 'Öffnen' : 'Suchen';
+            modeInd.textContent = internal ? '[SEARCH MODE]' : '[EXECUTE MODE]';
+            input.placeholder = internal ? 'Nodes & Links durchsuchen...' : 'Suchbegriff eingeben...';
+            hint.innerHTML = internal
+                ? 'Lokale Suche über alle Hubs &bull; <kbd>Enter</kbd> öffnet den ersten Treffer &bull; <kbd>Esc</kbd> leeren'
+                : 'Tippen zeigt sofort passende Links aus allen Hubs &bull; <kbd>/</kbd> Suche &bull; <kbd>Esc</kbd> leeren &bull; <kbd>Enter</kbd> Websuche (' + ENGINE_NAMES[engine] + ')';
+            if (!internal) form.action = ENGINES[engine];
+            storage('searchEngine', engine);
+            filterLocalLinks();
         }
 
         function filterLocalLinks() {
-            const engine = document.getElementById('search-engine').value;
-            if (engine !== 'internal') return;
-
-            const query = document.getElementById('searchInput').value.toLowerCase().trim();
-            const items = document.querySelectorAll('.search-item');
-
-            if (query === '') {
-                items.forEach(item => {
-                    if (!item.getAttribute('href').includes('con.php')) {
-                        item.style.display = 'none';
-                    } else {
-                        item.style.display = 'flex';
-                    }
-                });
-                return;
-            }
+            const terms = input.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
+            let visible = 0;
 
             items.forEach(item => {
-                const searchText = item.getAttribute('data-search-text');
-                if (searchText.includes(query)) {
-                    item.style.display = 'flex';
+                let show;
+                if (!terms.length) {
+                    show = item.classList.contains('node-item');
                 } else {
-                    item.style.display = 'none';
+                    const text = item.dataset.searchText;
+                    show = terms.every(t => text.includes(t));
                 }
+                item.hidden = !show;
+                if (show) visible++;
             });
+
+            header.textContent = terms.length ? visible + ' lokale Treffer' : 'Aktive Verzeichnisse & Hubs';
+            noResults.hidden = !(terms.length && visible === 0);
         }
 
-        function handleSearchSubmit(event) {
-            const engine = document.getElementById('search-engine').value;
-            if (engine === 'internal') {
-                event.preventDefault();
-                return false;
-            }
-            return true;
+        function firstVisible() {
+            return items.find(i => !i.hidden);
         }
+
+        form.addEventListener('submit', e => {
+            const query = input.value.trim();
+            if (select.value === 'internal') {
+                e.preventDefault();
+                const hit = firstVisible();
+                if (hit && query) {
+                    if (hit.target === '_blank') window.open(hit.href, '_blank', 'noopener');
+                    else window.location.href = hit.href;
+                }
+            } else if (!query) {
+                e.preventDefault();
+            }
+        });
+
+        select.addEventListener('change', () => { updateSearchEngine(select.value); input.focus(); });
+        input.addEventListener('input', filterLocalLinks);
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Escape') { input.value = ''; filterLocalLinks(); }
+            if (e.key === 'ArrowDown') {
+                const hit = firstVisible();
+                if (hit) { e.preventDefault(); hit.focus(); }
+            }
+        });
+        document.addEventListener('keydown', e => {
+            if (e.key === '/' && document.activeElement !== input && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) {
+                e.preventDefault();
+                input.focus();
+            }
+        });
+
+        // Zuletzt genutzte Suchmaschine merken
+        const savedEngine = storage('searchEngine');
+        if (savedEngine && select.querySelector('option[value="' + savedEngine + '"]')) select.value = savedEngine;
+        updateSearchEngine(select.value);
     </script>
 </body>
 </html>

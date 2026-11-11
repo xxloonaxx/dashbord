@@ -1,10 +1,12 @@
 <?php
+require_once __DIR__ . '/inc/common.php';
+
 // Dateipfade
 $data_file = __DIR__ . '/con_data.json';
 $archive_dir = __DIR__ . '/archive/';
 
 if (!is_dir($archive_dir)) {
-    mkdir($archive_dir, 0777, true);
+    mkdir($archive_dir, 0755, true);
 }
 
 // Standard-Datenstruktur
@@ -15,13 +17,22 @@ $default_data = [
     'expenses' => []
 ];
 
+$con_categories = [
+    'Hotel' => 'Hotel',
+    'Bahn' => 'Bahn',
+    'Ticket' => 'Ticket',
+    'Food' => 'Food / Verpflegung',
+    'Merchandise' => 'Merchandise',
+    'Anderes' => 'Anderes'
+];
+
 // Aktive Daten laden
-if (file_exists($data_file)) {
-    $data = json_decode(file_get_contents($data_file), true);
-    if (!isset($data['con_docs'])) $data['con_docs'] = '';
+if (is_file($data_file)) {
+    $data = load_json($data_file, $default_data);
+    $data += ['con_docs' => '', 'expenses' => [], 'total_budget' => 0, 'con_name' => 'Unbenannte Con'];
 } else {
     $data = $default_data;
-    file_put_contents($data_file, json_encode($data, JSON_PRETTY_PRINT));
+    save_json($data_file, $data);
 }
 
 // POST-Aktionen verarbeiten
@@ -30,9 +41,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // 1. Con-Daten & Allgemeine Dokumentation aktualisieren
     if (isset($_POST['update_con'])) {
         $data['con_name'] = trim($_POST['con_name']) ?: 'Unbenannte Con';
-        $data['total_budget'] = floatval($_POST['total_budget']);
+        $data['total_budget'] = parse_amount($_POST['total_budget'] ?? 0);
         $data['con_docs'] = trim($_POST['con_docs']);
-        file_put_contents($data_file, json_encode($data, JSON_PRETTY_PRINT));
+        save_json($data_file, $data);
         header('Location: con.php');
         exit;
     }
@@ -40,9 +51,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // 2. Ausgabe hinzufügen
     if (isset($_POST['add_expense'])) {
         $title = trim($_POST['title']);
-        $amount = floatval($_POST['amount']);
-        $category = $_POST['category'];
-        $status = $_POST['status'];
+        $amount = parse_amount($_POST['amount'] ?? 0);
+        $category = isset($con_categories[$_POST['category'] ?? '']) ? $_POST['category'] : 'Anderes';
+        $status = ($_POST['status'] ?? '') === 'Offen' ? 'Offen' : 'Bezahlt';
         $docs = trim($_POST['docs']);
         
         if ($title !== '' && $amount > 0) {
@@ -55,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'docs' => $docs,
                 'date' => date('d.m.Y H:i')
             ];
-            file_put_contents($data_file, json_encode($data, JSON_PRETTY_PRINT));
+            save_json($data_file, $data);
         }
         header('Location: con.php');
         exit;
@@ -65,9 +76,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['edit_expense'])) {
         $id = $_POST['expense_id'];
         $title = trim($_POST['title']);
-        $amount = floatval($_POST['amount']);
-        $category = $_POST['category'];
-        $status = $_POST['status'];
+        $amount = parse_amount($_POST['amount'] ?? 0);
+        $category = isset($con_categories[$_POST['category'] ?? '']) ? $_POST['category'] : 'Anderes';
+        $status = ($_POST['status'] ?? '') === 'Offen' ? 'Offen' : 'Bezahlt';
         $docs = trim($_POST['docs']);
 
         foreach ($data['expenses'] as &$exp) {
@@ -81,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         unset($exp);
-        file_put_contents($data_file, json_encode($data, JSON_PRETTY_PRINT));
+        save_json($data_file, $data);
         header('Location: con.php');
         exit;
     }
@@ -97,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         unset($exp);
-        file_put_contents($data_file, json_encode($data, JSON_PRETTY_PRINT));
+        save_json($data_file, $data);
         header('Location: con.php');
         exit;
     }
@@ -108,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $data['expenses'] = array_values(array_filter($data['expenses'], function($item) use ($id) {
             return $item['id'] !== $id;
         }));
-        file_put_contents($data_file, json_encode($data, JSON_PRETTY_PRINT));
+        save_json($data_file, $data);
         header('Location: con.php');
         exit;
     }
@@ -117,17 +128,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['archive_con'])) {
         $safe_name = preg_replace('/[^a-zA-Z0-9_-]/', '_', $data['con_name']);
         $archive_file = $archive_dir . 'con_' . $safe_name . '_' . date('Y-m-d_His') . '.json';
-        copy($data_file, $archive_file);
+        save_json($archive_file, $data);
         
-        $data = $default_data;
-        file_put_contents($data_file, json_encode($data, JSON_PRETTY_PRINT));
+        // Name & Budget als Startwerte für die nächste Con behalten
+        $data = array_merge($default_data, ['con_name' => $data['con_name'], 'total_budget' => $data['total_budget']]);
+        save_json($data_file, $data);
         header('Location: con.php');
         exit;
     }
 
     // 7. Archiviertes File löschen
     if (isset($_POST['delete_archive'])) {
-        $filename = basename($_POST['archive_filename']);
+        $filename = basename($_POST['archive_filename'] ?? '');
         $target = $archive_dir . $filename;
         if (file_exists($target)) {
             unlink($target);
@@ -150,6 +162,15 @@ foreach ($data['expenses'] as $exp) {
     }
 }
 $remaining_budget = $data['total_budget'] - $total_spent;
+$budget_ratio = $data['total_budget'] > 0 ? min(100, round($total_spent / $data['total_budget'] * 100)) : ($total_spent > 0 ? 100 : 0);
+
+// Ausgaben je Kategorie für die Aufschlüsselung
+$by_category = [];
+foreach ($data['expenses'] as $exp) {
+    $cat = $exp['category'] ?? 'Anderes';
+    $by_category[$cat] = ($by_category[$cat] ?? 0) + $exp['amount'];
+}
+arsort($by_category);
 
 // Ansichts-Modus
 $view_mode = $_GET['view'] ?? 'active';
@@ -159,7 +180,7 @@ $archive_data = null;
 if ($selected_archive) {
     $archive_path = $archive_dir . basename($selected_archive);
     if (file_exists($archive_path)) {
-        $archive_data = json_decode(file_get_contents($archive_path), true);
+        $archive_data = load_json($archive_path, null);
     }
 }
 ?>
@@ -319,6 +340,17 @@ if ($selected_archive) {
         .card-value.red { color: var(--accent-red); }
         .card-value.gold { color: var(--accent-gold); }
         .card-value.purple { color: var(--accent-purple); }
+        .card-sub { font-size: 0.7rem; color: var(--accent-red); letter-spacing: 1px; margin-top: 4px; text-transform: uppercase; }
+        .progress-wrap { margin: -10px 0 25px; }
+        .progress-label { display: flex; justify-content: space-between; font-size: 0.68rem; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
+        .progress { height: 8px; background: rgba(56, 213, 230, 0.08); border: 1px solid var(--border-color); }
+        .progress-fill { height: 100%; background: var(--accent-green); box-shadow: 0 0 10px rgba(80, 250, 123, 0.4); transition: width 0.4s ease; }
+        .progress-fill.warn { background: var(--accent-gold); box-shadow: 0 0 10px rgba(243, 194, 98, 0.4); }
+        .progress-fill.over { background: var(--accent-red); box-shadow: 0 0 10px rgba(255, 85, 85, 0.4); }
+        .cat-breakdown { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .cat-chip { font-size: 0.7rem; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); border: 1px solid var(--border-color); padding: 3px 8px; background: rgba(56, 213, 230, 0.04); }
+        .cat-chip strong { color: var(--accent-gold); }
+        :focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 2px; }
 
         /* Panels */
         .panel {
@@ -517,6 +549,15 @@ if ($selected_archive) {
             box-shadow: 0 0 25px var(--accent-glow);
             position: relative;
         }
+        @media (max-width: 768px) {
+            body { padding: 20px 14px; }
+            h1 { font-size: 1.6rem; letter-spacing: 2px; }
+            .nav-bar { flex-direction: column; align-items: flex-start; gap: 10px; }
+            .expense-item { flex-direction: column; gap: 10px; }
+            .expense-right { align-items: flex-start !important; flex-direction: column !important; }
+            .archive-section { flex-direction: column; align-items: flex-start; gap: 12px; }
+            .modal-box { margin: 0 12px; max-height: 90vh; overflow-y: auto; }
+        }
         .modal-close {
             position: absolute;
             top: 15px; right: 20px;
@@ -549,22 +590,38 @@ if ($selected_archive) {
             <div class="dashboard-grid">
                 <div class="card">
                     <div class="card-title">Gesamt-Budget</div>
-                    <div class="card-value gold"><?php echo number_format($data['total_budget'], 2, ',', '.'); ?> €</div>
+                    <div class="card-value gold"><?php echo eur($data['total_budget']); ?> €</div>
                 </div>
                 <div class="card">
                     <div class="card-title">Ausgaben (Gesamt)</div>
-                    <div class="card-value red"><?php echo number_format($total_spent, 2, ',', '.'); ?> €</div>
+                    <div class="card-value red"><?php echo eur($total_spent); ?> €</div>
                 </div>
                 <div class="card">
                     <div class="card-title">Bereits Bezahlt</div>
-                    <div class="card-value green"><?php echo number_format($total_paid, 2, ',', '.'); ?> €</div>
+                    <div class="card-value green"><?php echo eur($total_paid); ?> €</div>
+                    <?php if ($total_open > 0): ?><div class="card-sub">Offen: <?php echo eur($total_open); ?> €</div><?php endif; ?>
                 </div>
                 <div class="card">
                     <div class="card-title">Rest / Puffer</div>
                     <div class="card-value <?php echo $remaining_budget >= 0 ? 'purple' : 'red'; ?>">
-                        <?php echo number_format($remaining_budget, 2, ',', '.'); ?> €
+                        <?php echo eur($remaining_budget); ?> €
                     </div>
                 </div>
+            </div>
+
+            <div class="progress-wrap">
+                <div class="progress-label">
+                    <span>Budget verbraucht</span>
+                    <span><?php echo $data['total_budget'] > 0 ? round($total_spent / $data['total_budget'] * 100) . ' %' : '–'; ?></span>
+                </div>
+                <div class="progress"><div class="progress-fill <?php echo $budget_ratio >= 100 ? 'over' : ($budget_ratio >= 85 ? 'warn' : ''); ?>" style="width: <?php echo $budget_ratio; ?>%;"></div></div>
+                <?php if ($by_category): ?>
+                    <div class="cat-breakdown">
+                        <?php foreach ($by_category as $cat => $sum): ?>
+                            <span class="cat-chip"><?php echo e($con_categories[$cat] ?? $cat); ?>: <strong><?php echo eur($sum); ?> €</strong></span>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
             </div>
 
             <!-- Con Einstellungen & Allgemeine Dokumentation -->
@@ -573,7 +630,7 @@ if ($selected_archive) {
                 <form method="POST">
                     <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px; margin-bottom: 12px;">
                         <input type="text" name="con_name" value="<?php echo htmlspecialchars($data['con_name']); ?>" placeholder="Con Name" required>
-                        <input type="number" step="0.01" name="total_budget" value="<?php echo $data['total_budget']; ?>" placeholder="Budget in €" required>
+                        <input type="number" step="0.01" min="0" name="total_budget" value="<?php echo e($data['total_budget']); ?>" placeholder="Budget in €" inputmode="decimal" required>
                     </div>
                     <div style="margin-bottom: 12px;">
                         <label style="font-size: 0.75rem; letter-spacing: 1px; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 4px;">Allgemeine Dokumentation &amp; Notizen (z.B. Hotel-Adresse, Zugverbindung, Orga-Links):</label>
@@ -589,7 +646,7 @@ if ($selected_archive) {
                 <form method="POST">
                     <div class="form-grid">
                         <input type="text" name="title" placeholder="Bezeichnung (z.B. Hotel, Zugticket...)" required>
-                        <input type="number" step="0.01" name="amount" placeholder="Betrag in €" required>
+                        <input type="number" step="0.01" min="0.01" name="amount" placeholder="Betrag in €" inputmode="decimal" required>
                         <select name="category">
                             <option value="Hotel">Hotel</option>
                             <option value="Bahn">Bahn</option>
@@ -625,32 +682,32 @@ if ($selected_archive) {
                                     <div class="expense-meta">
                                         Kategorie: <strong><?php echo htmlspecialchars($exp['category']); ?></strong> 
                                         &bull; <span class="badge <?php echo $is_paid ? 'paid' : 'open'; ?>"><?php echo htmlspecialchars($exp['status'] ?? 'Bezahlt'); ?></span>
-                                        &bull; <?php echo $exp['date']; ?>
+                                        &bull; <?php echo e($exp['date'] ?? ''); ?>
                                     </div>
                                     <?php if (!empty($exp['docs'])): ?>
                                         <div class="expense-docs">DOCS: <?php echo htmlspecialchars($exp['docs']); ?></div>
                                     <?php endif; ?>
                                 </div>
                                 <div class="expense-right">
-                                    <span class="expense-amount">-<?php echo number_format($exp['amount'], 2, ',', '.'); ?> €</span>
+                                    <span class="expense-amount">-<?php echo eur($exp['amount']); ?> €</span>
                                     <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end;">
                                         <!-- Bearbeiten Button (öffnet Popup) -->
                                         <button type="button" class="btn btn-gold" style="padding: 4px 8px; font-size: 0.65rem;" 
-                                                onclick="openEditModal('<?php echo $exp['id']; ?>', '<?php echo addslashes($exp['title']); ?>', '<?php echo $exp['amount']; ?>', '<?php echo $exp['category']; ?>', '<?php echo $exp['status'] ?? 'Bezahlt'; ?>', '<?php echo addslashes($exp['docs'] ?? ''); ?>')">
+                                                data-expense="<?php echo e(json_encode($exp)); ?>" onclick="openEditModal(JSON.parse(this.dataset.expense))">
                                             Bearbeiten
                                         </button>
                                         
                                         <!-- Status umschalten -->
                                         <form method="POST" style="margin:0;">
-                                            <input type="hidden" name="expense_id" value="<?php echo $exp['id']; ?>">
+                                            <input type="hidden" name="expense_id" value="<?php echo e($exp['id']); ?>">
                                             <button type="submit" name="toggle_status" class="btn <?php echo $is_paid ? '' : 'btn-gold'; ?>" style="padding: 4px 8px; font-size: 0.65rem;">
                                                 <?php echo $is_paid ? 'Als Offen' : 'Bezahlen'; ?>
                                             </button>
                                         </form>
 
                                         <!-- Löschen -->
-                                        <form method="POST" style="margin:0;">
-                                            <input type="hidden" name="expense_id" value="<?php echo $exp['id']; ?>">
+                                        <form method="POST" style="margin:0;" onsubmit="return confirm(<?php echo e(json_encode('Ausgabe „' . $exp['title'] . '“ wirklich löschen?', JSON_UNESCAPED_UNICODE)); ?>);">
+                                            <input type="hidden" name="expense_id" value="<?php echo e($exp['id']); ?>">
                                             <button type="submit" name="delete_expense" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.65rem;">Löschen</button>
                                         </form>
                                     </div>
@@ -665,7 +722,7 @@ if ($selected_archive) {
             <div class="archive-section">
                 <div>
                     <strong style="color: #fff; letter-spacing: 1px; font-size: 0.85rem; text-transform: uppercase;">Con abgeschlossen?</strong>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">Sichert alle Daten &amp; Dokumentationen in den Archiv-Ordner und setzt den Rechner zurück.</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Sichert alle Daten &amp; Dokumentationen in den Archiv-Ordner und leert die Ausgabenliste (Name &amp; Budget bleiben als Vorlage stehen).</div>
                 </div>
                 <form method="POST" onsubmit="return confirm('Möchtest du diese Con wirklich archivieren und den Rechner für eine neue Con zurücksetzen?');">
                     <button type="submit" name="archive_con" class="btn btn-danger">Con archivieren &amp; Neustart</button>
@@ -688,7 +745,7 @@ if ($selected_archive) {
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom: 10px;">
                             <div>
                                 <label style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Betrag (€)</label>
-                                <input type="number" step="0.01" name="amount" id="edit_amount" required>
+                                <input type="number" step="0.01" min="0.01" name="amount" id="edit_amount" inputmode="decimal" required>
                             </div>
                             <div>
                                 <label style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Status</label>
@@ -722,19 +779,22 @@ if ($selected_archive) {
             </div>
 
             <script>
-                function openEditModal(id, title, amount, category, status, docs) {
-                    document.getElementById('edit_expense_id').value = id;
-                    document.getElementById('edit_title').value = title;
-                    document.getElementById('edit_amount').value = amount;
-                    document.getElementById('edit_category').value = category;
-                    document.getElementById('edit_status').value = status;
-                    document.getElementById('edit_docs').value = docs;
+                function openEditModal(exp) {
+                    document.getElementById('edit_expense_id').value = exp.id;
+                    document.getElementById('edit_title').value = exp.title;
+                    document.getElementById('edit_amount').value = exp.amount;
+                    document.getElementById('edit_category').value = exp.category || 'Anderes';
+                    document.getElementById('edit_status').value = exp.status || 'Bezahlt';
+                    document.getElementById('edit_docs').value = exp.docs || '';
                     document.getElementById('editModal').style.display = 'flex';
+                    document.getElementById('edit_title').focus();
                 }
 
                 function closeEditModal() {
                     document.getElementById('editModal').style.display = 'none';
                 }
+
+                document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEditModal(); });
 
                 // Schließen bei Klick außerhalb des Modals
                 window.onclick = function(event) {
@@ -772,9 +832,9 @@ if ($selected_archive) {
                     ?>
                     
                     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;">
-                        <div class="card"><div class="card-title">Budget</div><div class="card-value gold"><?php echo number_format($arch_budget, 2, ',', '.'); ?> €</div></div>
-                        <div class="card"><div class="card-title">Ausgaben</div><div class="card-value red"><?php echo number_format($arch_spent, 2, ',', '.'); ?> €</div></div>
-                        <div class="card"><div class="card-title">Bilanz</div><div class="card-value <?php echo $arch_diff >= 0 ? 'green':'red'; ?>"><?php echo number_format($arch_diff, 2, ',', '.'); ?> €</div></div>
+                        <div class="card"><div class="card-title">Budget</div><div class="card-value gold"><?php echo eur($arch_budget); ?> €</div></div>
+                        <div class="card"><div class="card-title">Ausgaben</div><div class="card-value red"><?php echo eur($arch_spent); ?> €</div></div>
+                        <div class="card"><div class="card-title">Bilanz</div><div class="card-value <?php echo $arch_diff >= 0 ? 'green':'red'; ?>"><?php echo eur($arch_diff); ?> €</div></div>
                     </div>
 
                     <?php if (!empty($archive_data['con_docs'])): ?>
@@ -799,7 +859,7 @@ if ($selected_archive) {
                                         <?php endif; ?>
                                     </div>
                                     <div class="expense-right">
-                                        <span class="expense-amount">-<?php echo number_format($ae['amount'], 2, ',', '.'); ?> €</span>
+                                        <span class="expense-amount">-<?php echo eur($ae['amount']); ?> €</span>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
@@ -812,13 +872,14 @@ if ($selected_archive) {
                     <div class="panel-title">// Gespeicherte Con-Archive</div>
                     <div class="expense-list">
                         <?php
-                        $archives = glob($archive_dir . '*.json');
+                        $archives = glob($archive_dir . '*.json') ?: [];
+                        usort($archives, function ($a, $b) { return filemtime($b) <=> filemtime($a); });
                         if (empty($archives)):
                         ?>
                             <div class="empty-msg">Keine Archive gefunden.</div>
                         <?php else: ?>
                             <?php foreach ($archives as $arch_file): 
-                                $content = json_decode(file_get_contents($arch_file), true);
+                                $content = load_json($arch_file, []);
                                 $name = $content['con_name'] ?? 'Unbekannte Con';
                                 $budget = $content['total_budget'] ?? 0;
                                 $spent = 0;
@@ -834,8 +895,8 @@ if ($selected_archive) {
                                     </div>
                                     <div class="expense-right" style="flex-direction: row; align-items: center; gap: 20px;">
                                         <div style="text-align: right;">
-                                            <div style="font-size: 0.9rem; color: var(--accent-gold); font-weight: 700;">Budget: <?php echo number_format($budget, 2, ',', '.'); ?> €</div>
-                                            <div style="font-size: 0.75rem; color: var(--text-muted);">Ausgaben: <?php echo number_format($spent, 2, ',', '.'); ?> €</div>
+                                            <div style="font-size: 0.9rem; color: var(--accent-gold); font-weight: 700;">Budget: <?php echo eur($budget); ?> €</div>
+                                            <div style="font-size: 0.75rem; color: var(--text-muted);">Ausgaben: <?php echo eur($spent); ?> €</div>
                                         </div>
                                         <div style="display: flex; gap: 8px;">
                                             <a href="con.php?view=archive&archive=<?php echo urlencode($basename); ?>" class="btn" style="padding: 6px 12px; font-size: 0.75rem;">Ansehen</a>

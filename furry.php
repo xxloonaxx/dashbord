@@ -345,6 +345,9 @@ $categories = [
         ]
     ]
 ];
+
+// Wird von index.php für die globale Suche eingebunden – dann nur die Daten liefern.
+if (defined('LINKS_ONLY')) return $categories;
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -469,7 +472,7 @@ $categories = [
 
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
             gap: 16px;
         }
 
@@ -523,6 +526,36 @@ $categories = [
             color: var(--text-muted);
             line-height: 1.35;
         }
+        /* Suche: Trefferzähler & Leer-Hinweis */
+        .search-counter {
+            margin-top: 8px;
+            font-size: 0.72rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 30px;
+            border: 1px dashed var(--accent-color);
+            color: var(--text-muted);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+        }
+
+        /* Tastatur-Navigation sichtbar machen */
+        a:focus-visible, input:focus-visible {
+            outline: 2px solid var(--accent-color);
+            outline-offset: 2px;
+        }
+
+        @media (max-width: 600px) {
+            body { padding: 24px 14px; }
+            h1 { font-size: 1.6rem; }
+            .card { padding: 14px; }
+        }
     </style>
 </head>
 <body>
@@ -533,7 +566,7 @@ $categories = [
         <header>
             <h1>Furry Community Hub</h1>
             <p class="subtitle">// Europäische Cons, VR-Events, Shops &amp; Regionales</p>
-            <input type="text" id="searchInput" class="search-box" placeholder="Links durchsuchen..." onkeyup="filterCards()">
+            <input type="search" id="searchInput" class="search-box" placeholder="Links durchsuchen..." autocomplete="off" autofocus aria-label="Links durchsuchen">
         </header>
 
         <div id="contentWrapper">
@@ -542,7 +575,7 @@ $categories = [
                     <div class="category-title"><?php echo htmlspecialchars($catName); ?></div>
                     <div class="grid">
                         <?php foreach ($tools as $tool): ?>
-                            <a href="<?php echo htmlspecialchars($tool['url']); ?>" class="card" target="_blank">
+                            <a href="<?php echo htmlspecialchars($tool['url']); ?>" class="card" target="_blank" rel="noopener noreferrer">
                                 <div class="icon-wrapper"><?php echo htmlspecialchars($tool['icon']); ?></div>
                                 <div class="info">
                                     <div class="title"><?php echo htmlspecialchars($tool['title']); ?></div>
@@ -556,29 +589,7 @@ $categories = [
         </div>
     </div>
 
-    <script>
-        function filterCards() {
-            const input = document.getElementById('searchInput').value.toLowerCase();
-            const sections = document.querySelectorAll('.category-section');
-
-            sections.forEach(section => {
-                const cards = section.querySelectorAll('.card');
-                let hasVisibleCards = false;
-
-                cards.forEach(card => {
-                    const text = card.textContent.toLowerCase();
-                    if (text.includes(input)) {
-                        card.style.display = 'flex';
-                        hasVisibleCards = true;
-                    } else {
-                        card.style.display = 'none';
-                    }
-                });
-
-                section.style.display = hasVisibleCards ? 'block' : 'none';
-            });
-        }
-    </script>
+    <script src="assets/hub-search.js"></script>
 
 </body>
 </html>

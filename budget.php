@@ -1,24 +1,20 @@
 <?php
+require_once __DIR__ . '/inc/common.php';
+
 // Dateipfade
 $data_file = __DIR__ . '/budget_data.json';
 $fix_subs_file = __DIR__ . '/fix_subs_data.json';
 $archive_dir = __DIR__ . '/archive_budget/';
 
 if (!is_dir($archive_dir)) {
-    mkdir($archive_dir, 0777, true);
+    mkdir($archive_dir, 0755, true);
 }
+
+$valid_sections = ['income', 'fixed', 'subs', 'other'];
 
 // 1. Monatliche Daten laden
-$default_data = [
-    'month_name' => date('F Y'),
-    'entries' => []
-];
-
-if (file_exists($data_file)) {
-    $data = json_decode(file_get_contents($data_file), true);
-} else {
-    $data = $default_data;
-}
+$data = load_json($data_file, ['month_name' => german_month_year(), 'entries' => []]);
+$data['entries'] = $data['entries'] ?? [];
 
 // 2. Fixkosten & Abos laden
 $default_fix_subs = [
@@ -32,170 +28,200 @@ $default_fix_subs = [
     ]
 ];
 
-if (file_exists($fix_subs_file)) {
-    $fix_subs_data = json_decode(file_get_contents($fix_subs_file), true);
+if (is_file($fix_subs_file)) {
+    $fix_subs_data = load_json($fix_subs_file, ['fixed' => [], 'subs' => []]);
 } else {
     $fix_subs_data = $default_fix_subs;
-    file_put_contents($fix_subs_file, json_encode($fix_subs_data, JSON_PRETTY_PRINT));
+    save_json($fix_subs_file, $fix_subs_data);
+}
+$fix_subs_data += ['fixed' => [], 'subs' => []];
+
+/** "Erledigt"-Status je nach Sektion: Einnahmen werden "Erhalten", Ausgaben "Bezahlt". */
+function done_label(string $section): string {
+    return $section === 'income' ? 'Erhalten' : 'Bezahlt';
 }
 
-// Automatischer Abgleich der Fixkosten / Abos im aktuellen Monat
-function ensure_fix_subs_in_month(&$data, $fix_subs_data) {
-    $existing_titles = [];
-    foreach ($data['entries'] as $e) {
-        if (in_array($e['section'], ['fixed', 'subs'])) {
-            $existing_titles[$e['section'] . '|' . strtolower($e['title'])] = true;
-        }
-    }
-
-    $added = false;
-    foreach ($fix_subs_data['fixed'] as $f) {
-        $key = 'fixed|' . strtolower($f['title']);
-        if (!isset($existing_titles[$key])) {
-            $data['entries'][] = [
-                'id' => uniqid(),
-                'section' => 'fixed',
-                'title' => $f['title'],
-                'amount' => $f['amount'],
-                'category' => $f['category'],
-                'status' => 'Bezahlt',
-                'docs' => $f['docs'],
-                'date' => date('d.m.Y H:i'),
-                'template_id' => $f['id']
-            ];
-            $added = true;
-        }
-    }
-
-    foreach ($fix_subs_data['subs'] as $s) {
-        $key = 'subs|' . strtolower($s['title']);
-        if (!isset($existing_titles[$key])) {
-            $data['entries'][] = [
-                'id' => uniqid(),
-                'section' => 'subs',
-                'title' => $s['title'],
-                'amount' => $s['amount'],
-                'category' => $s['category'],
-                'status' => 'Bezahlt',
-                'docs' => $s['docs'],
-                'date' => date('d.m.Y H:i'),
-                'template_id' => $s['id']
-            ];
-            $added = true;
-        }
-    }
-
-    if ($added) {
-        global $data_file;
-        file_put_contents($data_file, json_encode($data, JSON_PRETTY_PRINT));
-    }
+/** Status vereinheitlichen: alles außer "Offen" gilt als erledigt. */
+function normalize_status(string $section, ?string $status): string {
+    return $status === 'Offen' ? 'Offen' : done_label($section);
 }
 
-ensure_fix_subs_in_month($data, $fix_subs_data);
+/** Monatseintrag aus einer Fixkosten-/Abo-Vorlage erzeugen. */
+function entry_from_template(array $tpl, string $section): array {
+    return [
+        'id' => uniqid(),
+        'section' => $section,
+        'title' => $tpl['title'],
+        'amount' => $tpl['amount'],
+        'category' => $tpl['category'],
+        'status' => 'Bezahlt',
+        'docs' => $tpl['docs'] ?? '',
+        'date' => date('d.m.Y H:i'),
+        'template_id' => $tpl['id']
+    ];
+}
+
+/**
+ * Fixkosten / Abos in den aktuellen Monat übernehmen.
+ * Jede Vorlage wird pro Monat nur EINMAL eingefügt (gemerkt in "synced_templates").
+ * Dadurch bleibt ein bewusst gelöschter Posten auch gelöscht und taucht nicht beim
+ * nächsten Seitenaufruf wieder auf.
+ */
+function ensure_fix_subs_in_month(array &$data, array $fix_subs_data): bool {
+    $changed = false;
+
+    // Umstellung alter Daten: bereits vorhandene Posten als "übernommen" markieren
+    if (!isset($data['synced_templates'])) {
+        $data['synced_templates'] = [];
+        $existing_titles = [];
+        foreach ($data['entries'] as $e) {
+            if (!empty($e['template_id'])) $data['synced_templates'][] = $e['template_id'];
+            $existing_titles[($e['section'] ?? '') . '|' . mb_strtolower($e['title'] ?? '')] = true;
+        }
+        foreach (['fixed', 'subs'] as $sec) {
+            foreach ($fix_subs_data[$sec] as $tpl) {
+                if (isset($existing_titles[$sec . '|' . mb_strtolower($tpl['title'])])) {
+                    $data['synced_templates'][] = $tpl['id'];
+                }
+            }
+        }
+        $changed = true;
+    }
+
+    foreach (['fixed', 'subs'] as $sec) {
+        foreach ($fix_subs_data[$sec] as $tpl) {
+            if (!in_array($tpl['id'], $data['synced_templates'], true)) {
+                $data['entries'][] = entry_from_template($tpl, $sec);
+                $data['synced_templates'][] = $tpl['id'];
+                $changed = true;
+            }
+        }
+    }
+
+    $data['synced_templates'] = array_values(array_unique($data['synced_templates']));
+    return $changed;
+}
+
+if (ensure_fix_subs_in_month($data, $fix_subs_data)) {
+    save_json($data_file, $data);
+}
+
+/** CSV-Trennzeichen anhand der Kopfzeile erkennen (Komma oder Semikolon). */
+function detect_csv_delimiter(string $line): string {
+    return substr_count($line, ';') > substr_count($line, ',') ? ';' : ',';
+}
 
 // POST-Aktionen verarbeiten
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    
+
     // Monatsnamen anpassen
     if (isset($_POST['update_month'])) {
-        $data['month_name'] = trim($_POST['month_name']) ?: 'Unbenannter Monat';
-        file_put_contents($data_file, json_encode($data, JSON_PRETTY_PRINT));
+        $data['month_name'] = trim($_POST['month_name'] ?? '') ?: 'Unbenannter Monat';
+        save_json($data_file, $data);
         header('Location: budget.php');
         exit;
     }
-    
+
     // CSV-Import verarbeiten (Filter für interne Transfers / Unterkonten)
     if (isset($_POST['import_csv'])) {
+        $imported = 0;
+        $skipped = 0;
+        $duplicates = 0;
+
         if (isset($_FILES['csv_file']) && $_FILES['csv_file']['error'] === UPLOAD_ERR_OK) {
-            $file_tmp = $_FILES['csv_file']['tmp_name'];
-            $handle = fopen($file_tmp, 'r');
-            
-            if ($handle !== FALSE) {
-                // Header einlesen
-                $header = fgetcsv($handle, 1000, ',');
-                if (!$header || count($header) < 5) {
-                    rewind($handle);
-                    $header = fgetcsv($handle, 1000, ';');
+            $handle = fopen($_FILES['csv_file']['tmp_name'], 'r');
+
+            if ($handle !== false) {
+                // Kopfzeile lesen, BOM entfernen und Trennzeichen erkennen
+                $first_line = (string)fgets($handle);
+                $first_line = preg_replace('/^\xEF\xBB\xBF/', '', $first_line);
+                $delimiter = detect_csv_delimiter($first_line);
+
+                // Bereits vorhandene Buchungen merken, damit ein doppelter Import nichts verdoppelt
+                $existing = [];
+                foreach ($data['entries'] as $e) {
+                    $existing[($e['import_key'] ?? '')] = true;
                 }
 
-                while (($row = fgetcsv($handle, 1000, ',')) !== FALSE) {
-                    if (count($row) < 5) {
-                        $row = str_getcsv(implode(',', $row), ';');
+                while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
+                    if (count($row) < 6) continue;
+
+                    // Revolut-Format: Type, Product, Started Date, Completed Date, Description, Amount, Fee, Currency, State, Balance
+                    $art = trim($row[0] ?? '');
+                    $date_str = trim($row[2] ?? '');
+                    $desc = trim($row[4] ?? '') ?: 'Import';
+                    $amount = parse_amount($row[5] ?? '0') - abs(parse_amount($row[6] ?? '0'));
+                    $state = strtoupper(trim($row[8] ?? ''));
+
+                    if ($amount == 0) continue;
+
+                    $art_lower = mb_strtolower($art);
+                    $desc_lower = mb_strtolower($desc);
+
+                    // --- INTERNE TRANSFERS, UNTERKONTEN & FEHLGESCHLAGENE BUCHUNGEN FILTERN ---
+                    if ($art_lower === 'transfer' ||
+                        strpos($desc_lower, 'unterkonto') !== false ||
+                        strpos($desc_lower, 'einzustecken') !== false ||
+                        strpos($desc_lower, 'pocket') !== false ||
+                        in_array($state, ['REVERTED', 'DECLINED', 'FAILED'], true)) {
+                        $skipped++;
+                        continue;
                     }
-                    if (count($row) >= 6) {
-                        $art = trim($row[0] ?? '');
-                        $date_str = $row[2] ?? date('d.m.Y H:i');
-                        $desc = trim($row[4] ?? 'Import');
-                        $amount_raw = str_replace(',', '.', $row[5] ?? '0');
-                        $amount = floatval($amount_raw);
 
-                        if ($amount == 0) continue;
+                    $timestamp = strtotime($date_str) ?: time();
+                    $import_key = md5(date('Y-m-d H:i', $timestamp) . '|' . $desc . '|' . $amount);
+                    if (isset($existing[$import_key])) {
+                        $duplicates++;
+                        continue;
+                    }
+                    $existing[$import_key] = true;
 
-                        $art_lower = strtolower($art);
-                        $desc_lower = strtolower($desc);
-
-                        // --- INTERNE TRANSFERS & UNTERKONTEN FILTERN ---
-                        // Ignoriert alle internen Umbuchungen, Pockets, Unterkonten & Transfers zwischen eigenen Konten
-                        if ($art_lower === 'transfer' || 
-                            strpos($desc_lower, 'unterkonto') !== false || 
-                            strpos($desc_lower, 'einzustecken') !== false || 
-                            strpos($desc_lower, 'pocket') !== false) {
-                            continue; // Eintrag überspringen
-                        }
-
-                        // Sektion & Kategorie ermitteln
-                        $section = 'other';
-                        $category = 'Sonstiges';
-                        $status = 'Bezahlt';
-
-                        if ($amount > 0) {
-                            $section = 'income';
-                            $category = 'Lohn / Abschlag';
-                            $status = 'Erhalten';
+                    // Sektion & Kategorie ermitteln
+                    if ($amount > 0) {
+                        $section = 'income';
+                        $category = 'Lohn / Abschlag';
+                    } else {
+                        $amount = abs($amount);
+                        if (strpos($desc_lower, 'miete') !== false || strpos($desc_lower, 'strom') !== false) {
+                            $section = 'fixed';
+                            $category = 'Fixkosten';
+                        } elseif (preg_match('/netflix|spotify|gym|youtube|disney|amazon prime|xbox|playstation|patreon/', $desc_lower)) {
+                            $section = 'subs';
+                            $category = 'Abo';
                         } else {
-                            $amount = abs($amount);
-                            
-                            if (strpos($desc_lower, 'miete') !== false || strpos($desc_lower, 'strom') !== false) {
-                                $section = 'fixed';
-                                $category = 'Fixkosten';
-                            } elseif (strpos($desc_lower, 'netflix') !== false || strpos($desc_lower, 'spotify') !== false || strpos($desc_lower, 'gym') !== false) {
-                                $section = 'subs';
-                                $category = 'Abo';
-                            } else {
-                                $section = 'other';
-                                $category = 'Shopping / Tanken';
-                            }
+                            $section = 'other';
+                            $category = 'Shopping / Tanken';
                         }
-
-                        $data['entries'][] = [
-                            'id' => uniqid(),
-                            'section' => $section,
-                            'title' => $desc,
-                            'amount' => $amount,
-                            'category' => $category,
-                            'status' => $status,
-                            'docs' => 'CSV-Import (' . $art . ')',
-                            'date' => date('d.m.Y H:i', strtotime($date_str))
-                        ];
                     }
+
+                    $data['entries'][] = [
+                        'id' => uniqid(),
+                        'section' => $section,
+                        'title' => $desc,
+                        'amount' => $amount,
+                        'category' => $category,
+                        'status' => done_label($section),
+                        'docs' => 'CSV-Import (' . $art . ')',
+                        'date' => date('d.m.Y H:i', $timestamp),
+                        'import_key' => $import_key
+                    ];
+                    $imported++;
                 }
                 fclose($handle);
-                file_put_contents($data_file, json_encode($data, JSON_PRETTY_PRINT));
+                save_json($data_file, $data);
             }
         }
-        header('Location: budget.php');
+        header('Location: budget.php?view=import&imported=' . $imported . '&skipped=' . $skipped . '&duplicates=' . $duplicates);
         exit;
     }
 
     // Normalen Eintrag hinzufügen
     if (isset($_POST['add_entry'])) {
-        $section = $_POST['section'];
-        $title = trim($_POST['title']);
-        $amount = floatval($_POST['amount']);
-        $category = trim($_POST['category']) ?: ($section === 'income' ? 'Lohn / Abschlag' : 'Sonstiges');
-        $status = $_POST['status'];
-        $docs = trim($_POST['docs']);
-        
+        $section = in_array($_POST['section'] ?? '', $valid_sections, true) ? $_POST['section'] : 'other';
+        $title = trim($_POST['title'] ?? '');
+        $amount = parse_amount($_POST['amount'] ?? 0);
+        $category = trim($_POST['category'] ?? '') ?: ($section === 'income' ? 'Lohn / Abschlag' : 'Sonstiges');
+
         if ($title !== '' && $amount > 0) {
             $data['entries'][] = [
                 'id' => uniqid(),
@@ -203,11 +229,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'title' => $title,
                 'amount' => $amount,
                 'category' => $category,
-                'status' => $status,
-                'docs' => $docs,
+                'status' => normalize_status($section, $_POST['status'] ?? null),
+                'docs' => trim($_POST['docs'] ?? ''),
                 'date' => date('d.m.Y H:i')
             ];
-            file_put_contents($data_file, json_encode($data, JSON_PRETTY_PRINT));
+            save_json($data_file, $data);
         }
         header('Location: budget.php');
         exit;
@@ -215,205 +241,201 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Fixkosten / Abos Vorlage hinzufügen
     if (isset($_POST['add_fix_sub_item'])) {
-        $sec = $_POST['section'];
-        $title = trim($_POST['title']);
-        $amount = floatval($_POST['amount']);
-        $category = trim($_POST['category']);
-        $docs = trim($_POST['docs']);
+        $sec = ($_POST['section'] ?? '') === 'subs' ? 'subs' : 'fixed';
+        $title = trim($_POST['title'] ?? '');
+        $amount = parse_amount($_POST['amount'] ?? 0);
 
         if ($title !== '' && $amount > 0) {
-            $newItemId = uniqid();
-            $fix_subs_data[$sec][] = [
-                'id' => $newItemId,
-                'title' => $title,
-                'amount' => $amount,
-                'category' => $category,
-                'docs' => $docs
-            ];
-            file_put_contents($fix_subs_file, json_encode($fix_subs_data, JSON_PRETTY_PRINT));
-
-            $data['entries'][] = [
+            $tpl = [
                 'id' => uniqid(),
-                'section' => $sec,
                 'title' => $title,
                 'amount' => $amount,
-                'category' => $category,
-                'status' => 'Bezahlt',
-                'docs' => $docs,
-                'date' => date('d.m.Y H:i'),
-                'template_id' => $newItemId
+                'category' => trim($_POST['category'] ?? ''),
+                'docs' => trim($_POST['docs'] ?? '')
             ];
-            file_put_contents($data_file, json_encode($data, JSON_PRETTY_PRINT));
+            $fix_subs_data[$sec][] = $tpl;
+            save_json($fix_subs_file, $fix_subs_data);
+
+            $data['entries'][] = entry_from_template($tpl, $sec);
+            $data['synced_templates'][] = $tpl['id'];
+            save_json($data_file, $data);
         }
         header('Location: budget.php?view=templates');
         exit;
     }
 
-    // Fixkosten / Abos Vorlage bearbeiten
+    // Fixkosten / Abos Vorlage bearbeiten (auch Wechsel zwischen Fixkosten <-> Abo)
     if (isset($_POST['edit_fix_sub_item'])) {
-        $sec = $_POST['section'];
-        $id = $_POST['item_id'];
-        $title = trim($_POST['title']);
-        $amount = floatval($_POST['amount']);
-        $category = trim($_POST['category']);
-        $docs = trim($_POST['docs']);
+        $new_sec = ($_POST['section'] ?? '') === 'subs' ? 'subs' : 'fixed';
+        $id = $_POST['item_id'] ?? '';
+        $updated = null;
 
-        foreach ($fix_subs_data[$sec] as &$item) {
-            if ($item['id'] === $id) {
-                $item['title'] = $title;
-                $item['amount'] = $amount;
-                $item['category'] = $category;
-                $item['docs'] = $docs;
-                break;
+        foreach (['fixed', 'subs'] as $sec) {
+            foreach ($fix_subs_data[$sec] as $i => $item) {
+                if ($item['id'] === $id) {
+                    $updated = array_merge($item, [
+                        'title' => trim($_POST['title'] ?? '') ?: $item['title'],
+                        'amount' => parse_amount($_POST['amount'] ?? $item['amount']),
+                        'category' => trim($_POST['category'] ?? ''),
+                        'docs' => trim($_POST['docs'] ?? '')
+                    ]);
+                    unset($fix_subs_data[$sec][$i]);
+                    $fix_subs_data[$sec] = array_values($fix_subs_data[$sec]);
+                    break 2;
+                }
             }
         }
-        unset($item);
-        file_put_contents($fix_subs_file, json_encode($fix_subs_data, JSON_PRETTY_PRINT));
 
-        foreach ($data['entries'] as &$entry) {
-            if (($entry['template_id'] ?? '') === $id) {
-                $entry['title'] = $title;
-                $entry['amount'] = $amount;
-                $entry['category'] = $category;
-                $entry['docs'] = $docs;
+        if ($updated) {
+            $fix_subs_data[$new_sec][] = $updated;
+            save_json($fix_subs_file, $fix_subs_data);
+
+            foreach ($data['entries'] as &$entry) {
+                if (($entry['template_id'] ?? '') === $id) {
+                    $entry['section'] = $new_sec;
+                    $entry['title'] = $updated['title'];
+                    $entry['amount'] = $updated['amount'];
+                    $entry['category'] = $updated['category'];
+                    $entry['docs'] = $updated['docs'];
+                }
             }
+            unset($entry);
+            save_json($data_file, $data);
         }
-        unset($entry);
-        file_put_contents($data_file, json_encode($data, JSON_PRETTY_PRINT));
 
         header('Location: budget.php?view=templates');
         exit;
     }
 
-    // Fixkosten / Abos Vorlage löschen
+    // Fixkosten / Abos Vorlage löschen (der Posten im laufenden Monat bleibt erhalten)
     if (isset($_POST['delete_fix_sub_item'])) {
-        $sec = $_POST['section'];
-        $id = $_POST['item_id'];
-        $fix_subs_data[$sec] = array_values(array_filter($fix_subs_data[$sec], function($item) use ($id) {
+        $sec = ($_POST['section'] ?? '') === 'subs' ? 'subs' : 'fixed';
+        $id = $_POST['item_id'] ?? '';
+        $fix_subs_data[$sec] = array_values(array_filter($fix_subs_data[$sec], function ($item) use ($id) {
             return $item['id'] !== $id;
         }));
-        file_put_contents($fix_subs_file, json_encode($fix_subs_data, JSON_PRETTY_PRINT));
+        save_json($fix_subs_file, $fix_subs_data);
         header('Location: budget.php?view=templates');
         exit;
     }
 
     // Monatseintrag bearbeiten
     if (isset($_POST['edit_entry'])) {
-        $id = $_POST['entry_id'];
-        $section = $_POST['section'];
-        $title = trim($_POST['title']);
-        $amount = floatval($_POST['amount']);
-        $category = trim($_POST['category']);
-        $status = $_POST['status'];
-        $docs = trim($_POST['docs']);
+        $id = $_POST['entry_id'] ?? '';
+        $section = in_array($_POST['section'] ?? '', $valid_sections, true) ? $_POST['section'] : 'other';
 
         foreach ($data['entries'] as &$entry) {
             if ($entry['id'] === $id) {
                 $entry['section'] = $section;
-                $entry['title'] = $title;
-                $entry['amount'] = $amount;
-                $entry['category'] = $category;
-                $entry['status'] = $status;
-                $entry['docs'] = $docs;
+                $entry['title'] = trim($_POST['title'] ?? '') ?: $entry['title'];
+                $entry['amount'] = parse_amount($_POST['amount'] ?? $entry['amount']);
+                $entry['category'] = trim($_POST['category'] ?? '');
+                $entry['status'] = normalize_status($section, $_POST['status'] ?? null);
+                $entry['docs'] = trim($_POST['docs'] ?? '');
                 break;
             }
         }
         unset($entry);
-        file_put_contents($data_file, json_encode($data, JSON_PRETTY_PRINT));
+        save_json($data_file, $data);
         header('Location: budget.php');
         exit;
     }
-    
+
     // Status umschalten
     if (isset($_POST['toggle_status'])) {
-        $id = $_POST['entry_id'];
+        $id = $_POST['entry_id'] ?? '';
         foreach ($data['entries'] as &$entry) {
             if ($entry['id'] === $id) {
-                $is_inc = ($entry['section'] === 'income');
-                $default_done = $is_inc ? 'Erhalten' : 'Bezahlt';
-                $current_status = $entry['status'] ?? $default_done;
-                $entry['status'] = ($current_status === $default_done) ? 'Offen' : $default_done;
+                $entry['status'] = (($entry['status'] ?? '') === 'Offen') ? done_label($entry['section']) : 'Offen';
                 break;
             }
         }
         unset($entry);
-        file_put_contents($data_file, json_encode($data, JSON_PRETTY_PRINT));
+        save_json($data_file, $data);
         header('Location: budget.php');
         exit;
     }
 
     // Eintrag löschen
     if (isset($_POST['delete_entry'])) {
-        $id = $_POST['entry_id'];
-        $data['entries'] = array_values(array_filter($data['entries'], function($item) use ($id) {
+        $id = $_POST['entry_id'] ?? '';
+        $data['entries'] = array_values(array_filter($data['entries'], function ($item) use ($id) {
             return $item['id'] !== $id;
         }));
-        file_put_contents($data_file, json_encode($data, JSON_PRETTY_PRINT));
+        save_json($data_file, $data);
         header('Location: budget.php');
         exit;
     }
-    
+
     // Monat archivieren & Neustart
     if (isset($_POST['archive_month'])) {
         $safe_name = preg_replace('/[^a-zA-Z0-9_-]/', '_', $data['month_name']);
         $archive_file = $archive_dir . 'budget_' . $safe_name . '_' . date('Y-m-d_His') . '.json';
-        copy($data_file, $archive_file);
-        
+        save_json($archive_file, $data);
+
         $new_entries = [];
-        foreach ($fix_subs_data['fixed'] as $f) {
-            $new_entries[] = [
-                'id' => uniqid(), 'section' => 'fixed', 'title' => $f['title'],
-                'amount' => $f['amount'], 'category' => $f['category'],
-                'status' => 'Bezahlt', 'docs' => $f['docs'], 'date' => date('d.m.Y H:i'), 'template_id' => $f['id']
-            ];
-        }
-        foreach ($fix_subs_data['subs'] as $s) {
-            $new_entries[] = [
-                'id' => uniqid(), 'section' => 'subs', 'title' => $s['title'],
-                'amount' => $s['amount'], 'category' => $s['category'],
-                'status' => 'Bezahlt', 'docs' => $s['docs'], 'date' => date('d.m.Y H:i'), 'template_id' => $s['id']
-            ];
+        $synced = [];
+        foreach (['fixed', 'subs'] as $sec) {
+            foreach ($fix_subs_data[$sec] as $tpl) {
+                $new_entries[] = entry_from_template($tpl, $sec);
+                $synced[] = $tpl['id'];
+            }
         }
 
+        // Nächster Monat: ausgehend vom 1. des aktuellen Monats (vermeidet den 31.-Januar-Sprung in den März)
         $data = [
-            'month_name' => date('F Y', strtotime('+1 month')),
-            'entries' => $new_entries
+            'month_name' => german_month_year(strtotime('first day of next month')),
+            'entries' => $new_entries,
+            'synced_templates' => $synced
         ];
-        file_put_contents($data_file, json_encode($data, JSON_PRETTY_PRINT));
+        save_json($data_file, $data);
         header('Location: budget.php');
         exit;
     }
 
     // Archiv löschen
     if (isset($_POST['delete_archive'])) {
-        $filename = basename($_POST['archive_filename']);
-        $target = $archive_dir . $filename;
-        if (file_exists($target)) unlink($target);
+        $target = $archive_dir . basename($_POST['archive_filename'] ?? '');
+        if (is_file($target)) unlink($target);
         header('Location: budget.php?view=archive');
         exit;
     }
 }
 
-// Berechnungen
-$totals = ['income' => 0, 'fixed' => 0, 'subs' => 0, 'other' => 0];
-$categorized_entries = ['income' => [], 'fixed' => [], 'subs' => [], 'other' => []];
+/** Summen je Sektion berechnen */
+function budget_totals(array $entries): array {
+    $totals = ['income' => 0, 'fixed' => 0, 'subs' => 0, 'other' => 0, 'open' => 0];
+    foreach ($entries as $entry) {
+        $sec = $entry['section'] ?? 'other';
+        if (!isset($totals[$sec]) || $sec === 'open') $sec = 'other';
+        $totals[$sec] += (float)$entry['amount'];
+        if ($sec !== 'income' && ($entry['status'] ?? '') === 'Offen') $totals['open'] += (float)$entry['amount'];
+    }
+    $totals['expense'] = $totals['fixed'] + $totals['subs'] + $totals['other'];
+    $totals['net'] = $totals['income'] - $totals['expense'];
+    return $totals;
+}
 
+// Berechnungen
+$categorized_entries = ['income' => [], 'fixed' => [], 'subs' => [], 'other' => []];
 foreach ($data['entries'] as $entry) {
     $sec = $entry['section'] ?? 'other';
     if (!isset($categorized_entries[$sec])) $sec = 'other';
     $categorized_entries[$sec][] = $entry;
-    $totals[$sec] += $entry['amount'];
 }
 
+$totals = budget_totals($data['entries']);
 $total_income = $totals['income'];
-$total_expense = $totals['fixed'] + $totals['subs'] + $totals['other'];
-$net_balance = $total_income - $total_expense;
+$total_expense = $totals['expense'];
+$net_balance = $totals['net'];
+$total_open = $totals['open'];
+$spend_ratio = $total_income > 0 ? min(100, round($total_expense / $total_income * 100)) : ($total_expense > 0 ? 100 : 0);
 
 $view_mode = $_GET['view'] ?? 'active';
 $selected_archive = $_GET['archive'] ?? null;
 $archive_data = null;
-if ($selected_archive && file_exists($archive_dir . basename($selected_archive))) {
-    $archive_data = json_decode(file_get_contents($archive_dir . basename($selected_archive)), true);
+if ($selected_archive && is_file($archive_dir . basename($selected_archive))) {
+    $archive_data = load_json($archive_dir . basename($selected_archive), null);
 }
 ?>
 <!DOCTYPE html>
@@ -464,14 +486,27 @@ if ($selected_archive && file_exists($archive_dir . basename($selected_archive))
         header { margin-bottom: 25px; border-bottom: 2px solid var(--border-color); padding-bottom: 15px; }
         .hud-tag { font-size: 0.7rem; letter-spacing: 3px; color: var(--accent-cyan); text-transform: uppercase; font-weight: 700; margin-bottom: 6px; }
         h1 { font-size: 2.2rem; font-weight: 800; letter-spacing: 4px; margin: 0; text-transform: uppercase; color: var(--accent-gold); text-shadow: 0 0 12px rgba(243, 194, 98, 0.3); }
-        .dashboard-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 25px; }
-        @media (max-width: 768px) { .dashboard-grid { grid-template-columns: 1fr; } }
+        .dashboard-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+        @media (max-width: 768px) { .dashboard-grid { grid-template-columns: 1fr 1fr; } }
         .card { background-color: var(--panel-bg); border: 1px solid var(--border-color); padding: 16px; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%); backdrop-filter: blur(10px); }
         .card-title { font-size: 0.65rem; letter-spacing: 2px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; }
         .card-value { font-size: 1.3rem; font-weight: 700; color: #ffffff; letter-spacing: 1px; }
         .card-value.green { color: var(--accent-green); }
         .card-value.red { color: var(--accent-red); }
         .card-value.purple { color: var(--accent-purple); }
+        .card-value.gold { color: var(--accent-gold); }
+        .progress-wrap { margin-bottom: 25px; }
+        .progress-label { display: flex; justify-content: space-between; font-size: 0.68rem; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
+        .progress { height: 8px; background: rgba(56, 213, 230, 0.08); border: 1px solid var(--border-color); }
+        .progress-fill { height: 100%; background: var(--accent-green); box-shadow: 0 0 10px rgba(80, 250, 123, 0.4); transition: width 0.4s ease; }
+        .progress-fill.warn { background: var(--accent-gold); box-shadow: 0 0 10px rgba(243, 194, 98, 0.4); }
+        .progress-fill.over { background: var(--accent-red); box-shadow: 0 0 10px rgba(255, 85, 85, 0.4); }
+        .btn-sm { padding: 3px 8px; font-size: 0.6rem; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .notice { border: 1px solid var(--accent-gold); background: rgba(243, 194, 98, 0.08); color: var(--text-main); padding: 12px 16px; margin-bottom: 20px; font-size: 0.85rem; letter-spacing: 0.5px; }
+        .notice.ok { border-color: var(--accent-green); background: rgba(80, 250, 123, 0.08); }
+        .notice a { color: var(--accent-cyan); margin-left: 8px; }
+        :focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 2px; }
         .panel { background-color: var(--panel-bg); border: 1px solid var(--border-color); padding: 20px; margin-bottom: 25px; clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%); }
         .panel-title { font-size: 0.85rem; letter-spacing: 2px; color: var(--accent-cyan); text-transform: uppercase; font-weight: 700; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
         .form-grid { display: grid; grid-template-columns: 1.5fr 2fr 1fr 1.5fr 1fr; gap: 10px; margin-bottom: 10px; }
@@ -505,6 +540,16 @@ if ($selected_archive && file_exists($archive_dir . basename($selected_archive))
         
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(4, 6, 9, 0.85); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(6px); }
         .modal-box { background-color: var(--panel-bg); border: 1px solid var(--accent-cyan); width: 100%; max-width: 500px; padding: 25px; clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%); box-shadow: 0 0 25px var(--accent-glow); position: relative; }
+        @media (max-width: 768px) {
+            body { padding: 20px 14px; }
+            h1 { font-size: 1.6rem; letter-spacing: 2px; }
+            .nav-bar { flex-direction: column; align-items: flex-start; gap: 10px; }
+            .two-col { grid-template-columns: 1fr; }
+            .entry-item { flex-direction: column; gap: 10px; }
+            .entry-right { align-items: flex-start; }
+            .archive-section { flex-direction: column; align-items: flex-start; gap: 12px; }
+            .modal-box { margin: 0 12px; max-height: 90vh; overflow-y: auto; }
+        }
         .modal-close { position: absolute; top: 15px; right: 20px; background: none; border: none; color: var(--accent-red); font-size: 1.2rem; font-weight: bold; cursor: pointer; }
     </style>
 </head>
@@ -529,9 +574,18 @@ if ($selected_archive && file_exists($archive_dir . basename($selected_archive))
             </header>
 
             <div class="dashboard-grid">
-                <div class="card"><div class="card-title">Einnahmen</div><div class="card-value green">+<?php echo number_format($total_income, 2, ',', '.'); ?> €</div></div>
-                <div class="card"><div class="card-title">Ausgaben</div><div class="card-value red">-<?php echo number_format($total_expense, 2, ',', '.'); ?> €</div></div>
-                <div class="card"><div class="card-title">Netto Bilanz</div><div class="card-value <?php echo $net_balance >= 0 ? 'purple' : 'red'; ?>"><?php echo number_format($net_balance, 2, ',', '.'); ?> €</div></div>
+                <div class="card"><div class="card-title">Einnahmen</div><div class="card-value green">+<?php echo eur($total_income); ?> €</div></div>
+                <div class="card"><div class="card-title">Ausgaben</div><div class="card-value red">-<?php echo eur($total_expense); ?> €</div></div>
+                <div class="card"><div class="card-title">Noch offen</div><div class="card-value <?php echo $total_open > 0 ? 'gold' : ''; ?>"><?php echo eur($total_open); ?> €</div></div>
+                <div class="card"><div class="card-title">Netto Bilanz</div><div class="card-value <?php echo $net_balance >= 0 ? 'purple' : 'red'; ?>"><?php echo eur($net_balance); ?> €</div></div>
+            </div>
+
+            <div class="progress-wrap" title="Anteil der Ausgaben an den Einnahmen">
+                <div class="progress-label">
+                    <span>Ausgaben-Quote</span>
+                    <span><?php echo $total_income > 0 ? round($total_expense / $total_income * 100) . ' % der Einnahmen' : 'keine Einnahmen erfasst'; ?></span>
+                </div>
+                <div class="progress"><div class="progress-fill <?php echo $spend_ratio >= 100 ? 'over' : ($spend_ratio >= 85 ? 'warn' : ''); ?>" style="width: <?php echo $spend_ratio; ?>%;"></div></div>
             </div>
 
             <div class="panel">
@@ -551,10 +605,10 @@ if ($selected_archive && file_exists($archive_dir . basename($selected_archive))
                             <option value="other" selected>4. Sonstige</option>
                         </select>
                         <input type="text" name="title" placeholder="Bezeichnung..." required>
-                        <input type="number" step="0.01" name="amount" placeholder="Betrag €" required>
+                        <input type="number" step="0.01" min="0.01" name="amount" placeholder="Betrag €" inputmode="decimal" required>
                         <input type="text" name="category" id="new_category" placeholder="Kategorie">
                         <select name="status" id="new_status">
-                            <option value="Erhalten">Erhalten</option>
+                            <option value="Erledigt" id="new_status_done">Bezahlt</option>
                             <option value="Offen">Offen</option>
                         </select>
                     </div>
@@ -575,21 +629,22 @@ if ($selected_archive && file_exists($archive_dir . basename($selected_archive))
                 <div class="panel">
                     <div class="panel-title">
                         <span style="color: <?php echo $meta['color']; ?>;"><?php echo $meta['title']; ?></span>
-                        <span>Summe: <?php echo $sec_key==='income'?'+':'-'; ?><?php echo number_format($totals[$sec_key], 2, ',', '.'); ?> €</span>
+                        <span>Summe: <?php echo $sec_key==='income'?'+':'-'; ?><?php echo eur($totals[$sec_key]); ?> € &bull; <?php echo count($categorized_entries[$sec_key]); ?> Posten</span>
                     </div>
                     <div class="entry-list">
                         <?php if (empty($categorized_entries[$sec_key])): ?>
                             <div class="empty-msg">Keine Einträge in dieser Sektion.</div>
                         <?php else: ?>
                             <?php foreach ($categorized_entries[$sec_key] as $entry): ?>
-                                <?php $is_done = (($entry['status'] ?? 'Bezahlt') === 'Bezahlt' || ($entry['status'] ?? '') === 'Erhalten'); ?>
+                                <?php $is_done = (($entry['status'] ?? '') !== 'Offen'); ?>
                                 <div class="entry-item <?php echo $meta['class']; ?>">
                                     <div class="entry-info">
                                         <h4><?php echo htmlspecialchars($entry['title']); ?></h4>
                                         <div class="entry-meta">
                                             Kat: <strong><?php echo htmlspecialchars($entry['category']); ?></strong> 
-                                            &bull; <span class="badge <?php echo $is_done ? 'paid' : 'open'; ?>"><?php echo htmlspecialchars($entry['status'] ?? 'Erledigt'); ?></span>
-                                            &bull; <?php echo $entry['date']; ?>
+                                            &bull; <span class="badge <?php echo $is_done ? 'paid' : 'open'; ?>"><?php echo e($entry['status'] ?? done_label($sec_key)); ?></span>
+                                            &bull; <?php echo e($entry['date'] ?? ''); ?>
+                                            <?php if (!empty($entry['template_id'])): ?>&bull; <span title="Automatisch aus Vorlage übernommen">↻ Vorlage</span><?php endif; ?>
                                         </div>
                                         <?php if (!empty($entry['docs'])): ?>
                                             <div class="entry-docs">DOCS: <?php echo htmlspecialchars($entry['docs']); ?></div>
@@ -597,12 +652,12 @@ if ($selected_archive && file_exists($archive_dir . basename($selected_archive))
                                     </div>
                                     <div class="entry-right">
                                         <span class="entry-amount <?php echo $sec_key==='income'?'inc':'exp'; ?>">
-                                            <?php echo $sec_key==='income'?'+':'-'; ?><?php echo number_format($entry['amount'], 2, ',', '.'); ?> €
+                                            <?php echo $sec_key==='income'?'+':'-'; ?><?php echo eur($entry['amount']); ?> €
                                         </span>
                                         <div style="display: flex; gap: 6px;">
-                                            <button type="button" class="btn btn-gold" style="padding: 3px 6px; font-size: 0.6rem;" onclick="openEditEntryModal('<?php echo $entry['id']; ?>', '<?php echo $sec_key; ?>', '<?php echo addslashes($entry['title']); ?>', '<?php echo $entry['amount']; ?>', '<?php echo addslashes($entry['category']); ?>', '<?php echo $entry['status'] ?? 'Bezahlt'; ?>', '<?php echo addslashes($entry['docs'] ?? ''); ?>')">Edit</button>
-                                            <form method="POST" style="margin:0;"><input type="hidden" name="entry_id" value="<?php echo $entry['id']; ?>"><button type="submit" name="toggle_status" class="btn <?php echo $is_done ? '' : 'btn-gold'; ?>" style="padding: 3px 6px; font-size: 0.6rem;"><?php echo $is_done ? 'Offen' : 'Erledigt'; ?></button></form>
-                                            <form method="POST" style="margin:0;"><input type="hidden" name="entry_id" value="<?php echo $entry['id']; ?>"><button type="submit" name="delete_entry" class="btn btn-danger" style="padding: 3px 6px; font-size: 0.6rem;">X</button></form>
+                                            <button type="button" class="btn btn-gold btn-sm" data-entry="<?php echo e(json_encode(['id' => $entry['id'], 'section' => $sec_key, 'title' => $entry['title'], 'amount' => $entry['amount'], 'category' => $entry['category'] ?? '', 'status' => $is_done ? 'Erledigt' : 'Offen', 'docs' => $entry['docs'] ?? ''])); ?>" onclick="openEditEntryModal(JSON.parse(this.dataset.entry))">Edit</button>
+                                            <form method="POST" style="margin:0;"><input type="hidden" name="entry_id" value="<?php echo e($entry['id']); ?>"><button type="submit" name="toggle_status" class="btn btn-sm <?php echo $is_done ? '' : 'btn-gold'; ?>" title="Status umschalten"><?php echo $is_done ? 'Offen' : ($sec_key === 'income' ? 'Erhalten' : 'Bezahlt'); ?></button></form>
+                                            <form method="POST" style="margin:0;" onsubmit="return confirm(<?php echo e(json_encode('Eintrag „' . $entry['title'] . '“ wirklich löschen?', JSON_UNESCAPED_UNICODE)); ?>);"><input type="hidden" name="entry_id" value="<?php echo e($entry['id']); ?>"><button type="submit" name="delete_entry" class="btn btn-danger btn-sm" title="Löschen">X</button></form>
                                         </div>
                                     </div>
                                 </div>
@@ -615,7 +670,7 @@ if ($selected_archive && file_exists($archive_dir . basename($selected_archive))
             <div class="archive-section">
                 <div>
                     <strong style="color: #fff; letter-spacing: 1px; font-size: 0.85rem; text-transform: uppercase;">Monat beenden?</strong>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">Sichert diesen Monat ins Archiv. Fixkosten &amp; Abos werden automatisch übernommen.</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Sichert diesen Monat ins Archiv und startet <?php echo e(german_month_year(strtotime('first day of next month'))); ?>. Fixkosten &amp; Abos werden automatisch übernommen.</div>
                 </div>
                 <form method="POST" onsubmit="return confirm('Monat wirklich ins Archiv verschieben?');">
                     <button type="submit" name="archive_month" class="btn btn-danger">Monat archivieren &amp; Neustart</button>
@@ -642,7 +697,7 @@ if ($selected_archive && file_exists($archive_dir . basename($selected_archive))
                             <div>
                                 <label style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Status</label>
                                 <select name="status" id="ee_status">
-                                    <option value="Bezahlt">Bezahlt / Erhalten</option>
+                                    <option value="Erledigt">Bezahlt / Erhalten</option>
                                     <option value="Offen">Offen</option>
                                 </select>
                             </div>
@@ -654,7 +709,7 @@ if ($selected_archive && file_exists($archive_dir . basename($selected_archive))
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom: 10px;">
                             <div>
                                 <label style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Betrag (€)</label>
-                                <input type="number" step="0.01" name="amount" id="ee_amount" required>
+                                <input type="number" step="0.01" min="0.01" name="amount" id="ee_amount" inputmode="decimal" required>
                             </div>
                             <div>
                                 <label style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Kategorie</label>
@@ -671,20 +726,25 @@ if ($selected_archive && file_exists($archive_dir . basename($selected_archive))
             </div>
 
             <script>
-                function updateCat(sec) { document.getElementById('new_category').value = (sec === 'income') ? 'Lohn / Abschlag' : 'Sonstiges'; }
-                function openEditEntryModal(id, section, title, amount, category, status, docs) {
-                    document.getElementById('ee_entry_id').value = id;
-                    document.getElementById('ee_section').value = section;
-                    document.getElementById('ee_title').value = title;
-                    document.getElementById('ee_amount').value = amount;
-                    document.getElementById('ee_category').value = category;
-                    document.getElementById('ee_status').value = status;
-                    document.getElementById('ee_docs').value = docs;
+                function updateCat(sec) {
+                    document.getElementById('new_category').value = (sec === 'income') ? 'Lohn / Abschlag' : 'Sonstiges';
+                    document.getElementById('new_status_done').textContent = (sec === 'income') ? 'Erhalten' : 'Bezahlt';
+                }
+                function openEditEntryModal(entry) {
+                    document.getElementById('ee_entry_id').value = entry.id;
+                    document.getElementById('ee_section').value = entry.section;
+                    document.getElementById('ee_title').value = entry.title;
+                    document.getElementById('ee_amount').value = entry.amount;
+                    document.getElementById('ee_category').value = entry.category;
+                    document.getElementById('ee_status').value = entry.status;
+                    document.getElementById('ee_docs').value = entry.docs;
                     document.getElementById('editEntryModal').style.display = 'flex';
+                    document.getElementById('ee_title').focus();
                 }
                 function closeEditEntryModal() { document.getElementById('editEntryModal').style.display = 'none'; }
-                window.onclick = function(event) { if (event.target === document.getElementById('editEntryModal')) closeEditEntryModal(); }
-                updateCat('other');
+                window.addEventListener('click', e => { if (e.target === document.getElementById('editEntryModal')) closeEditEntryModal(); });
+                document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEditEntryModal(); });
+                updateCat(document.getElementById('new_section').value);
             </script>
 
         <?php elseif ($view_mode === 'import'): ?>
@@ -694,6 +754,15 @@ if ($selected_archive && file_exists($archive_dir . basename($selected_archive))
                 <h1>Kontoauszug Import</h1>
             </header>
 
+            <?php if (isset($_GET['imported'])): ?>
+                <div class="notice <?php echo (int)$_GET['imported'] > 0 ? 'ok' : ''; ?>">
+                    Import abgeschlossen: <strong><?php echo (int)$_GET['imported']; ?></strong> Buchungen übernommen,
+                    <?php echo (int)($_GET['skipped'] ?? 0); ?> interne Umbuchungen übersprungen,
+                    <?php echo (int)($_GET['duplicates'] ?? 0); ?> Duplikate ignoriert.
+                    <a href="budget.php">&rarr; Zum aktuellen Monat</a>
+                </div>
+            <?php endif; ?>
+
             <div class="panel" style="border-color: var(--accent-cyan);">
                 <div class="panel-title">// CSV-Datei Hochladen (z.B. Revolut / Bank Export)</div>
                 <form method="POST" enctype="multipart/form-data">
@@ -702,7 +771,7 @@ if ($selected_archive && file_exists($archive_dir . basename($selected_archive))
                         <input type="file" name="csv_file" accept=".csv" required style="padding: 12px; background: rgba(0,0,0,0.5);">
                     </div>
                     <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 15px;">
-                        * Interne Umbuchungen (Transfers, Unterkonten, Pockets) werden automatisch herausgefiltert. Nur echte Einnahmen und Ausgaben werden importiert.
+                        * Interne Umbuchungen (Transfers, Unterkonten, Pockets) sowie stornierte/abgelehnte Buchungen werden automatisch herausgefiltert. Bereits importierte Buchungen werden beim erneuten Hochladen erkannt und nicht doppelt angelegt. Komma- und Semikolon-CSV werden automatisch erkannt.
                     </div>
                     <button type="submit" name="import_csv" class="btn btn-gold">Kontoauszug Jetzt Importieren</button>
                 </form>
@@ -721,9 +790,9 @@ if ($selected_archive && file_exists($archive_dir . basename($selected_archive))
                     <button type="button" class="btn btn-gold" onclick="openAddFixSubModal()">+ Neue Vorlage</button>
                 </div>
                 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="two-col">
                     <div>
-                        <h3 style="color: var(--accent-cyan); font-size: 0.9rem; text-transform: uppercase; margin-bottom: 12px; border-bottom: 1px dashed var(--border-color); padding-bottom: 5px;">Fixkosten Vorlagen:</h3>
+                        <h3 style="color: var(--accent-cyan); font-size: 0.9rem; text-transform: uppercase; margin-bottom: 12px; border-bottom: 1px dashed var(--border-color); padding-bottom: 5px;">Fixkosten Vorlagen: <span style="float:right;"><?php echo eur(array_sum(array_column($fix_subs_data['fixed'], 'amount'))); ?> € / Monat</span></h3>
                         <div class="entry-list">
                             <?php if (empty($fix_subs_data['fixed'])): ?>
                                 <div class="empty-msg">Keine Fixkosten-Vorlagen.</div>
@@ -732,11 +801,11 @@ if ($selected_archive && file_exists($archive_dir . basename($selected_archive))
                                     <div class="entry-item sec-fixed" style="align-items: center;">
                                         <div>
                                             <div style="font-weight: 700; font-size: 0.95rem; color:#fff;"><?php echo htmlspecialchars($f['title']); ?></div>
-                                            <div style="font-size: 0.7rem; color:var(--text-muted);"><?php echo number_format($f['amount'], 2, ',', '.'); ?> € &bull; Kat: <?php echo htmlspecialchars($f['category']); ?></div>
+                                            <div style="font-size: 0.7rem; color:var(--text-muted);"><?php echo eur($f['amount']); ?> € &bull; Kat: <?php echo e($f['category']); ?><?php if (!empty($f['docs'])): ?> &bull; <?php echo e($f['docs']); ?><?php endif; ?></div>
                                         </div>
                                         <div style="display: flex; gap: 6px;">
-                                            <button type="button" class="btn btn-gold" style="padding: 4px 8px; font-size: 0.65rem;" onclick="openEditFixSubModal('fixed', '<?php echo $f['id']; ?>', '<?php echo addslashes($f['title']); ?>', '<?php echo $f['amount']; ?>', '<?php echo addslashes($f['category']); ?>', '<?php echo addslashes($f['docs'] ?? ''); ?>')">Edit</button>
-                                            <form method="POST" style="margin:0;"><input type="hidden" name="section" value="fixed"><input type="hidden" name="item_id" value="<?php echo $f['id']; ?>"><button type="submit" name="delete_fix_sub_item" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.65rem;">X</button></form>
+                                            <button type="button" class="btn btn-gold btn-sm" data-item="<?php echo e(json_encode($f + ['section' => 'fixed'])); ?>" onclick="openEditFixSubModal(JSON.parse(this.dataset.item))">Edit</button>
+                                            <form method="POST" style="margin:0;" onsubmit="return confirm('Vorlage wirklich löschen? Der Posten im aktuellen Monat bleibt bestehen.');"><input type="hidden" name="section" value="fixed"><input type="hidden" name="item_id" value="<?php echo e($f['id']); ?>"><button type="submit" name="delete_fix_sub_item" class="btn btn-danger btn-sm">X</button></form>
                                         </div>
                                     </div>
                                 <?php endforeach; ?>
@@ -745,7 +814,7 @@ if ($selected_archive && file_exists($archive_dir . basename($selected_archive))
                     </div>
 
                     <div>
-                        <h3 style="color: var(--accent-purple); font-size: 0.9rem; text-transform: uppercase; margin-bottom: 12px; border-bottom: 1px dashed var(--border-color); padding-bottom: 5px;">Abo Vorlagen:</h3>
+                        <h3 style="color: var(--accent-purple); font-size: 0.9rem; text-transform: uppercase; margin-bottom: 12px; border-bottom: 1px dashed var(--border-color); padding-bottom: 5px;">Abo Vorlagen: <span style="float:right;"><?php echo eur(array_sum(array_column($fix_subs_data['subs'], 'amount'))); ?> € / Monat</span></h3>
                         <div class="entry-list">
                             <?php if (empty($fix_subs_data['subs'])): ?>
                                 <div class="empty-msg">Keine Abo-Vorlagen.</div>
@@ -754,11 +823,11 @@ if ($selected_archive && file_exists($archive_dir . basename($selected_archive))
                                     <div class="entry-item sec-subs" style="align-items: center;">
                                         <div>
                                             <div style="font-weight: 700; font-size: 0.95rem; color:#fff;"><?php echo htmlspecialchars($s['title']); ?></div>
-                                            <div style="font-size: 0.7rem; color:var(--text-muted);"><?php echo number_format($s['amount'], 2, ',', '.'); ?> € &bull; Kat: <?php echo htmlspecialchars($s['category']); ?></div>
+                                            <div style="font-size: 0.7rem; color:var(--text-muted);"><?php echo eur($s['amount']); ?> € &bull; Kat: <?php echo e($s['category']); ?><?php if (!empty($s['docs'])): ?> &bull; <?php echo e($s['docs']); ?><?php endif; ?></div>
                                         </div>
                                         <div style="display: flex; gap: 6px;">
-                                            <button type="button" class="btn btn-gold" style="padding: 4px 8px; font-size: 0.65rem;" onclick="openEditFixSubModal('subs', '<?php echo $s['id']; ?>', '<?php echo addslashes($s['title']); ?>', '<?php echo $s['amount']; ?>', '<?php echo addslashes($s['category']); ?>', '<?php echo addslashes($s['docs'] ?? ''); ?>')">Edit</button>
-                                            <form method="POST" style="margin:0;"><input type="hidden" name="section" value="subs"><input type="hidden" name="item_id" value="<?php echo $s['id']; ?>"><button type="submit" name="delete_fix_sub_item" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.65rem;">X</button></form>
+                                            <button type="button" class="btn btn-gold btn-sm" data-item="<?php echo e(json_encode($s + ['section' => 'subs'])); ?>" onclick="openEditFixSubModal(JSON.parse(this.dataset.item))">Edit</button>
+                                            <form method="POST" style="margin:0;" onsubmit="return confirm('Vorlage wirklich löschen? Der Posten im aktuellen Monat bleibt bestehen.');"><input type="hidden" name="section" value="subs"><input type="hidden" name="item_id" value="<?php echo e($s['id']); ?>"><button type="submit" name="delete_fix_sub_item" class="btn btn-danger btn-sm">X</button></form>
                                         </div>
                                     </div>
                                 <?php endforeach; ?>
@@ -789,7 +858,7 @@ if ($selected_archive && file_exists($archive_dir . basename($selected_archive))
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom: 10px;">
                             <div>
                                 <label style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Betrag (€)</label>
-                                <input type="number" step="0.01" name="amount" id="fs_amount" required>
+                                <input type="number" step="0.01" min="0.01" name="amount" id="fs_amount" inputmode="decimal" required>
                             </div>
                             <div>
                                 <label style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Kategorie</label>
@@ -807,6 +876,7 @@ if ($selected_archive && file_exists($archive_dir . basename($selected_archive))
 
             <script>
                 function openAddFixSubModal() {
+                    document.getElementById('fixSubModalTitle').textContent = '// Neue Fixkosten / Abo Vorlage';
                     document.getElementById('fs_item_id').value = '';
                     document.getElementById('fs_title').value = '';
                     document.getElementById('fs_amount').value = '';
@@ -815,18 +885,20 @@ if ($selected_archive && file_exists($archive_dir . basename($selected_archive))
                     document.getElementById('fs_submit_btn').name = 'add_fix_sub_item';
                     document.getElementById('fixSubModal').style.display = 'flex';
                 }
-                function openEditFixSubModal(sec, id, title, amount, category, docs) {
-                    document.getElementById('fs_item_id').value = id;
-                    document.getElementById('fs_section').value = sec;
-                    document.getElementById('fs_title').value = title;
-                    document.getElementById('fs_amount').value = amount;
-                    document.getElementById('fs_category').value = category;
-                    document.getElementById('fs_docs').value = docs;
+                function openEditFixSubModal(item) {
+                    document.getElementById('fixSubModalTitle').textContent = '// Vorlage Bearbeiten';
+                    document.getElementById('fs_item_id').value = item.id;
+                    document.getElementById('fs_section').value = item.section;
+                    document.getElementById('fs_title').value = item.title;
+                    document.getElementById('fs_amount').value = item.amount;
+                    document.getElementById('fs_category').value = item.category || '';
+                    document.getElementById('fs_docs').value = item.docs || '';
                     document.getElementById('fs_submit_btn').name = 'edit_fix_sub_item';
                     document.getElementById('fixSubModal').style.display = 'flex';
                 }
                 function closeFixSubModal() { document.getElementById('fixSubModal').style.display = 'none'; }
-                window.onclick = function(event) { if (event.target === document.getElementById('fixSubModal')) closeFixSubModal(); }
+                window.addEventListener('click', e => { if (e.target === document.getElementById('fixSubModal')) closeFixSubModal(); });
+                document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFixSubModal(); });
             </script>
 
         <?php else: ?>
@@ -839,15 +911,24 @@ if ($selected_archive && file_exists($archive_dir . basename($selected_archive))
             <?php if ($selected_archive && $archive_data): ?>
                 <div style="margin-bottom: 20px;"><a href="budget.php?view=archive" class="nav-back">&larr; Zurück zur Liste</a></div>
                 <div class="panel" style="border-color: var(--accent-gold);">
-                    <div class="panel-title" style="color: var(--accent-gold);">Archiv: <?php echo htmlspecialchars($archive_data['month_name']); ?></div>
+                    <div class="panel-title" style="color: var(--accent-gold);">Archiv: <?php echo e($archive_data['month_name'] ?? ''); ?></div>
+                    <?php $at = budget_totals($archive_data['entries'] ?? []); ?>
+                    <div class="dashboard-grid">
+                        <div class="card"><div class="card-title">Einnahmen</div><div class="card-value green">+<?php echo eur($at['income']); ?> €</div></div>
+                        <div class="card"><div class="card-title">Fixkosten + Abos</div><div class="card-value"><?php echo eur($at['fixed'] + $at['subs']); ?> €</div></div>
+                        <div class="card"><div class="card-title">Sonstige</div><div class="card-value gold"><?php echo eur($at['other']); ?> €</div></div>
+                        <div class="card"><div class="card-title">Netto Bilanz</div><div class="card-value <?php echo $at['net'] >= 0 ? 'purple' : 'red'; ?>"><?php echo eur($at['net']); ?> €</div></div>
+                    </div>
+                    <?php $sec_names = ['income' => 'Einnahme', 'fixed' => 'Fixkosten', 'subs' => 'Abo', 'other' => 'Sonstige']; ?>
                     <div class="entry-list">
-                        <?php foreach ($archive_data['entries'] as $ae): ?>
-                            <div class="entry-item">
+                        <?php foreach ($archive_data['entries'] ?? [] as $ae): $asec = $ae['section'] ?? 'other'; ?>
+                            <div class="entry-item sec-<?php echo e($asec); ?>">
                                 <div class="entry-info">
-                                    <h4><?php echo htmlspecialchars($ae['title']); ?></h4>
-                                    <div class="entry-meta">Sektion: <?php echo htmlspecialchars($ae['section']); ?> &bull; <?php echo htmlspecialchars($ae['category']); ?></div>
+                                    <h4><?php echo e($ae['title']); ?></h4>
+                                    <div class="entry-meta"><?php echo e($sec_names[$asec] ?? $asec); ?> &bull; <?php echo e($ae['category'] ?? ''); ?> &bull; <?php echo e($ae['status'] ?? ''); ?> &bull; <?php echo e($ae['date'] ?? ''); ?></div>
+                                    <?php if (!empty($ae['docs'])): ?><div class="entry-docs">DOCS: <?php echo e($ae['docs']); ?></div><?php endif; ?>
                                 </div>
-                                <div class="entry-right"><span class="entry-amount"><?php echo number_format($ae['amount'], 2, ',', '.'); ?> €</span></div>
+                                <div class="entry-right"><span class="entry-amount <?php echo $asec === 'income' ? 'inc' : 'exp'; ?>"><?php echo $asec === 'income' ? '+' : '-'; ?><?php echo eur($ae['amount']); ?> €</span></div>
                             </div>
                         <?php endforeach; ?>
                     </div>
@@ -857,20 +938,25 @@ if ($selected_archive && file_exists($archive_dir . basename($selected_archive))
                     <div class="panel-title">// Gespeicherte Monats-Archive</div>
                     <div class="entry-list">
                         <?php
-                        $archives = glob($archive_dir . '*.json');
+                        $archives = glob($archive_dir . '*.json') ?: [];
+                        usort($archives, function ($a, $b) { return filemtime($b) <=> filemtime($a); });
                         if (empty($archives)):
                         ?>
                             <div class="empty-msg">Keine Monats-Archive vorhanden.</div>
                         <?php else: ?>
                             <?php foreach ($archives as $arch_file): 
-                                $content = json_decode(file_get_contents($arch_file), true);
+                                $content = load_json($arch_file, ['month_name' => '?', 'entries' => []]);
+                                $ct = budget_totals($content['entries'] ?? []);
                                 $basename = basename($arch_file);
                             ?>
                                 <div class="entry-item" style="align-items: center;">
-                                    <div><h4><?php echo htmlspecialchars($content['month_name']); ?></h4></div>
+                                    <div class="entry-info">
+                                        <h4><?php echo e($content['month_name'] ?? '?'); ?></h4>
+                                        <div class="entry-meta">Einnahmen <?php echo eur($ct['income']); ?> € &bull; Ausgaben <?php echo eur($ct['expense']); ?> € &bull; Netto <span style="color: <?php echo $ct['net'] >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'; ?>;"><?php echo eur($ct['net']); ?> €</span></div>
+                                    </div>
                                     <div style="display: flex; gap: 8px;">
                                         <a href="budget.php?view=archive&archive=<?php echo urlencode($basename); ?>" class="btn" style="padding: 4px 8px; font-size: 0.7rem;">Ansehen</a>
-                                        <form method="POST" style="margin:0;"><input type="hidden" name="archive_filename" value="<?php echo htmlspecialchars($basename); ?>"><button type="submit" name="delete_archive" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.7rem;">X</button></form>
+                                        <form method="POST" style="margin:0;" onsubmit="return confirm('Archiv wirklich unwiderruflich löschen?');"><input type="hidden" name="archive_filename" value="<?php echo e($basename); ?>"><button type="submit" name="delete_archive" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.7rem;">X</button></form>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
