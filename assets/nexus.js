@@ -125,6 +125,9 @@
         if (name === 'groups' && !loaded.groups) loadGroups();
         if (name === 'notifs' && !loaded.notifs) loadNotifs();
         if (name === 'moderation') loadModeration();
+        if (name === 'calendar') loadCalendar(false);
+        if (name === 'gallery' && !loaded.gallery) loadGallery(false);
+        if (name === 'news' && !loaded.news) loadNews();
     }
     $('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) tab(b.dataset.tab); });
     document.addEventListener('keydown', e => {
@@ -243,7 +246,7 @@
         const compact = $('#compactView').checked;
         return '<div class="vx-friend st-' + f.state + (f.favorite ? ' fav' : '') + (compact ? ' compact' : '') + '" data-user="' + esc(f.id) + '" tabindex="0" role="button">'
             + img(f.image, 'vx-av', f.name)
-            + '<span class="vx-f-main"><span class="vx-f-name">' + statusDot(f.state === 'offline' ? 'offline' : f.status) + '<b style="color:' + esc(f.trust[1]) + '">' + esc(f.name) + '</b>' + (f.favorite ? ' ⭐' : '') + (f.fav_group ? ' <span class="vx-vfav" title="VRChat-Favorit: ' + esc((state.fav_groups || {})[f.fav_group] || f.fav_group) + '">♥</span>' : '') + '</span>'
+            + '<span class="vx-f-main"><span class="vx-f-name">' + statusDot(f.state === 'offline' ? 'offline' : f.status) + '<b style="color:' + esc(f.trust[1]) + '">' + esc(f.name) + '</b>' + (f.favorite ? ' ⭐' : '') + (f.fav_group ? ' <span class="vx-vfav" title="VRChat-Favorit: ' + esc((state.fav_groups || {})[f.fav_group] || f.fav_group) + '">♥</span>' : '') + (f.pronouns ? ' <span class="vx-pron" data-nogender>' + esc(f.pronouns) + '</span>' : '') + '</span>'
             + (!compact && f.status_desc ? '<span class="vx-f-sd">' + esc(f.status_desc) + '</span>' : '')
             + (f.state === 'online' ? locLine(f.loc) : '<span class="vx-loc muted">' + (f.state === 'active' ? '💻 ' + esc(f.platform || 'Website / App') : 'Offline' + (f.since ? ' · ' + ago(f.since) : '')) + '</span>')
             + (!compact && f.note ? '<span class="vx-f-note">📝 ' + esc(f.note.slice(0, 60)) + '</span>' : '')
@@ -353,7 +356,9 @@
         h += '<div class="vx-u-cols"><div>';
         if (u.bio_html) h += '<h4>Bio</h4><div class="fmt vx-u-bio">' + u.bio_html + '</div>';
         if (u.links && u.links.length) h += '<h4>Links</h4><ul class="vx-u-links">' + u.links.map(x => '<li><a href="' + esc(x) + '" target="_blank" rel="noopener noreferrer nofollow">' + esc(x.replace(/^https?:\/\//, '')) + '</a></li>').join('') + '</ul>';
-        if (u.groups && u.groups.length) h += '<h4>Gruppen</h4><div class="vx-u-groups">' + u.groups.sort((a, b) => b.rep - a.rep).map(g => '<button type="button" class="vx-pill' + (g.rep ? ' rep' : '') + '" data-opengroup="' + esc(g.id) + '" title="' + g.members + ' Mitglieder">' + (g.rep ? '★ ' : '') + esc(g.name) + '</button>').join('') + '</div>';
+        const mine = new Set((loaded.groupList || []).map(g => g.id));
+        if (u.groups && u.groups.length) h += '<h4>Gruppen <small>' + u.groups.filter(g => mine.has(g.id)).length + ' gemeinsam</small></h4><div class="vx-u-groups">' + u.groups.sort((a, b) => (mine.has(b.id) - mine.has(a.id)) || (b.rep - a.rep)).map(g => '<button type="button" class="vx-pill' + (g.rep ? ' rep' : '') + (mine.has(g.id) ? ' mutual' : '') + '" data-opengroup="' + esc(g.id) + '" title="' + g.members + ' Mitglieder' + (mine.has(g.id) ? ' · du bist auch Mitglied' : '') + '">' + (g.rep ? '★ ' : '') + (mine.has(g.id) ? '🤝 ' : '') + esc(g.name) + '</button>').join('') + '</div>';
+        h += '<h4>🛡️ Gruppen-Moderation</h4><div id="uMod" class="vx-umods" data-user="' + esc(u.id) + '" data-name="' + esc(u.name) + '"><div class="vx-loading">Prüfe deine Gruppen …</div></div>';
         h += '<dl class="vx-u-facts">' + (u.joined ? '<dt>Dabei seit</dt><dd>' + esc(isoDate(u.joined)) + '</dd>' : '') + (u.last_login ? '<dt>Letzter Login</dt><dd>' + esc(isoDT(u.last_login)) + '</dd>' : '')
             + (u.last_activity ? '<dt>Zuletzt aktiv</dt><dd>' + esc(isoDT(u.last_activity)) + '</dd>' : '') + '<dt>VRChat-ID</dt><dd><code class="vx-id">' + esc(u.id) + '</code> <button type="button" class="vx-copy" data-copy="' + esc(u.id) + '" title="Kopieren">⧉</button></dd></dl>';
         h += '</div><div><h4>Meine Notiz <small>(nur für dich)</small></h4><form class="vx-note-form"><textarea name="note" rows="5" maxlength="4000" placeholder="z. B. kennengelernt auf der EF, mag Kaffee …">' + esc(u.note) + '</textarea>'
@@ -389,6 +394,8 @@
             if (!confirm('„' + u.name + '“ in VRChat ' + label + '?' + (t === 'block' ? ' Blockieren beendet auch eine Freundschaft.' : ''))) return;
             api('moderate', { user: u.id, type: t }).then(d => { toast(d.msg || 'Erledigt.'); loaded.mod = false; }).catch(x => toast(x.message, true));
         }));
+        if (!loaded.groupList) api('groups').then(d => { loaded.groupList = d.groups; }).catch(() => {});
+        loadUserMod(u);
         api('feed', { friend: u.id }).then(d => { $('#uFeed').innerHTML = d.items.length ? d.items.slice(0, 30).map(feedRow).join('') : '<div class="vx-empty">Noch nichts aufgezeichnet.</div>'; })
             .catch(() => { $('#uFeed').textContent = '–'; });
     }
@@ -500,23 +507,56 @@
     });
 
     // ---------- Avatare ----------
-    let avatarList = [];
+    let avatarList = [], avatarKind = 'mine', avatarGroups = {};
+    const PF_ORDER = { 'PC': 0, 'Quest / Android': 1, 'iOS': 2 };
     function loadAvatars(kind) {
         loaded.avatars = true;
+        avatarKind = kind;
         $$('#avatarKinds .chip').forEach(c => c.classList.toggle('on', c.dataset.kind === kind));
+        $('#avatarSort').querySelector('[value=group]').disabled = kind !== 'favorites';
+        if (kind === 'favorites' && !store.get('avSortSet', false)) $('#avatarSort').value = 'group';
+        if (kind !== 'favorites' && $('#avatarSort').value === 'group') $('#avatarSort').value = 'updated';
         const box = $('#avatarsBox');
         loading(box, 'Lade Avatare …');
-        api('avatars', { kind }).then(d => { avatarList = d.avatars; renderAvatars(); }).catch(fail(box));
+        api('avatars', { kind }).then(d => { avatarList = d.avatars.map((a, i) => Object.assign(a, { _i: i })); avatarGroups = d.fav_groups || {}; renderAvatars(); }).catch(fail(box));
+    }
+    const groupName = k => avatarGroups[k] || (k ? 'Gruppe ' + k.replace(/\D/g, '') : 'Ohne Gruppe');
+    function avatarCard(a) {
+        const groups = Object.keys(avatarGroups).length ? Object.keys(avatarGroups) : ['avatars1', 'avatars2', 'avatars3', 'avatars4'];
+        return '<div class="vx-card' + (a.current ? ' current' : '') + '" data-avatar-open="' + esc(a.id) + '" role="button" tabindex="0">' + img(a.thumb, 'vx-card-img', a.name) + '<span class="vx-card-body"><b>' + esc(a.name) + (a.current ? ' <span class="vx-pill rep">trägst du</span>' : '') + '</b>'
+            + '<small>' + esc(a.author ? 'von ' + a.author : '') + (a.status ? ' · ' + esc(a.status) : '') + (a.updated ? ' · ' + esc(isoDate(a.updated)) : '') + '</small><span class="vx-card-meta">' + a.platforms.map(p => '<span>' + esc(p) + '</span>').join('') + '</span>'
+            + '<span class="vx-card-acts">' + (a.current ? '' : '<button type="button" class="btn btn-sm btn-gold" data-avatar="' + esc(a.id) + '">Anziehen</button>')
+            + (avatarKind === 'favorites' ? '<select class="vx-avgrp" data-avmove="' + esc(a.id) + '" data-favid="' + esc(a.fav_id || '') + '" title="In Favoritengruppe verschieben">' + groups.map(g => '<option value="' + esc(g) + '"' + (g === a.fav_group ? ' selected' : '') + '>' + esc(groupName(g)) + '</option>').join('') + '</select>' : '')
+            + '</span></span></div>';
     }
     function renderAvatars() {
-        const q = $('#avatarSearch').value.trim().toLowerCase();
-        const list = avatarList.filter(a => !q || (a.name + ' ' + a.author + ' ' + a.desc).toLowerCase().includes(q));
-        $('#avatarsBox').innerHTML = list.length ? list.map(a => '<div class="vx-card' + (a.current ? ' current' : '') + '" data-avatar-open="' + esc(a.id) + '" role="button" tabindex="0">' + img(a.thumb, 'vx-card-img', a.name) + '<span class="vx-card-body"><b>' + esc(a.name) + (a.current ? ' <span class="vx-pill rep">trägst du</span>' : '') + '</b>'
-            + '<small>' + esc(a.author ? 'von ' + a.author : '') + (a.status ? ' · ' + esc(a.status) : '') + '</small><span class="vx-card-meta">' + a.platforms.map(p => '<span>' + esc(p) + '</span>').join('') + '</span>'
-            + (a.current ? '' : '<button type="button" class="btn btn-sm btn-gold" data-avatar="' + esc(a.id) + '">Anziehen</button>') + '</span></div>').join('') : '<div class="vx-empty">Keine Avatare.</div>';
+        const q = $('#avatarSearch').value.trim().toLowerCase(), sort = $('#avatarSort').value, pf = $('#avatarPf').value;
+        let list = avatarList.filter(a => (!q || (a.name + ' ' + a.author + ' ' + a.desc).toLowerCase().includes(q)) && (!pf || (pf === 'cross' ? a.platforms.length > 1 : a.platforms.includes(pf))));
+        const by = {
+            updated: (a, b) => String(b.updated).localeCompare(String(a.updated)), name: (a, b) => a.name.localeCompare(b.name, 'de', { numeric: true }),
+            author: (a, b) => a.author.localeCompare(b.author, 'de') || a.name.localeCompare(b.name, 'de'), created: (a, b) => String(b.created).localeCompare(String(a.created)),
+            platform: (a, b) => (b.platforms.length - a.platforms.length) || ((PF_ORDER[a.platforms[0]] ?? 9) - (PF_ORDER[b.platforms[0]] ?? 9)) || a.name.localeCompare(b.name, 'de'),
+            vrchat: (a, b) => a._i - b._i, group: (a, b) => a.name.localeCompare(b.name, 'de', { numeric: true }),
+        };
+        list.sort(by[sort] || by.updated);
+        if (!list.length) { $('#avatarsBox').innerHTML = '<div class="vx-empty">Keine Avatare.</div>'; return; }
+        if (sort === 'group' && avatarKind === 'favorites') {
+            const g = {};
+            list.forEach(a => { (g[a.fav_group] = g[a.fav_group] || []).push(a); });
+            $('#avatarsBox').innerHTML = Object.keys(g).sort().map(k => '<div class="vx-avsec"><h3>⭐ ' + esc(groupName(k)) + ' <small>' + g[k].length + '</small></h3><div class="vx-cards">' + g[k].map(avatarCard).join('') + '</div></div>').join('');
+        } else $('#avatarsBox').innerHTML = '<div class="vx-cards">' + list.map(avatarCard).join('') + '</div>';
+        $('#avatarCount').textContent = list.length + ' von ' + avatarList.length;
     }
     $('#avatarKinds').addEventListener('click', e => { const c = e.target.closest('[data-kind]'); if (c) loadAvatars(c.dataset.kind); });
     $('#avatarSearch').addEventListener('input', renderAvatars);
+    $('#avatarSort').value = store.get('avSort', 'updated');
+    $('#avatarSort').addEventListener('change', e => { store.set('avSort', e.target.value); store.set('avSortSet', true); renderAvatars(); });
+    $('#avatarPf').addEventListener('change', renderAvatars);
+    $('#avatarsBox').addEventListener('change', e => {
+        const s = e.target.closest('[data-avmove]');
+        if (!s) return;
+        api('avatar_fav', { id: s.dataset.avmove, move: 1, group: s.value, fav_id: s.dataset.favid }).then(r => { toast(r.msg); const a = avatarList.find(x => x.id === s.dataset.avmove); if (a) a.fav_group = s.value; renderAvatars(); }).catch(x => toast(x.message, true));
+    });
     $('#avatarsBox').addEventListener('click', e => {
         const b = e.target.closest('[data-avatar]');
         if (!b) return;
@@ -630,8 +670,13 @@
         api('groups').then(d => {
             loaded.groups = true;
             loaded.groupList = d.groups;
-            $('#groupsBox').innerHTML = d.groups.length ? d.groups.map(g => '<button type="button" class="vx-group" data-group="' + esc(g.id) + '">' + img(g.icon, 'vx-g-icon', '') + '<span><b>' + esc(g.name) + '</b><small>' + esc(g.short) + ' · ' + g.members + ' Mitglieder</small>'
-                + '<span>' + (g.owner ? '<span class="vx-pill" style="--pc:#f3c262">Besitzer</span>' : '') + (g.rep ? '<span class="vx-pill rep">★ repräsentiert</span>' : '') + '</span></span></button>').join('')
+            const card = g => '<button type="button" class="vx-group' + (g.mod ? ' mod' : '') + '" data-group="' + esc(g.id) + '">' + img(g.icon, 'vx-g-icon', '') + '<span><b>' + esc(g.name) + '</b><small>' + esc(g.short) + ' · ' + g.members + ' Mitglieder</small>'
+                + '<span>' + (g.owner ? '<span class="vx-pill" style="--pc:#f3c262">Besitzer</span>' : g.mod ? '<span class="vx-pill" style="--pc:#50fa7b" title="' + esc(g.perms.join(', ')) + '">🛡️ Moderation</span>' : '')
+                + (g.rep ? '<span class="vx-pill rep">★ repräsentiert</span>' : '') + '</span></span></button>';
+            const mod = d.groups.filter(g => g.mod).sort((a, b) => (b.owner - a.owner) || a.name.localeCompare(b.name, 'de'));
+            const rest = d.groups.filter(g => !g.mod).sort((a, b) => (b.rep - a.rep) || a.name.localeCompare(b.name, 'de'));
+            $('#groupsBox').innerHTML = d.groups.length ? (mod.length ? '<div class="vx-sec vx-gsec"><h3>🛡️ Gruppen, die du moderierst <small>' + mod.length + '</small></h3><div class="vx-groups">' + mod.map(card).join('') + '</div></div>' : '')
+                + (rest.length ? '<div class="vx-sec vx-gsec"><h3>👥 Weitere Gruppen <small>' + rest.length + '</small></h3><div class="vx-groups">' + rest.map(card).join('') + '</div></div>' : '')
                 : '<div class="vx-empty">Du bist in keiner Gruppe.</div>';
         }).catch(x => { $('#groupsBox').innerHTML = '<div class="vx-error">⚠ ' + esc(x.message) + '</div>'; });
     }
@@ -855,6 +900,8 @@
     });
     const pf = $('#prefsForm');
     pf.notify.value = prefs.notify; pf.notify_offline.checked = !!prefs.notify_offline; pf.notify_gps.checked = !!prefs.notify_gps; pf.sound.checked = !!prefs.sound; pf.interval.value = String(prefs.interval || 60); pf.clipwatch.checked = !!prefs.clipwatch;
+    if (window.GenderMode) pf.gender.value = window.GenderMode.get(); else setTimeout(() => { if (window.GenderMode) pf.gender.value = window.GenderMode.get(); }, 500);
+    pf.gender.addEventListener('change', e => { e.stopPropagation(); if (window.GenderMode) window.GenderMode.set(pf.gender.value); });
     pf.addEventListener('change', () => {
         Object.assign(prefs, { notify: pf.notify.value, notify_offline: pf.notify_offline.checked, notify_gps: pf.notify_gps.checked, sound: pf.sound.checked, interval: +pf.interval.value, clipwatch: pf.clipwatch.checked });
         if (prefs.clipwatch && navigator.clipboard && navigator.clipboard.readText) navigator.clipboard.readText().catch(() => {});
@@ -870,6 +917,193 @@
     $('#logoutBtn').addEventListener('click', () => { if (confirm('VRChat-Verbindung trennen? Freunde, Verlauf und Notizen bleiben gespeichert.')) api('logout').then(() => location.reload()).catch(x => toast(x.message, true)); });
     const sf = $('#settingsForm');
     if (sf) sf.addEventListener('submit', e => { e.preventDefault(); api('settings', { user_agent: sf.user_agent.value }).then(r => toast(r.msg)).catch(x => toast(x.message, true)); });
+
+    // ---------- Gruppen-Moderation im Profil ----------
+    const gcan = (g, p) => g.perms.includes('*') || g.perms.includes(p);
+    function loadUserMod(u) {
+        const box = $('#uMod');
+        if (!box) return;
+        api('user_mod', { id: u.id }).then(d => {
+            if (!d.groups.length) { box.innerHTML = '<div class="vx-empty">Du moderierst keine Gruppe.</div>'; return; }
+            box.innerHTML = d.groups.map(g => {
+                const m = g.member, roleName = id => (g.roles.find(r => r.id === id) || {}).name || '';
+                const b = (act, label, cls, extra) => '<button type="button" class="btn btn-sm ' + (cls || '') + '" data-umod="' + act + '" data-g="' + esc(g.id) + '"' + (extra || '') + '>' + label + '</button>';
+                return '<div class="vx-umod">' + img(g.icon, 'vx-g-icon sm', '') + '<div><b>' + esc(g.name) + '</b><small>' + (m ? '✅ Mitglied seit ' + esc(isoDate(m.joined)) + (m.rep ? ' · ★ repräsentiert' : '') : '— kein Mitglied') + '</small>'
+                    + (m && m.roles.length ? '<div>' + m.roles.filter(roleName).map(r => '<span class="vx-pill vx-role">' + esc(roleName(r)) + (gcan(g, 'group-roles-assign') ? '<button type="button" data-umod="unrole" data-g="' + esc(g.id) + '" data-role="' + esc(r) + '" title="Rolle entziehen">×</button>' : '') + '</span>').join('') + '</div>' : '')
+                    + '<span class="vx-u-btns">'
+                    + (m && gcan(g, 'group-roles-assign') && g.roles.length ? '<select class="vx-rolesel" data-umodrole="' + esc(g.id) + '"><option value="">＋ Rolle</option>' + g.roles.filter(r => !m.roles.includes(r.id)).map(r => '<option value="' + esc(r.id) + '">' + esc(r.name) + '</option>').join('') + '</select>' : '')
+                    + (!m && gcan(g, 'group-invites-manage') ? b('invite', '✉ Einladen', 'btn-gold') : '')
+                    + (m && (gcan(g, 'group-members-remove') || gcan(g, 'group-members-manage')) ? b('kick', '👢 Entfernen') : '')
+                    + (gcan(g, 'group-bans-manage') ? b('ban', '🔨 Bannen', 'btn-danger') + b('unban', 'Bann aufheben') : '')
+                    + '<button type="button" class="btn btn-sm" data-opengroup="' + esc(g.id) + '">Gruppe öffnen</button></span></div></div>';
+            }).join('');
+        }).catch(x => { box.innerHTML = '<div class="vx-error">⚠ ' + esc(x.message) + '</div>'; });
+    }
+    document.addEventListener('click', e => {
+        const b = e.target.closest('[data-umod]');
+        if (!b) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const uid = $('#uMod').dataset.user, name = $('#uMod').dataset.name, a = b.dataset.umod;
+        const ask = { kick: '„' + name + '“ aus der Gruppe entfernen?', ban: '„' + name + '“ in dieser Gruppe bannen?', unrole: 'Rolle entziehen?' }[a];
+        if (ask && !confirm(ask)) return;
+        const map = { invite: ['group_invite', {}], kick: ['group_kick', {}], ban: ['group_ban', {}], unban: ['group_unban', {}], unrole: ['group_role', { role: b.dataset.role, on: '' }] };
+        b.disabled = true;
+        api(map[a][0], Object.assign({ id: b.dataset.g, user: uid }, map[a][1])).then(r => { toast(r.msg || 'Erledigt.'); loadUserMod({ id: uid }); }).catch(x => { toast(x.message, true); b.disabled = false; });
+    }, true);
+    document.addEventListener('change', e => {
+        const s = e.target.closest('[data-umodrole]');
+        if (!s || !s.value) return;
+        const uid = $('#uMod').dataset.user;
+        api('group_role', { id: s.dataset.umodrole, user: uid, role: s.value, on: 1 }).then(r => { toast(r.msg); loadUserMod({ id: uid }); }).catch(x => { toast(x.message, true); s.value = ''; });
+    });
+
+    // ---------- VRChat-Kalender ----------
+    const CAT = { hangout: '💬 Treffen', gaming: '🎮 Gaming', music: '🎵 Musik', dance: '💃 Tanz', performance: '🎭 Auftritt', arts: '🎨 Kunst', education: '📚 Bildung', exploration: '🧭 Erkunden',
+                  film_media: '🎬 Film & Medien', avatars: '🦊 Avatare', wellness: '🧘 Wohlfühlen', roleplaying: '🐉 Rollenspiel', other: '📦 Sonstiges' };
+    let calData = null;
+    function loadCalendar(refresh) {
+        const box = $('#calList');
+        if (!calData || refresh) loading(box, 'Lade VRChat-Kalender …');
+        api('calendar', { refresh: refresh ? 1 : '' }).then(d => {
+            calData = d;
+            $('#calInfo').innerHTML = (d.error ? '<span class="bad">⚠ ' + esc(d.error) + '</span> · ' : '') + d.events.length + ' Events · abgerufen ' + (d.refreshed ? esc(ago(d.refreshed)) : 'noch nie');
+            const gs = [...new Map(d.events.map(e => [e.group, e.group_name])).entries()];
+            const sel = $('#calGroup'), keep = sel.value;
+            sel.innerHTML = '<option value="">Alle Gruppen</option>' + gs.map(([id, n]) => '<option value="' + esc(id) + '">' + esc(n || id) + '</option>').join('');
+            sel.value = keep;
+            $('#calSync').innerHTML = (d.can_link ? '<label class="vx-auto"><input type="checkbox" id="calLink"' + (d.linked ? ' checked' : '') + '> 🔄 Mit dem Dashboard-Kalender synchronisieren (privat, aktualisiert sich automatisch)</label>' : '<p class="vx-small">Für die Kalender-Verbindung fehlt dir das Recht „Kalender bearbeiten“.</p>')
+                + '<p class="vx-small">📱 Abo-Link für Handy / Outlook / Google-Kalender:</p><div class="vx-icsrow"><code>' + esc(d.ics) + '</code><button type="button" class="btn btn-sm" data-copy="' + esc(d.ics) + '">⧉</button><button type="button" class="btn btn-sm btn-danger" id="icsReset" title="Neuen geheimen Link erzeugen">↻</button></div>';
+            const cl = $('#calLink');
+            if (cl) cl.addEventListener('change', () => api('calendar_link', { on: cl.checked ? 1 : '' }).then(r => toast(r.msg)).catch(x => { toast(x.message, true); cl.checked = !cl.checked; }));
+            $('#icsReset').addEventListener('click', () => { if (confirm('Neuen Abo-Link erzeugen? Der alte funktioniert dann nicht mehr.')) api('ics_reset').then(r => { toast(r.msg); loadCalendar(false); }).catch(x => toast(x.message, true)); });
+            const f = $('#calCreate');
+            f.hidden = !d.can_create.length;
+            f.group.innerHTML = d.can_create.map(g => '<option value="' + esc(g.id) + '">' + esc(g.name) + '</option>').join('');
+            renderCalendar();
+        }).catch(fail(box));
+    }
+    function renderCalendar() {
+        if (!calData) return;
+        const g = $('#calGroup').value, onlyFav = $('#calFav').checked, cat = $('#calCat').value;
+        const list = calData.events.filter(e => (!g || e.group === g) && (!onlyFav || e.following) && (!cat || e.category === cat));
+        const canDel = new Set(calData.can_create.map(x => x.id));
+        let last = '', h = '';
+        list.forEach(e => {
+            const day = new Date(e.start * 1000).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long' });
+            if (day !== last) { h += '<div class="vx-day">' + esc(day) + '</div>'; last = day; }
+            const now = Date.now() / 1000, live = e.start <= now && e.end > now;
+            h += '<div class="vx-cal' + (e.following ? ' fav' : '') + (live ? ' live' : '') + '">' + (e.image ? img(e.image, 'vx-cal-img', '') : '<span class="vx-cal-img vx-noimg">📅</span>')
+                + '<div class="vx-cal-main"><b>' + esc(e.title) + (live ? ' <span class="vx-pill" style="--pc:#50fa7b">läuft gerade</span>' : '') + '</b>'
+                + '<small>🕐 ' + esc(new Date(e.start * 1000).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })) + '–' + esc(new Date(e.end * 1000).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }))
+                + ' · <a href="#" data-opengroup="' + esc(e.group) + '">' + esc(e.group_name || 'Gruppe') + '</a> · ' + esc(CAT[e.category] || e.category || '') + (e.access === 'public' ? ' · 🌍 öffentlich' : ' · 🔒 Gruppe')
+                + ' · ⭐ ' + e.interested + (e.platforms.length ? ' · ' + e.platforms.map(p => ({ standalonewindows: 'PC', android: 'Quest', ios: 'iOS' }[p] || p)).join('/') : '') + '</small>'
+                + (e.html ? '<details><summary>Beschreibung</summary><div class="fmt">' + e.html + '</div></details>' : '') + '</div>'
+                + '<span class="vx-m-acts"><button type="button" class="btn btn-sm' + (e.following ? ' btn-gold' : '') + '" data-calfollow="' + esc(e.id) + '" data-g="' + esc(e.group) + '" data-on="' + (e.following ? '' : '1') + '">' + (e.following ? '★ Interessiert' : '☆ Interessiert') + '</button>'
+                + '<a class="btn btn-sm" href="https://vrchat.com/home/group/' + encodeURIComponent(e.group) + '/calendar/' + encodeURIComponent(e.id) + '" target="_blank" rel="noopener noreferrer">↗</a>'
+                + (canDel.has(e.group) ? '<button type="button" class="btn btn-sm btn-danger" data-caldel="' + esc(e.id) + '" data-g="' + esc(e.group) + '" title="Event löschen">🗑</button>' : '') + '</span></div>';
+        });
+        $('#calList').innerHTML = h || '<div class="vx-empty">Keine kommenden Events in deinen Gruppen.</div>';
+    }
+    ['#calGroup', '#calFav', '#calCat'].forEach(s => $(s).addEventListener('change', renderCalendar));
+    $('#calRefresh').addEventListener('click', () => loadCalendar(true));
+    $('#calList').addEventListener('click', e => {
+        const f = e.target.closest('[data-calfollow]'), d = e.target.closest('[data-caldel]');
+        if (f) api('cal_follow', { id: f.dataset.calfollow, group: f.dataset.g, on: f.dataset.on }).then(r => { toast(r.msg); const ev = calData.events.find(x => x.id === f.dataset.calfollow); if (ev) { ev.following = !!f.dataset.on; ev.interested += f.dataset.on ? 1 : -1; } renderCalendar(); }).catch(x => toast(x.message, true));
+        if (d && confirm('Event wirklich im VRChat-Kalender löschen?')) api('cal_delete', { id: d.dataset.caldel, group: d.dataset.g }).then(r => { toast(r.msg); loadCalendar(false); }).catch(x => toast(x.message, true));
+    });
+    $('#calCreate').addEventListener('submit', e => {
+        e.preventDefault();
+        const f = e.target, iso = v => v ? new Date(v).toISOString() : '';
+        api('cal_create', { group: f.group.value, title: f.title.value, start: iso(f.start.value), end: iso(f.end.value), description: f.description.value, category: f.category.value,
+                            access: f.access.value, notify: f.notify.checked ? 1 : '', platforms: $$('input[name=pf]:checked', f).map(c => c.value) })
+            .then(r => { toast(r.msg); f.reset(); loadCalendar(false); }).catch(x => toast(x.message, true));
+    });
+
+    // ---------- Galerie: Fotos, Icons, Emojis, Sticker, Prints, Inventar ----------
+    let galData = null, galKind = 'photos', invItems = [], invTotal = 0;
+    const GAL = { photos: '📷 Fotos', icons: '🙂 Icons', emojis: '😺 Emojis', stickers: '🏷️ Sticker', prints: '🖨️ Prints', inventory: '🎒 Inventar' };
+    function loadGallery(refresh) {
+        loaded.gallery = true;
+        if (!galData || refresh) loading($('#galBox'), 'Lade Galerie …');
+        api('gallery').then(d => { galData = d; renderGalKinds(); renderGallery(); }).catch(fail($('#galBox')));
+    }
+    function renderGalKinds() {
+        const cnt = k => k === 'inventory' ? (invTotal || '…') : Array.isArray(galData.gallery[k]) ? galData.gallery[k].length + (galData.limits[k] ? '/' + galData.limits[k] : '') : '!';
+        $('#galKinds').innerHTML = Object.entries(GAL).map(([k, l]) => '<button type="button" class="chip' + (k === galKind ? ' on' : '') + '" data-gk="' + k + '">' + l + ' <small>' + cnt(k) + '</small></button>').join('');
+        $('#galUpload').hidden = !['photos', 'icons', 'emojis', 'stickers'].includes(galKind);
+        $('#galAnim').hidden = galKind !== 'emojis';
+    }
+    function renderGallery() {
+        const box = $('#galBox');
+        if (galKind === 'inventory') { if (!invItems.length) loadInventory(false); else renderInventory(); return; }
+        const list = galData.gallery[galKind];
+        if (!Array.isArray(list)) { box.innerHTML = '<div class="vx-error">⚠ ' + esc(list && list.error || 'Nicht verfügbar') + '</div>'; return; }
+        if (!list.length) { box.innerHTML = '<div class="vx-empty">Hier ist noch nichts.</div>'; return; }
+        box.innerHTML = '<div class="vx-gal' + (galKind === 'emojis' || galKind === 'stickers' || galKind === 'icons' ? ' sm' : '') + '">' + list.map(f => galKind === 'prints'
+            ? '<figure class="vx-gitem"><img src="' + esc(f.img) + '" alt="" loading="lazy" data-zoom="' + esc(f.img) + '"><figcaption><b>' + esc(f.note || 'Print') + '</b><small>' + (f.world_id ? '<a href="#" data-world="' + esc(f.world_id) + '">' + esc(f.world) + '</a> · ' : esc(f.world) + ' · ') + esc(isoDT(f.created)) + '</small></figcaption>'
+                + '<span class="vx-gacts"><button type="button" class="bad" data-gdel="' + esc(f.id) + '" data-print="1" title="Löschen">🗑</button></span></figure>'
+            : '<figure class="vx-gitem"><img src="' + esc(f.img) + '" alt="" loading="lazy" data-zoom="' + esc(f.img) + '">' + (f.anim ? '<figcaption><small>✨ ' + esc(f.anim) + '</small></figcaption>' : '')
+                + '<span class="vx-gacts">' + (galKind === 'icons' ? '<button type="button" data-seticon="' + esc(f.id) + '" data-v="' + f.v + '" title="Als Profil-Icon verwenden">👤</button>' : '')
+                + '<button type="button" data-copy="' + esc(f.id) + '" title="Datei-ID kopieren">⧉</button><button type="button" class="bad" data-gdel="' + esc(f.id) + '" title="Löschen">🗑</button></span></figure>').join('') + '</div>';
+    }
+    function loadInventory(more) {
+        const box = $('#galBox');
+        if (!more) loading(box, 'Lade Inventar …');
+        api('inventory', { offset: more ? invItems.length : 0 }).then(d => { invItems = more ? invItems.concat(d.items) : d.items; invTotal = d.total; if (galData) renderGalKinds(); renderInventory(); }).catch(fail(box));
+    }
+    function renderInventory() {
+        const types = [...new Set(invItems.map(i => i.type).filter(Boolean))];
+        const t = ($('#invType') || {}).value || '';
+        const list = invItems.filter(i => !t || i.type === t);
+        $('#galBox').innerHTML = '<div class="vx-tools"><select id="invType"><option value="">Alle Arten (' + invItems.length + ')</option>' + types.map(x => '<option value="' + esc(x) + '"' + (x === t ? ' selected' : '') + '>' + esc(x) + '</option>').join('') + '</select></div>'
+            + (list.length ? '<div class="vx-gal sm">' + list.map(i => '<figure class="vx-gitem' + (i.archived ? ' arch' : '') + '">' + (i.img ? '<img src="' + esc(i.img) + '" alt="" loading="lazy" data-zoom="' + esc(i.img) + '">' : '<span class="vx-noimg vx-ginv">🎁</span>')
+                + '<figcaption><b>' + esc(i.name) + '</b><small>' + esc(i.type) + (i.created ? ' · ' + esc(isoDate(i.created)) : '') + '</small></figcaption></figure>').join('') + '</div>' : '<div class="vx-empty">Inventar ist leer.</div>')
+            + (invItems.length < invTotal ? '<button type="button" class="btn btn-sm" id="invMore">Weitere laden (' + (invTotal - invItems.length) + ')</button>' : '');
+        $('#invType').addEventListener('change', renderInventory);
+        const m = $('#invMore'); if (m) m.addEventListener('click', () => loadInventory(true));
+    }
+    $('#galKinds').addEventListener('click', e => { const c = e.target.closest('[data-gk]'); if (!c) return; galKind = c.dataset.gk; renderGalKinds(); renderGallery(); });
+    $('#galRefresh').addEventListener('click', () => { invItems = []; loadGallery(true); });
+    $('#galBox').addEventListener('click', e => {
+        const z = e.target.closest('[data-zoom]'), del = e.target.closest('[data-gdel]'), ic = e.target.closest('[data-seticon]');
+        if (z) { openModal('<img class="vx-zoom" src="' + esc(z.dataset.zoom) + '" alt="">'); return; }
+        if (del && confirm('Wirklich löschen? Das lässt sich nicht rückgängig machen.')) api(del.dataset.print ? 'print_delete' : 'file_delete', { id: del.dataset.gdel }).then(r => { toast(r.msg); loadGallery(true); }).catch(x => toast(x.message, true));
+        if (ic) api('set_icon', { id: ic.dataset.seticon, v: ic.dataset.v }).then(r => toast(r.msg)).catch(x => toast(x.message, true));
+    });
+    $('#galUpload').addEventListener('submit', e => {
+        e.preventDefault();
+        const f = e.target, body = new FormData(f);
+        body.append('act', 'file_upload'); body.append('kind', galKind);
+        const b = f.querySelector('button'); b.disabled = true; b.textContent = 'Lädt hoch …';
+        fetch('nexus.php', { method: 'POST', credentials: 'same-origin', body }).then(r => r.json()).then(d => { if (d.error) throw new Error(d.error); toast(d.msg); f.reset(); loadGallery(true); })
+            .catch(x => toast(x.message, true)).finally(() => { b.disabled = false; b.textContent = '⬆ Hochladen'; });
+    });
+
+    // ---------- Info-Push (VRChat-Neuigkeiten) ----------
+    let newsData = [], newsKind = 'help';
+    const NEWS = { help: '📘 Hilfe-Artikel', banner: '🪧 Quick-Menü-Banner', loading: '⏳ Ladebildschirme', other: '📦 Sonstiges' };
+    function loadNews() {
+        loaded.news = true;
+        loading($('#newsBox'), 'Lade Neuigkeiten …');
+        api('infopush').then(d => { newsData = d.items.sort((a, b) => String(b.date).localeCompare(String(a.date))); renderNews(); }).catch(fail($('#newsBox')));
+    }
+    function renderNews() {
+        const cnt = k => newsData.filter(i => i.kind === k).length;
+        $('#newsKinds').innerHTML = Object.entries(NEWS).filter(([k]) => cnt(k) || k === 'help').map(([k, l]) => '<button type="button" class="chip' + (k === newsKind ? ' on' : '') + '" data-nk="' + k + '">' + l + ' <small>' + cnt(k) + '</small></button>').join('');
+        const list = newsData.filter(i => i.kind === newsKind);
+        $('#newsBox').innerHTML = list.length ? list.map((i, n) => '<button type="button" class="vx-news' + (newsKind === 'loading' || newsKind === 'banner' ? ' wide' : '') + '" data-news="' + esc(i.id) + '">' + (i.img ? '<img src="' + esc(i.img) + '" alt="" loading="lazy">' : '<span class="vx-noimg">📰</span>')
+            + '<span><b>' + esc(i.title) + '</b><small>' + esc(i.desc) + '</small></span><time>' + esc(isoDT(i.date)) + '</time></button>').join('') : '<div class="vx-empty">Nichts in dieser Kategorie.</div>';
+    }
+    $('#newsRefresh').addEventListener('click', loadNews);
+    $('#newsKinds').addEventListener('click', e => { const c = e.target.closest('[data-nk]'); if (c) { newsKind = c.dataset.nk; renderNews(); } });
+    $('#newsBox').addEventListener('click', e => {
+        const b = e.target.closest('[data-news]');
+        if (!b) return;
+        const i = newsData.find(x => x.id === b.dataset.news);
+        openModal((i.article_img || i.img ? '<img class="vx-zoom" src="' + esc(i.article_img || i.img) + '" alt="">' : '') + '<h2>' + esc(i.title) + '</h2><p class="vx-small">' + esc(isoDT(i.date)) + '</p>'
+            + (i.article ? '<div class="fmt">' + i.article + '</div>' : '<p>' + esc(i.desc) + '</p>') + (i.link ? '<p><a class="btn btn-sm" href="' + esc(i.link) + '" target="_blank" rel="noopener noreferrer">↗ Mehr erfahren</a></p>' : ''));
+    });
 
     // =============== Direkt-Zugriff (Zwischenablage, Einfügen, Befehlspalette) ===============
     const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';

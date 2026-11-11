@@ -239,6 +239,58 @@ span.vx-card-img { display: flex; align-items: center; justify-content: center; 
 .vx-preset { display: inline-flex; align-items: center; gap: 4px; }
 .vx-preset button { background: none; border: none; color: var(--text-muted); cursor: pointer; }
 .vx-prefs .vx-auto { display: flex; margin-top: 6px; }
+/* Runde 3: Avatar-Gruppen, Gruppen-Moderation, Kalender, Galerie, Info-Push */
+.vx-avsec { margin-bottom: 20px; }
+.vx-avsec h3 { font-size: 0.8rem; letter-spacing: 2px; text-transform: uppercase; color: var(--accent-gold); margin: 0 0 10px; border-bottom: 1px solid rgba(243, 194, 98, 0.3); padding-bottom: 6px; }
+.vx-avsec h3 small { color: var(--text-muted); }
+.vx-card-acts { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; align-items: center; }
+.vx-avgrp { width: auto; max-width: 150px; padding: 3px 6px; font-size: 0.7rem; }
+.vx-gsec h3 { margin-bottom: 8px; }
+.vx-group.mod { border-color: rgba(80, 250, 123, 0.45); box-shadow: inset 3px 0 0 #50fa7b; }
+.vx-pill.mutual { --pc: #50fa7b; }
+.vx-pron { font-size: 0.66rem; color: var(--accent-purple); border: 1px solid rgba(189, 147, 249, 0.4); padding: 0 5px; margin-left: 5px; font-weight: 400; }
+.vx-umods { display: flex; flex-direction: column; gap: 6px; }
+.vx-umod { display: flex; gap: 10px; align-items: flex-start; padding: 8px; border: 1px solid rgba(80, 250, 123, 0.25); background: rgba(80, 250, 123, 0.03); }
+.vx-umod > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.vx-umod small { color: var(--text-muted); font-size: 0.72rem; }
+.vx-g-icon.sm { width: 34px; height: 34px; }
+.vx-calcols { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); align-items: start; }
+.vx-cal { display: flex; gap: 12px; align-items: flex-start; padding: 10px; background: var(--panel-bg); border: 1px solid rgba(56, 213, 230, 0.16); margin-bottom: 6px; }
+.vx-cal.fav { border-left: 3px solid var(--accent-gold); }
+.vx-cal.live { box-shadow: 0 0 0 1px #50fa7b, 0 0 14px rgba(80, 250, 123, 0.2); }
+.vx-cal-img { width: 110px; height: 62px; object-fit: cover; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; }
+.vx-cal-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.vx-cal-main small { color: var(--text-muted); font-size: 0.74rem; }
+.vx-cal-main small a { color: var(--accent-cyan); }
+.vx-cal-main details summary { cursor: pointer; font-size: 0.72rem; color: var(--accent-cyan); }
+.vx-cal .vx-m-acts { flex-direction: column; align-items: stretch; }
+.vx-icsrow { display: flex; gap: 6px; align-items: center; }
+.vx-icsrow code { flex: 1; min-width: 0; font-size: 0.68rem; word-break: break-all; background: rgba(4, 6, 9, 0.9); border: 1px solid var(--border-color); padding: 5px 8px; }
+.vx-gal { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(200px, 46%), 1fr)); gap: 10px; }
+.vx-gal.sm { grid-template-columns: repeat(auto-fill, minmax(min(130px, 30%), 1fr)); }
+.vx-gitem { margin: 0; background: var(--panel-bg); border: 1px solid rgba(56, 213, 230, 0.16); position: relative; display: flex; flex-direction: column; }
+.vx-gitem.arch { opacity: 0.5; }
+.vx-gitem img, .vx-ginv { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; cursor: zoom-in; display: block; background: #000; }
+.vx-gal.sm .vx-gitem img, .vx-gal.sm .vx-ginv { aspect-ratio: 1; object-fit: contain; }
+.vx-ginv { display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+.vx-gitem figcaption { padding: 5px 8px; font-size: 0.74rem; display: flex; flex-direction: column; }
+.vx-gitem figcaption small { color: var(--text-muted); }
+.vx-gitem figcaption a { color: var(--accent-cyan); }
+.vx-gacts { position: absolute; top: 4px; right: 4px; display: flex; gap: 2px; opacity: 0; transition: opacity 0.15s; }
+.vx-gitem:hover .vx-gacts { opacity: 1; }
+@media (hover: none) { .vx-gacts { opacity: 1; } }
+.vx-gacts button { background: rgba(4, 6, 9, 0.85); border: 1px solid var(--border-color); color: #fff; cursor: pointer; padding: 3px 6px; font-size: 0.8rem; }
+.vx-zoom { max-width: 100%; max-height: 78vh; display: block; margin: 0 auto 10px; }
+.vx-news { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; gap: 12px; align-items: center; width: 100%; text-align: left; background: var(--panel-bg); border: 1px solid rgba(56, 213, 230, 0.14); padding: 8px; margin-bottom: 6px; color: var(--text-main); font: inherit; cursor: pointer; }
+.vx-news:hover { border-color: var(--accent-cyan); }
+.vx-news img, .vx-news .vx-noimg { width: 110px; height: 62px; object-fit: cover; }
+.vx-news.wide { grid-template-columns: 220px minmax(0, 1fr) auto; }
+.vx-news.wide img { width: 220px; height: 124px; }
+.vx-news span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.vx-news small { color: var(--text-muted); font-size: 0.74rem; }
+.vx-news time { font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; }
+@media (max-width: 860px) { .vx-calcols { grid-template-columns: minmax(0, 1fr); } .vx-cal { flex-wrap: wrap; } .vx-cal .vx-m-acts { flex-direction: row; width: 100%; } .vx-news, .vx-news.wide { grid-template-columns: 80px minmax(0, 1fr); } .vx-news img, .vx-news.wide img { width: 80px; height: 45px; } .vx-news time { display: none; } .vx-cal-img { width: 70px; height: 40px; } }
+
 /* Direkt-Zugriff & Befehlspalette */
 .vx-offer { position: fixed; right: 18px; bottom: 18px; z-index: 1500; max-width: min(520px, calc(100vw - 36px)); background: var(--panel-bg); border: 1px solid var(--accent-gold); box-shadow: 0 0 24px rgba(243, 194, 98, 0.25);
             padding: 12px 36px 12px 14px; font-size: 0.85rem; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -264,3 +316,6 @@ span.vx-card-img { display: flex; align-items: center; justify-content: center; 
     .vx-barrow { grid-template-columns: minmax(0, 110px) minmax(0, 1fr) auto; }
     .vx-heat { font-size: 0.5rem; }
 }
+.vx-note-form .vx-auto, .vx-prefs .vx-auto, #calSync .vx-auto, #calCreate .vx-auto { white-space: normal; align-items: flex-start; }
+.vx-cal .vx-m-acts { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; max-width: 230px; }
+@media (max-width: 860px) { .vx-cal .vx-m-acts { max-width: none; } #calCreate .vx-tools > div { min-width: 0; } }

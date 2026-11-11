@@ -116,6 +116,32 @@ function vrc_db(): PDO {
             PRAGMA user_version = 3;
         ");
     }
+    if ((int)$db->query('PRAGMA user_version')->fetchColumn() < 4) {
+        $db->exec("
+            ALTER TABLE friends ADD COLUMN pronouns TEXT NOT NULL DEFAULT '';
+            CREATE TABLE vrc_events (
+                user_id     INTEGER NOT NULL,
+                id          TEXT NOT NULL,
+                group_id    TEXT NOT NULL DEFAULT '',
+                group_name  TEXT NOT NULL DEFAULT '',
+                title       TEXT NOT NULL DEFAULT '',
+                description TEXT NOT NULL DEFAULT '',
+                starts      INTEGER NOT NULL,
+                ends        INTEGER NOT NULL,
+                category    TEXT NOT NULL DEFAULT '',
+                access      TEXT NOT NULL DEFAULT '',
+                image       TEXT NOT NULL DEFAULT '',
+                interested  INTEGER NOT NULL DEFAULT 0,
+                following   INTEGER NOT NULL DEFAULT 0,
+                platforms   TEXT NOT NULL DEFAULT '',
+                languages   TEXT NOT NULL DEFAULT '',
+                tags        TEXT NOT NULL DEFAULT '',
+                updated     INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (user_id, id)
+            );
+            PRAGMA user_version = 4;
+        ");
+    }
     return $db;
 }
 
@@ -384,8 +410,8 @@ function vrc_sync(int $uid, bool $force = false): array {
 
     $now = time();
     $feed = $db->prepare('INSERT INTO feed (user_id, ts, type, vrc_id, display_name, old, new) VALUES (?, ?, ?, ?, ?, ?, ?)');
-    $up = $db->prepare('INSERT OR REPLACE INTO friends (user_id, vrc_id, display_name, state, status, status_desc, location, platform, image, avatar_thumb, tags, bio, last_login, since, updated, fav_group, friend_since)
-                        VALUES (:u, :id, :name, :state, :status, :sd, :loc, :pf, :img, :av, :tags, :bio, :ll, :since, :upd, :fg, :fs)');
+    $up = $db->prepare('INSERT OR REPLACE INTO friends (user_id, vrc_id, display_name, state, status, status_desc, location, platform, image, avatar_thumb, tags, bio, last_login, since, updated, fav_group, friend_since, pronouns)
+                        VALUES (:u, :id, :name, :state, :status, :sd, :loc, :pf, :img, :av, :tags, :bio, :ll, :since, :upd, :fg, :fs, :pr)');
     $log = function ($type, $id, $name, $o = '', $n = '') use ($feed, $uid, $now, $first) { if (!$first) $feed->execute([$uid, $now, $type, $id, $name, (string)$o, (string)$n]); };
     $worlds = [];
     $db->beginTransaction();
@@ -424,7 +450,8 @@ function vrc_sync(int $uid, bool $force = false): array {
             $log('friend_add', $id, $row['name']);
         }
         if ($state === 'online') { $l = vrc_location($loc); if (!empty($l['world'])) $worlds[] = $l['world']; }
-        $up->execute(['u' => $uid, 'id' => $id, 'since' => $since, 'upd' => $now, 'fg' => $o['fav_group'] ?? '', 'fs' => $o ? (int)$o['friend_since'] : ($first ? 0 : $now)] + $row);
+        $up->execute(['u' => $uid, 'id' => $id, 'since' => $since, 'upd' => $now, 'fg' => $o['fav_group'] ?? '', 'fs' => $o ? (int)$o['friend_since'] : ($first ? 0 : $now),
+                      'pr' => mb_substr((string)($f['pronouns'] ?? ($o['pronouns'] ?? '')), 0, 32)] + $row);
     }
     // Freunde, die nicht mitgeladen wurden, aber laut /auth/user offline sind
     foreach ($old as $id => $o) {
@@ -458,7 +485,10 @@ function vrc_sync(int $uid, bool $force = false): array {
 
     $l = vrc_location((string)($me['location'] ?? ''));
     if (!empty($l['world'])) $worlds[] = $l['world'];
-    if ($need_offline) vrc_sync_favorites($acc);
+    if ($need_offline) {
+        vrc_sync_favorites($acc);
+        try { vrc_calendar_refresh($acc); } catch (VrcAuthError $e) { throw $e; } catch (Throwable $e) { /* Kalender ist optional */ }
+    }
     vrc_fetch_worlds($acc, $worlds);
     return ['synced' => true, 'wait' => VRC_SYNC_MIN];
 }
@@ -499,7 +529,7 @@ function vrc_friend_list(int $uid): array {
                 'loc' => $loc, 'platform' => VRC_PLATFORM[$r['platform']] ?? $r['platform'], 'image' => $r['image'], 'trust' => vrc_trust($tags),
                 'since' => (int)$r['since'], 'note' => (string)$r['note'], 'favorite' => (bool)$r['favorite'], 'last_login' => $r['last_login'],
                 'pf' => $r['platform'], 'fav_group' => $r['fav_group'], 'friend_since' => (int)$r['friend_since'], 'status_key' => $r['status'],
-                'lists' => array_values(array_filter(array_map('trim', explode(',', (string)$r['ltags'])), 'strlen')), 'watch' => (bool)$r['watch']];
+                'lists' => array_values(array_filter(array_map('trim', explode(',', (string)$r['ltags'])), 'strlen')), 'watch' => (bool)$r['watch'], 'pronouns' => (string)($r['pronouns'] ?? '')];
     }, $rows);
 }
 
@@ -726,4 +756,178 @@ function vrc_export(int $uid, string $what): void {
         }
     }
     fclose($out);
+}
+
+// ---------- Gruppenrechte ----------
+
+const VRC_MOD_PERMS = ['*', 'group-members-manage', 'group-members-remove', 'group-bans-manage', 'group-invites-manage', 'group-roles-assign', 'group-audit-view',
+                       'group-announcement-manage', 'group-calendar-manage', 'group-instance-moderate', 'group-members-viewall'];
+
+/** Meine Rechte je Gruppe: [grp_id => [rechte…]] */
+function vrc_group_perms(array &$acc, array $groups): array {
+    $out = [];
+    try {
+        $res = vrc_call($acc, 'GET', '/users/' . rawurlencode($acc['vrc_id']) . '/groups/permissions');
+        foreach ((array)$res as $k => $v) {
+            if (is_string($k) && strpos($k, 'grp_') === 0) $out[$k] = array_values((array)$v);
+            elseif (is_array($v) && !empty($v['groupId'])) $out[$v['groupId']] = array_values((array)($v['permissions'] ?? []));
+        }
+    } catch (VrcAuthError $e) {
+        throw $e;
+    } catch (Throwable $e) {
+        // Ausweichweg: Rechte einzeln abfragen (höchstens 25 Gruppen)
+        foreach (array_slice($groups, 0, 25) as $g) {
+            try { $d = vrc_call($acc, 'GET', '/groups/' . rawurlencode($g['groupId'] ?? $g['id'])); $out[$d['id']] = (array)($d['myMember']['permissions'] ?? []); }
+            catch (VrcAuthError $e2) { throw $e2; } catch (Throwable $e2) {}
+        }
+    }
+    return $out;
+}
+
+function vrc_can_moderate(array $perms): bool {
+    return (bool)array_intersect($perms, VRC_MOD_PERMS);
+}
+
+// ---------- VRChat-Kalender (Gruppen-Events) ----------
+
+function vrc_event_row(array $e, array $gnames): ?array {
+    $id = (string)($e['id'] ?? '');
+    $start = strtotime((string)($e['startsAt'] ?? ''));
+    if ($id === '' || !$start) return null;
+    $gid = (string)($e['ownerId'] ?? ($e['groupId'] ?? ''));
+    $img = (string)($e['imageUrl'] ?? '');
+    return ['id' => $id, 'group_id' => $gid, 'group_name' => $gnames[$gid] ?? (string)($e['groupName'] ?? ''), 'title' => mb_substr((string)($e['title'] ?? ''), 0, 200),
+            'description' => mb_substr((string)($e['description'] ?? ''), 0, 4000), 'starts' => $start, 'ends' => strtotime((string)($e['endsAt'] ?? '')) ?: $start + 3600,
+            'category' => (string)($e['category'] ?? ''), 'access' => (string)($e['accessType'] ?? ''), 'image' => preg_match('#^https://#', $img) ? $img : '',
+            'interested' => (int)($e['interestedUserCount'] ?? 0), 'following' => !empty($e['userInterest']['isFollowing']) ? 1 : 0,
+            'platforms' => implode(',', (array)($e['platforms'] ?? [])), 'languages' => implode(',', (array)($e['languages'] ?? [])), 'tags' => implode(',', (array)($e['tags'] ?? []))];
+}
+
+/** Events der eigenen Gruppen + gefolgte Events abrufen und zwischenspeichern; danach den Dashboard-Kalender abgleichen */
+function vrc_calendar_refresh(array &$acc): int {
+    $groups = vrc_call($acc, 'GET', '/users/' . rawurlencode($acc['vrc_id']) . '/groups');
+    $gnames = [];
+    foreach ((array)$groups as $g) if (!empty($g['groupId'])) $gnames[$g['groupId']] = (string)($g['name'] ?? '');
+    $events = [];
+    $list = function ($r) { return isset($r['results']) ? (array)$r['results'] : (array)$r; };
+    foreach ([0, 1, 2] as $m) {   // dieser und die nächsten zwei Monate
+        $date = gmdate('Y-m-01\T00:00:00\Z', strtotime("first day of +$m month"));
+        foreach ($list(vrc_call($acc, 'GET', '/calendar', ['date' => $date, 'n' => 100])) as $e) if (is_array($e) && !empty($e['id'])) $events[$e['id']] = $e;
+    }
+    try { foreach ($list(vrc_call($acc, 'GET', '/calendar/following', ['n' => 100])) as $e) if (is_array($e) && !empty($e['id'])) $events[$e['id']] = ($events[$e['id']] ?? []) + $e + ['userInterest' => ['isFollowing' => true]]; }
+    catch (VrcAuthError $e) { throw $e; } catch (Throwable $e) {}
+    $db = vrc_db();
+    $uid = (int)$acc['user_id'];
+    $db->beginTransaction();
+    $db->prepare('DELETE FROM vrc_events WHERE user_id = ? AND (ends < ? OR starts >= ?)')->execute([$uid, time() - 30 * 86400, strtotime('first day of this month 00:00')]);
+    $ins = $db->prepare('INSERT OR REPLACE INTO vrc_events (user_id, id, group_id, group_name, title, description, starts, ends, category, access, image, interested, following, platforms, languages, tags, updated)
+                         VALUES (:u, :id, :group_id, :group_name, :title, :description, :starts, :ends, :category, :access, :image, :interested, :following, :platforms, :languages, :tags, :upd)');
+    $n = 0;
+    foreach ($events as $e) {
+        if (!empty($e['deletedAt']) || !empty($e['isDraft'])) continue;
+        $row = vrc_event_row($e, $gnames);
+        if (!$row) continue;
+        $ins->execute(['u' => $uid, 'upd' => time()] + $row);
+        $n++;
+    }
+    $db->commit();
+    set_setting('vrc_cal_refresh_' . $uid, (string)time());
+    vrc_calendar_push($uid);
+    return $n;
+}
+
+function vrc_calendar_list(int $uid): array {
+    $st = vrc_db()->prepare('SELECT * FROM vrc_events WHERE user_id = ? AND ends >= ? ORDER BY starts');
+    $st->execute([$uid, time() - 6 * 3600]);
+    return $st->fetchAll();
+}
+
+/** Events als iCalendar (für den Dashboard-Kalender und Handy-Kalender) */
+function vrc_calendar_ics(int $uid): string {
+    $esc = function ($s) { return str_replace(["\\", ";", ",", "\r\n", "\n"], ["\\\\", "\\;", "\\,", "\\n", "\\n"], (string)$s); };
+    $out = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//GhostNode//VRC Nexus//DE', 'CALSCALE:GREGORIAN', 'X-WR-CALNAME:VRChat-Gruppen-Events'];
+    foreach (vrc_calendar_list($uid) as $e) {
+        $out = array_merge($out, ['BEGIN:VEVENT', 'UID:' . $e['id'] . '@vrchat', 'DTSTAMP:' . gmdate('Ymd\THis\Z'), 'DTSTART:' . gmdate('Ymd\THis\Z', (int)$e['starts']), 'DTEND:' . gmdate('Ymd\THis\Z', (int)$e['ends']),
+            'SUMMARY:' . $esc(($e['following'] ? '★ ' : '') . $e['title']), 'LOCATION:' . $esc('VRChat' . ($e['group_name'] ? ' – ' . $e['group_name'] : '')),
+            'CATEGORIES:' . $esc($e['group_name'] ?: 'VRChat'), 'URL:https://vrchat.com/home/group/' . rawurlencode($e['group_id']) . '/calendar/' . rawurlencode($e['id']),
+            'DESCRIPTION:' . $esc(trim($e['description'] . "\n\n" . ($e['interested'] ? $e['interested'] . ' Interessierte · ' : '') . 'aus VRC Nexus')), 'END:VEVENT']);
+    }
+    $out[] = 'END:VCALENDAR';
+    return implode("\r\n", $out) . "\r\n";
+}
+
+/** Abo im Dashboard-Kalender (intern, „nexus:<benutzer>“) anlegen/finden */
+function vrc_calendar_sub(int $uid, bool $create): ?int {
+    require_once __DIR__ . '/calendar.php';
+    $st = cal_db()->prepare('SELECT id FROM subscriptions WHERE url = ?');
+    $st->execute(['nexus:' . $uid]);
+    $id = $st->fetchColumn();
+    if ($id || !$create) return $id ? (int)$id : null;
+    $u = user_load($uid);
+    cal_db()->prepare('INSERT INTO subscriptions (name, url, color, enabled, private, refresh_minutes) VALUES (?, ?, ?, 1, 1, 30)')
+            ->execute(['🥽 VRChat-Events' . ($u ? ' (' . user_label($u) . ')' : ''), 'nexus:' . $uid, '#38d5e6']);
+    return (int)cal_db()->lastInsertId();
+}
+
+/** Zwischengespeicherte Events in den Dashboard-Kalender schreiben (falls verbunden) */
+function vrc_calendar_push(int $uid): ?array {
+    $sub = vrc_calendar_sub($uid, false);
+    if (!$sub) return null;
+    require_once __DIR__ . '/calendar_ics.php';
+    return cal_sync_subscription($sub, true);
+}
+
+function vrc_ics_token(int $uid, bool $new = false): string {
+    $t = setting('vrc_ics_' . $uid, '');
+    if ($t === '' || $new) { $t = bin2hex(random_bytes(16)); set_setting('vrc_ics_' . $uid, $t); }
+    return $t;
+}
+
+// ---------- Dateien: Hochladen & Bilder durchreichen ----------
+
+/** Multipart-Upload an VRChat (Galerie, Icon, Emoji, Sticker) */
+function vrc_upload(array &$acc, string $path, array $fields, string $file, string $mime, string $name): array {
+    $ch = curl_init(vrc_api_base() . $path);
+    $jar = [];
+    foreach ($acc['cookie_jar'] as $k => $v) if ($v !== '') $jar[] = $k . '=' . $v;
+    curl_setopt_array($ch, [CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true, CURLOPT_USERAGENT => vrc_user_agent(), CURLOPT_TIMEOUT => 60,
+                            CURLOPT_HTTPHEADER => ['Accept: application/json', 'Cookie: ' . implode('; ', $jar)],
+                            CURLOPT_POSTFIELDS => $fields + ['file' => new CURLFile($file, $mime, $name)]]);
+    $raw = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    curl_close($ch);
+    $json = json_decode((string)$raw, true);
+    if ($code < 200 || $code >= 300) throw new RuntimeException('Upload abgelehnt: ' . vrc_error_text($code, is_array($json) ? $json : null) . ($code === 403 ? ' (für viele Uploads ist VRC+ nötig)' : ''));
+    return is_array($json) ? $json : [];
+}
+
+/** Bild einer VRChat-Datei (braucht die Anmeldung) an den Browser durchreichen */
+function vrc_proxy_file(array &$acc, string $file_id, int $version): void {
+    $jar = [];
+    foreach ($acc['cookie_jar'] as $k => $v) if ($v !== '') $jar[] = $k . '=' . $v;
+    $ch = curl_init(vrc_api_base() . '/file/' . rawurlencode($file_id) . '/' . $version . '/file');
+    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => true, CURLOPT_MAXREDIRS => 3, CURLOPT_TIMEOUT => 30, CURLOPT_USERAGENT => vrc_user_agent(),
+                            CURLOPT_HTTPHEADER => ['Cookie: ' . implode('; ', $jar)]]);
+    $body = curl_exec($ch);
+    $type = (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+    $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    curl_close($ch);
+    if ($code !== 200 || !preg_match('#^image/(png|jpe?g|gif|webp)#i', $type)) { http_response_code(404); exit; }
+    header('Content-Type: ' . $type);
+    header('Cache-Control: private, max-age=86400');
+    header('X-Content-Type-Options: nosniff');
+    echo $body;
+}
+
+/** Datei-Eintrag der API -> [id, neueste fertige Version] */
+function vrc_file_version(array $f): int {
+    $v = 0;
+    foreach ((array)($f['versions'] ?? []) as $ver) if (($ver['status'] ?? 'complete') === 'complete' && (int)($ver['version'] ?? 0) > $v && !empty($ver['file'])) $v = (int)$ver['version'];
+    return $v ?: max(1, count((array)($f['versions'] ?? [])) - 1);
+}
+
+/** Bildadresse für den Browser: VRChat-Dateien laufen über nexus.php?img=…, alles andere direkt */
+function vrc_img_url(string $url): string {
+    if (preg_match('#/file/(file_[0-9a-f\-]{36})/(\d+)#i', $url, $m)) return 'nexus.php?img=' . $m[1] . '&v=' . $m[2];
+    return preg_match('#^https://#', $url) ? $url : '';
 }

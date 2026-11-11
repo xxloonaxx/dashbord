@@ -72,6 +72,12 @@ per FTP die Datei `data/site_….sqlite` umbenennen → beim nächsten Aufruf er
 - **Zugriff pro Seite**: 🌍 öffentlich · 🔑 nur angemeldet · 🛡️ nur bestimmte Rollen.
   Gäste sehen geschützte Seiten mit Schloss und werden zur Anmeldung geleitet.
 
+## Gender-Modus
+
+Über den Knopf **⚧** neben deinem Namen oben rechts (oder in VRC Nexus → Konto) lassen sich die Texte des Dashboards gendern:
+Sternchen (Freund\*innen), Doppelpunkt (Freund:innen), Unterstrich (Freund_innen), Mediopunkt (Freund·innen) oder Binnen-I
+(FreundInnen). Die Einstellung gilt pro Browser; eigene Inhalte wie Notizen oder Bios bleiben unverändert.
+
 ## Formatierung (überall gleich)
 
 Notizen, Karten, Tagebuch, Tabellen-Texte, Checklisten-Punkte, Beschreibungen im Index und in den Link-Hubs,
@@ -129,6 +135,21 @@ anderen Rollen in der Admin-Zentrale geben). Jeder Dashboard-Benutzer verbindet 
 - **Instanzen**: 🔖 merken, 🔗 Einladungslink kopieren, 📣 direkt in Discord teilen (mit der Discord-Zentrale),
   „Meine letzten Instanzen“ mit Wieder-Beitreten, 🎲 Welt-Roulette.
 - **💤 Lange nicht online**: Freunde, die über 30 Tage nicht da waren (in der Statistik).
+- **Avatare**: Favoriten nach VRChat-Favoritengruppen gruppiert (mit deren Namen), in andere Gruppe verschieben; sortieren nach
+  Gruppe, zuletzt aktualisiert, neueste, Name, Autor, Plattform (PC + Quest zuerst) oder VRChat-Reihenfolge; Plattform-Filter.
+- **Gruppen**: Gruppen, in denen du Moderationsrechte hast, stehen **ganz oben** (🛡️), danach alle weiteren.
+- **Gruppen-Moderation im Profil**: Im Profil-Dialog siehst du für jede Gruppe, die du moderierst, ob die Person Mitglied ist
+  (seit wann, Rollen) und kannst je nach Recht einladen, Rollen vergeben/entziehen, entfernen, bannen oder entbannen.
+  Gemeinsame Gruppen werden markiert (🤝).
+- **📅 Kalender**: Events deiner VRChat-Gruppen (und solche, für die du dich interessierst) für die nächsten Monate – mit Filter
+  nach Gruppe/Kategorie, ⭐ „Interessiert“, neuen Events anlegen und löschen (mit dem Gruppenrecht „Kalender verwalten“).
+  **Synchronisiert mit dem Dashboard-Kalender** (privates Abo „🥽 VRChat-Events“, aktualisiert sich automatisch) und als
+  **Abo-Link** (`nexus.php?ics=…`) für Handy, Outlook oder Google-Kalender.
+- **🖼️ Galerie** wie im VRChat-Menü: Fotos, Icons, Emojis, Sticker (mit Anzahl/Limit), Prints und Inventar – ansehen, hochladen
+  (Emojis mit Animation; VRChat verlangt dafür meist VRC+), löschen, Icon als Profilbild setzen. Bilder laufen über den Server,
+  weil VRChat sie nur angemeldet ausliefert.
+- **📰 Info-Push**: Hilfe-Artikel, Quick-Menü-Banner und Ladebildschirme von VRChat mit Artikelansicht.
+- **Pronomen** der Freunde werden in der Liste angezeigt.
 - Tastenkürzel: `Strg+K` Palette, `Strg+V` ID öffnen, `/` Suche, `R` aktualisieren, `1`–`0` Reiter, `Esc` schließen.
 - Moderationsaktionen (Kick, Bann, Blockieren, Freundschaft beenden …) landen im Protokoll der Admin-Zentrale.
 

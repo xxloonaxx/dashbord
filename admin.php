@@ -810,5 +810,6 @@ function bytes(int $b): string {
 <?php endif; ?>
 
 <script src="assets/admin.js"></script>
+<script src="assets/gender.js"></script>
 </body>
 </html>

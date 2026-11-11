@@ -385,4 +385,5 @@ function auth_corner(): void {
         .ac-dot { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
         @media (max-width: 640px) { .auth-corner { top: auto; bottom: 12px; } }
     </style>
+    <script src="assets/gender.js" defer></script>
 <?php }

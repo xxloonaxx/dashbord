@@ -6,12 +6,32 @@
  */
 require_once __DIR__ . '/inc/vrchat.php';
 
+// Handy-/Kalender-Abo der VRChat-Gruppen-Events: nexus.php?ics=<token> (ohne Anmeldung, nur mit geheimem Token)
+if (isset($_GET['ics'])) {
+    $st = site_db()->prepare("SELECT key FROM settings WHERE key LIKE 'vrc_ics_%' AND value = ?");
+    $st->execute([(string)$_GET['ics']]);
+    $key = $st->fetchColumn();
+    if (!$key || strlen((string)$_GET['ics']) !== 32) { http_response_code(404); exit('Unbekannter Link'); }
+    header('Content-Type: text/calendar; charset=utf-8');
+    header('Content-Disposition: inline; filename="vrchat-events.ics"');
+    echo vrc_calendar_ics((int)substr($key, 8));
+    exit;
+}
+
 auth_require_setup();
 require_permission('vrcx.access');
 $me = current_user();
 $uid = (int)$me['id'];
 
 if (isset($_GET['export']) && vrc_account($uid)) { vrc_export($uid, (string)$_GET['export']); exit; }
+// Bilder aus der VRChat-Galerie (brauchen die VRChat-Anmeldung) durchreichen
+if (isset($_GET['img'])) {
+    session_write_close();
+    $acc = vrc_account($uid);
+    if (!$acc || !preg_match('/^file_[0-9a-f\-]{36}$/i', (string)$_GET['img'])) { http_response_code(404); exit; }
+    vrc_proxy_file($acc, (string)$_GET['img'], max(1, (int)($_GET['v'] ?? 1)));
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     guard_post('vrcx.access');
@@ -161,7 +181,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 case 'groups':
                     $res = vrc_call($acc, 'GET', '/users/' . rawurlencode($acc['vrc_id']) . '/groups');
                     $mine = $acc['vrc_id'];
-                    $out = ['groups' => array_map(function ($g) use ($mine) { return ['id' => $g['groupId'] ?? '', 'name' => $g['name'] ?? '', 'short' => ($g['shortCode'] ?? '') . '.' . ($g['discriminator'] ?? ''),
+                    $gperms = vrc_group_perms($acc, (array)$res);
+                    $out = ['groups' => array_map(function ($g) use ($mine, $gperms) { $p = ($g['ownerId'] ?? '') === $mine ? ['*'] : ($gperms[$g['groupId'] ?? ''] ?? []); return ['perms' => $p, 'mod' => vrc_can_moderate($p)] + ['id' => $g['groupId'] ?? '', 'name' => $g['name'] ?? '', 'short' => ($g['shortCode'] ?? '') . '.' . ($g['discriminator'] ?? ''),
                                                                           'icon' => $g['iconUrl'] ?? '', 'banner' => $g['bannerUrl'] ?? '', 'members' => (int)($g['memberCount'] ?? 0),
                                                                           'rep' => !empty($g['isRepresenting']), 'owner' => ($g['ownerId'] ?? '') === $mine]; }, is_array($res) ? $res : [])];
                     break;
@@ -228,6 +249,170 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     vrc_call($acc, 'PUT', '/groups/' . rawurlencode($valid($id, 'grp')) . '/representation', [], ['isRepresenting' => !empty($in['on'])]);
                     $out = ['msg' => !empty($in['on']) ? 'Du repräsentierst jetzt diese Gruppe.' : 'Repräsentation entfernt.'];
                     break;
+                // ----- Gruppen-Moderation im Profil -----
+                case 'user_mod':
+                    $target = $valid($id, 'usr');
+                    $groups = (array)vrc_call($acc, 'GET', '/users/' . rawurlencode($acc['vrc_id']) . '/groups');
+                    $perms = vrc_group_perms($acc, $groups);
+                    $items = [];
+                    foreach ($groups as $g) {
+                        $gid = (string)($g['groupId'] ?? '');
+                        $p = ($g['ownerId'] ?? '') === $acc['vrc_id'] ? ['*'] : ($perms[$gid] ?? []);
+                        if ($gid === '' || !vrc_can_moderate($p) || count($items) >= 15) continue;
+                        $member = null;
+                        try { $member = vrc_call($acc, 'GET', '/groups/' . rawurlencode($gid) . '/members/' . rawurlencode($target)); }
+                        catch (VrcAuthError $e) { throw $e; } catch (Throwable $e) { $member = null; }
+                        $roles = [];
+                        try { $roles = array_map(function ($r) { return ['id' => $r['id'] ?? '', 'name' => $r['name'] ?? '']; }, (array)vrc_call($acc, 'GET', '/groups/' . rawurlencode($gid) . '/roles')); }
+                        catch (VrcAuthError $e) { throw $e; } catch (Throwable $e) {}
+                        $items[] = ['id' => $gid, 'name' => $g['name'] ?? '', 'icon' => $g['iconUrl'] ?? '', 'perms' => $p, 'roles' => $roles,
+                                    'member' => $member && !empty($member['userId'] ?? ($member['id'] ?? '')) ? ['roles' => (array)($member['roleIds'] ?? []), 'joined' => $member['joinedAt'] ?? '',
+                                                 'status' => $member['membershipStatus'] ?? 'member', 'rep' => !empty($member['isRepresenting'])] : null];
+                    }
+                    $out = ['groups' => $items];
+                    break;
+
+                // ----- VRChat-Kalender -----
+                case 'calendar':
+                    $last = (int)setting('vrc_cal_refresh_' . $uid, '0');
+                    $err = '';
+                    if (!empty($in['refresh']) || time() - $last > 900) {
+                        try { vrc_calendar_refresh($acc); } catch (VrcAuthError $e) { throw $e; } catch (Throwable $e) { $err = $e->getMessage(); }
+                    }
+                    $groups = (array)vrc_call($acc, 'GET', '/users/' . rawurlencode($acc['vrc_id']) . '/groups');
+                    $perms = vrc_group_perms($acc, $groups);
+                    $can = [];
+                    foreach ($groups as $g) {
+                        $p = ($g['ownerId'] ?? '') === $acc['vrc_id'] ? ['*'] : ($perms[$g['groupId'] ?? ''] ?? []);
+                        if (array_intersect($p, ['*', 'group-calendar-manage'])) $can[] = ['id' => $g['groupId'], 'name' => $g['name'] ?? ''];
+                    }
+                    $base = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . strtok($_SERVER['REQUEST_URI'] ?? '/nexus.php', '?');
+                    $out = ['events' => array_map(function ($e) {
+                        return ['id' => $e['id'], 'group' => $e['group_id'], 'group_name' => $e['group_name'], 'title' => $e['title'], 'html' => format_text($e['description'], ['external' => true]),
+                                'start' => (int)$e['starts'], 'end' => (int)$e['ends'], 'category' => $e['category'], 'access' => $e['access'], 'image' => $e['image'], 'interested' => (int)$e['interested'],
+                                'following' => (bool)$e['following'], 'platforms' => array_filter(explode(',', $e['platforms'])), 'languages' => array_filter(explode(',', $e['languages'])), 'tags' => array_filter(explode(',', $e['tags']))];
+                    }, vrc_calendar_list($uid)), 'linked' => (bool)vrc_calendar_sub($uid, false), 'can_link' => can('calendar.edit') || can('calendar.subscriptions'),
+                       'ics' => $base . '?ics=' . vrc_ics_token($uid), 'refreshed' => (int)setting('vrc_cal_refresh_' . $uid, '0'), 'error' => $err, 'can_create' => $can];
+                    break;
+                case 'calendar_link':
+                    if (!can('calendar.edit') && !can('calendar.subscriptions')) throw new RuntimeException('Dafür brauchst du das Recht, den Kalender zu bearbeiten.');
+                    if (!empty($in['on'])) { vrc_calendar_sub($uid, true); $r = vrc_calendar_push($uid); $out = ['msg' => 'Verbunden – ' . (int)($r['total'] ?? 0) . ' Events stehen jetzt im Dashboard-Kalender.']; }
+                    else { $sid = vrc_calendar_sub($uid, false); if ($sid) cal_db()->prepare('DELETE FROM subscriptions WHERE id = ?')->execute([$sid]); $out = ['msg' => 'Verbindung zum Dashboard-Kalender getrennt.']; }
+                    break;
+                case 'ics_reset':
+                    vrc_ics_token($uid, true);
+                    $out = ['msg' => 'Neuer Abo-Link erstellt – der alte funktioniert nicht mehr.'];
+                    break;
+                case 'cal_follow':
+                    vrc_call($acc, 'POST', '/calendar/' . rawurlencode($valid((string)($in['group'] ?? ''), 'grp')) . '/' . rawurlencode($valid($id, 'cal')) . '/follow', [], ['isFollowing' => !empty($in['on'])]);
+                    vrc_db()->prepare('UPDATE vrc_events SET following = ? WHERE user_id = ? AND id = ?')->execute([!empty($in['on']) ? 1 : 0, $uid, $id]);
+                    vrc_calendar_push($uid);
+                    $out = ['msg' => !empty($in['on']) ? '⭐ Du bist interessiert.' : 'Nicht mehr interessiert.'];
+                    break;
+                case 'cal_create':
+                    $g = $valid((string)($in['group'] ?? ''), 'grp');
+                    $title = mb_substr(trim((string)($in['title'] ?? '')), 0, 64);
+                    $start = strtotime((string)($in['start'] ?? ''));
+                    $end = strtotime((string)($in['end'] ?? '')) ?: ($start + 7200);
+                    if ($title === '' || !$start || $start < time()) throw new RuntimeException('Bitte Titel und einen Beginn in der Zukunft angeben.');
+                    if ($end <= $start) $end = $start + 3600;
+                    $cats = ['hangout', 'gaming', 'music', 'dance', 'performance', 'arts', 'education', 'exploration', 'film_media', 'avatars', 'wellness', 'roleplaying', 'other'];
+                    vrc_call($acc, 'POST', '/calendar/' . rawurlencode($g) . '/event', [], ['title' => $title, 'description' => mb_substr(trim((string)($in['description'] ?? '')), 0, 2000),
+                        'startsAt' => gmdate('Y-m-d\TH:i:s.000\Z', $start), 'endsAt' => gmdate('Y-m-d\TH:i:s.000\Z', $end), 'category' => in_array($in['category'] ?? '', $cats, true) ? $in['category'] : 'hangout',
+                        'accessType' => ($in['access'] ?? '') === 'public' ? 'public' : 'group', 'sendCreationNotification' => !empty($in['notify']),
+                        'platforms' => array_values(array_intersect((array)($in['platforms'] ?? []), ['standalonewindows', 'android', 'ios'])), 'languages' => ['deu'], 'tags' => []]);
+                    audit('VRChat-Gruppen-Event erstellt', $title);
+                    try { vrc_calendar_refresh($acc); } catch (Throwable $e) {}
+                    $out = ['msg' => 'Event „' . $title . '“ im VRChat-Kalender angelegt.'];
+                    break;
+                case 'cal_delete':
+                    vrc_call($acc, 'DELETE', '/calendar/' . rawurlencode($valid((string)($in['group'] ?? ''), 'grp')) . '/' . rawurlencode($valid($id, 'cal')));
+                    vrc_db()->prepare('DELETE FROM vrc_events WHERE user_id = ? AND id = ?')->execute([$uid, $id]);
+                    vrc_calendar_push($uid);
+                    audit('VRChat-Gruppen-Event gelöscht', $id, 'warn');
+                    $out = ['msg' => 'Event gelöscht.'];
+                    break;
+
+                // ----- Galerie: Fotos, Icons, Emojis, Sticker, Prints, Inventar -----
+                case 'gallery':
+                    $res = [];
+                    foreach (['gallery' => 'photos', 'icon' => 'icons', 'emoji' => 'emojis', 'sticker' => 'stickers'] as $tag => $key) {
+                        try {
+                            $files = (array)vrc_call($acc, 'GET', '/files', ['tag' => $tag, 'n' => 100, 'offset' => 0]);
+                            $res[$key] = array_values(array_map(function ($f) {
+                                $v = vrc_file_version($f);
+                                $anim = '';
+                                foreach ((array)($f['tags'] ?? []) as $t) if (strpos($t, 'animationStyle_') === 0) $anim = substr($t, 15);
+                                return ['id' => $f['id'] ?? '', 'name' => $f['name'] ?? '', 'v' => $v, 'img' => 'nexus.php?img=' . rawurlencode($f['id'] ?? '') . '&v=' . $v, 'anim' => $anim,
+                                        'created' => $f['versions'][$v]['created_at'] ?? ($f['versions'][0]['created_at'] ?? '')];
+                            }, array_filter($files, function ($f) { return is_array($f) && preg_match('/^file_[0-9a-f\-]{36}$/i', $f['id'] ?? ''); })));
+                        } catch (VrcAuthError $e) { throw $e; } catch (Throwable $e) { $res[$key] = ['error' => $e->getMessage()]; }
+                    }
+                    try {
+                        $prints = (array)vrc_call($acc, 'GET', '/prints/user/' . rawurlencode($acc['vrc_id']), ['n' => 100]);
+                        $res['prints'] = array_values(array_map(function ($p) {
+                            return ['id' => $p['id'] ?? '', 'img' => vrc_img_url((string)($p['files']['image'] ?? '')), 'note' => $p['note'] ?? '', 'world' => $p['worldName'] ?? '', 'world_id' => $p['worldId'] ?? '',
+                                    'author' => $p['authorName'] ?? '', 'created' => $p['timestamp'] ?? ($p['createdAt'] ?? '')];
+                        }, array_filter($prints, 'is_array')));
+                    } catch (VrcAuthError $e) { throw $e; } catch (Throwable $e) { $res['prints'] = ['error' => $e->getMessage()]; }
+                    $out = ['gallery' => $res, 'limits' => ['photos' => 64, 'icons' => 18, 'emojis' => 18, 'stickers' => 18, 'prints' => 64]];
+                    break;
+                case 'inventory':
+                    $r = vrc_call($acc, 'GET', '/inventory', ['n' => 100, 'offset' => max(0, (int)($in['offset'] ?? 0)), 'order' => 'newest']);
+                    $list = isset($r['data']) ? (array)$r['data'] : (array)$r;
+                    $out = ['total' => (int)($r['totalCount'] ?? count($list)), 'items' => array_values(array_map(function ($i) {
+                        return ['id' => $i['id'] ?? '', 'name' => $i['name'] ?? '', 'desc' => mb_substr((string)($i['description'] ?? ''), 0, 200), 'type' => $i['itemType'] ?? ($i['itemTypeLabel'] ?? ''),
+                                'img' => vrc_img_url((string)($i['imageUrl'] ?? '')), 'created' => $i['created_at'] ?? '', 'archived' => !empty($i['isArchived'])];
+                    }, array_filter($list, 'is_array')))];
+                    break;
+                case 'file_delete':
+                    if (!preg_match('/^file_[0-9a-f\-]{36}$/i', $id)) throw new RuntimeException('Ungültige Datei.');
+                    vrc_call($acc, 'DELETE', '/file/' . rawurlencode($id));
+                    $out = ['msg' => 'Gelöscht.'];
+                    break;
+                case 'print_delete':
+                    if (!preg_match('/^prnt_[0-9a-f\-]{36}$/i', $id)) throw new RuntimeException('Ungültiger Print.');
+                    vrc_call($acc, 'DELETE', '/prints/' . rawurlencode($id));
+                    $out = ['msg' => 'Print gelöscht.'];
+                    break;
+                case 'set_icon':
+                    if (!preg_match('/^file_[0-9a-f\-]{36}$/i', $id)) throw new RuntimeException('Ungültige Datei.');
+                    vrc_call($acc, 'PUT', '/users/' . rawurlencode($acc['vrc_id']), [], ['userIcon' => vrc_api_base() . '/file/' . $id . '/' . max(1, (int)($in['v'] ?? 1))]);
+                    vrc_db()->prepare('UPDATE accounts SET last_sync = 0 WHERE user_id = ?')->execute([$uid]);
+                    $out = ['msg' => 'Als Profil-Icon gesetzt.'];
+                    break;
+                case 'file_upload':
+                    $tags = ['photos' => 'gallery', 'icons' => 'icon', 'emojis' => 'emoji', 'stickers' => 'sticker'];
+                    $tag = $tags[$in['kind'] ?? ''] ?? null;
+                    $f = $_FILES['file'] ?? null;
+                    if (!$tag || !$f || $f['error'] !== UPLOAD_ERR_OK) throw new RuntimeException('Bitte eine Bilddatei auswählen.');
+                    if ($f['size'] > 10 * 1024 * 1024) throw new RuntimeException('Die Datei ist größer als 10 MB.');
+                    $info = @getimagesize($f['tmp_name']);
+                    $mime = $info['mime'] ?? '';
+                    if (!in_array($mime, ['image/png', 'image/jpeg', 'image/gif', 'image/webp'], true)) throw new RuntimeException('Bitte ein Bild (PNG, JPG, GIF oder WebP) wählen.');
+                    $fields = ['tag' => $tag];
+                    if ($tag === 'emoji') { $fields['animationStyle'] = preg_match('/^[a-z]{2,20}$/', (string)($in['anim'] ?? '')) ? $in['anim'] : 'none'; $fields['maskTag'] = 'square'; }
+                    if ($tag === 'sticker') $fields['maskTag'] = 'square';
+                    vrc_upload($acc, '/file/image', $fields, $f['tmp_name'], $mime, preg_replace('/[^\w.\-]/', '_', basename($f['name'])));
+                    $out = ['msg' => 'Hochgeladen.'];
+                    break;
+
+                // ----- Info-Push (VRChat-Neuigkeiten) -----
+                case 'infopush':
+                    $r = (array)vrc_call($acc, 'GET', '/infoPush');
+                    $out = ['items' => array_values(array_map(function ($i) {
+                        $d = (array)($i['data'] ?? []);
+                        $tags = implode(' ', (array)($i['tags'] ?? []));
+                        $kind = preg_match('/loading/i', $tags) ? 'loading' : (preg_match('/banner|quickmenu|carousel/i', $tags) ? 'banner' : (preg_match('/help|article/i', $tags) || !empty($d['article']) ? 'help' : 'other'));
+                        $press = (array)($d['onPressed'] ?? []);
+                        $link = '';
+                        foreach ((array)($press['parameters'] ?? []) as $p) if (is_string($p) && preg_match('#^https://#', $p)) $link = $p;
+                        return ['id' => $i['id'] ?? '', 'kind' => $kind, 'title' => $d['name'] ?? ($i['name'] ?? ''), 'desc' => $d['description'] ?? '', 'img' => vrc_img_url((string)($d['imageUrl'] ?? '')),
+                                'date' => $i['createdAt'] ?? ($i['startDate'] ?? ''), 'priority' => (int)($i['priority'] ?? 0), 'link' => $link,
+                                'article' => format_text((string)($d['article']['content']['text'] ?? ''), ['external' => true]), 'article_img' => vrc_img_url((string)($d['article']['content']['imageUrl'] ?? ''))];
+                    }, array_filter($r, 'is_array')))];
+                    break;
+
                 // ----- Direkt-Zugriff: Avatare, Mehrfach-Einladung, letzte Instanzen, Beobachten -----
                 case 'avatar':
                     $a = vrc_call($acc, 'GET', '/avatars/' . rawurlencode($valid($id, 'avtr')));
@@ -239,8 +424,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'performance' => array_values(array_filter(array_map(function ($p) { return isset($p['performanceRating']) ? (VRC_PLATFORM[$p['platform'] ?? ''] ?? '') . ': ' . $p['performanceRating'] : ''; }, (array)($a['unityPackages'] ?? []))))]];
                     break;
                 case 'avatar_fav':
+                    if (!empty($in['move'])) {   // in eine andere Favoritengruppe verschieben
+                        $grp = preg_match('/^avatars\d{1,2}$/', (string)($in['group'] ?? '')) ? $in['group'] : 'avatars1';
+                        try { vrc_call($acc, 'DELETE', '/favorites/' . rawurlencode(!empty($in['fav_id']) ? $valid((string)$in['fav_id'], 'fvrt') : $valid($id, 'avtr'))); } catch (VrcAuthError $e) { throw $e; } catch (Throwable $e) {}
+                        vrc_call($acc, 'POST', '/favorites', [], ['type' => 'avatar', 'favoriteId' => $valid($id, 'avtr'), 'tags' => [$grp]]);
+                        $out = ['msg' => 'Verschoben.'];
+                        break;
+                    }
                     if (!empty($in['on'])) {
-                        vrc_call($acc, 'POST', '/favorites', [], ['type' => 'avatar', 'favoriteId' => $valid($id, 'avtr'), 'tags' => ['avatars1']]);
+                        vrc_call($acc, 'POST', '/favorites', [], ['type' => 'avatar', 'favoriteId' => $valid($id, 'avtr'), 'tags' => [preg_match('/^avatars\d{1,2}$/', (string)($in['group'] ?? '')) ? $in['group'] : 'avatars1']]);
                         $out = ['msg' => 'Avatar favorisiert.'];
                     } else {
                         vrc_call($acc, 'DELETE', '/favorites/' . rawurlencode($valid($id, 'avtr')));
@@ -392,8 +584,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ? vrc_call($acc, 'GET', '/avatars/favorites', ['n' => 100])
                         : vrc_call($acc, 'GET', '/avatars', ['user' => 'me', 'releaseStatus' => 'all', 'n' => 100, 'sort' => 'updated', 'order' => 'descending']);
                     $current = (string)($acc['me']['currentAvatar'] ?? '');
-                    $out = ['current' => $current, 'avatars' => array_values(array_map(function ($a) use ($current) {
-                        return ['id' => $a['id'] ?? '', 'name' => $a['name'] ?? '', 'author' => $a['authorName'] ?? '', 'thumb' => $a['thumbnailImageUrl'] ?? '', 'status' => $a['releaseStatus'] ?? '',
+                    $fgroup = []; $fnames = [];
+                    if ($kind === 'favorites') {
+                        try {
+                            foreach ((array)vrc_call($acc, 'GET', '/favorites', ['type' => 'avatar', 'n' => 400]) as $f) if (!empty($f['favoriteId'])) $fgroup[$f['favoriteId']] = [(string)(((array)($f['tags'] ?? []))[0] ?? 'avatars1'), (string)($f['id'] ?? '')];
+                            foreach ((array)vrc_call($acc, 'GET', '/favorite/groups', ['type' => 'avatar', 'n' => 50]) as $g) if (!empty($g['name'])) $fnames[$g['name']] = (string)($g['displayName'] ?? $g['name']);
+                        } catch (VrcAuthError $e) { throw $e; } catch (Throwable $e) {}
+                    }
+                    $out = ['current' => $current, 'fav_groups' => $fnames ?: new stdClass(), 'avatars' => array_values(array_map(function ($a) use ($current, $fgroup) {
+                        return ['fav_group' => $fgroup[$a['id'] ?? ''][0] ?? '', 'fav_id' => $fgroup[$a['id'] ?? ''][1] ?? '', 'created' => $a['created_at'] ?? '',
+                                'id' => $a['id'] ?? '', 'name' => $a['name'] ?? '', 'author' => $a['authorName'] ?? '', 'thumb' => $a['thumbnailImageUrl'] ?? '', 'status' => $a['releaseStatus'] ?? '',
                                 'desc' => mb_substr((string)($a['description'] ?? ''), 0, 300), 'updated' => $a['updated_at'] ?? '', 'current' => ($a['id'] ?? '') === $current,
                                 'platforms' => array_values(array_unique(array_map(function ($p) { return VRC_PLATFORM[$p['platform'] ?? ''] ?? ($p['platform'] ?? ''); }, (array)($a['unityPackages'] ?? []))))];
                     }, is_array($res) ? array_filter($res, 'is_array') : []))];
@@ -561,8 +761,11 @@ session_write_close();
         <button type="button" class="vx-tabbtn" data-tab="worlds" role="tab"><span>🌐</span>Welten</button>
         <button type="button" class="vx-tabbtn" data-tab="avatars" role="tab"><span>🎭</span>Avatare</button>
         <button type="button" class="vx-tabbtn" data-tab="groups" role="tab"><span>🛡️</span>Gruppen</button>
+        <button type="button" class="vx-tabbtn" data-tab="calendar" role="tab"><span>📅</span>Kalender</button>
+        <button type="button" class="vx-tabbtn" data-tab="gallery" role="tab"><span>🖼️</span>Galerie</button>
         <button type="button" class="vx-tabbtn" data-tab="notifs" role="tab"><span>🔔</span>Anfragen</button>
         <button type="button" class="vx-tabbtn" data-tab="moderation" role="tab"><span>🚫</span>Moderation</button>
+        <button type="button" class="vx-tabbtn" data-tab="news" role="tab"><span>📰</span>Info-Push</button>
         <button type="button" class="vx-tabbtn" data-tab="search" role="tab"><span>🔍</span>Suche</button>
         <button type="button" class="vx-tabbtn" data-tab="account" role="tab"><span>⚙</span>Konto</button>
     </nav>
@@ -633,9 +836,69 @@ session_write_close();
     <section class="vx-tab" data-pane="avatars" hidden>
         <div class="vx-tools">
             <div class="chips" id="avatarKinds"><button type="button" class="chip on" data-kind="mine">🎭 Meine Avatare</button><button type="button" class="chip" data-kind="favorites">⭐ Favoriten</button></div>
-            <input type="search" id="avatarSearch" placeholder="Avatare filtern …" aria-label="Avatare filtern">
+            <input type="search" id="avatarSearch" placeholder="Avatare filtern (Name, Autor) …" aria-label="Avatare filtern">
+            <select id="avatarSort" aria-label="Sortierung">
+                <option value="group">Nach Favoritengruppe</option><option value="updated">Zuletzt aktualisiert</option><option value="created">Neueste zuerst</option>
+                <option value="name">Name A–Z</option><option value="author">Nach Autor</option><option value="platform">PC + Quest zuerst</option><option value="vrchat">Reihenfolge wie in VRChat</option>
+            </select>
+            <select id="avatarPf" aria-label="Plattform"><option value="">Alle Plattformen</option><option value="cross">💻+📱 PC &amp; Quest</option><option value="PC">💻 PC</option><option value="Quest / Android">📱 Quest</option></select>
+            <span class="vx-small" id="avatarCount"></span>
         </div>
-        <div class="vx-cards" id="avatarsBox"></div>
+        <div id="avatarsBox"></div>
+    </section>
+
+    <section class="vx-tab" data-pane="calendar" hidden>
+        <div class="vx-tools">
+            <select id="calGroup" aria-label="Gruppe"><option value="">Alle Gruppen</option></select>
+            <select id="calCat" aria-label="Kategorie"><option value="">Alle Kategorien</option><option value="hangout">💬 Treffen</option><option value="gaming">🎮 Gaming</option><option value="music">🎵 Musik</option>
+                <option value="dance">💃 Tanz</option><option value="performance">🎭 Auftritt</option><option value="arts">🎨 Kunst</option><option value="education">📚 Bildung</option><option value="exploration">🧭 Erkunden</option>
+                <option value="film_media">🎬 Film &amp; Medien</option><option value="avatars">🦊 Avatare</option><option value="wellness">🧘 Wohlfühlen</option><option value="roleplaying">🐉 Rollenspiel</option><option value="other">📦 Sonstiges</option></select>
+            <label class="vx-auto"><input type="checkbox" id="calFav"> nur ⭐ interessiert</label>
+            <button type="button" class="btn btn-sm" id="calRefresh">⟳ Neu laden</button>
+            <span class="vx-small" id="calInfo"></span>
+        </div>
+        <div class="vx-cols vx-calcols">
+            <div id="calList"></div>
+            <div>
+                <div class="panel"><div class="panel-title">🔄 Synchronisieren</div><div id="calSync"></div></div>
+                <form class="panel" id="calCreate" hidden>
+                    <div class="panel-title">＋ Event im VRChat-Kalender</div>
+                    <label class="field">Gruppe</label><select name="group"></select>
+                    <label class="field">Titel</label><input type="text" name="title" maxlength="64" required>
+                    <div class="vx-tools" style="margin: 0;"><div style="flex: 1;"><label class="field">Beginn</label><input type="datetime-local" name="start" required></div><div style="flex: 1;"><label class="field">Ende</label><input type="datetime-local" name="end"></div></div>
+                    <label class="field">Kategorie</label><select name="category"><option value="hangout">💬 Treffen</option><option value="gaming">🎮 Gaming</option><option value="music">🎵 Musik</option><option value="dance">💃 Tanz</option>
+                        <option value="performance">🎭 Auftritt</option><option value="arts">🎨 Kunst</option><option value="education">📚 Bildung</option><option value="exploration">🧭 Erkunden</option><option value="film_media">🎬 Film &amp; Medien</option>
+                        <option value="avatars">🦊 Avatare</option><option value="wellness">🧘 Wohlfühlen</option><option value="roleplaying">🐉 Rollenspiel</option><option value="other">📦 Sonstiges</option></select>
+                    <label class="field">Sichtbarkeit</label><select name="access"><option value="group">🔒 Nur Gruppe</option><option value="public">🌍 Öffentlich</option></select>
+                    <label class="field">Plattformen</label>
+                    <div class="chips"><label class="chip"><input type="checkbox" name="pf" value="standalonewindows" checked> PC</label><label class="chip"><input type="checkbox" name="pf" value="android" checked> Quest</label><label class="chip"><input type="checkbox" name="pf" value="ios"> iOS</label></div>
+                    <label class="field">Beschreibung</label><textarea name="description" rows="3" maxlength="2000"></textarea>
+                    <label class="vx-auto"><input type="checkbox" name="notify"> Gruppe benachrichtigen</label>
+                    <button class="btn btn-gold" style="margin-top: 10px;">Event anlegen</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <section class="vx-tab" data-pane="gallery" hidden>
+        <div class="vx-tools">
+            <div class="chips" id="galKinds"></div>
+            <button type="button" class="btn btn-sm" id="galRefresh">⟳ Aktualisieren</button>
+            <form id="galUpload" class="vx-inline" enctype="multipart/form-data">
+                <input type="file" name="file" accept="image/png,image/jpeg,image/gif,image/webp" required aria-label="Bilddatei">
+                <select name="anim" id="galAnim" aria-label="Emoji-Animation" hidden><option value="none">ohne Animation</option><option value="aura">Aura</option><option value="bats">Fledermäuse</option><option value="bees">Bienen</option>
+                    <option value="bounce">Hüpfen</option><option value="cloud">Wolke</option><option value="confetti">Konfetti</option><option value="crying">Tränen</option><option value="fire">Feuer</option><option value="idea">Idee</option>
+                    <option value="lasers">Laser</option><option value="magnet">Magnet</option><option value="money">Geld</option><option value="orbit">Orbit</option><option value="rain">Regen</option><option value="rotate">Drehen</option>
+                    <option value="shake">Wackeln</option><option value="snow">Schnee</option><option value="spin">Kreiseln</option><option value="splash">Platsch</option><option value="zzz">Zzz</option></select>
+                <button class="btn btn-sm btn-gold">⬆ Hochladen</button>
+            </form>
+        </div>
+        <div id="galBox"><div class="vx-empty">Lade …</div></div>
+    </section>
+
+    <section class="vx-tab" data-pane="news" hidden>
+        <div class="vx-tools"><div class="chips" id="newsKinds"></div><button type="button" class="btn btn-sm" id="newsRefresh" title="Neu laden">⟳</button></div>
+        <div id="newsBox"></div>
     </section>
 
     <section class="vx-tab" data-pane="groups" hidden>
@@ -698,6 +961,9 @@ session_write_close();
                     <label class="vx-auto"><input type="checkbox" name="notify_offline"> auch beim Offline-Gehen</label>
                     <label class="vx-auto"><input type="checkbox" name="notify_gps"> auch bei Ortswechsel (nur Favoriten)</label>
                     <label class="vx-auto"><input type="checkbox" name="sound"> mit Ton</label>
+                    <label class="field" style="margin-top: 10px;">⚧ Gender-Modus (Texte gendern)</label>
+                    <select name="gender"><option value="off">Aus</option><option value="star">Sternchen – Freund*innen</option><option value="colon">Doppelpunkt – Freund:innen</option>
+                        <option value="gap">Unterstrich – Freund_innen</option><option value="dot">Mediopunkt – Freund·innen</option><option value="binnen">Binnen-I – FreundInnen</option></select>
                     <label class="vx-auto"><input type="checkbox" name="clipwatch"> 📋 Zwischenablage beim Zurückkehren prüfen und erkannte IDs anbieten</label>
                     <label class="field" style="margin-top: 10px;">Automatisch aktualisieren alle</label>
                     <select name="interval"><option value="60">1 Minute</option><option value="120">2 Minuten</option><option value="300">5 Minuten</option><option value="600">10 Minuten</option></select>

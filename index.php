@@ -451,6 +451,7 @@ $access_icon = ['public' => '', 'users' => '🔑', 'roles' => '🛡️'];
 
 <script>window.IDX = { edit: <?php echo $edit ? 'true' : 'false'; ?>, canManage: <?php echo $can_manage ? 'true' : 'false'; ?> };</script>
 <script src="assets/index.js"></script>
+<script src="assets/gender.js"></script>
 <?php if (can('pages.manage')): ?><script src="assets/editor.js"></script><?php endif; ?>
 <script src="assets/reminders.js" data-endpoint="calendar.php?reminders=1"></script>
 </body>

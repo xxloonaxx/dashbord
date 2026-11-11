@@ -345,7 +345,12 @@ function cal_sync_subscription(int $sub_id, bool $force = false): array {
     };
 
     try {
-        $res = cal_fetch_feed($sub['url'], $force ? '' : $sub['etag'], $force ? '' : $sub['last_modified']);
+        if (preg_match('/^nexus:(\d+)$/', $sub['url'], $nm)) {   // VRChat-Gruppen-Events aus VRC Nexus
+            require_once __DIR__ . '/vrchat.php';
+            $res = ['code' => 200, 'body' => vrc_calendar_ics((int)$nm[1]), 'etag' => '', 'last_modified' => ''];
+        } else {
+            $res = cal_fetch_feed($sub['url'], $force ? '' : $sub['etag'], $force ? '' : $sub['last_modified']);
+        }
         if ($res['code'] === 304) {
             $mark('unverändert', '');
             return ['status' => 'unchanged', 'added' => 0, 'updated' => 0, 'removed' => 0, 'total' => (int)$sub['event_count']];
