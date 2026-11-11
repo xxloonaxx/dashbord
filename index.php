@@ -139,7 +139,13 @@ function live_info(array $p): string {
                 return cal_preview(can('calendar.private') || can('calendar.edit'));
             case 'admin.php':
                 return is_logged_in() ? 'Angemeldet als ' . user_label() : '';
-            case 'vrcx.php':
+            case 'discord.php':
+                if (!can('discord.manage')) return '';
+                require_once __DIR__ . '/inc/discord.php';
+                if (!discord_configured()) return 'Bot noch nicht eingerichtet';
+                $n = count(discord_scheduled());
+                return '🤖 Bot verbunden' . ($n ? ' · ' . $n . ' geplante Nachricht(en)' : '');
+            case 'nexus.php':
                 if (!is_logged_in() || !can('vrcx.access')) return '';
                 require_once __DIR__ . '/inc/vrchat.php';
                 return vrc_live_info((int)current_user()['id']);

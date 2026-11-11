@@ -1,4 +1,4 @@
-/* VRCX – Oberfläche. Alle Daten kommen als JSON von vrcx.php; Texte von VRChat werden immer maskiert. */
+/* VRC Nexus – Oberfläche. Alle Daten kommen als JSON von nexus.php; Texte von VRChat werden immer maskiert. */
 (function () {
     const $ = (s, r) => (r || document).querySelector(s);
     const $$ = (s, r) => [...(r || document).querySelectorAll(s)];
@@ -21,14 +21,14 @@
     const isoDate = s => { const d = new Date(s); return isNaN(d) ? '' : d.toLocaleDateString('de-DE'); };
     const isoDT = s => { const d = new Date(s); return isNaN(d) ? '' : d.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); };
     const num = n => Number(n || 0).toLocaleString('de-DE');
-    const launch = loc => 'vrchat://launch?ref=vrcx-dashboard&id=' + encodeURIComponent(loc);
+    const launch = loc => 'vrchat://launch?ref=vrc-nexus&id=' + encodeURIComponent(loc);
     const joinable = l => l && l.kind === 'world' && l.access !== 'Invite';
 
     function api(act, data) {
         const body = new URLSearchParams();
         body.append('act', act);
         Object.entries(data || {}).forEach(([k, v]) => { if (Array.isArray(v)) v.forEach(x => body.append(k + '[]', x)); else body.append(k, v ?? ''); });
-        return fetch('vrcx.php', { method: 'POST', credentials: 'same-origin', headers: { 'Accept': 'application/json' }, body })
+        return fetch('nexus.php', { method: 'POST', credentials: 'same-origin', headers: { 'Accept': 'application/json' }, body })
             .then(async r => {
                 let d;
                 try { d = await r.json(); } catch (e) { throw new Error('Unerwartete Antwort vom Server (HTTP ' + r.status + ').'); }
@@ -200,7 +200,8 @@
         box.hidden = false;
         box.innerHTML = '🧭 <b>Du bist gerade in:</b> ' + (l.kind === 'world' ? '<a href="#" data-world="' + esc(l.world) + '">' + esc(l.world_name || 'Welt') + '</a> <small>' + esc(l.access) + ' · ' + esc(l.region) + '</small>' : esc(l.label))
             + (here.length ? ' · mit ' + here.map(f => '<a href="#" data-user="' + esc(f.id) + '">' + esc(f.name) + '</a>').join(', ') : '')
-            + (l.kind === 'world' ? ' <button type="button" class="btn btn-sm" data-inst="' + esc(l.location) + '">Instanz-Info</button>' : '');
+            + (l.kind === 'world' ? ' <button type="button" class="btn btn-sm" data-inst="' + esc(l.location) + '">Instanz-Info</button><button type="button" class="btn btn-sm" data-party="' + esc(l.location) + '">👥 Freunde einladen</button>'
+                + '<button type="button" class="btn btn-sm" data-link="' + esc(l.location) + '">🔗 Link</button>' + (window.VRCX.discord ? '<button type="button" class="btn btn-sm" data-share="' + esc(l.location) + '">📣 Discord</button>' : '') : '');
     }
 
     // ---------- Benachrichtigungen ----------
@@ -221,6 +222,8 @@
         state.friends.forEach(f => {
             const p = prev[f.id];
             if (!p) return;
+            if (f.watch && p.state !== 'online' && f.state === 'online') { notify('🔔 ' + f.name + ' ist jetzt im Spiel', f.loc && f.loc.kind === 'world' ? (f.loc.world_name || '') + ' (' + f.loc.access + ')' : '', f.image); return; }
+            if (prefs.notify === 'off') return;
             const fav = f.favorite || (prefs.notify === 'vrcfav' && f.fav_group);
             if (prefs.notify !== 'all' && !fav) return;
             const where = f.loc && f.loc.kind === 'world' ? (f.loc.world_name || 'einer Welt') + ' (' + f.loc.access + ')' : (f.loc ? f.loc.label : '');
@@ -255,9 +258,11 @@
     function renderFavChips() {
         const g = state.fav_groups || {}, box = $('#favChips');
         const used = [...new Set(state.friends.map(f => f.fav_group).filter(Boolean))];
-        const chips = [['', 'Alle'], ['__mine', '⭐ Meine Favoriten'], ...used.map(k => [k, '♥ ' + (g[k] || k)])];
-        box.innerHTML = chips.length > 2 || state.friends.some(f => f.favorite) ? chips.map(([k, n]) => '<button type="button" class="chip' + (favFilter === k ? ' on' : '') + '" data-fav="' + esc(k) + '">' + esc(n) + ' <small>'
-            + (k === '' ? state.friends.length : k === '__mine' ? state.friends.filter(f => f.favorite).length : state.friends.filter(f => f.fav_group === k).length) + '</small></button>').join('') : '';
+        const lists = [...new Set(state.friends.flatMap(f => f.lists || []))].sort((a, b) => a.localeCompare(b, 'de'));
+        const chips = [['', 'Alle'], ['__mine', '⭐ Meine Favoriten'], ['__watch', '🔔 Beobachtet'], ...used.map(k => [k, '♥ ' + (g[k] || k)]), ...lists.map(l => ['list:' + l, '🏷 ' + l])];
+        const count = k => k === '' ? state.friends.length : k === '__mine' ? state.friends.filter(f => f.favorite).length : k === '__watch' ? state.friends.filter(f => f.watch).length
+            : k.startsWith('list:') ? state.friends.filter(f => (f.lists || []).includes(k.slice(5))).length : state.friends.filter(f => f.fav_group === k).length;
+        box.innerHTML = chips.filter(([k]) => k === '' || count(k) > 0).length > 1 ? chips.filter(([k]) => k === '' || count(k) > 0).map(([k, n]) => '<button type="button" class="chip' + (favFilter === k ? ' on' : '') + '" data-fav="' + esc(k) + '">' + esc(n) + ' <small>' + count(k) + '</small></button>').join('') : '';
     }
     $('#favChips').addEventListener('click', e => { const b = e.target.closest('[data-fav]'); if (!b) return; favFilter = b.dataset.fav; renderFavChips(); renderFriends(); });
     function renderFriends() {
@@ -267,7 +272,7 @@
         const off = $('#showOffline').checked || !!favFilter, notes = $('#onlyNotes').checked;
         let list = state.friends.filter(f => (!q || [f.name, f.status_desc, f.note, f.loc && f.loc.world_name, f.platform].join(' ').toLowerCase().includes(q))
             && (!pf || f.pf === pf) && (!tr || f.trust[0] === tr) && (!notes || f.note)
-            && (!favFilter || (favFilter === '__mine' ? f.favorite : f.fav_group === favFilter)));
+            && (!favFilter || (favFilter === '__mine' ? f.favorite : favFilter === '__watch' ? f.watch : favFilter.startsWith('list:') ? (f.lists || []).includes(favFilter.slice(5)) : f.fav_group === favFilter)));
         const by = {
             name: (a, b) => a.name.localeCompare(b.name, 'de'), since: (a, b) => b.since - a.since, state: (a, b) => a.name.localeCompare(b.name, 'de'),
             trust: (a, b) => TRUST_ORDER.indexOf(a.trust[0]) - TRUST_ORDER.indexOf(b.trust[0]) || a.name.localeCompare(b.name, 'de'),
@@ -326,7 +331,7 @@
     function openUser(id) {
         const f = friendById(id);
         openModal('<div class="vx-loading">' + (f ? esc(f.name) + ' – ' : '') + 'lade Profil …</div>');
-        api('user', { id }).then(d => renderUser(d.user)).catch(fail($('#userBody')));
+        api('user', { id }).then(d => { remember('user', d.user.id, d.user.name); renderUser(d.user); }).catch(fail($('#userBody')));
     }
     function renderUser(u) {
         const l = u.loc || {}, w = l.world_info || {}, s = u.stats || {}, myLoc = state.me.location;
@@ -353,6 +358,9 @@
             + (u.last_activity ? '<dt>Zuletzt aktiv</dt><dd>' + esc(isoDT(u.last_activity)) + '</dd>' : '') + '<dt>VRChat-ID</dt><dd><code class="vx-id">' + esc(u.id) + '</code> <button type="button" class="vx-copy" data-copy="' + esc(u.id) + '" title="Kopieren">⧉</button></dd></dl>';
         h += '</div><div><h4>Meine Notiz <small>(nur für dich)</small></h4><form class="vx-note-form"><textarea name="note" rows="5" maxlength="4000" placeholder="z. B. kennengelernt auf der EF, mag Kaffee …">' + esc(u.note) + '</textarea>'
             + '<label class="vx-auto"><input type="checkbox" name="favorite" value="1"' + (u.favorite ? ' checked' : '') + '> ⭐ Favorit (oben in der Liste, eigene Benachrichtigungen)</label>'
+            + '<label class="vx-auto"><input type="checkbox" name="watch" value="1"' + (u.watch ? ' checked' : '') + '> 🔔 Benachrichtigen, sobald online (auch wenn Benachrichtigungen sonst aus sind)</label>'
+            + '<label class="field">Eigene Listen (mit Komma trennen)</label><input type="text" name="lists" maxlength="200" value="' + esc(u.lists || '') + '" placeholder="z. B. Stammtisch, Discord, EF-Gruppe" list="listNames">'
+            + '<datalist id="listNames">' + [...new Set(state.friends.flatMap(f => f.lists || []))].map(n => '<option value="' + esc(n) + '">').join('') + '</datalist>'
             + '<label class="vx-auto"><input type="checkbox" name="remote" value="1"> auch als VRChat-Notiz speichern (max. 256 Zeichen)</label><button class="btn btn-sm btn-gold">Speichern</button></form>'
             + '<h4>Verlauf</h4><div class="vx-u-feed" id="uFeed">Lade …</div></div></div>';
         h += '<div class="vx-u-actions"><a class="btn btn-sm" href="https://vrchat.com/home/user/' + encodeURIComponent(u.id) + '" target="_blank" rel="noopener noreferrer">↗ vrchat.com</a>'
@@ -364,9 +372,9 @@
         body.querySelector('.vx-note-form').addEventListener('submit', e => {
             e.preventDefault();
             const f = e.target;
-            api('note_save', { id: u.id, note: f.note.value, favorite: f.favorite.checked ? 1 : '', remote: f.remote.checked ? 1 : '' }).then(d => {
+            api('note_save', { id: u.id, note: f.note.value, favorite: f.favorite.checked ? 1 : '', remote: f.remote.checked ? 1 : '', lists: f.lists.value, watch: f.watch.checked ? 1 : '' }).then(d => {
                 toast(d.msg || 'Notiz gespeichert.');
-                const fr = friendById(u.id); if (fr) { fr.note = f.note.value; fr.favorite = f.favorite.checked; renderFriends(); renderFavChips(); }
+                const fr = friendById(u.id); if (fr) { fr.note = f.note.value; fr.favorite = f.favorite.checked; fr.watch = f.watch.checked; fr.lists = f.lists.value.split(',').map(x => x.trim()).filter(Boolean); renderFriends(); renderFavChips(); }
             }).catch(x => toast(x.message, true));
         });
         body.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => {
@@ -401,6 +409,24 @@
         loaded.worlds = true;
         $$('#worldKinds .chip').forEach(c => c.classList.toggle('on', c.dataset.kind === kind));
         const box = $('#worldsBox');
+        const instCard = (loc, name, sub, thumb, extra) => '<div class="vx-inst-card">' + img(thumb, 'vx-inst-img', '') + '<div><b><a href="#" data-inst="' + esc(loc) + '">' + esc(name) + '</a></b><small>' + esc(sub) + '</small><span class="vx-u-btns">'
+            + '<a class="btn btn-sm btn-gold" href="' + esc(launch(loc)) + '">▶</a><button type="button" class="btn btn-sm" data-self="' + esc(loc) + '" title="Selbst-Einladung">📨</button><button type="button" class="btn btn-sm" data-link="' + esc(loc) + '" title="Link kopieren">🔗</button>' + (extra || '') + '</span></div></div>';
+        if (kind === 'roulette') { roulette(); return; }
+        if (kind === 'bookmarks') {
+            box.innerHTML = bookmarks.length ? '<div class="vx-inst vx-wide">' + bookmarks.map(b => { const l = parseRef(b.location) ? b.location : ''; const wl = (state.friends.find(f => f.loc && f.loc.world === l.split(':')[0]) || {}).loc || {};
+                return instCard(b.location, b.name, 'gemerkt ' + ago(b.ts), wl.world_thumb, '<button type="button" class="btn btn-sm btn-danger" data-bm="' + esc(b.location) + '" title="Aus der Merkliste">✕</button>'); }).join('') + '</div>'
+                : '<div class="vx-empty">Noch nichts gemerkt – im Instanz-Dialog auf „🔖 Merken“ klicken.</div>';
+            return;
+        }
+        if (kind === 'recentinst') {
+            loading(box, 'Lade deine letzten Instanzen …');
+            api('recent_instances').then(d => {
+                box.innerHTML = d.items.length ? '<div class="vx-inst vx-wide">' + d.items.map(i => instCard(i.location, i.world_name, i.loc.access + ' · ' + i.loc.region + ' · ' + ago(i.ts) + (i.visits > 1 ? ' · ' + i.visits + '×' : ''), i.thumb,
+                    '<button type="button" class="btn btn-sm" data-bm="' + esc(i.location) + '" data-name="' + esc(i.world_name + ' #' + i.loc.name) + '" title="Merken">🔖</button>')).join('') + '</div>'
+                    : '<div class="vx-empty">Noch keine eigenen Orte aufgezeichnet – das passiert, während du im Spiel bist und diese Seite offen ist.</div>';
+            }).catch(fail(box));
+            return;
+        }
         if (kind === 'friends') {
             const m = {};
             state.friends.filter(f => f.state === 'online' && f.loc && f.loc.world).forEach(f => { const w = m[f.loc.world] = m[f.loc.world] || { id: f.loc.world, name: f.loc.world_name || 'Welt', thumb: f.loc.world_thumb, friends: 0 }; w.friends++; });
@@ -416,7 +442,7 @@
 
     function openWorld(id) {
         openModal('<div class="vx-loading">Lade Welt …</div>');
-        api('world', { id }).then(d => renderWorld(d.world)).catch(fail($('#userBody')));
+        api('world', { id }).then(d => { remember('world', d.world.id, d.world.name); renderWorld(d.world); }).catch(fail($('#userBody')));
     }
     function renderWorld(w) {
         const favEntry = (loaded.worldList || []).find(x => x.id === w.id && x.fav_id);
@@ -454,6 +480,7 @@
         openModal('<div class="vx-loading">Lade Instanz …</div>');
         api('instance', { location: loc }).then(d => {
             const i = d.instance, l = i.loc;
+            remember('instance', i.location, (l.access || 'Instanz') + ' #' + (l.name || ''));
             const pct = i.capacity ? Math.min(100, Math.round(i.users / i.capacity * 100)) : 0;
             $('#userBody').innerHTML = '<h2>Instanz #' + esc(l.name || '') + '</h2><div class="vx-u-sub">' + esc(l.access) + ' · ' + esc(l.region) + (i.name ? ' · ' + esc(i.name) : '') + ' · <a href="#" data-world="' + esc(l.world) + '">Welt ansehen</a></div>'
                 + '<div class="vx-kpis sm"><div><b>' + i.users + ' / ' + (i.capacity || '?') + '</b><span>Personen</span></div><div><b>' + i.pc + '</b><span>💻 PC</span></div><div><b>' + i.quest + '</b><span>📱 Quest</span></div>'
@@ -461,7 +488,10 @@
                 + '<div class="vx-cap"><div style="width:' + pct + '%"></div></div>' + (i.full ? '<p class="vx-error">Die Instanz ist voll.</p>' : '') + (i.closed ? '<p class="vx-error">Die Instanz wurde geschlossen.</p>' : '')
                 + (i.friends.length ? '<h4>Deine Freunde hier</h4><div class="vx-members">' + i.friends.map(f => '<div class="vx-member">' + img(f.image, 'vx-av sm', f.name) + '<a href="#" data-user="' + esc(f.id) + '">' + esc(f.name) + '</a></div>').join('') + '</div>' : '')
                 + '<div class="vx-u-actions">' + (joinable(l) ? '<a class="btn btn-sm btn-gold" href="' + esc(launch(i.location)) + '">▶ Beitreten (Spiel)</a><button type="button" class="btn btn-sm" data-self="' + esc(i.location) + '">📨 Selbst-Einladung</button>' : '')
-                + '<button type="button" class="btn btn-sm" data-copy="' + esc(i.location) + '">⧉ Instanz-ID kopieren</button></div>';
+                + '<button type="button" class="btn btn-sm" data-copy="' + esc(i.location) + '">⧉ Instanz-ID</button><button type="button" class="btn btn-sm" data-link="' + esc(i.location) + '">🔗 Einladungslink</button>'
+                + '<button type="button" class="btn btn-sm" data-bm="' + esc(i.location) + '" data-name="' + esc((i.name || l.access) + ' #' + (l.name || '')) + '">🔖 Merken</button>'
+                + (state.me.location === i.location ? '<button type="button" class="btn btn-sm" data-party="' + esc(i.location) + '">👥 Freunde einladen</button>' : '')
+                + (window.VRCX.discord ? '<button type="button" class="btn btn-sm" data-share="' + esc(i.location) + '">📣 In Discord teilen</button>' : '') + '</div>';
         }).catch(fail($('#userBody')));
     }
     document.addEventListener('click', e => {
@@ -481,7 +511,7 @@
     function renderAvatars() {
         const q = $('#avatarSearch').value.trim().toLowerCase();
         const list = avatarList.filter(a => !q || (a.name + ' ' + a.author + ' ' + a.desc).toLowerCase().includes(q));
-        $('#avatarsBox').innerHTML = list.length ? list.map(a => '<div class="vx-card' + (a.current ? ' current' : '') + '">' + img(a.thumb, 'vx-card-img', a.name) + '<span class="vx-card-body"><b>' + esc(a.name) + (a.current ? ' <span class="vx-pill rep">trägst du</span>' : '') + '</b>'
+        $('#avatarsBox').innerHTML = list.length ? list.map(a => '<div class="vx-card' + (a.current ? ' current' : '') + '" data-avatar-open="' + esc(a.id) + '" role="button" tabindex="0">' + img(a.thumb, 'vx-card-img', a.name) + '<span class="vx-card-body"><b>' + esc(a.name) + (a.current ? ' <span class="vx-pill rep">trägst du</span>' : '') + '</b>'
             + '<small>' + esc(a.author ? 'von ' + a.author : '') + (a.status ? ' · ' + esc(a.status) : '') + '</small><span class="vx-card-meta">' + a.platforms.map(p => '<span>' + esc(p) + '</span>').join('') + '</span>'
             + (a.current ? '' : '<button type="button" class="btn btn-sm btn-gold" data-avatar="' + esc(a.id) + '">Anziehen</button>') + '</span></div>').join('') : '<div class="vx-empty">Keine Avatare.</div>';
     }
@@ -560,6 +590,14 @@
         heat.forEach((row, d) => { h += '<span class="hd">' + days[d] + '</span>' + row.map((v, i) => '<span class="hc" style="--a:' + (v / max).toFixed(2) + '" title="' + days[d] + ' ' + i + ' Uhr: ' + v + '× online gekommen"></span>').join(''); });
         return h + '</div>';
     }
+    function inactivePanel() {
+        const lim = Date.now() - 30 * 86400000;
+        const list = state.friends.filter(f => f.state === 'offline' && f.last_login && new Date(f.last_login).getTime() < lim)
+            .sort((a, b) => new Date(a.last_login) - new Date(b.last_login)).slice(0, 25);
+        return '<div class="panel"><div class="panel-title">💤 Lange nicht online <small>(über 30 Tage)</small></div>' + (list.length ? '<div class="vx-members">' + list.map(f => '<div class="vx-member">' + img(f.image, 'vx-av sm', f.name)
+            + '<a href="#" data-user="' + esc(f.id) + '">' + esc(f.name) + '</a><small>zuletzt ' + esc(isoDate(f.last_login)) + ' · ' + Math.floor((Date.now() - new Date(f.last_login)) / 86400000) + ' Tage</small></div>').join('') + '</div>'
+            : '<div class="vx-empty">Alle deine Freunde waren in den letzten 30 Tagen online. 🎉</div>') + '</div>';
+    }
     function loadStats() {
         const box = $('#statsBox');
         if (!loaded.statsData) loading(box, 'Lade Statistik …');
@@ -579,6 +617,7 @@
                 + '<div class="panel"><div class="panel-title">🕐 Wann kommen deine Freunde online?</div>' + heatmap(s.heat) + '</div>'
                 + '<div class="panel"><div class="panel-title">🛡️ Vertrauensstufen</div>' + bars(s.trust, x => x.count, x => '<span style="color:' + esc(x.color) + '">' + esc(x.name) + '</span>', x => x.color) + '</div>'
                 + '<div class="panel"><div class="panel-title">💻 Plattformen (zuletzt)</div>' + bars(Object.entries(s.platform).map(([k, v]) => ({ k, v })), x => x.v, x => esc(x.k)) + '</div>'
+                + inactivePanel()
                 + '<div class="panel"><div class="panel-title">🧭 Deine meistbesuchten Welten</div>' + (s.my_worlds.length ? bars(s.my_worlds, w => w.count, w => '<a href="#" data-world="' + esc(w.id) + '">' + esc(w.name) + '</a>') : '<div class="vx-empty">Wird aufgezeichnet, sobald du im Spiel bist und diese Seite offen ist.</div>') + '</div>'
                 + '</div>';
         }).catch(fail(box));
@@ -604,6 +643,7 @@
         api('group', { id }).then(d => {
             group = d.group;
             const g = group;
+            remember('group', g.id, g.name);
             const tabs = [['info', 'ℹ Info'], ['posts', '📢 Beiträge'], ['members', '👥 Mitglieder'], ['instances', '🌐 Instanzen']];
             if (g.member && can(g, 'group-invites-manage')) tabs.push(['requests', '📥 Anfragen'], ['invite', '✉ Einladen']);
             if (g.member && can(g, 'group-bans-manage')) tabs.push(['bans', '🚫 Banns']);
@@ -814,9 +854,10 @@
         api('profile_save', { pronouns: f.pronouns.value, bio: f.bio.value, links: $$('input[name="links[]"]', f).map(i => i.value) }).then(r => { toast(r.msg); delete f.dataset.touched; load(false); }).catch(x => toast(x.message, true));
     });
     const pf = $('#prefsForm');
-    pf.notify.value = prefs.notify; pf.notify_offline.checked = !!prefs.notify_offline; pf.notify_gps.checked = !!prefs.notify_gps; pf.sound.checked = !!prefs.sound; pf.interval.value = String(prefs.interval || 60);
+    pf.notify.value = prefs.notify; pf.notify_offline.checked = !!prefs.notify_offline; pf.notify_gps.checked = !!prefs.notify_gps; pf.sound.checked = !!prefs.sound; pf.interval.value = String(prefs.interval || 60); pf.clipwatch.checked = !!prefs.clipwatch;
     pf.addEventListener('change', () => {
-        Object.assign(prefs, { notify: pf.notify.value, notify_offline: pf.notify_offline.checked, notify_gps: pf.notify_gps.checked, sound: pf.sound.checked, interval: +pf.interval.value });
+        Object.assign(prefs, { notify: pf.notify.value, notify_offline: pf.notify_offline.checked, notify_gps: pf.notify_gps.checked, sound: pf.sound.checked, interval: +pf.interval.value, clipwatch: pf.clipwatch.checked });
+        if (prefs.clipwatch && navigator.clipboard && navigator.clipboard.readText) navigator.clipboard.readText().catch(() => {});
         store.set('prefs', prefs);
         if (prefs.notify !== 'off' && 'Notification' in window && Notification.permission === 'default') Notification.requestPermission();
         schedule();
@@ -824,11 +865,235 @@
     });
     $('#notifyTest').addEventListener('click', () => {
         if (!('Notification' in window)) return toast('Dieser Browser kann keine Benachrichtigungen.', true);
-        Notification.requestPermission().then(p => { if (p === 'granted') notify('VRCX', 'So sehen Benachrichtigungen aus 🐾'); else toast('Benachrichtigungen sind im Browser blockiert.', true); });
+        Notification.requestPermission().then(p => { if (p === 'granted') notify('VRC Nexus', 'So sehen Benachrichtigungen aus 🐾'); else toast('Benachrichtigungen sind im Browser blockiert.', true); });
     });
     $('#logoutBtn').addEventListener('click', () => { if (confirm('VRChat-Verbindung trennen? Freunde, Verlauf und Notizen bleiben gespeichert.')) api('logout').then(() => location.reload()).catch(x => toast(x.message, true)); });
     const sf = $('#settingsForm');
     if (sf) sf.addEventListener('submit', e => { e.preventDefault(); api('settings', { user_agent: sf.user_agent.value }).then(r => toast(r.msg)).catch(x => toast(x.message, true)); });
+
+    // =============== Direkt-Zugriff (Zwischenablage, Einfügen, Befehlspalette) ===============
+    const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+    function parseRef(text) {
+        const t = String(text || '').trim();
+        if (!t) return null;
+        let s = t;
+        try { s = decodeURIComponent(t); } catch (e) {}
+        let m = s.match(/worldId=(wrld_[0-9a-f-]{36})&(?:amp;)?instanceId=([^&\s"'<>]+)/i);
+        if (m) return { type: 'instance', id: m[1] + ':' + m[2], label: 'Instanz' };
+        m = s.match(new RegExp('(wrld_' + UUID + '):([\\w~()\\-.:]+)', 'i'));
+        if (m) return { type: 'instance', id: m[1] + ':' + m[2], label: 'Instanz' };
+        const kinds = [['wrld', 'world', 'Welt'], ['avtr', 'avatar', 'Avatar'], ['usr', 'user', 'Benutzer'], ['grp', 'group', 'Gruppe']];
+        for (const [p, type, label] of kinds) { m = s.match(new RegExp('\\b' + p + '_' + UUID, 'i')); if (m) return { type, id: m[0].toLowerCase(), label }; }
+        m = s.match(/(?:vrc\.group\/|^)([A-Z0-9]{3,6}\.\d{4})\b/i);
+        if (m) return { type: 'groupcode', id: m[1].toUpperCase(), label: 'Gruppen-Kürzel' };
+        return null;
+    }
+    const recent = store.get('recent', []);
+    function remember(type, id, name) {
+        const i = recent.findIndex(r => r.type === type && r.id === id);
+        if (i >= 0) recent.splice(i, 1);
+        recent.unshift({ type, id, name: name || id, ts: Math.round(now()) });
+        recent.length = Math.min(recent.length, 25);
+        store.set('recent', recent);
+    }
+    function openRef(ref) {
+        if (!ref) return false;
+        if (ref.type === 'user') openUser(ref.id);
+        else if (ref.type === 'world') openWorld(ref.id);
+        else if (ref.type === 'avatar') openAvatar(ref.id);
+        else if (ref.type === 'instance') openInstance(ref.id);
+        else if (ref.type === 'group') { closeModal(); tab('groups'); openGroup(ref.id); }
+        else if (ref.type === 'groupcode') {
+            api('group_search', { q: ref.id }).then(d => { const g = d.groups.find(x => x.short.toUpperCase() === ref.id) || d.groups[0]; if (g) openRef({ type: 'group', id: g.id }); else toast('Keine Gruppe mit dem Kürzel ' + ref.id + ' gefunden.', true); }).catch(x => toast(x.message, true));
+        }
+        return true;
+    }
+    // Strg+V irgendwo auf der Seite (außer in Eingabefeldern) öffnet erkannte IDs sofort
+    document.addEventListener('paste', e => {
+        if (e.target.closest('input, textarea, [contenteditable]')) return;
+        const text = (e.clipboardData || window.clipboardData).getData('text');
+        const ref = parseRef(text);
+        if (ref) { e.preventDefault(); toast('📋 ' + ref.label + ' erkannt – wird geöffnet …'); openRef(ref); }
+        else if (text.trim()) openPalette(text.trim());
+    });
+    // Button „Zwischenablage“
+    function readClipboard(silent) {
+        if (!navigator.clipboard || !navigator.clipboard.readText) { if (!silent) openPalette(''); return Promise.resolve(); }
+        return navigator.clipboard.readText().then(text => {
+            const ref = parseRef(text);
+            if (ref) { if (silent) offerRef(ref, text); else openRef(ref); }
+            else if (!silent) { toast('In der Zwischenablage ist keine VRChat-ID – einfach einfügen oder suchen.'); openPalette(text.trim().slice(0, 80)); }
+        }).catch(() => { if (!silent) { toast('Der Browser erlaubt das Lesen der Zwischenablage nicht – einfach Strg+V drücken.'); openPalette(''); } });
+    }
+    let lastOffered = '';
+    function offerRef(ref, raw) {
+        if (raw === lastOffered) return;
+        lastOffered = raw;
+        $$('.vx-offer').forEach(x => x.remove());
+        const d = document.createElement('div');
+        d.className = 'vx-offer';
+        d.innerHTML = '📋 In der Zwischenablage: <b>' + esc(ref.label) + '</b> <code>' + esc(ref.id.length > 46 ? ref.id.slice(0, 46) + '…' : ref.id) + '</code> <button type="button" class="btn btn-sm btn-gold">Öffnen</button><button type="button" class="vx-x" aria-label="Schließen">×</button>';
+        d.querySelector('.btn').onclick = () => { d.remove(); openRef(ref); };
+        d.querySelector('.vx-x').onclick = () => d.remove();
+        document.body.append(d);
+        setTimeout(() => d.remove(), 15000);
+    }
+    // Beim Zurückkehren in den Tab automatisch prüfen (nur wenn erlaubt)
+    window.addEventListener('focus', () => {
+        if (!prefs.clipwatch || !navigator.permissions) return;
+        navigator.permissions.query({ name: 'clipboard-read' }).then(p => { if (p.state === 'granted') readClipboard(true); }).catch(() => {});
+    });
+
+    // ---------- Befehlspalette (Strg+K) ----------
+    const pal = document.createElement('div');
+    pal.className = 'pm vx-pal';
+    pal.hidden = true;
+    pal.innerHTML = '<div class="pm-box"><input type="search" id="palInput" placeholder="ID / Link einfügen, Freund suchen oder Befehl … (Strg+K)" autocomplete="off" aria-label="Befehlspalette"><div id="palList" role="listbox"></div>'
+        + '<p class="vx-small">Erkennt <code>usr_…</code>, <code>wrld_…</code>, <code>avtr_…</code>, <code>grp_…</code>, Instanzen, vrchat.com-Links und Gruppen-Kürzel wie <code>FURRY.1234</code>.</p></div>';
+    document.body.append(pal);
+    let palItems = [], palSel = 0;
+    const ACTIONS = [
+        ['⟳', 'Jetzt aktualisieren', () => load(true, true)],
+        ['🎲', 'Welt-Roulette (zufällige Welt)', () => roulette()],
+        ['👥', 'Freunde in meine Instanz einladen', () => partyInvite()],
+        ['🟦', 'Status: Komm vorbei', () => quickStatus('join me')], ['🟩', 'Status: Online', () => quickStatus('active')],
+        ['🟧', 'Status: Frag mich', () => quickStatus('ask me')], ['🟥', 'Status: Beschäftigt', () => quickStatus('busy')],
+        ['📋', 'Zwischenablage prüfen', () => readClipboard(false)],
+        ...TABS.map(t => ['➡', 'Reiter: ' + $('[data-tab=' + t + ']').textContent.trim(), () => tab(t)]),
+    ];
+    function openPalette(q) {
+        pal.hidden = false;
+        document.body.style.overflow = 'hidden';
+        const i = $('#palInput');
+        i.value = q || '';
+        renderPalette();
+        setTimeout(() => i.focus(), 0);
+    }
+    function closePalette() { pal.hidden = true; if (modal.hidden) document.body.style.overflow = ''; }
+    function renderPalette() {
+        const q = $('#palInput').value.trim(), ql = q.toLowerCase(), ref = parseRef(q);
+        palItems = [];
+        if (ref) palItems.push({ ic: '📋', label: ref.label + ' öffnen', sub: ref.id, run: () => openRef(ref) });
+        if (!q) recent.slice(0, 8).forEach(r => palItems.push({ ic: '🕘', label: r.name, sub: { user: 'Benutzer', world: 'Welt', avatar: 'Avatar', group: 'Gruppe', instance: 'Instanz' }[r.type] + ' · zuletzt angesehen', run: () => openRef(r) }));
+        if (q && !ref) {
+            (state ? state.friends : []).filter(f => f.name.toLowerCase().includes(ql)).slice(0, 6)
+                .forEach(f => palItems.push({ ic: f.state === 'online' ? '🟢' : f.state === 'active' ? '💻' : '⚫', label: f.name, sub: f.state === 'online' && f.loc ? (f.loc.world_name || f.loc.label) : 'Freund', run: () => openUser(f.id) }));
+            ACTIONS.filter(a => a[1].toLowerCase().includes(ql)).slice(0, 5).forEach(a => palItems.push({ ic: a[0], label: a[1], run: a[2] }));
+            if (q.length >= 2) {
+                palItems.push({ ic: '🔍', label: 'Benutzer suchen: „' + q + '“', run: () => { tab('search'); setSearch('users', q); } });
+                palItems.push({ ic: '🌐', label: 'Welten suchen: „' + q + '“', run: () => { tab('search'); setSearch('worlds', q); } });
+                palItems.push({ ic: '🛡️', label: 'Gruppen suchen: „' + q + '“', run: () => { tab('search'); setSearch('groups', q); } });
+            }
+        }
+        if (!q) ACTIONS.slice(0, 8).forEach(a => palItems.push({ ic: a[0], label: a[1], run: a[2] }));
+        palSel = 0;
+        $('#palList').innerHTML = palItems.map((it, i) => '<button type="button" class="vx-pal-item' + (i ? '' : ' on') + '" data-i="' + i + '" role="option"><span>' + it.ic + '</span><b>' + esc(it.label) + '</b>' + (it.sub ? '<small>' + esc(it.sub) + '</small>' : '') + '</button>').join('')
+            || '<div class="vx-empty">Nichts gefunden.</div>';
+    }
+    function runPal(i) { const it = palItems[i]; if (!it) return; closePalette(); it.run(); }
+    $('#palInput').addEventListener('input', renderPalette);
+    $('#palInput').addEventListener('keydown', e => {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            palSel = (palSel + (e.key === 'ArrowDown' ? 1 : -1) + palItems.length) % Math.max(1, palItems.length);
+            $$('.vx-pal-item').forEach((b, i) => b.classList.toggle('on', i === palSel));
+            const on = $('.vx-pal-item.on'); if (on) on.scrollIntoView({ block: 'nearest' });
+        }
+        if (e.key === 'Enter') { e.preventDefault(); runPal(palSel); }
+        if (e.key === 'Escape') closePalette();
+    });
+    pal.addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (b) runPal(+b.dataset.i); else if (e.target === pal) closePalette(); });
+    document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); pal.hidden ? openPalette('') : closePalette(); } });
+    $('#clipBtn').addEventListener('click', () => readClipboard(false));
+    $('#palBtn').addEventListener('click', () => openPalette(''));
+    function setSearch(kind, q) {
+        searchKind = kind;
+        $$('#searchKinds .chip').forEach(x => x.classList.toggle('on', x.dataset.kind === kind));
+        $('#userSearch').value = q;
+        $('#searchForm').requestSubmit();
+    }
+    function quickStatus(s) { api('status', { status: s, desc: state.me.status_desc || '' }).then(r => { toast(r.msg); load(true, true); }).catch(x => toast(x.message, true)); }
+
+    // ---------- Avatar-Dialog ----------
+    function openAvatar(id) {
+        openModal('<div class="vx-loading">Lade Avatar …</div>');
+        api('avatar', { id }).then(d => {
+            const a = d.avatar;
+            remember('avatar', a.id, a.name);
+            $('#userBody').innerHTML = (/^https:/.test(a.image) ? '<div class="vx-w-hero" style="background-image:url(\'' + esc(a.image.replace(/['"()\\\s]/g, encodeURIComponent)) + '\')"></div>' : '')
+                + '<div class="vx-w-head"><div><h2>' + esc(a.name) + (a.current ? ' <span class="vx-pill rep">trägst du</span>' : '') + '</h2><div class="vx-u-sub">von <a href="#" data-user="' + esc(a.author_id) + '">' + esc(a.author) + '</a> · ' + esc(a.status) + (a.version ? ' · Version ' + a.version : '') + '</div>'
+                + '<div class="vx-u-tags">' + a.platforms.map(p => '<span class="vx-pill">' + esc(p) + '</span>').join('') + a.performance.map(p => '<span class="vx-pill" style="--pc:#ffb86c">' + esc(p) + '</span>').join('') + a.tags.slice(0, 8).map(t => '<span class="vx-pill" style="--pc:#bd93f9">#' + esc(t) + '</span>').join('') + '</div></div>'
+                + '<span class="vx-u-btns">' + (a.current ? '' : '<button type="button" class="btn btn-sm btn-gold" id="avSel">🎭 Anziehen</button>') + '<button type="button" class="btn btn-sm" id="avFav">☆ Favorisieren</button><button type="button" class="btn btn-sm" id="avUnfav">Favorit entfernen</button>'
+                + '<a class="btn btn-sm" href="https://vrchat.com/home/avatar/' + encodeURIComponent(a.id) + '" target="_blank" rel="noopener noreferrer">↗ vrchat.com</a></span></div>'
+                + (a.desc_html ? '<h4>Beschreibung</h4><div class="fmt vx-u-bio">' + a.desc_html + '</div>' : '')
+                + '<dl class="vx-u-facts">' + (a.created ? '<dt>Erstellt</dt><dd>' + esc(isoDate(a.created)) + '</dd>' : '') + (a.updated ? '<dt>Aktualisiert</dt><dd>' + esc(isoDate(a.updated)) + '</dd>' : '')
+                + '<dt>Avatar-ID</dt><dd><code class="vx-id">' + esc(a.id) + '</code> <button type="button" class="vx-copy" data-copy="' + esc(a.id) + '">⧉</button></dd></dl>'
+                + (a.status !== 'public' && !a.current ? '<p class="vx-small">Hinweis: Private Avatare anderer Personen kann VRChat nicht anziehen lassen.</p>' : '');
+            const sel = $('#avSel');
+            if (sel) sel.onclick = () => api('avatar_select', { id: a.id }).then(r => { toast(r.msg); load(false); openAvatar(a.id); }).catch(x => toast(x.message, true));
+            $('#avFav').onclick = () => api('avatar_fav', { id: a.id, on: 1 }).then(r => toast(r.msg)).catch(x => toast(x.message, true));
+            $('#avUnfav').onclick = () => api('avatar_fav', { id: a.id, on: '' }).then(r => toast(r.msg)).catch(x => toast(x.message, true));
+        }).catch(fail($('#userBody')));
+    }
+    $('#avatarsBox').addEventListener('click', e => { const c = e.target.closest('[data-avatar-open]'); if (c && !e.target.closest('[data-avatar]')) openAvatar(c.dataset.avatarOpen); });
+
+    // ---------- Instanzen merken, teilen, Party-Einladung ----------
+    const bookmarks = store.get('bookmarks', []);
+    function bookmarkToggle(loc, name) {
+        const i = bookmarks.findIndex(b => b.location === loc);
+        if (i >= 0) bookmarks.splice(i, 1); else bookmarks.unshift({ location: loc, name: name || 'Instanz', ts: Math.round(now()) });
+        store.set('bookmarks', bookmarks.slice(0, 40));
+        toast(i >= 0 ? 'Aus der Merkliste entfernt.' : '🔖 Instanz gemerkt – unter Welten → Gemerkt.');
+    }
+    const launchUrl = loc => { const [w, ...r] = loc.split(':'); return 'https://vrchat.com/home/launch?worldId=' + encodeURIComponent(w) + '&instanceId=' + encodeURIComponent(r.join(':')); };
+    document.addEventListener('click', e => {
+        const b = e.target.closest('[data-bm]');
+        if (b) { e.preventDefault(); bookmarkToggle(b.dataset.bm, b.dataset.name); if (worldKind === 'bookmarks') loadWorlds('bookmarks'); return; }
+        const l = e.target.closest('[data-link]');
+        if (l) { e.preventDefault(); const u = launchUrl(l.dataset.link); (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(() => toast('🔗 Einladungslink kopiert – zum Teilen einfügen.')).catch(() => prompt('Link kopieren:', u)); return; }
+        const s = e.target.closest('[data-share]');
+        if (s) {
+            e.preventDefault();
+            const text = prompt('Text zur Einladung in Discord (optional):', 'Kommt vorbei! 🐾');
+            if (text === null) return;
+            api('discord_share', { location: s.dataset.share, text }).then(r => toast(r.msg)).catch(x => toast(x.message, true));
+            return;
+        }
+        const p = e.target.closest('[data-party]');
+        if (p) { e.preventDefault(); partyInvite(p.dataset.party); }
+    });
+    function partyInvite(loc) {
+        loc = loc || state.me.location;
+        if (!loc) return toast('Du bist gerade in keiner Instanz – erst ins Spiel gehen.', true);
+        const fr = state.friends.filter(f => f.state !== 'offline').sort((a, b) => (b.favorite - a.favorite) || a.name.localeCompare(b.name, 'de'));
+        openModal('<h2>👥 Freunde einladen</h2><p class="vx-small">Wähle, wer eine Einladung in deine Instanz bekommen soll (max. 25).</p>'
+            + '<div class="vx-tools"><button type="button" class="btn btn-sm" id="pAll">Alle online</button><button type="button" class="btn btn-sm" id="pFav">⭐ Favoriten</button><button type="button" class="btn btn-sm" id="pNone">Keine</button></div>'
+            + '<div class="vx-party">' + (fr.length ? fr.map(f => '<label class="vx-party-item"><input type="checkbox" value="' + esc(f.id) + '"' + (f.favorite ? ' data-fav="1"' : '') + '> ' + statusDot(f.status) + esc(f.name)
+                + (f.state === 'online' && f.loc && f.loc.kind === 'world' ? ' <small>' + esc(f.loc.world_name || '') + '</small>' : '') + '</label>').join('') : '<div class="vx-empty">Gerade ist niemand online.</div>') + '</div>'
+            + '<div class="vx-u-actions"><button type="button" class="btn btn-gold" id="pGo">📨 Einladungen senden</button></div>');
+        const boxes = () => $$('.vx-party input');
+        $('#pAll').onclick = () => boxes().forEach(b => { b.checked = true; });
+        $('#pFav').onclick = () => boxes().forEach(b => { b.checked = !!b.dataset.fav; });
+        $('#pNone').onclick = () => boxes().forEach(b => { b.checked = false; });
+        $('#pGo').onclick = () => {
+            const ids = boxes().filter(b => b.checked).map(b => b.value);
+            if (!ids.length) return toast('Bitte mindestens eine Person auswählen.', true);
+            $('#pGo').disabled = true; $('#pGo').textContent = 'Sende …';
+            api('invite_many', { ids, location: loc }).then(r => { toast(r.msg); closeModal(); }).catch(x => { toast(x.message, true); $('#pGo').disabled = false; });
+        };
+    }
+    function roulette() {
+        tab('worlds');
+        loading($('#worldsBox'), '🎲 Würfle eine Welt …');
+        Promise.all([api('worlds', { kind: 'favorites' }).catch(() => ({ worlds: [] })), api('worlds', { kind: 'active' }).catch(() => ({ worlds: [] }))]).then(([a, b]) => {
+            const all = a.worlds.concat(b.worlds);
+            loadWorlds(worldKind === 'search' ? 'favorites' : worldKind);
+            if (!all.length) return toast('Keine Welten zum Auswürfeln gefunden.', true);
+            const w = all[Math.floor(Math.random() * all.length)];
+            toast('🎲 ' + w.name);
+            openWorld(w.id);
+        });
+    }
 
     // Start
     load(false).then(() => load(true)).finally(schedule);

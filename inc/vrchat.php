@@ -1,6 +1,6 @@
 <?php
 /**
- * VRCX – VRChat-Anbindung: Anmeldung (Benutzer/Passwort + 2FA), Freundesliste mit Verlauf (Feed),
+ * VRC Nexus – VRChat-Anbindung: Anmeldung (Benutzer/Passwort + 2FA), Freundesliste mit Verlauf (Feed),
  * Statistik (Online-Zeiten, Welten, Aktivität), Welten & Instanzen, Avatare, Moderation,
  * Weltnamen-Zwischenspeicher, eigene Notizen zu Freunden und Gruppenverwaltung.
  *
@@ -12,6 +12,7 @@
  */
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/format.php';
+require_once __DIR__ . '/crypto.php';
 
 const VRC_API_DEFAULT = 'https://api.vrchat.cloud/api/1';
 const VRC_SYNC_MIN = 45;           // Sekunden zwischen zwei Freundes-Abgleichen
@@ -107,38 +108,26 @@ function vrc_db(): PDO {
             CREATE INDEX idx_feed_friend ON feed(user_id, vrc_id, ts);
             PRAGMA user_version = 2;
         ");
-        try { site_db()->exec("UPDATE pages SET title = 'VRCX', description = 'VRChat: Freunde, Verlauf, Statistik, Welten, Avatare & Gruppen – Login mit 2FA' WHERE slug = 'vrcx.php' AND title = 'VRCX Lite'"); } catch (Throwable $e) {}
+    }
+    if ((int)$db->query('PRAGMA user_version')->fetchColumn() < 3) {
+        $db->exec("
+            ALTER TABLE notes ADD COLUMN tags TEXT NOT NULL DEFAULT '';      -- eigene Listen, kommagetrennt
+            ALTER TABLE notes ADD COLUMN watch INTEGER NOT NULL DEFAULT 0;   -- benachrichtigen, wenn online
+            PRAGMA user_version = 3;
+        ");
     }
     return $db;
 }
 
 // ---------- Verschlüsselung der Sitzungs-Cookies ----------
 
-function vrc_key(): string {
-    $file = (glob(dirname(__DIR__) . '/data/.vrc_key_*.php') ?: [])[0] ?? null;
-    if ($file) {
-        $k = secure_load($file, [])['key'] ?? '';
-        if (strlen(base64_decode($k)) === 32) return base64_decode($k);
-    }
-    $key = random_bytes(32);
-    secure_save(dirname(__DIR__) . '/data/.vrc_key_' . bin2hex(random_bytes(6)) . '.php', ['key' => base64_encode($key)]);
-    return $key;
-}
-
 function vrc_encrypt(array $data): string {
-    $plain = json_encode($data);
-    if (!function_exists('openssl_encrypt')) return 'plain:' . base64_encode($plain);
-    $iv = random_bytes(12);
-    $ct = openssl_encrypt($plain, 'aes-256-gcm', vrc_key(), OPENSSL_RAW_DATA, $iv, $tag);
-    return 'gcm:' . base64_encode($iv . $tag . $ct);
+    return crypto_encrypt('vrc', $data);
 }
 
 function vrc_decrypt(string $s): array {
-    if (strpos($s, 'plain:') === 0) return json_decode(base64_decode(substr($s, 6)), true) ?: [];
-    if (strpos($s, 'gcm:') !== 0 || !function_exists('openssl_decrypt')) return [];
-    $raw = base64_decode(substr($s, 4));
-    $plain = openssl_decrypt(substr($raw, 28), 'aes-256-gcm', vrc_key(), OPENSSL_RAW_DATA, substr($raw, 0, 12), substr($raw, 12, 16));
-    return $plain === false ? [] : (json_decode($plain, true) ?: []);
+    $d = crypto_decrypt('vrc', $s);
+    return is_array($d) ? $d : [];
 }
 
 // ---------- HTTP ----------
@@ -149,7 +138,7 @@ function vrc_api_base(): string {
 
 function vrc_user_agent(): string {
     $ua = trim(setting('vrc_user_agent', ''));
-    return $ua !== '' ? $ua : 'GhostNodeDashboard-VRCX/2.0';
+    return $ua !== '' ? $ua : 'GhostNode-VRCNexus/3.0';
 }
 
 /**
@@ -497,7 +486,7 @@ function vrc_sync_favorites(array &$acc): void {
 
 /** Freundesliste für die Anzeige */
 function vrc_friend_list(int $uid): array {
-    $st = vrc_db()->prepare('SELECT f.*, n.note, n.favorite FROM friends f LEFT JOIN notes n ON n.user_id = f.user_id AND n.vrc_id = f.vrc_id WHERE f.user_id = ? ORDER BY f.display_name COLLATE NOCASE');
+    $st = vrc_db()->prepare('SELECT f.*, n.note, n.favorite, n.tags AS ltags, n.watch FROM friends f LEFT JOIN notes n ON n.user_id = f.user_id AND n.vrc_id = f.vrc_id WHERE f.user_id = ? ORDER BY f.display_name COLLATE NOCASE');
     $st->execute([$uid]);
     $rows = $st->fetchAll();
     $worlds = vrc_worlds(array_map(function ($r) { return vrc_location($r['location'])['world'] ?? ''; }, $rows));
@@ -509,7 +498,8 @@ function vrc_friend_list(int $uid): array {
         return ['id' => $r['vrc_id'], 'name' => $r['display_name'], 'state' => $r['state'], 'status' => $r['status'], 'status_desc' => $r['status_desc'],
                 'loc' => $loc, 'platform' => VRC_PLATFORM[$r['platform']] ?? $r['platform'], 'image' => $r['image'], 'trust' => vrc_trust($tags),
                 'since' => (int)$r['since'], 'note' => (string)$r['note'], 'favorite' => (bool)$r['favorite'], 'last_login' => $r['last_login'],
-                'pf' => $r['platform'], 'fav_group' => $r['fav_group'], 'friend_since' => (int)$r['friend_since'], 'status_key' => $r['status']];
+                'pf' => $r['platform'], 'fav_group' => $r['fav_group'], 'friend_since' => (int)$r['friend_since'], 'status_key' => $r['status'],
+                'lists' => array_values(array_filter(array_map('trim', explode(',', (string)$r['ltags'])), 'strlen')), 'watch' => (bool)$r['watch']];
     }, $rows);
 }
 
@@ -543,13 +533,33 @@ function vrc_feed(int $uid, array $f = []): array {
 }
 
 function vrc_note(int $uid, string $id): array {
-    $st = vrc_db()->prepare('SELECT note, favorite FROM notes WHERE user_id = ? AND vrc_id = ?');
+    $st = vrc_db()->prepare('SELECT note, favorite, tags, watch FROM notes WHERE user_id = ? AND vrc_id = ?');
     $st->execute([$uid, $id]);
-    return $st->fetch() ?: ['note' => '', 'favorite' => 0];
+    return $st->fetch() ?: ['note' => '', 'favorite' => 0, 'tags' => '', 'watch' => 0];
 }
 
-function vrc_note_save(int $uid, string $id, string $note, bool $fav): void {
-    vrc_db()->prepare('INSERT OR REPLACE INTO notes (user_id, vrc_id, note, favorite, updated) VALUES (?, ?, ?, ?, ?)')->execute([$uid, $id, mb_substr($note, 0, 4000), $fav ? 1 : 0, time()]);
+function vrc_note_save(int $uid, string $id, string $note, bool $fav, ?string $tags = null, ?bool $watch = null): void {
+    $old = vrc_note($uid, $id);
+    $tags = $tags === null ? (string)$old['tags'] : implode(', ', array_slice(array_unique(array_filter(array_map(function ($t) { return mb_substr(trim($t), 0, 30); }, explode(',', $tags)), 'strlen')), 0, 10));
+    vrc_db()->prepare('INSERT OR REPLACE INTO notes (user_id, vrc_id, note, favorite, updated, tags, watch) VALUES (?, ?, ?, ?, ?, ?, ?)')
+            ->execute([$uid, $id, mb_substr($note, 0, 4000), $fav ? 1 : 0, time(), $tags, $watch === null ? (int)$old['watch'] : ($watch ? 1 : 0)]);
+}
+
+/** Zuletzt besuchte eigene Instanzen (aus dem Verlauf „Meine Orte“) */
+function vrc_recent_instances(int $uid, int $limit = 30): array {
+    $st = vrc_db()->prepare("SELECT ts, new FROM feed WHERE user_id = ? AND type = 'self' AND new LIKE 'wrld_%' ORDER BY id DESC LIMIT 300");
+    $st->execute([$uid]);
+    $seen = [];
+    foreach ($st as $r) {
+        if (isset($seen[$r['new']])) { $seen[$r['new']]['visits']++; continue; }
+        if (count($seen) >= $limit) continue;
+        $seen[$r['new']] = ['location' => $r['new'], 'ts' => (int)$r['ts'], 'visits' => 1];
+    }
+    $worlds = vrc_worlds(array_map(function ($x) { return explode(':', $x['location'])[0]; }, $seen));
+    return array_values(array_map(function ($x) use ($worlds) {
+        $l = vrc_location($x['location']);
+        return $x + ['loc' => $l, 'world_name' => $worlds[$l['world']]['name'] ?? 'Welt', 'thumb' => $worlds[$l['world']]['thumb'] ?? ''];
+    }, $seen));
 }
 
 /** Kurzinfo für die Kachel im Index */
@@ -698,7 +708,7 @@ function vrc_stats(int $uid): array {
 
 /** Daten als CSV ausgeben (Freunde oder Verlauf) */
 function vrc_export(int $uid, string $what): void {
-    $name = 'vrcx_' . ($what === 'feed' ? 'verlauf' : 'freunde') . '_' . date('Y-m-d') . '.csv';
+    $name = 'vrc-nexus_' . ($what === 'feed' ? 'verlauf' : 'freunde') . '_' . date('Y-m-d') . '.csv';
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="' . $name . '"');
     $out = fopen('php://output', 'w');

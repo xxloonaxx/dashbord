@@ -12,7 +12,8 @@ PHP-Dashboard: Daten als JSON-Dateien neben den Seiten, Benutzer/Seiten/Kalender
 | `countdown.php` | Beliebig viele Countdowns (auch jährlich wiederkehrend), Haupt-Countdown für Feed & Startseite, Kalender-Export (.ics) |
 | `linkcheck.php` | Prüft alle Hub-Links auf Erreichbarkeit (in kleinen Paketen mit Live-Fortschritt, damit kein Hoster-Zeitlimit greift); kaputte Links bekommen in den Hubs einen ⚠-Hinweis |
 | `backup.php` | Lädt alle persönlichen Daten (Budget, Con, Countdowns, Archive, Datenbanken, hochgeladene Bilder) als ZIP herunter |
-| `vrcx.php` | **VRCX**: VRChat-Freunde, Verlauf, Statistik, Welten & Instanzen, Avatare, Moderation, Gruppen – Login mit 2FA |
+| `nexus.php` | **VRC Nexus**: VRChat-Freunde, Verlauf, Statistik, Welten & Instanzen, Avatare, Moderation, Gruppen, Direkt-Zugriff – Login mit 2FA (`vrcx.php` leitet weiter) |
+| `discord.php` | **Discord-Zentrale**: Server über den eigenen Bot – Nachrichten & Embeds, Mitglieder, Rollen, Kanäle, Events, Moderation, geplante Nachrichten |
 | `page.php` | Eigene Seiten aus Vorlagen (Logik in `inc/tpl/*.php`) |
 | `inc/format.php`, `assets/editor.js`, `preview.php` | Gemeinsame Formatierung (Markdown + BBCode + HTML), Werkzeugleiste & Live-Vorschau |
 | `inc/common.php` | Gemeinsame Hilfsfunktionen (JSON laden/speichern, Beträge, Escaping, Zeitzone) |
@@ -39,7 +40,7 @@ Alles liegt in der SQLite-Datenbank `data/site_<zufall>.sqlite`; Passwörter nur
 - **Benutzer** (Admin-Zentrale → Benutzer): anlegen, Rolle zuweisen, deaktivieren, Passwort neu setzen
   (mit Generator), Sitzungen beenden, löschen. Der letzte aktive Administrator kann nicht entmachtet werden.
 - **Rollen & Rechte**: Administrator (immer alles), Redakteur, Mitglied – eigene Rollen beliebig anlegen.
-  19 Einzelrechte, z. B. `vrcx.access`, `budget.access`, `con.access`, `calendar.edit`, `calendar.private`, `links.edit`,
+  20 Einzelrechte, z. B. `vrcx.access` (VRC Nexus), `discord.manage`, `budget.access`, `con.access`, `calendar.edit`, `calendar.private`, `links.edit`,
   `pages.manage`, `users.manage`, `nsfw.view`, `settings.nsfw`, `system.manage`, `audit.view`.
 - Rollenwechsel, Deaktivierung und Passwortänderung melden den Benutzer überall ab.
 - Nach 5 falschen Passwörtern wird die IP für 10 Minuten gesperrt (in „System“ aufhebbar).
@@ -86,9 +87,9 @@ Alles wird serverseitig bereinigt: `<script>`, `on…`-Attribute, `javascript:`-
 fremde iframes werden entfernt, offene Tags automatisch geschlossen. Jedes Textfeld bekommt eine **Werkzeugleiste**
 (Fett, Farbe, Liste, Link, Tabelle …), eine **👁 Live-Vorschau** und eine **?**-Kurzhilfe; `Strg+B/I/U/K` funktionieren.
 
-## VRCX (`vrcx.php`)
+## VRC Nexus (`nexus.php`)
 
-Eine Web-Version von VRCX für VRChat. Recht: `vrcx.access` (Administratoren haben es automatisch,
+Die VRChat-Zentrale des Dashboards (früher „VRCX“ – umbenannt, weil VRCX ein eigenständiges Projekt ist; `vrcx.php` leitet weiter). Recht: `vrcx.access` (Administratoren haben es automatisch,
 anderen Rollen in der Admin-Zentrale geben). Jeder Dashboard-Benutzer verbindet **sein eigenes** VRChat-Konto.
 
 - **Anmeldung** mit VRChat-Benutzername/E-Mail + Passwort, danach **2FA**: Authenticator-App, E-Mail-Code oder Wiederherstellungscode.
@@ -115,13 +116,49 @@ anderen Rollen in der Admin-Zentrale geben). Jeder Dashboard-Benutzer verbindet 
   Stummgeschaltete usw. ansehen und aufheben), **Suche** nach Benutzern, Welten und Gruppen.
 - **Konto**: Status + Status-Vorlagen, Profil (Bio, Pronomen, Links), **Browser-Benachrichtigungen** (wenn Favoriten /
   VRChat-Favoriten / alle ins Spiel kommen, optional offline & Ortswechsel, mit Ton), Aktualisierungs-Intervall, Exporte.
-- Tastenkürzel: `/` Suche, `R` aktualisieren, `1`–`0` Reiter, `Esc` schließen.
+- **📋 Direkt-Zugriff**: Eine VRChat-ID oder ein Link in der Zwischenablage? Einfach auf der Seite **Strg+V** drücken (oder
+  „📋 Direkt-Zugriff“). Erkannt werden `usr_…`, `wrld_…`, `avtr_…`, `grp_…`, Gruppen-Kürzel (`FURRY.1234`, `vrc.group/…`),
+  Instanzen (`wrld_…:12345~…`), vrchat.com-Links (Profil, Welt, Avatar, Gruppe, Einladungslink) und `vrchat://launch`.
+  Optional prüft die Seite beim Zurückkehren die Zwischenablage und bietet erkannte IDs an.
+- **⌘ Befehlspalette** (`Strg+K`): IDs/Links einfügen, Freunde finden, zuletzt Angesehenes, Status setzen, Reiter wechseln,
+  Benutzer/Welten/Gruppen suchen, Welt-Roulette, Party-Einladung.
+- **Avatar-Dialog** (aus ID, Link oder Liste): Infos, Plattformen, Performance, anziehen, favorisieren.
+- **Eigene Listen** für Freunde (z. B. „Stammtisch“, „EF-Gruppe“) als Filter-Chips, **🔔 Beobachten** (Benachrichtigung, sobald
+  jemand online kommt – auch wenn Benachrichtigungen sonst aus sind).
+- **👥 Party-Einladung**: mehrere Freunde auf einmal in die eigene Instanz einladen.
+- **Instanzen**: 🔖 merken, 🔗 Einladungslink kopieren, 📣 direkt in Discord teilen (mit der Discord-Zentrale),
+  „Meine letzten Instanzen“ mit Wieder-Beitreten, 🎲 Welt-Roulette.
+- **💤 Lange nicht online**: Freunde, die über 30 Tage nicht da waren (in der Statistik).
+- Tastenkürzel: `Strg+K` Palette, `Strg+V` ID öffnen, `/` Suche, `R` aktualisieren, `1`–`0` Reiter, `Esc` schließen.
 - Moderationsaktionen (Kick, Bann, Blockieren, Freundschaft beenden …) landen im Protokoll der Admin-Zentrale.
 
-Die VRChat-API ist **inoffiziell**. VRCX fragt bewusst sparsam ab (Freunde höchstens alle 45 s, offline Freunde und
+Die VRChat-API ist **inoffiziell**. VRC Nexus fragt bewusst sparsam ab (Freunde höchstens alle 45 s, offline Freunde und
 Favoriten alle 15 min, Weltnamen werden gespeichert) und führt nichts automatisch aus. Verlauf und Statistik entstehen nur,
 solange die Seite offen ist. VRChat bittet darum, dass sich Programme per User-Agent mit einer Kontaktmöglichkeit ausweisen –
-das lässt sich in VRCX → Konto einstellen (Recht `system.manage`). Voraussetzung: cURL und ausgehende Verbindungen zu `api.vrchat.cloud`.
+das lässt sich in VRC Nexus → Konto einstellen (Recht `system.manage`). Voraussetzung: cURL und ausgehende Verbindungen zu `api.vrchat.cloud`.
+
+## Discord-Zentrale (`discord.php`)
+
+Den eigenen Discord-Server über einen **eigenen Bot** verwalten. Recht: `discord.manage` (Administratoren automatisch).
+
+1. Auf discord.com/developers/applications eine Application anlegen → **Bot** → **Reset Token** → Token in der Zentrale eintragen
+   (wird AES-256-GCM-verschlüsselt gespeichert, nie wieder angezeigt; Schlüssel in `data/.discord_key_….php`).
+2. Im Developer-Portal **Server Members Intent** und **Message Content Intent** einschalten.
+3. Mit dem angezeigten **Einladungslink** den Bot auf den Server holen und seine Rolle über die zu verwaltenden Rollen schieben.
+
+Funktionen:
+- **Übersicht**: Mitglieder, online, Boosts, Kanäle, Rollen, Emojis, Menschen/Bots, neue Mitglieder pro Monat, zuletzt beigetreten, größte Rollen.
+- **Nachrichten**: Kanal wählen, Text mit Discord-Markdown, **Embed-Baukasten** (Titel, Link, Farbe, Bild, Vorschaubild, Autor,
+  Fußzeile, Zeitstempel, Felder) mit Live-Vorschau im Discord-Look, Antworten, Vorlagen (im Browser), Countdown einfügen,
+  @everyone nur auf Wunsch; letzte Nachrichten lesen, anpinnen, löschen.
+- **Mitglieder**: Suche, Filter nach Rolle/Bots/Timeouts; Spitzname, Rollen vergeben/entziehen, Timeout, Kick, Bann (mit Grund fürs Audit-Log).
+- **Rollen** (Farben, Rechte, Mitgliederzahl), **Kanäle** (Baum, neue Kanäle, Einladungen erstellen/löschen).
+- **Events**: Server-Events ansehen, anlegen, löschen; **Kalender-Termine als Discord-Event** übernehmen und Discord-Events **in den Kalender** holen.
+- **Moderation**: Banns (aufheben) und Audit-Log.
+- **Geplant**: Nachrichten einmalig, täglich, wöchentlich oder monatlich senden. Sie gehen raus, wenn jemand die Zentrale öffnet –
+  pünktlich, wenn die angezeigte **Cron-Adresse** (`discord.php?cron=…`) alle 5 Minuten aufgerufen wird (Hoster-Cronjob oder cron-job.org).
+- **VRC Nexus → „📣 In Discord teilen“** schickt eine Instanz mit Beitreten-Link in den Standard-Kanal.
+- Alle Moderations- und Sendeaktionen landen im Protokoll der Admin-Zentrale.
 
 ## Con-Rechner (`con.php`)
 

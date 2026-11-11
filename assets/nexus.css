@@ -239,6 +239,25 @@ span.vx-card-img { display: flex; align-items: center; justify-content: center; 
 .vx-preset { display: inline-flex; align-items: center; gap: 4px; }
 .vx-preset button { background: none; border: none; color: var(--text-muted); cursor: pointer; }
 .vx-prefs .vx-auto { display: flex; margin-top: 6px; }
+/* Direkt-Zugriff & Befehlspalette */
+.vx-offer { position: fixed; right: 18px; bottom: 18px; z-index: 1500; max-width: min(520px, calc(100vw - 36px)); background: var(--panel-bg); border: 1px solid var(--accent-gold); box-shadow: 0 0 24px rgba(243, 194, 98, 0.25);
+            padding: 12px 36px 12px 14px; font-size: 0.85rem; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.vx-offer code { font-size: 0.72rem; color: var(--text-muted); word-break: break-all; }
+.vx-x { position: absolute; top: 4px; right: 8px; background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; }
+.vx-pal { align-items: flex-start; padding-top: 12vh; }
+.vx-pal .pm-box { max-width: 640px; padding: 14px; }
+.vx-pal input[type=search] { font-size: 1rem; padding: 12px 14px; }
+#palList { display: flex; flex-direction: column; margin: 8px 0; max-height: 50vh; overflow-y: auto; }
+.vx-pal-item { display: grid; grid-template-columns: 28px 1fr; gap: 0 8px; text-align: left; background: transparent; border: 1px solid transparent; color: var(--text-main); padding: 8px 10px; font: inherit; cursor: pointer; }
+.vx-pal-item span { grid-row: 1 / 3; font-size: 1.1rem; align-self: center; }
+.vx-pal-item small { color: var(--text-muted); font-size: 0.72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vx-pal-item.on, .vx-pal-item:hover { border-color: var(--accent-gold); background: rgba(243, 194, 98, 0.08); }
+.vx-party { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 4px 12px; max-height: 50vh; overflow-y: auto; margin: 10px 0; }
+.vx-party-item { display: flex; gap: 6px; align-items: center; padding: 5px 6px; border: 1px solid rgba(56, 213, 230, 0.12); cursor: pointer; font-size: 0.85rem; }
+.vx-party-item small { color: var(--text-muted); margin-left: auto; font-size: 0.7rem; }
+.vx-inst.vx-wide { grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr)); }
+.vx-card[data-avatar-open] { cursor: pointer; }
+.panel-title small { text-transform: none; letter-spacing: 0; color: var(--text-muted); font-weight: 400; }
 @media (max-width: 760px) {
     .vx-tabbtn { padding: 6px 8px; font-size: 0.66rem; }
     .vx-spark { display: none; }

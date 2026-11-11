@@ -32,17 +32,21 @@ const PAGE_DEFAULTS = [
     'feed.php'             => ['Live-Feed', '📡', 'Neuigkeiten aus Tech, Gaming & Furry-Fandom', 'Planung', 'public'],
     'budget.php'           => ['Budget', '💶', 'Monatsbudget, Fixkosten, Abos & Bank-Sync', 'Finanzen', 'users'],
     'con.php'              => ['Con-Rechner', '🎪', 'Budget & Planung für Conventions', 'Finanzen', 'users'],
-    'vrcx.php'             => ['VRCX', '🥽', 'VRChat: Freunde, Verlauf, Statistik, Welten, Avatare & Gruppen – Login mit 2FA', 'Community', 'users'],
+    'nexus.php'            => ['VRC Nexus', '🥽', 'VRChat-Zentrale: Freunde, Verlauf, Statistik, Welten, Avatare & Gruppen – Direkt-Zugriff per Zwischenablage', 'Community', 'users'],
+    'discord.php'          => ['Discord-Zentrale', '🤖', 'Discord-Server über deinen Bot: Nachrichten, Mitglieder, Rollen, Events & Moderation', 'Community', 'users'],
     'linkcheck.php'        => ['Link-Check', '🩺', 'Prüft alle Links der Hubs auf Erreichbarkeit', 'System', 'public'],
     'backup.php'           => ['Backup', '💾', 'Alle Daten als ZIP herunterladen', 'System', 'users'],
     'admin.php'            => ['Admin-Zentrale', '⚙️', 'Benutzer, Rechte, Seiten, Protokoll & System', 'System', 'public'],
 ];
 
 /** Rechte, ohne die eine Dateiseite für angemeldete Benutzer ausgeblendet wird */
-const PAGE_REQUIRED_PERMISSION = ['budget.php' => 'budget.access', 'con.php' => 'con.access', 'backup.php' => 'backup.download', 'vrcx.php' => 'vrcx.access'];
+const PAGE_REQUIRED_PERMISSION = ['budget.php' => 'budget.access', 'con.php' => 'con.access', 'backup.php' => 'backup.download', 'nexus.php' => 'vrcx.access', 'discord.php' => 'discord.manage'];
 
 /** Seiten, die nie im Register auftauchen (Hilfsdateien) */
-const PAGE_IGNORE = ['index.php', 'page.php', 'preview.php'];
+const PAGE_IGNORE = ['index.php', 'page.php', 'preview.php', 'vrcx.php'];
+
+/** Umbenannte Dateien: alter Name => neuer Name (Einstellungen der Kachel bleiben erhalten) */
+const PAGE_RENAMES = ['vrcx.php' => 'nexus.php'];
 
 function page_category_id(string $name): int {
     $db = site_db();
@@ -67,6 +71,13 @@ function pages_sync(): void {
         if ($f[0] === '.' || in_array($f, PAGE_IGNORE, true) || !is_file("$root/$f")) continue;
         if (!preg_match('/\.(php|html?)$/i', $f)) continue;
         $files[] = $f;
+    }
+    foreach (PAGE_RENAMES as $old => $new) {
+        if (!is_file("$root/$new")) continue;
+        $db->prepare("UPDATE pages SET slug = ? WHERE slug = ? AND kind = 'file' AND NOT EXISTS (SELECT 1 FROM pages WHERE slug = ?)")->execute([$new, $old, $new]);
+        if (isset(PAGE_DEFAULTS[$new])) {
+            $db->prepare("UPDATE pages SET title = ?, description = ? WHERE slug = ? AND title IN ('VRCX', 'VRCX Lite')")->execute([PAGE_DEFAULTS[$new][0], PAGE_DEFAULTS[$new][2], $new]);
+        }
     }
     $known = $db->query("SELECT slug FROM pages WHERE kind = 'file'")->fetchAll(PDO::FETCH_COLUMN);
     $first_run = !$known;
