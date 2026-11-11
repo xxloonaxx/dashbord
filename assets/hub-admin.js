@@ -39,6 +39,7 @@
         if (data) {
             ['title', 'url', 'desc', 'icon'].forEach(k => { if (data[k] !== undefined) L(k).value = data[k]; });
             if (data.category) L('category').value = data.category;
+            L('nsfw').checked = !!data.nsfw;
         }
         // Gibt es noch keine Kategorie, direkt "Neue Kategorie" vorschlagen
         if (L('category').options.length === 1) L('category').value = '__new__';

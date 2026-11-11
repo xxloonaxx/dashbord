@@ -86,3 +86,5 @@
 .hub-icons button { width: 32px; height: 32px; background: rgba(4, 6, 9, 0.8); border: 1px solid color-mix(in srgb, var(--hub-accent) 30%, transparent); cursor: pointer; font-size: 1rem; }
 .hub-icons button:hover, .hub-icons button.sel { border-color: var(--hub-accent2); background: color-mix(in srgb, var(--hub-accent2) 15%, transparent); }
 .hub-submit { width: 100%; padding: 11px; }
+.hub-check { display: flex; gap: 8px; align-items: center; font-size: 0.75rem; color: var(--hub-muted); margin: -2px 0 14px; cursor: pointer; }
+.hub-check input { accent-color: #ff5555; }

@@ -8,6 +8,7 @@
  * Version der Webseite bleiben die eigenen Links dadurch erhalten.
  */
 require_once __DIR__ . '/common.php';
+require_once __DIR__ . '/auth.php';
 
 function hub_data_file(string $hub_file): string {
     $slug = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '_', pathinfo($hub_file, PATHINFO_FILENAME)));
@@ -32,7 +33,7 @@ function hub_link_from_post(): array {
         'url' => $url,
         'desc' => mb_substr(trim($_POST['desc'] ?? ''), 0, 300),
         'icon' => mb_substr(trim($_POST['icon'] ?? '') ?: '🔗', 0, 4),
-    ], ''];
+    ] + (!empty($_POST['nsfw']) ? ['nsfw' => true] : []), ''];
 }
 
 /** Zielkategorie: vorhandene Auswahl oder neu eingegebener Name. */
@@ -56,6 +57,7 @@ function hub_find_url(array $categories, string $url, ?array $except = null): ?s
 /** POST-Aktionen der Hub-Seite verarbeiten (Hinzufügen, Bearbeiten, Löschen) und zurückleiten. */
 function hub_handle_post(string $hub_file, array $categories): void {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_POST['hub_action'])) return;
+    guard_post();   // Änderungen nur mit Admin-Login
 
     $msg = '';
     $error = '';
@@ -146,6 +148,20 @@ function hub_handle_post(string $hub_file, array $categories): void {
     exit;
 }
 
+/** Soll die Kategorie angezeigt werden? Besucher sehen keine leeren bzw. komplett ausgeblendeten Kategorien. */
+function hub_category_visible(string $name, array $links): bool {
+    if (is_admin()) return true;
+    foreach ($links as $l) if (nsfw_visible($l, $name)) return true;
+    return false;
+}
+
+/** 18+-Markierung an einer Karte (für Admins mit Hinweis, wenn Besucher sie nicht sehen) */
+function hub_nsfw_badge(array $link, string $category): string {
+    if (!is_nsfw_link($link, $category)) return '';
+    $hidden = !site_settings()['show_nsfw'];
+    return '<span class="nsfw-badge' . ($hidden ? ' hidden-for-guests' : '') . '" title="' . ($hidden ? 'NSFW – für Besucher ausgeblendet' : 'NSFW') . '">18+</span>';
+}
+
 /** Hinweisbalken nach einer Aktion */
 function hub_flash(): void {
     if (!empty($_GET['msg'])) echo '<div class="hub-flash ok" role="status">' . e($_GET['msg']) . '</div>';
@@ -153,7 +169,8 @@ function hub_flash(): void {
 }
 
 /** Werkzeugleiste mit den Hinzufügen-Knöpfen */
-function hub_toolbar(): void { ?>
+function hub_toolbar(): void {
+    if (!is_admin()) return; ?>
     <div class="hub-toolbar">
         <button type="button" class="hub-btn hub-btn-main" data-hub-open="link">＋ Link hinzufügen</button>
         <button type="button" class="hub-btn" data-hub-open="category">＋ Kategorie</button>
@@ -161,7 +178,8 @@ function hub_toolbar(): void { ?>
 <?php }
 
 /** Bearbeiten-Knöpfe einer Kategorie */
-function hub_category_actions(string $name, int $pos, int $total): void { ?>
+function hub_category_actions(string $name, int $pos, int $total): void {
+    if (!is_admin()) return; ?>
     <span class="hub-cat-actions">
         <button type="button" class="hub-icon-btn" title="Link in diese Kategorie" data-hub-open="link" data-category="<?php echo e($name); ?>">＋</button>
         <button type="button" class="hub-icon-btn" title="Umbenennen" data-hub-rename="<?php echo e($name); ?>">✎</button>
@@ -173,7 +191,8 @@ function hub_category_actions(string $name, int $pos, int $total): void { ?>
 <?php }
 
 /** Bearbeiten-/Löschen-Knöpfe einer Link-Karte (liegen über der Karte, nicht im Link selbst) */
-function hub_link_actions(string $category, int $index, array $link): void { ?>
+function hub_link_actions(string $category, int $index, array $link): void {
+    if (!is_admin()) return; ?>
     <div class="hub-card-actions">
         <button type="button" class="hub-icon-btn" title="Bearbeiten" data-hub-edit="<?php echo e(json_encode($link + ['category' => $category, 'index' => $index])); ?>">✎</button>
         <form method="POST" class="hub-inline" onsubmit="return confirm(<?php echo e(json_encode('Link „' . $link['title'] . '“ löschen?', JSON_UNESCAPED_UNICODE)); ?>);"><input type="hidden" name="hub_action" value="delete_link"><input type="hidden" name="orig_category" value="<?php echo e($category); ?>"><input type="hidden" name="orig_index" value="<?php echo $index; ?>"><button type="submit" class="hub-icon-btn danger" title="Löschen">✕</button></form>
@@ -182,9 +201,12 @@ function hub_link_actions(string $category, int $index, array $link): void { ?>
 
 /** Dialoge (Link / Kategorie) + Styles + Skript */
 function hub_dialogs(array $categories): void {
+    auth_corner();
+    echo '<link rel="stylesheet" href="assets/hub-admin.css">';
+    echo '<style>.nsfw-badge{display:inline-block;font-size:.6rem;font-weight:800;letter-spacing:1px;color:#ff5555;border:1px solid rgba(255,85,85,.6);padding:0 4px;margin-left:4px;vertical-align:middle}.nsfw-badge.hidden-for-guests{border-style:dashed;opacity:.75}</style>';
+    if (!is_admin()) return;
     $icons = ['🔗', '⭐', '🛠️', '📚', '🎮', '🎥', '🎵', '🛒', '🐾', '🦊', '💻', '🐧', '🌐', '📰', '🔒', '🎨', '🥽', '🛡️', '💬', '📦'];
     ?>
-    <link rel="stylesheet" href="assets/hub-admin.css">
 
     <div class="hub-modal" id="hubLinkModal" role="dialog" aria-modal="true" aria-labelledby="hubLinkTitle" hidden>
         <form method="POST" class="hub-modal-box">
@@ -210,6 +232,7 @@ function hub_dialogs(array $categories): void {
                 <label class="hub-label" style="flex: 1;">Icon<input type="text" name="icon" maxlength="4" value="🔗"></label>
             </div>
             <label class="hub-label hub-new-cat" hidden>Name der neuen Kategorie<input type="text" name="new_category" maxlength="80"></label>
+            <label class="hub-check"><input type="checkbox" name="nsfw" value="1"> NSFW / 18+ (wird für Besucher ausgeblendet, solange NSFW aus ist)</label>
 
             <div class="hub-icons">
                 <?php foreach ($icons as $ic): ?><button type="button"><?php echo $ic; ?></button><?php endforeach; ?>

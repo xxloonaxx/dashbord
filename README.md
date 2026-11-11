@@ -26,6 +26,25 @@ Der Webserver braucht Schreibrechte im Ordner, damit die JSON-Dateien und Archiv
 Die Datendateien (`*_data.json`, `links_*.json`, `feed_sources.json`, `feed_cache.json`, `linkcheck_cache.json`, `archive*/`) sind per `.gitignore` vom Repository ausgeschlossen
 und werden beim ersten Aufruf automatisch erzeugt.
 
+## Admin-Login & Schutz
+
+Beim **allerersten Aufruf** der Seite erscheint die Einrichtung: Benutzername und Passwort festlegen.
+Wer das zuerst ausfüllt, wird Admin – also direkt nach dem Hochladen erledigen.
+
+- **Budget, Con-Rechner und Backup** sind nur angemeldet sichtbar.
+- **Alle Änderungen** (Links, Kategorien, Countdowns, Feed-Quellen, Link-Check starten …) gehen nur angemeldet.
+  Besucher sehen keine Bearbeiten-Knöpfe; abgeschickte Formulare ohne Login werden abgelehnt.
+- **NSFW-Schalter**: auf der Startseite (Admin-Leiste) und in `admin.php`. Ist er aus, sehen Besucher keine
+  NSFW-Links (markiert per Haken „NSFW / 18+“ oder in Kategorien mit „NSFW“/„Adult“ im Namen). Admins sehen sie immer mit 18+-Markierung.
+- **Admin-Zentrale** (`admin.php`): Übersicht, NSFW-Schalter, Passwort/Benutzername ändern, alle anderen Geräte abmelden,
+  Hub zurücksetzen, Feed neu laden, Systemstatus und Zugriffsprotokoll.
+- Nach 5 falschen Passwörtern wird die IP für 10 Minuten gesperrt.
+- Die Zugangsdaten liegen als Hash (bcrypt) in `.admin_auth.php` – die Datei gibt bei direktem Aufruf nichts preis.
+
+**Passwort vergessen?** Per FTP die Datei `.admin_auth.php` löschen – beim nächsten Aufruf erscheint wieder die Einrichtung.
+
+Unbedingt **HTTPS** beim Hoster aktivieren, sonst wird das Passwort unverschlüsselt übertragen (die Admin-Zentrale warnt dann).
+
 ## Links & Kategorien im Browser bearbeiten
 
 Jeder Link-Hub hat oben die Knöpfe **＋ Link hinzufügen** und **＋ Kategorie** (Tastenkürzel: `n` = neuer Link).
@@ -48,5 +67,5 @@ Die Zahl am Dateianfang bestimmt die Reihenfolge auf der Startseite.
 
 ## Hinweis zur Sicherheit
 
-Die Seiten haben **keinen Login**. Wenn das Dashboard öffentlich im Internet erreichbar ist, kann jeder die
-Budget-/Con-Daten sehen und ändern. Am einfachsten per `.htaccess`/`.htpasswd` (Apache) oder `auth_basic` (nginx) schützen.
+Auf **nginx**-Servern wirkt die `.htaccess` nicht – dann sind die JSON-Datendateien (z. B. `budget_data.json`) direkt abrufbar.
+In dem Fall in der nginx-Konfiguration `location ~ \.json$ { deny all; }` ergänzen.

@@ -164,6 +164,7 @@ $categories = [
         [
             "title" => "e621 (NSFW)",
             "url" => "https://e621.net",
+            "nsfw" => true,
             "desc" => "Das größte, tag-basierte Archiv für Adult Art, Animationen und Illustrationen.",
             "icon" => "🔞"
         ],
@@ -190,6 +191,7 @@ $categories = [
         [
             "title" => "e621",
             "url" => "https://e621.net",
+            "nsfw" => true,
             "desc" => "Das umfassendste, tag-basierte Archiv für digitale Illustrationen und Kunst.",
             "icon" => "🐾"
         ],
@@ -202,6 +204,7 @@ $categories = [
         [
             "title" => "Inkbunny",
             "url" => "https://inkbunny.net",
+            "nsfw" => true,
             "desc" => "Beliebte Galerie- und Hosting-Plattform mit Fokus auf Artwork, Comics und Literatur.",
             "icon" => "🐰"
         ],
@@ -290,7 +293,8 @@ if (defined('LINKS_ONLY')) return $categories;
 // Link-Check-Ergebnisse (⚠-Hinweise an kaputten Links) und Hilfsfunktionen
 require_once __DIR__ . '/inc/linkcheck.php';
 
-// "+ Link" / "+ Kategorie" / Bearbeiten / Löschen verarbeiten
+// Beim allerersten Aufruf zur Admin-Einrichtung; danach "+ Link" / "+ Kategorie" usw. verarbeiten (nur mit Login)
+auth_require_setup();
 hub_handle_post(__FILE__, $categories);
 ?>
 <!DOCTYPE html>
@@ -532,22 +536,22 @@ hub_handle_post(__FILE__, $categories);
         <?php hub_flash(); ?>
 
         <div id="contentWrapper">
-            <?php if (!$categories): ?>
+            <?php if (!$categories && is_admin()): ?>
                 <div class="hub-empty">Noch keine Kategorien – <button type="button" data-hub-open="category">erste Kategorie anlegen</button></div>
             <?php endif; ?>
-            <?php $cat_pos = 0; foreach ($categories as $catName => $tools): ?>
+            <?php $cat_pos = 0; foreach ($categories as $catName => $tools): $cat_index = $cat_pos++; if (!hub_category_visible($catName, $tools)) continue; ?>
                 <div class="category-section">
-                    <div class="category-title hub-editable"><span><?php echo htmlspecialchars($catName); ?></span><?php hub_category_actions($catName, $cat_pos++, count($categories)); ?></div>
+                    <div class="category-title hub-editable"><span><?php echo htmlspecialchars($catName); ?></span><?php hub_category_actions($catName, $cat_index, count($categories)); ?></div>
                     <div class="grid">
-                        <?php if (!$tools): ?>
+                        <?php if (!$tools && is_admin()): ?>
                             <div class="hub-empty">Noch keine Links – <button type="button" data-hub-open="link" data-category="<?php echo htmlspecialchars($catName); ?>">jetzt hinzufügen</button></div>
                         <?php endif; ?>
-                        <?php foreach ($tools as $i => $tool): ?>
+                        <?php foreach ($tools as $i => $tool): if (!nsfw_visible($tool, $catName)) continue; ?>
                             <div class="card-wrap">
                             <a href="<?php echo htmlspecialchars($tool['url']); ?>" class="card" target="_blank" rel="noopener noreferrer">
                                 <div class="icon-wrapper"><?php echo htmlspecialchars($tool['icon']); ?></div>
                                 <div class="info">
-                                    <div class="title"><?php echo htmlspecialchars($tool['title']); ?> <?php echo link_badge($tool['url']); ?></div>
+                                    <div class="title"><?php echo htmlspecialchars($tool['title']); ?> <?php echo hub_nsfw_badge($tool, $catName); ?> <?php echo link_badge($tool['url']); ?></div>
                                     <?php if (($tool['desc'] ?? '') !== ''): ?><div class="desc"><?php echo htmlspecialchars($tool['desc']); ?></div><?php endif; ?>
                                 </div>
                             </a>

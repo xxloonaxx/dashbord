@@ -37,6 +37,8 @@ function collect_hub_links(): array {
                 $links[$item['url']]['title'] = $item['title'];
                 $links[$item['url']]['category'] = $category;
                 $links[$item['url']]['hubs'][] = $file;
+                $links[$item['url']]['nsfw'] = !empty($links[$item['url']]['nsfw']) || !empty($item['nsfw'])
+                    || (bool)preg_match('/\b(nsfw|adult)\b|18\+/i', $category);
             }
         }
     }

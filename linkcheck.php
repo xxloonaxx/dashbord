@@ -1,5 +1,9 @@
 <?php
 require_once __DIR__ . '/inc/linkcheck.php';
+require_once __DIR__ . '/inc/auth.php';
+
+auth_require_setup();
+guard_post();   // Prüfung starten nur mit Login
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['run_check'])) {
     @set_time_limit(180);
@@ -27,6 +31,9 @@ $labels = [
 
 $rows = [];
 $counts = array_fill_keys(array_keys($labels), 0);
+// NSFW-Links ausblenden, wenn sie für Besucher versteckt sind
+$links = array_filter($links, function ($info) { return nsfw_visible(['nsfw' => $info['nsfw'] ?? false], $info['category']); });
+
 foreach ($links as $url => $info) {
     $r = $results[$url] ?? null;
     $state = $r ? $r['status'] : 'unchecked';
@@ -74,6 +81,7 @@ $problems = $counts['dead'] + $counts['broken'];
     </style>
 </head>
 <body>
+<?php auth_corner(); ?>
 <div class="wrapper">
     <div class="nav-bar">
         <a href="index.php" class="nav-back">&larr; ZURÜCK ZUM INDEX</a>
@@ -98,10 +106,14 @@ $problems = $counts['dead'] + $counts['broken'];
                 <strong style="color: #fff;"><?php echo $report['checked_at'] ? e(german_datetime((int)$report['checked_at'])) : 'noch nie'; ?></strong><br>
                 Dauert ca. 15–30 Sekunden, alle Links werden parallel abgefragt.
             </p>
+            <?php if (is_admin()): ?>
             <form method="POST" onsubmit="document.getElementById('running').style.display='block'; this.querySelector('button').disabled=true;">
                 <button type="submit" name="run_check" class="btn btn-gold">Jetzt prüfen</button>
                 <div id="running">⟳ Prüfe Links… bitte warten</div>
             </form>
+            <?php else: ?>
+            <a href="admin.php?next=linkcheck.php" class="btn">🔒 Zum Prüfen anmelden</a>
+            <?php endif; ?>
         </div>
     </div>
 

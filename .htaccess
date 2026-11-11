@@ -2,4 +2,13 @@
 <FilesMatch "\.(json|tmp)$">
     Require all denied
 </FilesMatch>
+
+# Versteckte Dateien (Zugangsdaten, Protokoll, Einstellungen) sperren
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# Interne PHP-Bausteine nicht direkt aufrufbar
+RedirectMatch 404 ^.*/inc/.*$
+
 Options -Indexes

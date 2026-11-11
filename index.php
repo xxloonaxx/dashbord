@@ -2,6 +2,15 @@
 require_once __DIR__ . '/inc/common.php';
 require_once __DIR__ . '/inc/countdown.php';
 require_once __DIR__ . '/inc/linkcheck.php';
+require_once __DIR__ . '/inc/auth.php';
+
+// Beim allerersten Aufruf: Admin-Konto anlegen
+auth_require_setup();
+$admin = is_admin();
+$show_nsfw = site_settings()['show_nsfw'];
+
+// Seiten, die nur angemeldet erreichbar sind
+$protected_pages = ['budget.php', 'con.php', 'backup.php'];
 
 // Der aktuelle Ordner, in dem das Skript liegt
 $dir = __DIR__;
@@ -104,7 +113,11 @@ foreach (scandir($dir) as $file) {
     // Beschreibung: Live-Daten für bekannte Module, Linkanzahl für Hubs
     $desc = '';
     $lower = strtolower($file);
-    if ($lower === 'con.php') {
+    if (in_array($lower, $protected_pages, true) && !$admin) {
+        $desc = '🔒 Nur für Admins – Login erforderlich';
+    } elseif ($lower === 'admin.php') {
+        $desc = $admin ? 'Angemeldet als ' . auth_user() . ' // Einstellungen, Sicherheit & Protokoll' : 'Anmelden, um Budget, Con-Rechner & Änderungen freizuschalten';
+    } elseif ($lower === 'con.php') {
         $desc = con_preview();
     } elseif ($lower === 'budget.php') {
         $desc = budget_preview();
@@ -120,6 +133,7 @@ foreach (scandir($dir) as $file) {
         $count = 0;
         foreach ($hub as $category => $links) {
             foreach ($links as $l) {
+                if (!nsfw_visible($l, $category)) continue;   // NSFW ausgeblendet
                 $count++;
                 $key = rtrim(strtolower($l['url']), '/');
                 if (isset($seen_urls[$key])) continue;
@@ -131,10 +145,11 @@ foreach (scandir($dir) as $file) {
                     'icon' => $l['icon'] ?? '🔗',
                     'category' => $category,
                     'hub' => $page_title ?: $clean_name,
+                    'nsfw' => is_nsfw_link($l, $category),
                 ];
             }
         }
-        $desc = $count . ' LINKS IN ' . count($hub) . ' KATEGORIEN';
+        $desc = $count . ' LINKS';
     }
 
     $clean_links[] = [
@@ -143,6 +158,7 @@ foreach (scandir($dir) as $file) {
         'title' => $page_title,
         'sort' => $sort_order,
         'desc' => $desc,
+        'locked' => in_array($lower, $protected_pages, true) && !$admin,
     ];
 }
 
@@ -222,6 +238,25 @@ $total_nodes = count($clean_links) + count($global_sub_links);
             text-transform: uppercase;
             clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
         }
+
+        .admin-bar { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin: -12px 0 18px; font-size: 0.7rem; letter-spacing: 1.5px; text-transform: uppercase; flex-wrap: wrap; }
+        .admin-bar.is-admin { justify-content: space-between; padding: 7px 12px; border: 1px solid rgba(243, 194, 98, 0.35); background: rgba(243, 194, 98, 0.05); }
+        .admin-user { color: var(--accent-gold); text-decoration: none; font-weight: 700; }
+        .admin-bar:not(.is-admin) .admin-user { color: var(--text-muted); font-weight: 400; }
+        .admin-user:hover { color: #fff; }
+        .nsfw-form { display: flex; align-items: center; gap: 8px; margin: 0; }
+        .nsfw-label { color: var(--text-muted); }
+        .nsfw-state { color: var(--text-muted); min-width: 2.4em; }
+        .mini-switch { position: relative; width: 42px; height: 22px; padding: 0; cursor: pointer; border: 1px solid var(--border-color); background: rgba(4, 6, 9, 0.9); transition: all 0.2s; }
+        .mini-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; background: var(--text-muted); transition: all 0.2s; }
+        .mini-switch.on { border-color: #ff5555; box-shadow: 0 0 10px rgba(255, 85, 85, 0.3); }
+        .mini-switch.on::after { left: 22px; background: #ff5555; }
+        .mini-switch.on + .nsfw-state { color: #ff5555; }
+        .admin-logout { background: none; border: 1px solid rgba(255, 85, 85, 0.4); color: #ff5555; cursor: pointer; width: 26px; height: 24px; }
+        .admin-logout:hover { background: #ff5555; color: #040609; }
+        .nsfw-tag { font-size: 0.6rem; color: #ff5555; border: 1px solid rgba(255, 85, 85, 0.6); padding: 0 4px; letter-spacing: 1px; vertical-align: middle; }
+        .file-link.locked { border-left-color: var(--text-muted); opacity: 0.75; }
+        .file-link.locked:hover { opacity: 1; }
 
         .telemetry-item span {
             color: #ffffff;
@@ -504,6 +539,23 @@ $total_nodes = count($clean_links) + count($global_sub_links);
             <div class="telemetry-item">TIME: <span id="liveClock">--:--:--</span></div>
         </div>
 
+        <!-- Admin-Leiste: NSFW-Schalter nur für angemeldete Admins -->
+        <div class="admin-bar <?php echo $admin ? 'is-admin' : ''; ?>">
+            <?php if ($admin): ?>
+                <a href="admin.php" class="admin-user">⚙ <?php echo e(auth_user()); ?></a>
+                <form method="POST" action="admin.php" class="nsfw-form">
+                    <input type="hidden" name="action" value="toggle_nsfw">
+                    <input type="hidden" name="back" value="index.php">
+                    <span class="nsfw-label">NSFW für Besucher</span>
+                    <button type="submit" class="mini-switch <?php echo $show_nsfw ? 'on' : ''; ?>" role="switch" aria-checked="<?php echo $show_nsfw ? 'true' : 'false'; ?>" title="NSFW-Links für Besucher <?php echo $show_nsfw ? 'ausblenden' : 'anzeigen'; ?>"></button>
+                    <span class="nsfw-state"><?php echo $show_nsfw ? 'AN' : 'AUS'; ?></span>
+                </form>
+                <form method="POST" action="admin.php" style="margin: 0;"><input type="hidden" name="action" value="logout"><button type="submit" class="admin-logout" title="Abmelden">⏻</button></form>
+            <?php else: ?>
+                <a href="admin.php?next=index.php" class="admin-user">🔒 Admin-Login</a>
+            <?php endif; ?>
+        </div>
+
         <header>
             <div class="hud-tag">System // Central Terminal</div>
             <h1>Startseite</h1>
@@ -542,16 +594,16 @@ $total_nodes = count($clean_links) + count($global_sub_links);
 
             <!-- Lokale PHP/HTML Hauptseiten -->
             <?php foreach ($clean_links as $link): ?>
-                <a href="<?php echo e($link['url']); ?>" class="file-link search-item node-item" data-search-text="<?php echo e(mb_strtolower($link['name'] . ' ' . $link['title'] . ' ' . $link['url'] . ' ' . $link['desc'], 'UTF-8')); ?>">
+                <a href="<?php echo e($link['locked'] ? 'admin.php?next=' . urlencode($link['url']) : $link['url']); ?>" class="file-link search-item node-item <?php echo $link['locked'] ? 'locked' : ''; ?>" data-search-text="<?php echo e(mb_strtolower($link['name'] . ' ' . $link['title'] . ' ' . $link['url'] . ' ' . $link['desc'], 'UTF-8')); ?>">
                     <div class="file-details">
-                        <span class="file-name"><?php echo e($link['name']); ?></span>
+                        <span class="file-name"><?php echo $link['locked'] ? '🔒 ' : ''; ?><?php echo e($link['name']); ?></span>
                         <span class="file-meta">TARGET: <?php echo e($link['url']); ?><?php if ($link['title']): ?> // <?php echo e($link['title']); ?><?php endif; ?></span>
                         <?php if ($link['desc'] !== ''): ?>
                             <span class="file-desc"><?php echo e($link['desc']); ?></span>
                         <?php endif; ?>
                     </div>
                     <div class="action-zone">
-                        <span>EXECUTE</span>
+                        <span><?php echo $link['locked'] ? 'LOGIN' : 'EXECUTE'; ?></span>
                         <span class="arrow">&rarr;</span>
                     </div>
                 </a>
@@ -561,7 +613,7 @@ $total_nodes = count($clean_links) + count($global_sub_links);
             <?php foreach ($global_sub_links as $sub): ?>
                 <a href="<?php echo e($sub['url']); ?>" target="_blank" rel="noopener noreferrer" class="file-link search-item sub-item" hidden data-search-text="<?php echo e(mb_strtolower($sub['title'] . ' ' . $sub['desc'] . ' ' . $sub['category'] . ' ' . $sub['hub'] . ' ' . $sub['url'], 'UTF-8')); ?>">
                     <div class="file-details">
-                        <span class="file-name"><?php echo e($sub['icon']); ?> <?php echo e($sub['title']); ?></span>
+                        <span class="file-name"><?php echo e($sub['icon']); ?> <?php echo e($sub['title']); ?><?php if ($sub['nsfw']): ?> <span class="nsfw-tag">18+</span><?php endif; ?></span>
                         <span class="file-meta">HUB LINK // <?php echo e($sub['hub']); ?> // <?php echo e($sub['category']); ?></span>
                         <?php if ($sub['desc'] !== ''): ?>
                             <span class="file-desc"><?php echo e($sub['desc']); ?></span>

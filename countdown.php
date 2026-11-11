@@ -1,5 +1,10 @@
 <?php
 require_once __DIR__ . '/inc/countdown.php';
+require_once __DIR__ . '/inc/auth.php';
+
+auth_require_setup();
+guard_post();   // Anlegen/Bearbeiten/Löschen nur mit Login
+$admin = is_admin();
 
 $data = load_countdowns();
 
@@ -141,6 +146,7 @@ $icons = ['⏳', '🐾', '🎉', '🎂', '🎄', '🎆', '✈️', '🚆', '🏨
     </style>
 </head>
 <body>
+<?php auth_corner(); ?>
 <div class="wrapper">
     <div class="nav-bar">
         <a href="index.php" class="nav-back">&larr; ZURÜCK ZUM INDEX</a>
@@ -173,7 +179,7 @@ $icons = ['⏳', '🐾', '🎉', '🎂', '🎄', '🎆', '✈️', '🚆', '🏨
     <div class="panel">
         <div class="panel-title"><span>// Anstehende Termine</span></div>
         <?php if (!$upcoming): ?>
-            <div class="empty-msg">Noch keine Countdowns – unten einfach einen anlegen.</div>
+            <div class="empty-msg">Noch keine Countdowns<?php echo $admin ? ' – unten einfach einen anlegen' : ''; ?>.</div>
         <?php else: ?>
             <div class="cd-grid">
                 <?php foreach ($upcoming as $ev):
@@ -197,10 +203,14 @@ $icons = ['⏳', '🐾', '🎉', '🎂', '🎄', '🎆', '✈️', '🚆', '🏨
                         <div class="cd-meta"><span><?php echo $progress; ?> % geschafft</span><span><?php echo e(relative_days($ev['ts'])); ?></span></div>
                         <?php if (!empty($ev['note'])): ?><div class="cd-note"><?php echo e($ev['note']); ?></div><?php endif; ?>
                         <div class="cd-actions">
+                            <?php if ($admin): ?>
                             <form method="POST" style="margin:0;"><input type="hidden" name="event_id" value="<?php echo e($ev['id']); ?>"><button type="submit" name="feature_event" class="btn btn-sm <?php echo !empty($ev['featured']) ? '' : 'btn-gold'; ?>" title="Wird im Feed und auf der Startseite angezeigt"><?php echo !empty($ev['featured']) ? '★ Haupt' : '☆ Als Haupt'; ?></button></form>
                             <button type="button" class="btn btn-sm btn-gold" data-event="<?php echo e(json_encode($ev)); ?>" onclick="openEdit(JSON.parse(this.dataset.event))">Edit</button>
+                            <?php endif; ?>
                             <a class="btn btn-sm" href="countdown.php?ics=<?php echo urlencode($ev['id']); ?>" title="In den Kalender übernehmen">.ics</a>
+                            <?php if ($admin): ?>
                             <form method="POST" style="margin:0;" onsubmit="return confirm(<?php echo e(json_encode('Countdown „' . $ev['title'] . '“ löschen?', JSON_UNESCAPED_UNICODE)); ?>);"><input type="hidden" name="event_id" value="<?php echo e($ev['id']); ?>"><button type="submit" name="delete_event" class="btn btn-sm btn-danger">X</button></form>
+                            <?php endif; ?>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -208,6 +218,7 @@ $icons = ['⏳', '🐾', '🎉', '🎂', '🎄', '🎆', '✈️', '🚆', '🏨
         <?php endif; ?>
     </div>
 
+    <?php if ($admin): ?>
     <div class="panel">
         <div class="panel-title"><span>// Neuen Countdown anlegen</span></div>
         <form method="POST" id="addForm">
@@ -229,6 +240,7 @@ $icons = ['⏳', '🐾', '🎉', '🎂', '🎄', '🎆', '✈️', '🚆', '🏨
             <button type="submit" name="add_event" class="btn">Countdown starten</button>
         </form>
     </div>
+    <?php endif; ?>
 
     <?php if ($past): ?>
         <details class="panel">
@@ -237,7 +249,7 @@ $icons = ['⏳', '🐾', '🎉', '🎂', '🎄', '🎆', '✈️', '🚆', '🏨
                 <?php foreach ($past as $ev): ?>
                     <div class="past-item">
                         <span><?php echo e($ev['icon'] . ' ' . $ev['title']); ?> &bull; <?php echo e(german_datetime($ev['ts'], false)); ?></span>
-                        <form method="POST" style="margin:0;" onsubmit="return confirm('Eintrag löschen?');"><input type="hidden" name="event_id" value="<?php echo e($ev['id']); ?>"><button type="submit" name="delete_event" class="btn btn-sm btn-danger">X</button></form>
+                        <?php if ($admin): ?><form method="POST" style="margin:0;" onsubmit="return confirm('Eintrag löschen?');"><input type="hidden" name="event_id" value="<?php echo e($ev['id']); ?>"><button type="submit" name="delete_event" class="btn btn-sm btn-danger">X</button></form><?php endif; ?>
                     </div>
                 <?php endforeach; ?>
             </div>

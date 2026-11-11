@@ -1,5 +1,10 @@
 <?php
 require_once __DIR__ . '/inc/common.php';
+require_once __DIR__ . '/inc/auth.php';
+
+// Nur für angemeldete Admins sichtbar – alle anderen landen beim Login
+require_admin_page();
+guard_post();
 
 // Dateipfade
 $data_file = __DIR__ . '/budget_data.json';
@@ -581,6 +586,7 @@ if ($selected_archive && is_file($archive_dir . basename($selected_archive))) {
         <div class="nav-bar">
             <a href="index.php" class="nav-back">&larr; ZURÜCK ZUM INDEX</a>
             <div class="nav-tabs">
+                <a href="admin.php" class="nav-tab" title="Admin-Zentrale">⚙ <?php echo e(auth_user()); ?></a>
                 <a href="budget.php" class="nav-tab <?php echo ($view_mode === 'active') ? 'active' : ''; ?>">Aktueller Monat</a>
                 <a href="budget.php?view=import" class="nav-tab <?php echo ($view_mode === 'import') ? 'active' : ''; ?>">Konto-Import</a>
                 <a href="budget.php?view=templates" class="nav-tab <?php echo ($view_mode === 'templates') ? 'active' : ''; ?>">Fix &amp; Abos</a>

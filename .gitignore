@@ -10,3 +10,6 @@ linkcheck_cache.json
 *.tmp
 links_*.json
 feed_sources.json
+.admin_auth.php
+.admin_log.php
+.site_settings.php
