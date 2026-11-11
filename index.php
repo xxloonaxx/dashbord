@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__ . '/inc/common.php';
+require_once __DIR__ . '/inc/countdown.php';
+require_once __DIR__ . '/inc/linkcheck.php';
 
 // Der aktuelle Ordner, in dem das Skript liegt
 $dir = __DIR__;
@@ -39,9 +41,29 @@ function feed_preview(): string {
     return count($items) . ' MELDUNGEN IM CACHE // STAND: ' . date('d.m. H:i', filemtime($cache)) . ' UHR';
 }
 
+/** Live-Vorschau für die Countdown-Karte */
+function countdown_preview(): string {
+    [$upcoming] = sorted_countdowns(load_countdowns()['events']);
+    if (!$upcoming) return 'Keine anstehenden Countdowns';
+    $parts = [];
+    foreach (array_slice($upcoming, 0, 3) as $ev) {
+        $parts[] = mb_strtoupper($ev['title'], 'UTF-8') . ' ' . mb_strtoupper(relative_days($ev['ts']), 'UTF-8');
+    }
+    return implode(' // ', $parts);
+}
+
+/** Live-Vorschau für die Link-Check-Karte */
+function linkcheck_preview(): string {
+    $report = load_linkcheck();
+    if (!$report['checked_at']) return 'Noch nicht geprüft – Karte öffnen und "Jetzt prüfen" klicken';
+    $bad = 0;
+    foreach ($report['results'] as $r) if (in_array($r['status'], ['dead', 'broken'], true)) $bad++;
+    return ($bad ? "⚠ $bad KAPUTTE LINKS" : 'ALLE LINKS ERREICHBAR') . ' // GEPRÜFT: ' . date('d.m. H:i', (int)$report['checked_at']) . ' UHR';
+}
+
 /** Linkdaten eines Hubs laden (die Hub-Dateien liefern bei LINKS_ONLY nur ihr Array zurück). */
 function load_hub_links(string $path): ?array {
-    if (strpos((string)file_get_contents($path), "defined('LINKS_ONLY')") === false) return null;
+    if (strpos((string)file_get_contents($path), "if (defined('LINKS_ONLY')) return \$categories;") === false) return null;
     if (!defined('LINKS_ONLY')) define('LINKS_ONLY', true);
     $result = (function () use ($path) { return include $path; })();
     return is_array($result) ? $result : null;
@@ -88,6 +110,12 @@ foreach (scandir($dir) as $file) {
         $desc = budget_preview();
     } elseif ($lower === 'feed.php') {
         $desc = feed_preview();
+    } elseif ($lower === 'countdown.php') {
+        $desc = countdown_preview();
+    } elseif ($lower === 'linkcheck.php') {
+        $desc = linkcheck_preview();
+    } elseif ($lower === 'backup.php') {
+        $desc = 'Alle Daten (Budget, Con, Countdowns …) als ZIP herunterladen';
     } elseif ($hub = load_hub_links($dir . '/' . $file)) {
         $count = 0;
         foreach ($hub as $category => $links) {
@@ -129,6 +157,7 @@ $total_nodes = count($clean_links) + count($global_sub_links);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GHOST NODE // TERMINAL</title>
+    <?php echo emoji_favicon('🛰️'); ?>
     <style>
         :root {
             --bg-color: #040609;

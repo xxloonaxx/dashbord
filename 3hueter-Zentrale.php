@@ -22,8 +22,8 @@ $categories = [
         ],
         [
             "title" => "Little Light (App/Web)",
-            "url" => "https://littlelight.jezza.io",
-            "desc" => "Fantastische Begleit-App für Loadouts und Inventar-Management unterwegs.",
+            "url" => "https://littlelight.club",
+            "desc" => "Fantastische Begleit-App (iOS/Android/Web) für Loadouts und Inventar-Management unterwegs.",
             "icon" => "📱"
         ],
         [
@@ -144,7 +144,7 @@ $categories = [
         ],
         [
             "title" => "Grandmaster Report",
-            "url" => "https://grandmaster.report",
+            "url" => "https://gm.report",
             "desc" => "Statistiken und Erfolge für Spitzenreiter-Dämmerungen.",
             "icon" => "💀"
         ],
@@ -176,7 +176,7 @@ $categories = [
         ],
         [
             "title" => "Bungie Help (Twitter/X)",
-            "url" => "https://twitter.com/BungieHelp",
+            "url" => "https://x.com/BungieHelp",
             "desc" => "Live-Updates zu Serverstatus, Hotfixes und bekannten Bugs.",
             "icon" => "🚨"
         ]
@@ -185,6 +185,9 @@ $categories = [
 
 // Wird von index.php für die globale Suche eingebunden – dann nur die Daten liefern.
 if (defined('LINKS_ONLY')) return $categories;
+
+// Link-Check-Ergebnisse (⚠-Hinweise an kaputten Links) und Hilfsfunktionen
+require_once __DIR__ . '/inc/linkcheck.php';
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -192,6 +195,7 @@ if (defined('LINKS_ONLY')) return $categories;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hüter-Kommandozentrale</title>
+    <?php echo emoji_favicon('🛡️'); ?>
     <style>
         :root {
             --bg-color: #06090e;
@@ -417,6 +421,20 @@ if (defined('LINKS_ONLY')) return $categories;
             color: var(--text-muted);
             line-height: 1.35;
         }
+        /* Warnhinweis aus dem Link-Check */
+        .link-warn {
+            display: inline-block;
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #ff5555;
+            border: 1px solid rgba(255, 85, 85, 0.5);
+            padding: 1px 5px;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+
         /* Suche: Trefferzähler & Leer-Hinweis */
         .search-counter {
             margin-top: 8px;
@@ -471,7 +489,7 @@ if (defined('LINKS_ONLY')) return $categories;
                             <a href="<?php echo htmlspecialchars($tool['url']); ?>" class="card" target="_blank" rel="noopener noreferrer">
                                 <div class="icon-wrapper"><?php echo htmlspecialchars($tool['icon']); ?></div>
                                 <div class="info">
-                                    <div class="title"><?php echo htmlspecialchars($tool['title']); ?></div>
+                                    <div class="title"><?php echo htmlspecialchars($tool['title']); ?> <?php echo link_badge($tool['url']); ?></div>
                                     <div class="desc"><?php echo htmlspecialchars($tool['desc']); ?></div>
                                 </div>
                             </a>

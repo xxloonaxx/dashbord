@@ -1,14 +1,16 @@
 <?php
 require_once __DIR__ . '/inc/common.php';
+require_once __DIR__ . '/inc/countdown.php';
 
 // Caching-Einstellungen (Cache-Datei & Gültigkeit in Sekunden -> 15 Min = 900 Sek)
 $cache_file = __DIR__ . '/feed_cache.json';
 $cache_lifetime = 900;
 $max_items = 80;
 
-// Countdown-Ziel (bei Bedarf einfach anpassen)
-$countdown_name = 'Eurofurence';
-$countdown_date = '2027-08-25 14:00:00';
+// Countdown-Banner: zeigt den Haupt-Countdown von countdown.php (dort verwalten)
+$featured = featured_countdown();
+$countdown_name = $featured ? $featured['icon'] . ' ' . $featured['title'] : 'Eurofurence';
+$countdown_ts = $featured ? $featured['ts'] : strtotime('2027-08-25 14:00:00');
 
 // RSS-Feed-Quellen (inklusive deiner angegebenen Bluesky-Profile & weiteren Feeds)
 $feed_sources = [
@@ -206,6 +208,7 @@ $cache_time = is_file($cache_file) ? date('H:i', filemtime($cache_file)) : '--:-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FEED NODE // LIVE STREAM & EF COUNTDOWN</title>
+    <?php echo emoji_favicon('📡'); ?>
     <style>
         :root {
             --bg-color: #06090e;
@@ -261,6 +264,9 @@ $cache_time = is_file($cache_file) ? date('H:i', filemtime($cache_file)) : '--:-
             background: rgba(56, 213, 230, 0.2);
             transform: translateX(-3px);
         }
+
+        a.ef-banner { text-decoration: none; color: inherit; }
+        a.ef-banner:hover { filter: brightness(1.25); }
 
         .ef-banner {
             background: rgba(255, 121, 198, 0.1);
@@ -474,10 +480,10 @@ $cache_time = is_file($cache_file) ? date('H:i', filemtime($cache_file)) : '--:-
         <a href="index.php" class="nav-back">&larr; ZURÜCK ZUM INDEX</a>
 
         <!-- Eurofurence Countdown Banner -->
-        <div class="ef-banner">
+        <a href="countdown.php" class="ef-banner" title="Countdowns verwalten">
             <span class="ef-title">// <?php echo e($countdown_name); ?> Countdown</span>
             <span id="efTimer" class="ef-timer">Berechne...</span>
-        </div>
+        </a>
 
         <header>
             <div class="hud-tag">System // Aggregated Data Stream</div>
@@ -523,7 +529,7 @@ $cache_time = is_file($cache_file) ? date('H:i', filemtime($cache_file)) : '--:-
 
     <script>
         // Eurofurence Ziel-Datum (Nächster August-Termin)
-        const efDate = new Date(<?php echo json_encode(date('c', strtotime($countdown_date))); ?>).getTime();
+        const efDate = new Date(<?php echo json_encode(date('c', $countdown_ts)); ?>).getTime();
 
         function updateCountdown() {
             const now = new Date().getTime();

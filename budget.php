@@ -431,6 +431,27 @@ $net_balance = $totals['net'];
 $total_open = $totals['open'];
 $spend_ratio = $total_income > 0 ? min(100, round($total_expense / $total_income * 100)) : ($total_expense > 0 ? 100 : 0);
 
+// CSV-Export (aktueller Monat oder ein Archiv) – Semikolon + BOM, damit Excel Umlaute & Spalten korrekt erkennt
+if (($_GET['export'] ?? '') === 'csv') {
+    $export = $data;
+    if (!empty($_GET['archive']) && is_file($archive_dir . basename($_GET['archive']))) {
+        $export = load_json($archive_dir . basename($_GET['archive']), $data);
+    }
+    $sec_names = ['income' => 'Einnahme', 'fixed' => 'Fixkosten', 'subs' => 'Abo', 'other' => 'Sonstige'];
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="budget_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $export['month_name']) . '.csv"');
+    $out = fopen('php://output', 'w');
+    fwrite($out, "\xEF\xBB\xBF");
+    fputcsv($out, ['Datum', 'Bereich', 'Bezeichnung', 'Kategorie', 'Betrag', 'Status', 'Notizen'], ';');
+    foreach ($export['entries'] as $en) {
+        $sec = $en['section'] ?? 'other';
+        $signed = ($sec === 'income' ? 1 : -1) * (float)$en['amount'];
+        fputcsv($out, [$en['date'] ?? '', $sec_names[$sec] ?? $sec, $en['title'], $en['category'] ?? '', number_format($signed, 2, ',', ''), $en['status'] ?? '', $en['docs'] ?? ''], ';');
+    }
+    fclose($out);
+    exit;
+}
+
 $view_mode = $_GET['view'] ?? 'active';
 $selected_archive = $_GET['archive'] ?? null;
 $archive_data = null;
@@ -444,6 +465,7 @@ if ($selected_archive && is_file($archive_dir . basename($selected_archive))) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MONATS-FINANZ &amp; LOHN NODE</title>
+    <?php echo emoji_favicon('💶'); ?>
     <style>
         :root {
             --bg-color: #040609;
@@ -571,6 +593,7 @@ if ($selected_archive && is_file($archive_dir . basename($selected_archive))) {
             <header>
                 <div class="hud-tag">System // Monthly Financial Terminal</div>
                 <h1><?php echo htmlspecialchars($data['month_name']); ?></h1>
+                <a href="budget.php?export=csv" class="btn btn-sm" style="margin-top: 10px; display: inline-block; text-decoration: none;" title="Für Excel / LibreOffice">&darr; CSV-Export</a>
             </header>
 
             <div class="dashboard-grid">
@@ -909,7 +932,7 @@ if ($selected_archive && is_file($archive_dir . basename($selected_archive))) {
             </header>
             
             <?php if ($selected_archive && $archive_data): ?>
-                <div style="margin-bottom: 20px;"><a href="budget.php?view=archive" class="nav-back">&larr; Zurück zur Liste</a></div>
+                <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;"><a href="budget.php?view=archive" class="nav-back">&larr; Zurück zur Liste</a><a href="budget.php?export=csv&amp;archive=<?php echo urlencode($selected_archive); ?>" class="nav-back">&darr; CSV-Export</a></div>
                 <div class="panel" style="border-color: var(--accent-gold);">
                     <div class="panel-title" style="color: var(--accent-gold);">Archiv: <?php echo e($archive_data['month_name'] ?? ''); ?></div>
                     <?php $at = budget_totals($archive_data['entries'] ?? []); ?>

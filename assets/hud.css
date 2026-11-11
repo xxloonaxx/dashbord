@@ -1,0 +1,96 @@
+/* Gemeinsamer HUD-Look für neue Seiten (Countdown, Link-Check) */
+:root {
+    --bg-color: #040609;
+    --panel-bg: rgba(10, 16, 24, 0.85);
+    --panel-hover: rgba(18, 28, 42, 0.95);
+    --accent-gold: #f3c262;
+    --accent-cyan: #38d5e6;
+    --accent-red: #ff5555;
+    --accent-green: #50fa7b;
+    --accent-purple: #bd93f9;
+    --accent-glow: rgba(56, 213, 230, 0.3);
+    --text-main: #e2e8f0;
+    --text-muted: #64748b;
+    --border-color: rgba(56, 213, 230, 0.3);
+    --cut-sm: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+    --cut-md: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    font-family: "Segoe UI", Roboto, -apple-system, sans-serif;
+    background-color: var(--bg-color);
+    background-image:
+        radial-gradient(circle at 50% 10%, rgba(56, 213, 230, 0.08), transparent 70%),
+        linear-gradient(rgba(4, 6, 9, 0.9), rgba(4, 6, 9, 0.98));
+    background-attachment: fixed;
+    color: var(--text-main);
+    margin: 0;
+    padding: 40px 20px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%);
+    background-size: 100% 4px;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+.wrapper { width: 100%; max-width: 950px; position: relative; z-index: 2; }
+
+.nav-bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+.nav-back, .nav-tab {
+    display: inline-flex; align-items: center; gap: 8px; color: var(--accent-cyan);
+    text-decoration: none; font-size: 0.8rem; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; padding: 6px 14px; background: rgba(56, 213, 230, 0.08);
+    border: 1px solid var(--border-color); clip-path: var(--cut-sm); transition: all 0.2s ease;
+}
+.nav-back:hover, .nav-tab:hover, .nav-tab.active { background: rgba(56, 213, 230, 0.2); border-color: var(--accent-cyan); color: #fff; }
+.nav-tabs { display: flex; gap: 10px; flex-wrap: wrap; }
+
+header { margin-bottom: 25px; border-bottom: 2px solid var(--border-color); padding-bottom: 15px; }
+.hud-tag { font-size: 0.7rem; letter-spacing: 3px; color: var(--accent-cyan); text-transform: uppercase; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+.hud-tag::before { content: ""; width: 6px; height: 6px; background: var(--accent-cyan); box-shadow: 0 0 10px var(--accent-cyan); }
+h1 { font-size: 2.2rem; font-weight: 800; letter-spacing: 4px; margin: 0; text-transform: uppercase; color: var(--accent-gold); text-shadow: 0 0 12px rgba(243, 194, 98, 0.3); }
+.subtitle { color: var(--text-muted); margin: 6px 0 0; font-size: 0.85rem; letter-spacing: 2px; text-transform: uppercase; }
+
+.panel { background-color: var(--panel-bg); border: 1px solid var(--border-color); padding: 20px; margin-bottom: 25px; clip-path: var(--cut-md); backdrop-filter: blur(10px); }
+.panel-title { font-size: 0.85rem; letter-spacing: 2px; color: var(--accent-cyan); text-transform: uppercase; font-weight: 700; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+label.field { display: block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+input, select, textarea { background-color: rgba(4, 6, 9, 0.95); border: 1px solid var(--border-color); color: #fff; padding: 10px 14px; font-size: 0.9rem; outline: none; width: 100%; letter-spacing: 1px; font-family: inherit; color-scheme: dark; }
+input:focus, select:focus, textarea:focus { border-color: var(--accent-cyan); box-shadow: 0 0 10px var(--accent-glow); }
+input[type="checkbox"] { width: auto; accent-color: var(--accent-cyan); }
+
+.btn { display: inline-block; text-decoration: none; background-color: rgba(56, 213, 230, 0.15); border: 1px solid var(--accent-cyan); color: var(--accent-cyan); padding: 10px 20px; font-weight: 700; letter-spacing: 2px; cursor: pointer; text-transform: uppercase; font-size: 0.8rem; transition: all 0.2s ease; font-family: inherit; }
+.btn:hover { background-color: var(--accent-cyan); color: #040609; box-shadow: 0 0 12px var(--accent-cyan); }
+.btn-gold { background-color: rgba(243, 194, 98, 0.15); border-color: var(--accent-gold); color: var(--accent-gold); }
+.btn-gold:hover { background-color: var(--accent-gold); box-shadow: 0 0 12px var(--accent-gold); color: #040609; }
+.btn-danger { background-color: rgba(255, 85, 85, 0.15); border-color: var(--accent-red); color: var(--accent-red); }
+.btn-danger:hover { background-color: var(--accent-red); box-shadow: 0 0 12px var(--accent-red); color: #040609; }
+.btn-sm { padding: 4px 9px; font-size: 0.62rem; }
+
+.badge { display: inline-block; padding: 2px 7px; font-size: 0.65rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; border: 1px solid currentColor; white-space: nowrap; }
+.empty-msg { text-align: center; color: var(--text-muted); padding: 20px; font-size: 0.8rem; letter-spacing: 2px; text-transform: uppercase; border: 1px dashed var(--border-color); }
+.notice { border: 1px solid var(--accent-green); background: rgba(80, 250, 123, 0.08); padding: 12px 16px; margin-bottom: 20px; font-size: 0.85rem; }
+
+.modal-overlay { position: fixed; inset: 0; background: rgba(4, 6, 9, 0.85); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(6px); }
+.modal-box { background-color: var(--panel-bg); border: 1px solid var(--accent-cyan); width: 100%; max-width: 520px; padding: 25px; clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%); box-shadow: 0 0 25px var(--accent-glow); position: relative; margin: 0 12px; max-height: 92vh; overflow-y: auto; }
+.modal-close { position: absolute; top: 15px; right: 20px; background: none; border: none; color: var(--accent-red); font-size: 1.3rem; font-weight: bold; cursor: pointer; }
+
+:focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 2px; }
+
+@media (max-width: 700px) {
+    body { padding: 20px 14px; }
+    h1 { font-size: 1.6rem; letter-spacing: 2px; }
+    .nav-bar { flex-direction: column; align-items: flex-start; }
+}

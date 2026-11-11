@@ -19,28 +19,10 @@ $categories = [
             "icon" => "🦁"
         ],
         [
-            "title" => "Bavarian Furs",
-            "url" => "https://bavarianfurs.de",
-            "desc" => "Das große Portal für Furries in Bayern mit regelmäßigen Stammtischen und Treffen.",
-            "icon" => "🥨"
-        ],
-        [
-            "title" => "Baden-Furs",
-            "url" => "https://baden-furs.de",
-            "desc" => "Community-Plattform für Treffen, Stammtische und Fursuit-Walks in Baden-Württemberg.",
-            "icon" => "🌲"
-        ],
-        [
             "title" => "SaarFurs",
             "url" => "https://saarfurs.de",
             "desc" => "Regionale Treffen, Stammtische und gemütliches Beisammensein im Saarland.",
             "icon" => "⛏️"
-        ],
-        [
-            "title" => "Furs.at (Österreich)",
-            "url" => "https://furs.at",
-            "desc" => "Der zentrale Hub für die Community in Österreich (inkl. Alpine Furs & Stammtischen).",
-            "icon" => "⛰️"
         ],
         [
             "title" => "SwissFurry (Schweiz)",
@@ -58,12 +40,6 @@ $categories = [
             "icon" => "🏰"
         ],
         [
-            "title" => "East Coast Fur Con / East (Deutschland)",
-            "url" => "https://eastcoastfurcon.de",
-            "desc" => "Große, äußerst beliebte deutsche Convention im Osten für Fursuit-Enthusiasten.",
-            "icon" => "🎉"
-        ],
-        [
             "title" => "NordicFuzzCon (Schweden)",
             "url" => "https://nordicfuzzcon.org",
             "desc" => "Riesige skandinavische Convention in Malmö mit fantastischer Atmosphäre.",
@@ -74,12 +50,6 @@ $categories = [
             "url" => "https://confuzzled.org.uk",
             "desc" => "Die traditionsreichste und größte britische Furry-Convention.",
             "icon" => "🇬🇧"
-        ],
-        [
-            "title" => "Wroof (Polen)",
-            "url" => "https://wroof.pl",
-            "desc" => "Beliebte und stetig wachsende polnische Convention in Wrocław.",
-            "icon" => "🇵🇱"
         ],
         [
             "title" => "Scotiacon (Schottland)",
@@ -98,12 +68,6 @@ $categories = [
             "url" => "https://awoostria.at",
             "desc" => "Die österreichische Hotel-Convention im Herzen von Wien.",
             "icon" => "🇦🇹"
-        ],
-        [
-            "title" => "Golden Leaves Con (Schweiz)",
-            "url" => "https://goldenleavescon.ch",
-            "desc" => "Die gemütliche Schweizer Convention im herbstlichen Ambiente.",
-            "icon" => "🍁"
         ],
         [
             "title" => "Furizon (Italien)",
@@ -144,18 +108,6 @@ $categories = [
             "desc" => "Eine der beliebtesten gemütlichen Online-Conventions (VRChat, Discord & Streaming).",
             "icon" => "☕"
         ],
-        [
-            "title" => "Digital FurCon (DFC)",
-            "url" => "https://digitalfurcon.com",
-            "desc" => "Virtuelle Convention mit Panels, Community-Events und digitalem Dealer's Den.",
-            "icon" => "💻"
-        ],
-        [
-            "title" => "Conzaroo",
-            "url" => "https://conzaroo.com",
-            "desc" => "Interaktive Online-Convention mit Minigames, Streams und virtuellen Räumen.",
-            "icon" => "🦘"
-        ]
     ],
 
 "Bücher, Verlage, Merch & SFW-Shops" => [
@@ -220,18 +172,6 @@ $categories = [
             "url" => "https://bad-dragon.com",
             "desc" => "Spezialshop für Adult-Toys, Custom-Silikon-Produkte und Merchandise.",
             "icon" => "🐉"
-        ],
-        [
-            "title" => "YiffyGames",
-            "url" => "https://yiffymedia.com",
-            "desc" => "Übersicht und Archiv für Adult Furry Games, Visual Novels und RPGs.",
-            "icon" => "🎮"
-        ],
-        [
-            "title" => "Furry3DCity",
-            "url" => "https://furry3dcity.com",
-            "desc" => "Plattform für 3D-NSFW-Renderings, Animationen und Modelle.",
-            "icon" => "🎬"
         ],
         [
             "title" => "Subscribestar / Patreon (Furry Tag)",
@@ -326,14 +266,8 @@ $categories = [
             "icon" => "⚔️"
         ],
         [
-            "title" => "Fluff.Services",
-            "url" => "https://fluff.services",
-            "desc" => "Hilfreiche kleine Web-Tools, Tracker und Utilities speziell für die Community.",
-            "icon" => "🛠️"
-        ],
-        [
             "title" => "Barq App",
-            "url" => "https://barq.social",
+            "url" => "https://barq.app",
             "desc" => "Social-App zum Finden von lokalen Furries, Treffen und Events in deiner Umgebung.",
             "icon" => "📲"
         ],
@@ -348,6 +282,9 @@ $categories = [
 
 // Wird von index.php für die globale Suche eingebunden – dann nur die Daten liefern.
 if (defined('LINKS_ONLY')) return $categories;
+
+// Link-Check-Ergebnisse (⚠-Hinweise an kaputten Links) und Hilfsfunktionen
+require_once __DIR__ . '/inc/linkcheck.php';
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -355,6 +292,7 @@ if (defined('LINKS_ONLY')) return $categories;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Furry Community Hub</title>
+    <?php echo emoji_favicon('🐾'); ?>
     <style>
         :root {
             --bg-color: #0b0e14;
@@ -526,6 +464,20 @@ if (defined('LINKS_ONLY')) return $categories;
             color: var(--text-muted);
             line-height: 1.35;
         }
+        /* Warnhinweis aus dem Link-Check */
+        .link-warn {
+            display: inline-block;
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #ff5555;
+            border: 1px solid rgba(255, 85, 85, 0.5);
+            padding: 1px 5px;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+
         /* Suche: Trefferzähler & Leer-Hinweis */
         .search-counter {
             margin-top: 8px;
@@ -578,7 +530,7 @@ if (defined('LINKS_ONLY')) return $categories;
                             <a href="<?php echo htmlspecialchars($tool['url']); ?>" class="card" target="_blank" rel="noopener noreferrer">
                                 <div class="icon-wrapper"><?php echo htmlspecialchars($tool['icon']); ?></div>
                                 <div class="info">
-                                    <div class="title"><?php echo htmlspecialchars($tool['title']); ?></div>
+                                    <div class="title"><?php echo htmlspecialchars($tool['title']); ?> <?php echo link_badge($tool['url']); ?></div>
                                     <div class="desc"><?php echo htmlspecialchars($tool['desc']); ?></div>
                                 </div>
                             </a>

@@ -190,6 +190,7 @@ if ($selected_archive) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CON FINANZ &amp; DOKUMENTATIONS-NODE</title>
+    <?php echo emoji_favicon('🎪'); ?>
     <style>
         :root {
             --bg-color: #040609;

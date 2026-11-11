@@ -5,3 +5,6 @@ con_data.json
 feed_cache.json
 archive/
 archive_budget/
+countdown_data.json
+linkcheck_cache.json
+*.tmp

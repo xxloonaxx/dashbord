@@ -4,6 +4,9 @@
  * Liegt bewusst in /inc, damit index.php die Datei nicht als eigene Seite auflistet.
  */
 
+// Deutsche Zeitzone verwenden – viele Server stehen auf UTC, dann wären alle Uhrzeiten 1–2 Std. daneben
+date_default_timezone_set('Europe/Berlin');
+
 /** JSON-Datei laden; bei fehlender oder kaputter Datei den Standardwert liefern. */
 function load_json(string $path, $default) {
     if (!is_file($path)) return $default;
@@ -62,4 +65,18 @@ function parse_amount($raw): float {
         $s = str_replace(',', '', $s);
     }
     return round((float)$s, 2);
+}
+
+/** Deutsches Datum mit Wochentag, z. B. "Mi, 25. August 2027, 14:00 Uhr" */
+function german_datetime(int $ts, bool $with_time = true): string {
+    $days = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+    $months = [1 => 'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli',
+               'August', 'September', 'Oktober', 'November', 'Dezember'];
+    $txt = $days[(int)date('w', $ts)] . ', ' . date('j', $ts) . '. ' . $months[(int)date('n', $ts)] . ' ' . date('Y', $ts);
+    return $with_time ? $txt . ', ' . date('H:i', $ts) . ' Uhr' : $txt;
+}
+
+/** Favicon als Emoji (data-URI), damit jede Seite im Browser-Tab erkennbar ist. */
+function emoji_favicon(string $emoji): string {
+    return '<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>' . $emoji . '</text></svg>">';
 }

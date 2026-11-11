@@ -9,15 +9,21 @@ PHP-Dashboard ohne Datenbank (Daten liegen als JSON-Dateien neben den Seiten).
 | `budget.php` | Monatsbudget mit Fixkosten-/Abo-Vorlagen, CSV-Import (z. B. Revolut) und Archiv |
 | `con.php` | Con-Budget & Dokumentation mit Archiv |
 | `feed.php` | RSS/Atom-Feed-Sammler mit Cache (15 Min.) und Countdown |
-| `inc/common.php` | Gemeinsame Hilfsfunktionen (JSON laden/speichern, Beträge, Escaping) |
+| `countdown.php` | Beliebig viele Countdowns (auch jährlich wiederkehrend), Haupt-Countdown für Feed & Startseite, Kalender-Export (.ics) |
+| `linkcheck.php` | Prüft alle Hub-Links auf Erreichbarkeit; kaputte Links bekommen in den Hubs einen ⚠-Hinweis |
+| `backup.php` | Lädt alle persönlichen Daten (Budget, Con, Countdowns, Archive) als ZIP herunter |
+| `inc/common.php` | Gemeinsame Hilfsfunktionen (JSON laden/speichern, Beträge, Escaping, Zeitzone) |
+| `inc/countdown.php`, `inc/linkcheck.php` | Logik für Countdowns und Link-Check |
 | `assets/hub-search.js` | Gemeinsame Suche für die Link-Hubs |
+| `assets/hud.css` | Gemeinsamer HUD-Look für die neuen Seiten |
 
 ## Installation
 
-Alle Dateien und Ordner (inkl. `inc/` und `assets/`) auf einen Webserver mit PHP ≥ 7.4 kopieren.
+Alle Dateien und Ordner (inkl. `inc/`, `assets/` und `.htaccess`) auf einen Webserver mit PHP ≥ 7.4 kopieren.
+Für Feed und Link-Check wird die PHP-Erweiterung cURL benötigt (bei fast allen Hostern aktiv).
 Der Webserver braucht Schreibrechte im Ordner, damit die JSON-Dateien und Archive angelegt werden können.
 
-Die Datendateien (`*_data.json`, `feed_cache.json`, `archive*/`) sind per `.gitignore` vom Repository ausgeschlossen
+Die Datendateien (`*_data.json`, `feed_cache.json`, `linkcheck_cache.json`, `archive*/`) sind per `.gitignore` vom Repository ausgeschlossen
 und werden beim ersten Aufruf automatisch erzeugt.
 
 ## Neuen Link-Hub anlegen
