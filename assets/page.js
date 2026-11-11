@@ -12,7 +12,8 @@ window.PageUI = (function () {
         Object.entries(data || {}).forEach(([k, v]) => {
             const el = form.elements[k];
             if (!el) return;
-            if (el instanceof RadioNodeList && !(el[0] && el[0].type === 'checkbox')) { el.value = v; return; }
+            if (el instanceof RadioNodeList && el[0] && el[0].type === 'checkbox') { const vals = (Array.isArray(v) ? v : [v]).map(String); [...el].forEach(c => { c.checked = vals.includes(c.value); }); return; }
+            if (el instanceof RadioNodeList) { el.value = v; return; }
             if (el.type === 'checkbox') { el.checked = !!v && v !== '0'; return; }
             el.value = Array.isArray(v) ? v.join(', ') : (v ?? '');
         });
@@ -65,7 +66,7 @@ window.PageUI = (function () {
         if (f.dataset.confirm && !confirm(f.dataset.confirm)) { e.preventDefault(); return; }
         if (f.dataset.prompt) {
             const v = prompt(f.dataset.prompt, f.dataset.promptValue || '');
-            if (v === null || !v.trim()) { e.preventDefault(); return; }
+            if (v === null || (!v.trim() && !f.dataset.promptEmpty)) { e.preventDefault(); return; }
             f.elements[f.dataset.promptField].value = v;
         }
         const btn = f.querySelector('button[type=submit], button:not([type])');

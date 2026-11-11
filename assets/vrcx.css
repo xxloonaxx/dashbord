@@ -146,3 +146,102 @@
     .vx-feed-row { grid-template-columns: 70px 22px minmax(0, 1fr); font-size: 0.8rem; }
     .vx-gd-banner { height: 90px; }
 }
+
+/* ---------- VRCX Vollversion ---------- */
+.vx-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin: 0 0 14px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
+.vx-tabbtn { background: transparent; border: 1px solid transparent; color: var(--text-muted); padding: 7px 12px; font: inherit; font-size: 0.78rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.vx-tabbtn span { font-size: 1rem; }
+.vx-tabbtn:hover { color: var(--accent-cyan); border-color: var(--border-color); }
+.vx-tabbtn.active { color: #fff; border-color: var(--accent-cyan); background: rgba(56, 213, 230, 0.12); box-shadow: 0 0 12px rgba(56, 213, 230, 0.15); }
+.vx-badge { background: var(--accent-red); color: #fff; font-size: 0.65rem; padding: 0 5px; border-radius: 8px; }
+.vx-spark { width: 120px; height: 26px; color: var(--accent-green); flex-shrink: 0; }
+.vx-myloc { padding: 8px 14px; border: 1px solid rgba(243, 194, 98, 0.4); background: rgba(243, 194, 98, 0.06); margin: -8px 0 16px; font-size: 0.84rem; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.vx-myloc a, .vx-loc a, .vx-inst-card b a, .vx-feed-x a, .vx-bl a, .vx-u-loc b a { color: inherit; text-decoration: none; }
+.vx-myloc a:hover, .vx-loc a:hover, .vx-inst-card b a:hover, .vx-feed-x a:hover, .vx-bl a:hover, .vx-u-loc b a:hover { color: var(--accent-gold); text-decoration: underline; }
+.vx-myloc small { color: var(--text-muted); }
+.vx-favchips { margin: -4px 0 14px; display: flex; gap: 6px; flex-wrap: wrap; }
+.vx-friend { position: relative; }
+.vx-f-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.vx-join { color: #040609; background: var(--accent-gold); font-size: 0.7rem; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; border-radius: 50%; }
+.vx-join:hover { box-shadow: 0 0 10px var(--accent-gold); }
+.vx-vfav { color: #ff79c6; font-size: 0.8rem; margin-left: 4px; }
+.vx-grid.compact { grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: 5px; }
+.vx-friend.compact { padding: 5px; gap: 7px; }
+.vx-friend.compact .vx-av { width: 30px; height: 30px; }
+.vx-day { font-size: 0.68rem; letter-spacing: 2px; text-transform: uppercase; color: var(--accent-gold); margin: 14px 0 4px; padding-bottom: 3px; border-bottom: 1px solid rgba(243, 194, 98, 0.25); }
+.vx-day:first-child { margin-top: 0; }
+.vx-inline { display: flex; gap: 6px; flex: 1; min-width: 220px; max-width: 420px; }
+.vx-inline input { flex: 1; }
+.vx-copy { background: none; border: none; color: var(--accent-cyan); cursor: pointer; font-size: 0.85rem; }
+.vx-id { font-size: 0.72rem; color: var(--text-muted); word-break: break-all; }
+
+/* Karten (Welten, Avatare) */
+.vx-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr)); gap: 10px; }
+.vx-card { display: flex; flex-direction: column; text-align: left; background: var(--panel-bg); border: 1px solid rgba(56, 213, 230, 0.16); padding: 0; color: var(--text-main); font: inherit; cursor: pointer; overflow: hidden; transition: all 0.15s; }
+.vx-card:hover { border-color: var(--accent-cyan); transform: translateY(-2px); box-shadow: 0 0 14px rgba(56, 213, 230, 0.15); }
+.vx-card.current { border-color: var(--accent-gold); box-shadow: 0 0 14px rgba(243, 194, 98, 0.25); }
+.vx-card-img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; background: #000; }
+span.vx-card-img { display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+.vx-card-body { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.vx-card-body b { font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; }
+.vx-card-body small { color: var(--text-muted); font-size: 0.72rem; }
+.vx-card-body .btn { align-self: flex-start; margin-top: 4px; }
+.vx-card-meta { display: flex; gap: 8px; flex-wrap: wrap; font-size: 0.7rem; color: #aab4c3; }
+
+/* Welt-Dialog */
+.vx-w-hero { height: 200px; margin: -22px -22px 14px; background-size: cover; background-position: center; mask-image: linear-gradient(#000 60%, transparent); -webkit-mask-image: linear-gradient(#000 60%, transparent); }
+.vx-w-head { display: flex; gap: 12px; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; margin-bottom: 10px; }
+.vx-w-head h2 { margin: 0 0 4px; color: var(--accent-gold); }
+.vx-w-head a { color: var(--accent-cyan); }
+.vx-newinst label.field { margin-top: 8px; }
+.vx-cap { height: 8px; border: 1px solid var(--border-color); background: rgba(56, 213, 230, 0.06); margin: 6px 0 12px; }
+.vx-cap div { height: 100%; background: linear-gradient(90deg, var(--accent-green), var(--accent-gold)); }
+
+/* Kennzahlen & Diagramme */
+.vx-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-bottom: 16px; }
+.vx-kpis > div { background: var(--panel-bg); border: 1px solid var(--border-color); padding: 12px; display: flex; flex-direction: column; gap: 3px; }
+.vx-kpis b { font-size: 1.35rem; color: var(--accent-gold); font-variant-numeric: tabular-nums; }
+.vx-kpis span { font-size: 0.68rem; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); }
+.vx-kpis.sm { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); margin: 10px 0 14px; }
+.vx-kpis.sm > div { padding: 8px 10px; }
+.vx-kpis.sm b { font-size: 1rem; }
+.vx-chart { width: 100%; height: auto; }
+.vx-chart text { fill: var(--text-muted); font-size: 10px; }
+.vx-chart .g { stroke: rgba(56, 213, 230, 0.1); }
+.vx-chart polyline { fill: none; stroke-width: 2; stroke-linejoin: round; }
+.vx-chart .l1, .vx-legend i.l1 { stroke: var(--accent-green); background: var(--accent-green); }
+.vx-chart .l2, .vx-legend i.l2 { stroke: var(--accent-cyan); background: var(--accent-cyan); opacity: 0.7; }
+.vx-legend { display: flex; gap: 16px; font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+.vx-legend i { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 4px; }
+.vx-bars { display: flex; flex-direction: column; gap: 5px; }
+.vx-barrow { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr) auto; gap: 8px; align-items: center; font-size: 0.8rem; }
+.vx-bl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vx-bb { height: 10px; background: rgba(56, 213, 230, 0.07); }
+.vx-bb i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent-cyan), var(--accent-gold)); }
+.vx-bv { color: var(--accent-gold); font-variant-numeric: tabular-nums; font-size: 0.75rem; white-space: nowrap; }
+.vx-heat { display: grid; grid-template-columns: 24px repeat(24, minmax(0, 1fr)); gap: 2px; font-size: 0.6rem; color: var(--text-muted); }
+.vx-heat .hc { aspect-ratio: 1; background: rgba(80, 250, 123, calc(0.05 + var(--a) * 0.9)); border-radius: 2px; }
+.vx-heat .hd { align-self: center; }
+.vx-heat .hh { text-align: center; }
+
+/* Gruppen: Beiträge & Rollen */
+.vx-post-form { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; padding: 10px; border: 1px dashed var(--border-color); }
+.vx-post { border: 1px solid rgba(56, 213, 230, 0.16); padding: 10px 12px; margin-bottom: 10px; background: rgba(10, 16, 24, 0.6); }
+.vx-post header { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin-bottom: 6px; }
+.vx-post header b { color: var(--accent-gold); }
+.vx-post header small { color: var(--text-muted); flex: 1; }
+.vx-post-img { max-width: 100%; max-height: 260px; display: block; margin-bottom: 8px; }
+.vx-role { --pc: #bd93f9; }
+.vx-role button { background: none; border: none; color: inherit; cursor: pointer; padding: 0 0 0 4px; }
+.vx-rolesel { width: auto; padding: 3px 6px; font-size: 0.72rem; }
+.vx-msearch { margin-bottom: 8px; max-width: 360px; }
+.vx-u-groups .vx-pill { cursor: pointer; font: inherit; font-size: 0.66rem; }
+.vx-preset { display: inline-flex; align-items: center; gap: 4px; }
+.vx-preset button { background: none; border: none; color: var(--text-muted); cursor: pointer; }
+.vx-prefs .vx-auto { display: flex; margin-top: 6px; }
+@media (max-width: 760px) {
+    .vx-tabbtn { padding: 6px 8px; font-size: 0.66rem; }
+    .vx-spark { display: none; }
+    .vx-barrow { grid-template-columns: minmax(0, 110px) minmax(0, 1fr) auto; }
+    .vx-heat { font-size: 0.5rem; }
+}

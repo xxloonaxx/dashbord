@@ -114,10 +114,10 @@ function live_info(array $p): string {
     try {
         switch ($p['slug']) {
             case 'con.php':
-                $con = load_json(__DIR__ . '/con_data.json', null);
-                if (!$con) return '';
-                $spent = array_sum(array_map('floatval', array_column($con['expenses'] ?? [], 'amount')));
-                return ($con['con_name'] ?? 'Con') . ' · Rest ' . eur((float)$con['total_budget'] - $spent) . ' €';
+                if (!can('con.access')) return '';
+                require_once __DIR__ . '/inc/con.php';
+                con_load();   // übernimmt ggf. das alte Format
+                return con_live_info();
             case 'budget.php':
                 $b = load_json(__DIR__ . '/budget_data.json', null);
                 if (!$b) return '';

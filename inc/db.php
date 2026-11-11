@@ -30,7 +30,7 @@ const PERMISSIONS = [
     'calendar.subscriptions' => ['Kalender-Abos & Handy-Abo-Links verwalten', 'Kalender'],
     'budget.access'          => ['Budget & Bank-Sync', 'Finanzen'],
     'con.access'             => ['Con-Rechner', 'Finanzen'],
-    'vrcx.access'            => ['VRCX Lite: eigenes VRChat-Konto verbinden (Freunde, Verlauf, Gruppen)', 'VRChat'],
+    'vrcx.access'            => ['VRCX: eigenes VRChat-Konto verbinden (Freunde, Welten, Avatare, Gruppen)', 'VRChat'],
 ];
 
 function site_db_file(): string {

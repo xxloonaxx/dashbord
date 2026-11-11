@@ -19,3 +19,4 @@ data/*.sqlite
 data/*.sqlite-*
 data/.vrc_key_*.php
 uploads/
+*.v1-backup

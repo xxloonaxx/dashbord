@@ -1,6 +1,7 @@
 <?php
 /**
- * VRCX Lite – VRChat-Anbindung: Anmeldung (Benutzer/Passwort + 2FA), Freundesliste mit Verlauf (Feed),
+ * VRCX – VRChat-Anbindung: Anmeldung (Benutzer/Passwort + 2FA), Freundesliste mit Verlauf (Feed),
+ * Statistik (Online-Zeiten, Welten, Aktivität), Welten & Instanzen, Avatare, Moderation,
  * Weltnamen-Zwischenspeicher, eigene Notizen zu Freunden und Gruppenverwaltung.
  *
  * Wichtig:
@@ -95,6 +96,19 @@ function vrc_db(): PDO {
             PRAGMA user_version = 1;
         ");
     }
+    if ((int)$db->query('PRAGMA user_version')->fetchColumn() < 2) {
+        $db->exec("
+            ALTER TABLE friends ADD COLUMN fav_group TEXT NOT NULL DEFAULT '';        -- VRChat-Favoritengruppe (group_0 …)
+            ALTER TABLE friends ADD COLUMN friend_since INTEGER NOT NULL DEFAULT 0;   -- seit wann in der Liste (0 = vor der Aufzeichnung)
+            ALTER TABLE accounts ADD COLUMN my_location TEXT NOT NULL DEFAULT '';
+            ALTER TABLE accounts ADD COLUMN fav_groups TEXT NOT NULL DEFAULT '{}';
+            CREATE TABLE stats (user_id INTEGER NOT NULL, ts INTEGER NOT NULL, online INTEGER NOT NULL, active INTEGER NOT NULL, total INTEGER NOT NULL);
+            CREATE INDEX idx_stats ON stats(user_id, ts);
+            CREATE INDEX idx_feed_friend ON feed(user_id, vrc_id, ts);
+            PRAGMA user_version = 2;
+        ");
+        try { site_db()->exec("UPDATE pages SET title = 'VRCX', description = 'VRChat: Freunde, Verlauf, Statistik, Welten, Avatare & Gruppen – Login mit 2FA' WHERE slug = 'vrcx.php' AND title = 'VRCX Lite'"); } catch (Throwable $e) {}
+    }
     return $db;
 }
 
@@ -135,7 +149,7 @@ function vrc_api_base(): string {
 
 function vrc_user_agent(): string {
     $ua = trim(setting('vrc_user_agent', ''));
-    return $ua !== '' ? $ua : 'GhostNodeDashboard-VRCXLite/1.0';
+    return $ua !== '' ? $ua : 'GhostNodeDashboard-VRCX/2.0';
 }
 
 /**
@@ -266,7 +280,8 @@ function vrc_user_image(array $u): string {
 
 function vrc_me_slim(array $u): array {
     return array_intersect_key($u, array_flip(['id', 'displayName', 'status', 'statusDescription', 'bio', 'tags', 'last_platform', 'pronouns', 'date_joined',
-        'currentAvatarThumbnailImageUrl', 'userIcon', 'profilePicOverride', 'friends', 'onlineFriends', 'activeFriends', 'offlineFriends', 'presence', 'statusHistory']));
+        'currentAvatarThumbnailImageUrl', 'userIcon', 'profilePicOverride', 'friends', 'onlineFriends', 'activeFriends', 'offlineFriends', 'presence', 'statusHistory',
+        'currentAvatar', 'location', 'bioLinks', 'last_login']));
 }
 
 /** Vertrauensstufe aus den Tags */
@@ -380,8 +395,8 @@ function vrc_sync(int $uid, bool $force = false): array {
 
     $now = time();
     $feed = $db->prepare('INSERT INTO feed (user_id, ts, type, vrc_id, display_name, old, new) VALUES (?, ?, ?, ?, ?, ?, ?)');
-    $up = $db->prepare('INSERT OR REPLACE INTO friends (user_id, vrc_id, display_name, state, status, status_desc, location, platform, image, avatar_thumb, tags, bio, last_login, since, updated)
-                        VALUES (:u, :id, :name, :state, :status, :sd, :loc, :pf, :img, :av, :tags, :bio, :ll, :since, :upd)');
+    $up = $db->prepare('INSERT OR REPLACE INTO friends (user_id, vrc_id, display_name, state, status, status_desc, location, platform, image, avatar_thumb, tags, bio, last_login, since, updated, fav_group, friend_since)
+                        VALUES (:u, :id, :name, :state, :status, :sd, :loc, :pf, :img, :av, :tags, :bio, :ll, :since, :upd, :fg, :fs)');
     $log = function ($type, $id, $name, $o = '', $n = '') use ($feed, $uid, $now, $first) { if (!$first) $feed->execute([$uid, $now, $type, $id, $name, (string)$o, (string)$n]); };
     $worlds = [];
     $db->beginTransaction();
@@ -413,11 +428,14 @@ function vrc_sync(int $uid, bool $force = false): array {
             if ($o['avatar_thumb'] !== '' && $row['av'] !== '' && $o['avatar_thumb'] !== $row['av']) $log('avatar', $id, $row['name'], $o['avatar_thumb'], $row['av']);
             if ($o['display_name'] !== $row['name'] && $o['display_name'] !== '') $log('name', $id, $row['name'], $o['display_name'], $row['name']);
             if ($o['bio'] !== $row['bio'] && $o['bio'] !== '' && $row['bio'] !== '') $log('bio', $id, $row['name'], $o['bio'], $row['bio']);
+            $ot = vrc_trust($o['tags'] !== '' ? explode(' ', $o['tags']) : [])[0];
+            $nt = vrc_trust((array)($f['tags'] ?? []))[0];
+            if ($o['tags'] !== '' && $ot !== $nt) $log('trust', $id, $row['name'], $ot, $nt);
         } elseif (!$first) {
             $log('friend_add', $id, $row['name']);
         }
         if ($state === 'online') { $l = vrc_location($loc); if (!empty($l['world'])) $worlds[] = $l['world']; }
-        $up->execute(['u' => $uid, 'id' => $id, 'since' => $since, 'upd' => $now] + $row);
+        $up->execute(['u' => $uid, 'id' => $id, 'since' => $since, 'upd' => $now, 'fg' => $o['fav_group'] ?? '', 'fs' => $o ? (int)$o['friend_since'] : ($first ? 0 : $now)] + $row);
     }
     // Freunde, die nicht mitgeladen wurden, aber laut /auth/user offline sind
     foreach ($old as $id => $o) {
@@ -432,6 +450,18 @@ function vrc_sync(int $uid, bool $force = false): array {
             $db->prepare("UPDATE friends SET state = 'offline', location = 'offline', since = ?, updated = ? WHERE user_id = ? AND vrc_id = ?")->execute([$now, $now, $uid, $id]);
         }
     }
+    // Eigener Ort (wenn man selbst im Spiel ist)
+    $myloc = (string)($me['location'] ?? '');
+    if (strpos($myloc, 'traveling') !== 0 && $myloc !== (string)$acc['my_location']) {
+        if ($acc['my_location'] !== '' && !$first && ($myloc !== '' || $acc['my_location'] !== 'offline')) {
+            $feed->execute([$uid, $now, 'self', $me['id'], $me['displayName'] ?? '', (string)$acc['my_location'], $myloc ?: 'offline']);
+        }
+        $db->prepare('UPDATE accounts SET my_location = ? WHERE user_id = ?')->execute([$myloc ?: 'offline', $uid]);
+    }
+    $cnt = ['online' => 0, 'active' => 0];
+    foreach ($fetched as $id => $f) { if (isset($online_ids[$id])) $cnt['online']++; elseif (isset($active_ids[$id])) $cnt['active']++; }
+    $db->prepare('INSERT INTO stats (user_id, ts, online, active, total) VALUES (?, ?, ?, ?, ?)')->execute([$uid, $now, count($online_ids) ?: $cnt['online'], count($active_ids) ?: $cnt['active'], count($all_ids) ?: count($fetched)]);
+    $db->prepare('DELETE FROM stats WHERE user_id = ? AND ts < ?')->execute([$uid, $now - 90 * 86400]);
     $db->prepare("DELETE FROM feed WHERE user_id = ? AND ts < ?")->execute([$uid, $now - VRC_FEED_KEEP_DAYS * 86400]);
     $db->prepare("UPDATE accounts SET me_json = ?, display_name = ?, avatar = ?, last_error = '' WHERE user_id = ?")
        ->execute([json_encode(vrc_me_slim($me), JSON_UNESCAPED_UNICODE), $me['displayName'] ?? '', vrc_user_image($me), $uid]);
@@ -439,8 +469,30 @@ function vrc_sync(int $uid, bool $force = false): array {
 
     $l = vrc_location((string)($me['location'] ?? ''));
     if (!empty($l['world'])) $worlds[] = $l['world'];
+    if ($need_offline) vrc_sync_favorites($acc);
     vrc_fetch_worlds($acc, $worlds);
     return ['synced' => true, 'wait' => VRC_SYNC_MIN];
+}
+
+/** VRChat-Favoriten (Freunde) und Namen der Favoritengruppen übernehmen – nicht schlimm, wenn es scheitert */
+function vrc_sync_favorites(array &$acc): void {
+    try {
+        $favs = vrc_call($acc, 'GET', '/favorites', ['type' => 'friend', 'n' => 400]);
+        $groups = vrc_call($acc, 'GET', '/favorite/groups', ['type' => 'friend', 'n' => 50]);
+    } catch (VrcAuthError $e) {
+        throw $e;
+    } catch (Throwable $e) {
+        return;
+    }
+    $names = [];
+    foreach ((array)$groups as $g) if (!empty($g['name'])) $names[$g['name']] = (string)($g['displayName'] ?? $g['name']);
+    $db = vrc_db();
+    $db->beginTransaction();
+    $db->prepare("UPDATE friends SET fav_group = '' WHERE user_id = ?")->execute([$acc['user_id']]);
+    $up = $db->prepare('UPDATE friends SET fav_group = ? WHERE user_id = ? AND vrc_id = ?');
+    foreach ((array)$favs as $f) if (!empty($f['favoriteId'])) $up->execute([(string)(((array)($f['tags'] ?? []))[0] ?? 'group_0'), $acc['user_id'], $f['favoriteId']]);
+    $db->prepare('UPDATE accounts SET fav_groups = ? WHERE user_id = ?')->execute([json_encode($names, JSON_UNESCAPED_UNICODE), $acc['user_id']]);
+    $db->commit();
 }
 
 /** Freundesliste für die Anzeige */
@@ -456,7 +508,8 @@ function vrc_friend_list(int $uid): array {
         $tags = $r['tags'] !== '' ? explode(' ', $r['tags']) : [];
         return ['id' => $r['vrc_id'], 'name' => $r['display_name'], 'state' => $r['state'], 'status' => $r['status'], 'status_desc' => $r['status_desc'],
                 'loc' => $loc, 'platform' => VRC_PLATFORM[$r['platform']] ?? $r['platform'], 'image' => $r['image'], 'trust' => vrc_trust($tags),
-                'since' => (int)$r['since'], 'note' => (string)$r['note'], 'favorite' => (bool)$r['favorite'], 'last_login' => $r['last_login']];
+                'since' => (int)$r['since'], 'note' => (string)$r['note'], 'favorite' => (bool)$r['favorite'], 'last_login' => $r['last_login'],
+                'pf' => $r['platform'], 'fav_group' => $r['fav_group'], 'friend_since' => (int)$r['friend_since'], 'status_key' => $r['status']];
     }, $rows);
 }
 
@@ -510,4 +563,157 @@ function vrc_live_info(int $uid): string {
     } catch (Throwable $e) {
         return '';
     }
+}
+
+// ---------- Statistik ----------
+
+/** Spiel-Sitzungen aus dem Verlauf: [vrc_id => [[start, ende], …]] im Zeitraum */
+function vrc_sessions(int $uid, int $from, ?string $friend = null): array {
+    $sql = "SELECT vrc_id, ts, type FROM feed WHERE user_id = ? AND ts >= ? AND type IN ('online', 'offline', 'active', 'gps')" . ($friend ? ' AND vrc_id = ?' : '') . ' ORDER BY vrc_id, ts';
+    $st = vrc_db()->prepare($sql);
+    $st->execute($friend ? [$uid, $from - 86400, $friend] : [$uid, $from - 86400]);
+    $open = [];
+    $out = [];
+    foreach ($st as $r) {
+        $id = $r['vrc_id'];
+        $ts = (int)$r['ts'];
+        if ($r['type'] === 'online' || ($r['type'] === 'gps' && !isset($open[$id]))) {
+            if (!isset($open[$id])) $open[$id] = $ts;
+        } elseif (isset($open[$id])) {
+            if ($ts > $from) $out[$id][] = [max($from, $open[$id]), $ts];
+            unset($open[$id]);
+        }
+    }
+    // Wer gerade im Spiel ist, zählt bis jetzt
+    $st = vrc_db()->prepare("SELECT vrc_id, since FROM friends WHERE user_id = ? AND state = 'online'" . ($friend ? ' AND vrc_id = ?' : ''));
+    $st->execute($friend ? [$uid, $friend] : [$uid]);
+    foreach ($st as $r) {
+        $start = $open[$r['vrc_id']] ?? (int)$r['since'];
+        if ($start && $start < time()) $out[$r['vrc_id']][] = [max($from, $start), time()];
+    }
+    return $out;
+}
+
+function vrc_friend_stats(int $uid, string $id): array {
+    $sum = function (array $list, int $from) { $t = 0; foreach ($list as [$a, $b]) if ($b > $from) $t += $b - max($a, $from); return $t; };
+    $s = vrc_sessions($uid, time() - 30 * 86400, $id)[$id] ?? [];
+    $q = vrc_db()->prepare("SELECT ts, new FROM feed WHERE user_id = ? AND vrc_id = ? AND type IN ('gps', 'online') AND new LIKE 'wrld_%' ORDER BY id DESC LIMIT 1");
+    $q->execute([$uid, $id]);
+    $last_world = $q->fetch() ?: null;
+    $q = vrc_db()->prepare("SELECT MAX(ts) FROM feed WHERE user_id = ? AND vrc_id = ? AND type IN ('online', 'offline')");
+    $q->execute([$uid, $id]);
+    $last_seen = (int)$q->fetchColumn();
+    $q = vrc_db()->prepare('SELECT friend_since FROM friends WHERE user_id = ? AND vrc_id = ?');
+    $q->execute([$uid, $id]);
+    $out = ['week' => $sum($s, time() - 7 * 86400), 'month' => $sum($s, time() - 30 * 86400), 'sessions' => count($s), 'last_seen' => $last_seen, 'friend_since' => (int)$q->fetchColumn()];
+    if ($last_world) {
+        $l = vrc_location($last_world['new']);
+        $l['world_name'] = vrc_worlds([$l['world'] ?? ''])[$l['world'] ?? '']['name'] ?? '';
+        $out['last_world'] = $l + ['ts' => (int)$last_world['ts']];
+    }
+    return $out;
+}
+
+function vrc_stats(int $uid): array {
+    $db = vrc_db();
+    $now = time();
+    $from = $now - 30 * 86400;
+
+    // Online-Verlauf (7 Tage, stündlich gemittelt)
+    $st = $db->prepare('SELECT ts, online, active, total FROM stats WHERE user_id = ? AND ts > ? ORDER BY ts');
+    $st->execute([$uid, $now - 7 * 86400]);
+    $rows = $st->fetchAll();
+    $span = $rows ? (int)end($rows)['ts'] - (int)$rows[0]['ts'] : 0;
+    $bucket = $span > 2 * 86400 ? 3600 : ($span > 6 * 3600 ? 900 : 300);   // wenig Daten: feinere Punkte
+    $hours = [];
+    foreach ($rows as $r) {
+        $h = intdiv((int)$r['ts'], $bucket) * $bucket;
+        $hours[$h][] = $r;
+    }
+    $history = [];
+    foreach ($hours as $h => $rows) {
+        $history[] = ['ts' => $h, 'online' => round(array_sum(array_column($rows, 'online')) / count($rows), 1), 'active' => round(array_sum(array_column($rows, 'active')) / count($rows), 1)];
+    }
+    $peak = $history ? max(array_column($history, 'online')) : 0;
+
+    // Spielzeit pro Freund
+    $names = [];
+    $st = $db->prepare('SELECT vrc_id, display_name, image FROM friends WHERE user_id = ?');
+    $st->execute([$uid]);
+    foreach ($st as $r) $names[$r['vrc_id']] = $r;
+    $play = [];
+    foreach (vrc_sessions($uid, $from) as $id => $list) {
+        $t = 0;
+        foreach ($list as [$a, $b]) $t += $b - $a;
+        if ($t > 0 && isset($names[$id])) $play[] = ['id' => $id, 'name' => $names[$id]['display_name'], 'image' => $names[$id]['image'], 'seconds' => $t, 'sessions' => count($list)];
+    }
+    usort($play, function ($a, $b) { return $b['seconds'] <=> $a['seconds']; });
+
+    // Beliebteste Welten (Freunde) und eigene Welten
+    $top = function (string $types) use ($db, $uid, $from) {
+        $st = $db->prepare("SELECT new FROM feed WHERE user_id = ? AND ts >= ? AND type IN ($types) AND new LIKE 'wrld_%'");
+        $st->execute([$uid, $from]);
+        $c = [];
+        foreach ($st as $r) { $w = explode(':', $r['new'])[0]; $c[$w] = ($c[$w] ?? 0) + 1; }
+        arsort($c);
+        $c = array_slice($c, 0, 10, true);
+        $info = vrc_worlds(array_keys($c));
+        $out = [];
+        foreach ($c as $w => $n) $out[] = ['id' => $w, 'name' => $info[$w]['name'] ?? $w, 'thumb' => $info[$w]['thumb'] ?? '', 'count' => $n];
+        return $out;
+    };
+
+    // Aktivität nach Wochentag/Stunde (wann kommen Freunde online?)
+    $heat = array_fill(0, 7, array_fill(0, 24, 0));
+    $st = $db->prepare("SELECT ts FROM feed WHERE user_id = ? AND ts >= ? AND type = 'online'");
+    $st->execute([$uid, $from]);
+    foreach ($st as $r) $heat[(int)date('N', (int)$r['ts']) - 1][(int)date('G', (int)$r['ts'])]++;
+
+    // Verteilung
+    $trust = [];
+    $platform = [];
+    $state = ['online' => 0, 'active' => 0, 'offline' => 0];
+    $st = $db->prepare('SELECT tags, platform, state FROM friends WHERE user_id = ?');
+    $st->execute([$uid]);
+    foreach ($st as $r) {
+        [$t, $col] = vrc_trust($r['tags'] !== '' ? explode(' ', $r['tags']) : []);
+        $trust[$t] = ['name' => $t, 'color' => $col, 'count' => ($trust[$t]['count'] ?? 0) + 1];
+        $p = VRC_PLATFORM[$r['platform']] ?? ($r['platform'] ?: 'unbekannt');
+        $platform[$p] = ($platform[$p] ?? 0) + 1;
+        $state[$r['state']] = ($state[$r['state']] ?? 0) + 1;
+    }
+    usort($trust, function ($a, $b) { return $b['count'] <=> $a['count']; });
+    arsort($platform);
+    $st = $db->prepare('SELECT type, COUNT(*) AS n FROM feed WHERE user_id = ? AND ts >= ? GROUP BY type');
+    $st->execute([$uid, $from]);
+    $types = [];
+    foreach ($st as $r) $types[$r['type']] = (int)$r['n'];
+    $st = $db->prepare('SELECT MIN(ts) FROM feed WHERE user_id = ?');
+    $st->execute([$uid]);
+
+    return ['history' => $history, 'peak' => $peak, 'play' => array_slice($play, 0, 15), 'worlds' => $top("'gps', 'online'"), 'my_worlds' => $top("'self'"),
+            'heat' => $heat, 'trust' => array_values($trust), 'platform' => $platform, 'state' => $state, 'types' => $types,
+            'recording_since' => (int)$st->fetchColumn(), 'total_play' => array_sum(array_column($play, 'seconds'))];
+}
+
+/** Daten als CSV ausgeben (Freunde oder Verlauf) */
+function vrc_export(int $uid, string $what): void {
+    $name = 'vrcx_' . ($what === 'feed' ? 'verlauf' : 'freunde') . '_' . date('Y-m-d') . '.csv';
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $name . '"');
+    $out = fopen('php://output', 'w');
+    fwrite($out, "\xEF\xBB\xBF");
+    if ($what === 'feed') {
+        fputcsv($out, ['Zeit', 'Ereignis', 'Name', 'VRChat-ID', 'Vorher', 'Nachher'], ';');
+        $st = vrc_db()->prepare('SELECT * FROM feed WHERE user_id = ? ORDER BY id DESC LIMIT 20000');
+        $st->execute([$uid]);
+        foreach ($st as $r) fputcsv($out, [date('d.m.Y H:i', (int)$r['ts']), $r['type'], $r['display_name'], $r['vrc_id'], $r['old'], $r['new']], ';');
+    } else {
+        fputcsv($out, ['Name', 'VRChat-ID', 'Status', 'Statustext', 'Ort', 'Plattform', 'Vertrauen', 'Favorit', 'Notiz', 'Letzter Login'], ';');
+        foreach (vrc_friend_list($uid) as $f) {
+            fputcsv($out, [$f['name'], $f['id'], $f['state'], $f['status_desc'], $f['loc']['kind'] === 'world' ? ($f['loc']['world_name'] ?? '') . ' (' . $f['loc']['access'] . ')' : $f['loc']['label'],
+                           $f['platform'], $f['trust'][0], $f['favorite'] ? 'ja' : '', $f['note'], $f['last_login']], ';');
+        }
+    }
+    fclose($out);
 }

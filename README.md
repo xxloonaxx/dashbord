@@ -7,12 +7,12 @@ PHP-Dashboard: Daten als JSON-Dateien neben den Seiten, Benutzer/Seiten/Kalender
 | `index.php` | Startseite: listet alle Seiten automatisch, Websuche + lokale Suche über **alle** Hub-Links |
 | `1linkseite.php`, `2VRchat.php`, `3hueter-Zentrale.php`, `furry.php` | Link-Hubs mit Live-Suche |
 | `budget.php` | Monatsbudget mit Fixkosten-/Abo-Vorlagen, CSV-Import (z. B. Revolut) und Archiv |
-| `con.php` | Con-Budget & Dokumentation mit Archiv |
+| `con.php` | Con-Rechner: mehrere Cons, Ausgaben, Abrechnung unter Mitreisenden, Rechner, Zeitplan, Packliste, Wunschliste, Vergleich |
 | `feed.php` | RSS/Atom-Feed-Sammler mit Cache (15 Min.) und Countdown |
 | `countdown.php` | Beliebig viele Countdowns (auch jährlich wiederkehrend), Haupt-Countdown für Feed & Startseite, Kalender-Export (.ics) |
 | `linkcheck.php` | Prüft alle Hub-Links auf Erreichbarkeit (in kleinen Paketen mit Live-Fortschritt, damit kein Hoster-Zeitlimit greift); kaputte Links bekommen in den Hubs einen ⚠-Hinweis |
 | `backup.php` | Lädt alle persönlichen Daten (Budget, Con, Countdowns, Archive, Datenbanken, hochgeladene Bilder) als ZIP herunter |
-| `vrcx.php` | **VRCX Lite**: VRChat-Freunde, Verlauf, Gruppenverwaltung – Anmeldung mit Benutzer/Passwort + 2FA |
+| `vrcx.php` | **VRCX**: VRChat-Freunde, Verlauf, Statistik, Welten & Instanzen, Avatare, Moderation, Gruppen – Login mit 2FA |
 | `page.php` | Eigene Seiten aus Vorlagen (Logik in `inc/tpl/*.php`) |
 | `inc/format.php`, `assets/editor.js`, `preview.php` | Gemeinsame Formatierung (Markdown + BBCode + HTML), Werkzeugleiste & Live-Vorschau |
 | `inc/common.php` | Gemeinsame Hilfsfunktionen (JSON laden/speichern, Beträge, Escaping, Zeitzone) |
@@ -86,29 +86,63 @@ Alles wird serverseitig bereinigt: `<script>`, `on…`-Attribute, `javascript:`-
 fremde iframes werden entfernt, offene Tags automatisch geschlossen. Jedes Textfeld bekommt eine **Werkzeugleiste**
 (Fett, Farbe, Liste, Link, Tabelle …), eine **👁 Live-Vorschau** und eine **?**-Kurzhilfe; `Strg+B/I/U/K` funktionieren.
 
-## VRCX Lite (`vrcx.php`)
+## VRCX (`vrcx.php`)
 
-Eine kleine Web-Version von VRCX für VRChat. Recht: `vrcx.access` (Administratoren haben es automatisch,
+Eine Web-Version von VRCX für VRChat. Recht: `vrcx.access` (Administratoren haben es automatisch,
 anderen Rollen in der Admin-Zentrale geben). Jeder Dashboard-Benutzer verbindet **sein eigenes** VRChat-Konto.
 
 - **Anmeldung** mit VRChat-Benutzername/E-Mail + Passwort, danach **2FA**: Authenticator-App, E-Mail-Code oder Wiederherstellungscode.
   Das Passwort wird **nicht gespeichert** – nur das VRChat-Sitzungs-Cookie, AES-256-GCM-verschlüsselt (`data/vrcx_….sqlite`,
   Schlüssel in `data/.vrc_key_….php`). Nach einem Backup-Wiederherstellen muss man sich deshalb neu anmelden.
-- **Freunde**: Im Spiel / Website & App / Offline, Welt + Instanz-Typ (Public, Friends+, Invite, Gruppe …) + Region,
-  „seit“-Zeit, Vertrauensstufe als Namensfarbe, ⭐ Favoriten, eigene Notizen, Suche, „Zusammen unterwegs“ (Freunde in derselben Instanz).
-- **Profil**: Bio, Links, Gruppen, Daten; **▶ Beitreten** (öffnet VRChat), **Selbst-Einladung**, **Einladung anfragen**,
-  Freundschaftsanfrage / Freundschaft beenden, Verlauf dieser Person.
-- **Verlauf** (Feed): online/offline, Ortswechsel, Status, Avatar, Name, Bio, Freund hinzugekommen/entfernt – mit Filter und Suche.
-  Er entsteht durch die Abgleiche, solange die Seite offen ist (automatisch alle ~60 s, sonst per ⟳).
-- **Gruppen**: Info/Regeln, Mitglieder (entfernen, bannen), Beitrittsanfragen (aufnehmen, ablehnen, sperren), Freunde einladen,
-  Banns aufheben, offene Gruppen-Instanzen, Gruppen-Protokoll, Gruppe repräsentieren – je nach deinen Rechten in der Gruppe.
-- **Anfragen** (Freundschaftsanfragen annehmen/ausblenden), **Benutzersuche**, eigenen **Status** setzen.
-- Moderationsaktionen (Kick, Bann, Freundschaft beenden …) landen im Protokoll der Admin-Zentrale.
+- **Freunde**: Im Spiel / Website & App / Offline mit Welt, Instanz-Typ, Region und „seit“-Zeit; Filter nach Plattform,
+  Vertrauensstufe, VRChat-Favoritengruppen, „nur mit Notiz“; Sortierung nach Status, Name, Welt, Vertrauen, neueste Freunde;
+  Kompaktansicht; „Zusammen unterwegs“; ▶ direkt beitreten; CSV-Export. Oben: wo du selbst gerade bist und mit wem.
+- **Profil-Dialog**: Bio, Links, Gruppen, Online-Zeit (7/30 Tage), Sitzungen, zuletzt gesehen (+ Welt), Freund seit;
+  ▶ Beitreten, Selbst-Einladung, Einladung anfragen, **zu mir einladen**, Instanz-Info, eigene Notiz (optional auch als
+  VRChat-Notiz), ⭐ Favorit, stummschalten, Avatar ausblenden, blockieren, Freundschaft beenden/anfragen.
+- **Verlauf**: online/offline, Ortswechsel, Status, Avatar, Name, Bio, Vertrauensstufe, Freunde +/−, **deine eigenen Orte** –
+  nach Tagen gruppiert, mit Filter, Suche und CSV-Export.
+- **Statistik**: Freunde online (7-Tage-Kurve), meiste Spielzeit, beliebteste Welten deiner Freunde, deine meistbesuchten
+  Welten, Aktivitäts-Heatmap (Wochentag × Uhrzeit), Vertrauensstufen, Plattformen, Kennzahlen.
+- **Welten**: Favoriten, zuletzt besucht, gerade beliebt, eigene Welten, „wo Freunde sind“, Suche; Welt-Dialog mit Infos,
+  offenen Instanzen, Freunden dort, Favorisieren und **neue Instanz erstellen** (Friends+, Friends, Invite(+), Public, Gruppe)
+  inkl. automatischer Selbst-Einladung. Instanz-Info mit Belegung und PC/Quest-Verteilung.
+- **Avatare**: eigene und favorisierte Avatare, Filter, **Avatar wechseln** mit einem Klick.
+- **Gruppen**: Info/Regeln, **Beiträge** (lesen, veröffentlichen, löschen), Mitglieder (filtern, Rollen vergeben/entziehen,
+  entfernen, bannen), Beitrittsanfragen, Freunde einladen, Banns, Instanzen, Gruppen-Protokoll, repräsentieren,
+  beitreten/verlassen, Gruppensuche – je nach deinen Rechten in der Gruppe.
+- **Anfragen** (Freundschaftsanfragen annehmen, Einladungswünsche direkt beantworten), **Moderation** (Blockierte,
+  Stummgeschaltete usw. ansehen und aufheben), **Suche** nach Benutzern, Welten und Gruppen.
+- **Konto**: Status + Status-Vorlagen, Profil (Bio, Pronomen, Links), **Browser-Benachrichtigungen** (wenn Favoriten /
+  VRChat-Favoriten / alle ins Spiel kommen, optional offline & Ortswechsel, mit Ton), Aktualisierungs-Intervall, Exporte.
+- Tastenkürzel: `/` Suche, `R` aktualisieren, `1`–`0` Reiter, `Esc` schließen.
+- Moderationsaktionen (Kick, Bann, Blockieren, Freundschaft beenden …) landen im Protokoll der Admin-Zentrale.
 
-Die VRChat-API ist **inoffiziell**. VRCX Lite fragt bewusst sparsam ab (Freunde höchstens alle 45 s, offline Freunde alle
-15 min, Weltnamen werden gespeichert) und führt nichts automatisch aus. VRChat bittet darum, dass sich Programme per
-User-Agent mit einer Kontaktmöglichkeit ausweisen – das lässt sich in VRCX Lite → Konto einstellen (Recht `system.manage`).
-Voraussetzung: cURL und ausgehende Verbindungen zu `api.vrchat.cloud`.
+Die VRChat-API ist **inoffiziell**. VRCX fragt bewusst sparsam ab (Freunde höchstens alle 45 s, offline Freunde und
+Favoriten alle 15 min, Weltnamen werden gespeichert) und führt nichts automatisch aus. Verlauf und Statistik entstehen nur,
+solange die Seite offen ist. VRChat bittet darum, dass sich Programme per User-Agent mit einer Kontaktmöglichkeit ausweisen –
+das lässt sich in VRCX → Konto einstellen (Recht `system.manage`). Voraussetzung: cURL und ausgehende Verbindungen zu `api.vrchat.cloud`.
+
+## Con-Rechner (`con.php`)
+
+- **Mehrere Cons** gleichzeitig (Auswahl oben), mit Icon, Datum, Ort, Webseite, Hotel, Status (in Planung / gebucht / läuft / vorbei),
+  eigenem Budget und **Fremdwährung** samt Kurs (z. B. Anthrocon in USD). Die zuletzt geöffnete Con erscheint in der Index-Kachel.
+- **Übersicht**: Budget, meine Kosten, bezahlt, offen (mit Fälligkeit), geplant, Rest, Rest pro Con-Tag, **Sparziel** pro Monat/Woche,
+  Budget-Balken, Donut nach Kategorie, **Budget je Kategorie**, offene Zahlungen, Ausgaben pro Tag, Schnellerfassung.
+- **Ausgaben** mit Status *geplant / gebucht-offen / bezahlt*, Fälligkeit, Zahlart, Währung, Notiz (mit Formatierung); Filter, Sortierung, Summe, CSV.
+- **Gruppe & Abrechnung**: Mitreisende anlegen, bei jeder Ausgabe „bezahlt von“ und „geteilt mit“ – daraus berechnet die Seite
+  Anteile, Salden und die **Ausgleichszahlungen „wer schuldet wem“** (mit möglichst wenigen Überweisungen).
+- **Rechner** (live, Ergebnis mit einem Klick als Ausgabe übernehmen): Zimmer teilen (inkl. Kurtaxe), Auto/E-Auto,
+  Bahn/Flug, Tagesbudget vor Ort, Sparplan, Währungsrechner (mit Kartengebühr), Rechnung teilen mit Trinkgeld, Dealers-Den-Limit.
+- **Zeitplan** nach Tagen (Con-Tag 1, 2 …), ★ Favoriten, Export als `.ics` fürs Handy.
+- **Packliste** mit Vorlagen (Dokumente, Technik, Kleidung, Fursuit, Hygiene, Con-Kram), abhaken ohne Neuladen, für die Rückreise zurücksetzen.
+- **Wunschliste** für den Dealers Den mit Priorität und Preis; „✓ Gekauft“ trägt sie automatisch als Ausgabe ein.
+- **Notizen** mit Formatierung, Hotel mit Kartenlink.
+- **Vergleich** aller Cons: Kosten je Con nach Kategorien, Budget-Linie, Ø pro Con und pro Tag, Tabelle.
+- **⧉ Als Vorlage**: Con fürs nächste Jahr kopieren (Ausgaben als „geplant“, Daten +1 Jahr, Packliste zurückgesetzt).
+- Verbunden mit **Countdown** (⏳) und **Kalender** (📅, privater Termin) – mit den jeweiligen Rechten.
+- Alte Daten werden automatisch übernommen: die bisherige Con und alle Archive (`archive/con_*.json`) als „vorbei“.
+  Eine Sicherung des alten Formats bleibt als `con_data.json.v1-backup` liegen.
 
 ## Admin-Zentrale
 
