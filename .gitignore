@@ -17,3 +17,5 @@ feed_sources.json
 .openbanking.php
 data/*.sqlite
 data/*.sqlite-*
+data/.vrc_key_*.php
+uploads/

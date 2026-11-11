@@ -5,6 +5,7 @@
 require_once __DIR__ . '/inc/calendar.php';
 require_once __DIR__ . '/inc/calendar_ics.php';
 require_once __DIR__ . '/inc/auth.php';
+require_once __DIR__ . '/inc/format.php';
 
 // Abo-Link fürs Handy: muss ohne Login funktionieren, deshalb vor der Zugriffsprüfung
 if (isset($_GET['feed'])) {
@@ -287,7 +288,7 @@ function cal_item_json(array $it, string $day): array {
         'key' => $it['key'], 'type' => $it['type'], 'title' => $it['title'], 'color' => $it['color'], 'category' => $it['category'],
         'when' => german_datetime($it['start']->getTimestamp(), !$it['all_day'])
             . ($it['end']->format('Y-m-d') !== $it['start']->format('Y-m-d') ? ' – ' . german_datetime($it['end']->getTimestamp(), !$it['all_day']) : ($it['all_day'] ? '' : ' – ' . $it['end']->format('H:i') . ' Uhr')),
-        'location' => $it['location'] ?? '', 'description' => $it['description'] ?? '', 'url' => $it['url'] ?? '', 'icon' => $it['icon'] ?? '',
+        'location' => $it['location'] ?? '', 'description' => $it['description'] ?? '', 'description_html' => format_text($it['description'] ?? '', ['external' => !empty($it['source'])]), 'url' => $it['url'] ?? '', 'icon' => $it['icon'] ?? '',
         'recurrence' => CAL_RECURRENCE[$it['recurrence'] ?? 'none'] ?? '', 'private' => !empty($it['private']), 'day' => $day,
         'start_iso' => $it['start']->format('c'),
     ];
@@ -749,7 +750,7 @@ $flash_err = $_GET['error'] ?? '';
         <label class="field">Link</label>
         <input type="url" name="url" maxlength="500" placeholder="https://…">
         <label class="field" style="margin-top: 10px;">Notizen</label>
-        <textarea name="description" rows="3" maxlength="4000" placeholder="Details, Ticketnummer, Mitbringen …"></textarea>
+        <textarea name="description" rows="4" maxlength="4000" placeholder="Details, Ticketnummer, Mitbringen … (Markdown, BBCode & HTML möglich)" data-format="text"></textarea>
 
         <label class="toggle" style="margin: 12px 0;"><input type="checkbox" name="private" value="1" checked> 🔒 Privat – nur angemeldet sichtbar</label>
         <p class="side-note" id="seriesNote" hidden>Änderungen gelten für die ganze Serie.</p>
@@ -806,6 +807,7 @@ $flash_err = $_GET['error'] ?? '';
     };
 </script>
 <script src="assets/calendar.js"></script>
+<?php if ($admin): ?><script src="assets/editor.js"></script><?php endif; ?>
 <script src="assets/reminders.js" data-endpoint="calendar.php?reminders=1"></script>
 </body>
 </html>

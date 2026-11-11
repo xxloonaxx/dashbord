@@ -38,7 +38,7 @@
         if (it.reminder_label) rows.push(['Erinnerung', '🔔 ' + esc(it.reminder_label)]);
         if (it.source) rows.push(['Quelle', '📡 Abo „' + esc(it.source.name) + '“' + (it.ext_category ? ' · ' + esc(it.ext_category) : '') + ' – schreibgeschützt']);
         if (it.url) rows.push(['Link', '<a href="' + esc(it.url) + '" target="_blank" rel="noopener noreferrer">' + esc(it.url) + '</a>']);
-        if (it.description) rows.push([it.type === 'countdown' ? 'Notiz' : 'Notizen', esc(it.description)]);
+        if (it.description) rows.push([it.type === 'countdown' ? 'Notiz' : 'Notizen', '<div class="fmt">' + (it.description_html || esc(it.description)) + '</div>']);
         if (it.type === 'countdown') rows.push(['Hinweis', 'Kommt von der Countdown-Seite und wird dort verwaltet.']);
         $('#dList').innerHTML = rows.map(([k, v]) => '<dt>' + k + '</dt><dd>' + v + '</dd>').join('');
 

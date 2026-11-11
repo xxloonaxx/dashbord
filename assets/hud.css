@@ -1,3 +1,4 @@
+@import url("format.css");
 /* Gemeinsamer HUD-Look für neue Seiten (Countdown, Link-Check) */
 :root {
     --bg-color: #040609;

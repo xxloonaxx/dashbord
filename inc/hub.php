@@ -7,6 +7,7 @@
  * links_<hubname>.json – diese Datei hat danach Vorrang. Beim Hochladen einer neuen
  * Version der Webseite bleiben die eigenen Links dadurch erhalten.
  */
+require_once __DIR__ . '/format.php';
 require_once __DIR__ . '/common.php';
 require_once __DIR__ . '/auth.php';
 
@@ -205,6 +206,7 @@ function hub_link_actions(string $category, int $index, array $link): void {
 function hub_dialogs(array $categories): void {
     auth_corner();
     echo '<link rel="stylesheet" href="assets/hub-admin.css">';
+    echo '<link rel="stylesheet" href="assets/format.css">';
     echo '<style>.nsfw-badge{display:inline-block;font-size:.6rem;font-weight:800;letter-spacing:1px;color:#ff5555;border:1px solid rgba(255,85,85,.6);padding:0 4px;margin-left:4px;vertical-align:middle}.nsfw-badge.hidden-for-guests{border-style:dashed;opacity:.75}</style>';
     if (!can('links.edit')) return;
     $icons = ['🔗', '⭐', '🛠️', '📚', '🎮', '🎥', '🎵', '🛒', '🐾', '🦊', '💻', '🐧', '🌐', '📰', '🔒', '🎨', '🥽', '🛡️', '💬', '📦'];
@@ -220,7 +222,7 @@ function hub_dialogs(array $categories): void {
 
             <label class="hub-label">Titel *<input type="text" name="title" maxlength="100" required placeholder="z. B. ProtonDB"></label>
             <label class="hub-label">Adresse (URL) *<input type="url" name="url" required placeholder="https://…" inputmode="url"></label>
-            <label class="hub-label">Beschreibung<input type="text" name="desc" maxlength="300" placeholder="Wofür ist der Link gut?"></label>
+            <label class="hub-label">Beschreibung<input type="text" name="desc" maxlength="300" placeholder="Wofür ist der Link gut? (**fett**, [i]BBCode[/i], <u>HTML</u>)" data-format="inline"></label>
 
             <div class="hub-row">
                 <label class="hub-label" style="flex: 2;">Kategorie *
@@ -256,4 +258,5 @@ function hub_dialogs(array $categories): void {
     </div>
 
     <script src="assets/hub-admin.js"></script>
+    <script src="assets/editor.js"></script>
 <?php }

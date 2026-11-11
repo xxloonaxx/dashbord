@@ -5,12 +5,18 @@
  */
 require_once __DIR__ . '/auth.php';
 
-/** Vorlagen für neue Seiten */
+/** Vorlagen für neue Seiten: Schlüssel => [Icon, Name, Beschreibung] (Logik in inc/tpl/<schlüssel>.php) */
 const PAGE_TEMPLATES = [
-    'links'     => ['🔗', 'Link-Hub', 'Linksammlung mit Kategorien, Suche, Icons und Link-Check – wie die bestehenden Hubs.'],
-    'notes'     => ['📝', 'Notizen', 'Textseite mit einfacher Formatierung (Überschriften, Listen, Links, **fett**) – für Infos, Anleitungen, Regeln.'],
-    'checklist' => ['✅', 'Checkliste', 'Abhakbare Liste mit Gruppen und Fortschrittsbalken – z. B. Packliste für die Con.'],
-    'external'  => ['🌐', 'Externer Link', 'Kachel im Index, die direkt auf eine andere Webseite führt.'],
+    'links'     => ['🔗', 'Link-Hub', 'Linksammlung mit Kategorien, Suche, Icons und Link-Check.'],
+    'notes'     => ['📝', 'Notizen', 'Beliebig viele Notizen als Karten – Farben, Tags, Anheften, Suche.'],
+    'checklist' => ['✅', 'Checkliste', 'Abhakbare Gruppen mit Fortschritt – z. B. Packliste.'],
+    'kanban'    => ['🗂️', 'Kanban-Board', 'Spalten & Karten per Drag & Drop – Aufgaben, Projekte.'],
+    'table'     => ['📊', 'Tabelle', 'Eigene Spalten (Zahl, €, Datum, ✓, ★), Summen, CSV-Export.'],
+    'journal'   => ['📔', 'Tagebuch / Blog', 'Datierte Einträge mit Stimmung, Tags und Archiv.'],
+    'gallery'   => ['🖼️', 'Galerie', 'Bilder hochladen oder verlinken, mit Großansicht.'],
+    'counter'   => ['🔢', 'Zähler & Tracker', 'Zähler mit + / −, Ziel, Fortschritt und Verlauf.'],
+    'embed'     => ['📺', 'Einbettungen', 'YouTube, Twitch, Spotify, Karten oder Webseiten einbetten.'],
+    'external'  => ['🌐', 'Externer Link', 'Kachel im Index, die direkt zu einer anderen Webseite führt.'],
 ];
 
 const PAGE_ACCESS = ['public' => '🌍 Öffentlich', 'users' => '🔑 Nur angemeldet', 'roles' => '🛡️ Nur bestimmte Rollen'];
@@ -26,16 +32,17 @@ const PAGE_DEFAULTS = [
     'feed.php'             => ['Live-Feed', '📡', 'Neuigkeiten aus Tech, Gaming & Furry-Fandom', 'Planung', 'public'],
     'budget.php'           => ['Budget', '💶', 'Monatsbudget, Fixkosten, Abos & Bank-Sync', 'Finanzen', 'users'],
     'con.php'              => ['Con-Rechner', '🎪', 'Budget & Planung für Conventions', 'Finanzen', 'users'],
+    'vrcx.php'             => ['VRCX Lite', '🥽', 'VRChat-Freunde, Verlauf & Gruppenverwaltung – Login mit 2FA', 'Community', 'users'],
     'linkcheck.php'        => ['Link-Check', '🩺', 'Prüft alle Links der Hubs auf Erreichbarkeit', 'System', 'public'],
     'backup.php'           => ['Backup', '💾', 'Alle Daten als ZIP herunterladen', 'System', 'users'],
     'admin.php'            => ['Admin-Zentrale', '⚙️', 'Benutzer, Rechte, Seiten, Protokoll & System', 'System', 'public'],
 ];
 
 /** Rechte, ohne die eine Dateiseite für angemeldete Benutzer ausgeblendet wird */
-const PAGE_REQUIRED_PERMISSION = ['budget.php' => 'budget.access', 'con.php' => 'con.access', 'backup.php' => 'backup.download'];
+const PAGE_REQUIRED_PERMISSION = ['budget.php' => 'budget.access', 'con.php' => 'con.access', 'backup.php' => 'backup.download', 'vrcx.php' => 'vrcx.access'];
 
 /** Seiten, die nie im Register auftauchen (Hilfsdateien) */
-const PAGE_IGNORE = ['index.php', 'page.php'];
+const PAGE_IGNORE = ['index.php', 'page.php', 'preview.php'];
 
 function page_category_id(string $name): int {
     $db = site_db();
@@ -43,7 +50,7 @@ function page_category_id(string $name): int {
     $st->execute([$name]);
     $id = $st->fetchColumn();
     if ($id) return (int)$id;
-    $icons = ['Link-Hubs' => '🔗', 'Planung' => '🗓️', 'Finanzen' => '💶', 'System' => '⚙️', 'Eigene Seiten' => '✨', 'Weitere Seiten' => '📁'];
+    $icons = ['Link-Hubs' => '🔗', 'Planung' => '🗓️', 'Finanzen' => '💶', 'System' => '⚙️', 'Eigene Seiten' => '✨', 'Weitere Seiten' => '📁', 'Community' => '🥽'];
     $db->prepare('INSERT INTO page_categories (name, icon, sort) VALUES (?, ?, (SELECT COALESCE(MAX(sort), 0) + 1 FROM page_categories))')->execute([$name, $icons[$name] ?? '📁']);
     return (int)$db->lastInsertId();
 }
@@ -85,7 +92,7 @@ function pages_sync(): void {
     }
     if ($first_run) {
         // Kategorien in sinnvolle Reihenfolge bringen
-        foreach (['Link-Hubs', 'Planung', 'Finanzen', 'Eigene Seiten', 'Weitere Seiten', 'System'] as $i => $n) {
+        foreach (['Link-Hubs', 'Planung', 'Community', 'Finanzen', 'Eigene Seiten', 'Weitere Seiten', 'System'] as $i => $n) {
             $db->prepare('UPDATE page_categories SET sort = ? WHERE name = ?')->execute([$i, $n]);
         }
     }
@@ -176,85 +183,24 @@ function page_save_content(int $id, array $content): void {
 
 /** Startinhalt neuer Seiten je Vorlage */
 function page_template_start(string $template): array {
-    switch ($template) {
-        case 'notes':
-            return ['markdown' => "# Willkommen\n\nHier kannst du **Notizen**, Anleitungen oder Infos sammeln.\n\n## So geht's\n- Auf *Bearbeiten* klicken\n- Text schreiben (Überschriften mit `#`, Listen mit `-`)\n- Links: [Beispiel](https://example.org)\n"];
-        case 'checklist':
-            return ['groups' => [['id' => uniqid('g'), 'name' => 'Allgemein', 'items' => []]]];
-        default:
-            return [];
-    }
+    require_once __DIR__ . '/templates.php';
+    return tpl_call($template, 'start') ?? [];
 }
 
-// ---------- Markdown (sicher, nur ein kleiner Teil der Syntax) ----------
+/** Inhalt einer eigenen Seite inkl. Umstellung alter Datenformate */
+function page_content_normalized(array $p): array {
+    require_once __DIR__ . '/templates.php';
+    $c = page_content($p);
+    return tpl_call($p['template'], 'normalize', $c, $p) ?? ($c ?: (tpl_call($p['template'], 'start') ?? []));
+}
 
+/** Kompatibilität: alte Aufrufe nutzen jetzt den gemeinsamen Formatierer */
 function md_inline(string $s): string {
-    $s = e($s);
-    $s = preg_replace('/`([^`]+)`/', '<code>$1</code>', $s);
-    $s = preg_replace('/\*\*(.+?)\*\*/s', '<strong>$1</strong>', $s);
-    $s = preg_replace('/(?<![\*\w])\*(?!\s)(.+?)(?<!\s)\*(?!\*)/s', '<em>$1</em>', $s);
-    $s = preg_replace('/~~(.+?)~~/s', '<del>$1</del>', $s);
-    // [Text](https://…) – nur http(s)
-    $s = preg_replace_callback('/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/', function ($m) {
-        return '<a href="' . $m[2] . '" target="_blank" rel="noopener noreferrer">' . $m[1] . '</a>';
-    }, $s);
-    // nackte Links
-    $s = preg_replace_callback('/(?<!href=")(?<![">])\bhttps?:\/\/[^\s<]+/', function ($m) {
-        return '<a href="' . $m[0] . '" target="_blank" rel="noopener noreferrer">' . $m[0] . '</a>';
-    }, $s);
-    return $s;
+    require_once __DIR__ . '/format.php';
+    return format_inline($s);
 }
 
 function markdown_to_html(string $md): string {
-    $lines = preg_split('/\r?\n/', $md);
-    $html = '';
-    $list = null;
-    $para = [];
-    $flush_para = function () use (&$para, &$html) {
-        if ($para) { $html .= '<p>' . implode('<br>', array_map('md_inline', $para)) . '</p>'; $para = []; }
-    };
-    $close_list = function () use (&$list, &$html) {
-        if ($list) { $html .= "</$list>"; $list = null; }
-    };
-    $in_code = false;
-    $code = [];
-    foreach ($lines as $line) {
-        if (preg_match('/^```/', $line)) {
-            if ($in_code) { $html .= '<pre><code>' . e(implode("\n", $code)) . '</code></pre>'; $code = []; $in_code = false; }
-            else { $flush_para(); $close_list(); $in_code = true; }
-            continue;
-        }
-        if ($in_code) { $code[] = $line; continue; }
-        if (trim($line) === '') { $flush_para(); $close_list(); continue; }
-        if (preg_match('/^(#{1,4})\s+(.*)$/', $line, $m)) {
-            $flush_para(); $close_list();
-            $lvl = strlen($m[1]) + 1;
-            $html .= "<h$lvl>" . md_inline($m[2]) . "</h$lvl>";
-        } elseif (preg_match('/^\s*(---|\*\*\*)\s*$/', $line)) {
-            $flush_para(); $close_list();
-            $html .= '<hr>';
-        } elseif (preg_match('/^>\s?(.*)$/', $line, $m)) {
-            $flush_para(); $close_list();
-            $html .= '<blockquote>' . md_inline($m[1]) . '</blockquote>';
-        } elseif (preg_match('/^\s*[-*]\s+\[( |x)\]\s+(.*)$/i', $line, $m)) {
-            $flush_para();
-            if ($list !== 'ul') { $close_list(); $html .= '<ul class="md-tasks">'; $list = 'ul'; }
-            $html .= '<li class="' . (strtolower($m[1]) === 'x' ? 'done' : '') . '">' . (strtolower($m[1]) === 'x' ? '☑' : '☐') . ' ' . md_inline($m[2]) . '</li>';
-        } elseif (preg_match('/^\s*[-*]\s+(.*)$/', $line, $m)) {
-            $flush_para();
-            if ($list !== 'ul') { $close_list(); $html .= '<ul>'; $list = 'ul'; }
-            $html .= '<li>' . md_inline($m[1]) . '</li>';
-        } elseif (preg_match('/^\s*\d+[.)]\s+(.*)$/', $line, $m)) {
-            $flush_para();
-            if ($list !== 'ol') { $close_list(); $html .= '<ol>'; $list = 'ol'; }
-            $html .= '<li>' . md_inline($m[1]) . '</li>';
-        } else {
-            $close_list();
-            $para[] = $line;
-        }
-    }
-    if ($in_code) $html .= '<pre><code>' . e(implode("\n", $code)) . '</code></pre>';
-    $flush_para();
-    $close_list();
-    return $html;
+    require_once __DIR__ . '/format.php';
+    return format_text($md);
 }

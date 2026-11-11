@@ -1,6 +1,6 @@
 # GHOST NODE – persönliches Dashboard
 
-PHP-Dashboard ohne Datenbank (Daten liegen als JSON-Dateien neben den Seiten).
+PHP-Dashboard: Daten als JSON-Dateien neben den Seiten, Benutzer/Seiten/Kalender/VRChat in SQLite (`data/`).
 
 | Datei | Inhalt |
 |---|---|
@@ -11,7 +11,10 @@ PHP-Dashboard ohne Datenbank (Daten liegen als JSON-Dateien neben den Seiten).
 | `feed.php` | RSS/Atom-Feed-Sammler mit Cache (15 Min.) und Countdown |
 | `countdown.php` | Beliebig viele Countdowns (auch jährlich wiederkehrend), Haupt-Countdown für Feed & Startseite, Kalender-Export (.ics) |
 | `linkcheck.php` | Prüft alle Hub-Links auf Erreichbarkeit (in kleinen Paketen mit Live-Fortschritt, damit kein Hoster-Zeitlimit greift); kaputte Links bekommen in den Hubs einen ⚠-Hinweis |
-| `backup.php` | Lädt alle persönlichen Daten (Budget, Con, Countdowns, Archive) als ZIP herunter |
+| `backup.php` | Lädt alle persönlichen Daten (Budget, Con, Countdowns, Archive, Datenbanken, hochgeladene Bilder) als ZIP herunter |
+| `vrcx.php` | **VRCX Lite**: VRChat-Freunde, Verlauf, Gruppenverwaltung – Anmeldung mit Benutzer/Passwort + 2FA |
+| `page.php` | Eigene Seiten aus Vorlagen (Logik in `inc/tpl/*.php`) |
+| `inc/format.php`, `assets/editor.js`, `preview.php` | Gemeinsame Formatierung (Markdown + BBCode + HTML), Werkzeugleiste & Live-Vorschau |
 | `inc/common.php` | Gemeinsame Hilfsfunktionen (JSON laden/speichern, Beträge, Escaping, Zeitzone) |
 | `inc/countdown.php`, `inc/linkcheck.php` | Logik für Countdowns und Link-Check |
 | `assets/hub-search.js` | Gemeinsame Suche für die Link-Hubs |
@@ -36,7 +39,7 @@ Alles liegt in der SQLite-Datenbank `data/site_<zufall>.sqlite`; Passwörter nur
 - **Benutzer** (Admin-Zentrale → Benutzer): anlegen, Rolle zuweisen, deaktivieren, Passwort neu setzen
   (mit Generator), Sitzungen beenden, löschen. Der letzte aktive Administrator kann nicht entmachtet werden.
 - **Rollen & Rechte**: Administrator (immer alles), Redakteur, Mitglied – eigene Rollen beliebig anlegen.
-  18 Einzelrechte, z. B. `budget.access`, `con.access`, `calendar.edit`, `calendar.private`, `links.edit`,
+  19 Einzelrechte, z. B. `vrcx.access`, `budget.access`, `con.access`, `calendar.edit`, `calendar.private`, `links.edit`,
   `pages.manage`, `users.manage`, `nsfw.view`, `settings.nsfw`, `system.manage`, `audit.view`.
 - Rollenwechsel, Deaktivierung und Passwortänderung melden den Benutzer überall ab.
 - Nach 5 falschen Passwörtern wird die IP für 10 Minuten gesperrt (in „System“ aufhebbar).
@@ -52,10 +55,60 @@ per FTP die Datei `data/site_….sqlite` umbenennen → beim nächsten Aufruf er
 - **✎ Bearbeiten** (Recht `pages.manage`, Taste `E`): Kacheln per Drag & Drop sortieren und zwischen
   Kategorien verschieben, Kategorien anlegen/umbenennen/verschieben/löschen, jede Seite bearbeiten
   (Titel, Beschreibung, Icon, Kategorie, Zugriff, verstecken).
-- **＋ Neue Seite** aus Vorlagen: **Link-Hub**, **Notizen** (Formatierung wie Markdown), **Checkliste**,
-  **Externer Link**. Eigene Seiten liegen unter `page.php?p=<name>`.
+- **＋ Neue Seite** aus 10 Vorlagen (eigene Seiten liegen unter `page.php?p=<name>`):
+  - **Link-Hub** – wie die mitgelieferten Hubs
+  - **Notizen** – beliebig viele Notizen als Karten: ✎ bearbeiten, 📌 anheften, ⧉ kopieren, 🗑 löschen,
+    Farben, Tags (Filter-Chips), Suche, Sortierung. Alte Einzel-Notizseiten werden automatisch zur ersten Notiz.
+  - **Checkliste** – Gruppen mit Fortschritt, Punkte bearbeiten, Gruppen verschieben
+  - **Kanban-Board** – Spalten & Karten (Drag & Drop oder ◀ ▶), Fälligkeitsdatum, Labels, Farben
+  - **Tabelle** – eigene Spalten (Text, Zahl, Betrag €, Datum, Haken, Link, Bewertung ★), Sortieren per Klick,
+    Summen/Durchschnitt, CSV-Export für Excel
+  - **Tagebuch / Blog** – datierte Einträge mit Stimmung, Tags und Monatsarchiv
+  - **Galerie** – Bilder hochladen (JPG/PNG/GIF/WebP, landen in `uploads/`) oder verlinken, Großansicht mit Pfeiltasten/Wischen
+  - **Zähler & Tracker** – + / − ohne Neuladen, Ziel mit Fortschritt, „heute“-Wert, Verlauf
+  - **Einbettungen** – YouTube, Twitch, Vimeo, Spotify, SoundCloud werden erkannt, sonst beliebige Webseite
+  - **Externer Link** – Kachel, die direkt woandershin führt
 - **Zugriff pro Seite**: 🌍 öffentlich · 🔑 nur angemeldet · 🛡️ nur bestimmte Rollen.
   Gäste sehen geschützte Seiten mit Schloss und werden zur Anmeldung geleitet.
+
+## Formatierung (überall gleich)
+
+Notizen, Karten, Tagebuch, Tabellen-Texte, Checklisten-Punkte, Beschreibungen im Index und in den Link-Hubs,
+Kalender-Notizen und Countdown-Notizen verstehen **gleichzeitig**:
+
+- **Markdown**: `**fett**`, `*kursiv*`, `~~durch~~`, `==markiert==`, `# Überschrift`, `- Liste`, `1. Liste`, `- [ ] Aufgabe`,
+  `> Zitat`, Tabellen mit `|`, `` `Code` ``, ```` ``` ````-Blöcke, `[Text](https://…)`, `![Bild](https://…)`, `||Spoiler||`, `:heart:`
+- **BBCode**: `[b] [i] [u] [s]`, `[color=red]`, `[size=5]`, `[url=…]`, `[img]`, `[quote=Name]`, `[spoiler=Titel]`,
+  `[list][*]…[/list]`, `[center]`, `[code]`, `[youtube]…[/youtube]`, `[table][tr][td]`
+- **HTML** (gefiltert): `<b> <i> <u> <mark> <span style="…"> <a> <img> <table> <details> <kbd> <sup>` …
+
+Alles wird serverseitig bereinigt: `<script>`, `on…`-Attribute, `javascript:`-Links, gefährliches CSS und
+fremde iframes werden entfernt, offene Tags automatisch geschlossen. Jedes Textfeld bekommt eine **Werkzeugleiste**
+(Fett, Farbe, Liste, Link, Tabelle …), eine **👁 Live-Vorschau** und eine **?**-Kurzhilfe; `Strg+B/I/U/K` funktionieren.
+
+## VRCX Lite (`vrcx.php`)
+
+Eine kleine Web-Version von VRCX für VRChat. Recht: `vrcx.access` (Administratoren haben es automatisch,
+anderen Rollen in der Admin-Zentrale geben). Jeder Dashboard-Benutzer verbindet **sein eigenes** VRChat-Konto.
+
+- **Anmeldung** mit VRChat-Benutzername/E-Mail + Passwort, danach **2FA**: Authenticator-App, E-Mail-Code oder Wiederherstellungscode.
+  Das Passwort wird **nicht gespeichert** – nur das VRChat-Sitzungs-Cookie, AES-256-GCM-verschlüsselt (`data/vrcx_….sqlite`,
+  Schlüssel in `data/.vrc_key_….php`). Nach einem Backup-Wiederherstellen muss man sich deshalb neu anmelden.
+- **Freunde**: Im Spiel / Website & App / Offline, Welt + Instanz-Typ (Public, Friends+, Invite, Gruppe …) + Region,
+  „seit“-Zeit, Vertrauensstufe als Namensfarbe, ⭐ Favoriten, eigene Notizen, Suche, „Zusammen unterwegs“ (Freunde in derselben Instanz).
+- **Profil**: Bio, Links, Gruppen, Daten; **▶ Beitreten** (öffnet VRChat), **Selbst-Einladung**, **Einladung anfragen**,
+  Freundschaftsanfrage / Freundschaft beenden, Verlauf dieser Person.
+- **Verlauf** (Feed): online/offline, Ortswechsel, Status, Avatar, Name, Bio, Freund hinzugekommen/entfernt – mit Filter und Suche.
+  Er entsteht durch die Abgleiche, solange die Seite offen ist (automatisch alle ~60 s, sonst per ⟳).
+- **Gruppen**: Info/Regeln, Mitglieder (entfernen, bannen), Beitrittsanfragen (aufnehmen, ablehnen, sperren), Freunde einladen,
+  Banns aufheben, offene Gruppen-Instanzen, Gruppen-Protokoll, Gruppe repräsentieren – je nach deinen Rechten in der Gruppe.
+- **Anfragen** (Freundschaftsanfragen annehmen/ausblenden), **Benutzersuche**, eigenen **Status** setzen.
+- Moderationsaktionen (Kick, Bann, Freundschaft beenden …) landen im Protokoll der Admin-Zentrale.
+
+Die VRChat-API ist **inoffiziell**. VRCX Lite fragt bewusst sparsam ab (Freunde höchstens alle 45 s, offline Freunde alle
+15 min, Weltnamen werden gespeichert) und führt nichts automatisch aus. VRChat bittet darum, dass sich Programme per
+User-Agent mit einer Kontaktmöglichkeit ausweisen – das lässt sich in VRCX Lite → Konto einstellen (Recht `system.manage`).
+Voraussetzung: cURL und ausgehende Verbindungen zu `api.vrchat.cloud`.
 
 ## Admin-Zentrale
 

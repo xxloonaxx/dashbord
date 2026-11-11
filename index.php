@@ -9,6 +9,7 @@ require_once __DIR__ . '/inc/countdown.php';
 require_once __DIR__ . '/inc/linkcheck.php';
 require_once __DIR__ . '/inc/calendar.php';
 require_once __DIR__ . '/inc/hub.php';
+require_once __DIR__ . '/inc/templates.php';
 
 auth_require_setup();
 pages_sync();
@@ -138,17 +139,15 @@ function live_info(array $p): string {
                 return cal_preview(can('calendar.private') || can('calendar.edit'));
             case 'admin.php':
                 return is_logged_in() ? 'Angemeldet als ' . user_label() : '';
+            case 'vrcx.php':
+                if (!is_logged_in() || !can('vrcx.access')) return '';
+                require_once __DIR__ . '/inc/vrchat.php';
+                return vrc_live_info((int)current_user()['id']);
         }
         if ($p['kind'] === 'custom') {
-            $c = page_content($p);
             if ($p['template'] === 'links') { $n = 0; foreach (hub_load('page_' . $p['slug'], []) as $l) $n += count($l); return $n . ' Links'; }
-            if ($p['template'] === 'checklist') {
-                $all = 0; $done = 0;
-                foreach ($c['groups'] ?? [] as $g) foreach ($g['items'] as $it) { $all++; $done += $it['done'] ? 1 : 0; }
-                return $all ? "$done / $all erledigt" : 'leer';
-            }
             if ($p['template'] === 'external') return parse_url($p['url'], PHP_URL_HOST) ?: '';
-            if ($p['template'] === 'notes') { $w = str_word_count(strip_tags($c['markdown'] ?? '')); return $w . ' Wörter'; }
+            return (string)tpl_call($p['template'], 'live', page_content_normalized($p));
         }
     } catch (Throwable $e) { /* Live-Info ist optional */ }
     return '';
@@ -341,7 +340,7 @@ $access_icon = ['public' => '', 'users' => '🔑', 'roles' => '🛡️'];
                                         <?php if ($access_icon[$p['access']]): ?><span class="badge-acc" title="<?php echo e(PAGE_ACCESS[$p['access']]); ?>"><?php echo $access_icon[$p['access']]; ?></span><?php endif; ?>
                                         <?php if ($p['hidden']): ?><span class="badge-hid">versteckt</span><?php endif; ?>
                                     </span>
-                                    <?php if ($p['description'] !== ''): ?><span class="tile-desc"><?php echo e($p['description']); ?></span><?php endif; ?>
+                                    <?php if ($p['description'] !== ''): ?><span class="tile-desc fmt-inline"><?php echo format_inline($p['description'], ['links' => false]); ?></span><?php endif; ?>
                                     <?php if ($p['locked']): ?><span class="tile-live">🔒 Anmelden zum Öffnen</span>
                                     <?php elseif ($p['live'] !== ''): ?><span class="tile-live"><?php echo e($p['live']); ?></span><?php endif; ?>
                                 </span>
@@ -371,7 +370,7 @@ $access_icon = ['public' => '', 'users' => '🔑', 'roles' => '🛡️'];
                     <span class="tile-icon sm"><?php echo e($l['icon']); ?></span>
                     <span class="tile-body">
                         <span class="tile-title"><?php echo e($l['title']); ?><?php if ($l['nsfw']): ?> <span class="nsfw-tag">18+</span><?php endif; ?></span>
-                        <span class="tile-desc"><?php echo e($l['hub'] . ' · ' . $l['category']); ?><?php echo $l['desc'] !== '' ? ' — ' . e($l['desc']) : ''; ?></span>
+                        <span class="tile-desc"><?php echo e($l['hub'] . ' · ' . $l['category']); ?><?php echo $l['desc'] !== '' ? ' — ' . format_inline($l['desc'], ['links' => false]) : ''; ?></span>
                     </span>
                     <span class="tile-arrow">↗</span>
                 </a>
@@ -404,7 +403,7 @@ $access_icon = ['public' => '', 'users' => '🔑', 'roles' => '🛡️'];
             <div><label class="field">Icon</label><input type="text" name="icon" maxlength="4" placeholder="🎒"></div>
         </div>
         <label class="field">Beschreibung (wird im Index angezeigt)</label>
-        <input type="text" name="description" maxlength="240" placeholder="Kurz: Was findet man hier?">
+        <input type="text" name="description" maxlength="240" placeholder="Kurz: Was findet man hier? (**fett**, [color=gold]…[/color] möglich)" data-format="inline">
         <div id="urlRow" hidden><label class="field">Adresse *</label><input type="url" name="url" maxlength="500" placeholder="https://…"></div>
 
         <div class="f2 even">
@@ -446,6 +445,7 @@ $access_icon = ['public' => '', 'users' => '🔑', 'roles' => '🛡️'];
 
 <script>window.IDX = { edit: <?php echo $edit ? 'true' : 'false'; ?>, canManage: <?php echo $can_manage ? 'true' : 'false'; ?> };</script>
 <script src="assets/index.js"></script>
+<?php if (can('pages.manage')): ?><script src="assets/editor.js"></script><?php endif; ?>
 <script src="assets/reminders.js" data-endpoint="calendar.php?reminders=1"></script>
 </body>
 </html>

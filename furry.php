@@ -552,7 +552,7 @@ hub_handle_post(__FILE__, $categories);
                                 <div class="icon-wrapper"><?php echo htmlspecialchars($tool['icon']); ?></div>
                                 <div class="info">
                                     <div class="title"><?php echo htmlspecialchars($tool['title']); ?> <?php echo hub_nsfw_badge($tool, $catName); ?> <?php echo link_badge($tool['url']); ?></div>
-                                    <?php if (($tool['desc'] ?? '') !== ''): ?><div class="desc"><?php echo htmlspecialchars($tool['desc']); ?></div><?php endif; ?>
+                                    <?php if (($tool['desc'] ?? '') !== ''): ?><div class="desc"><?php echo format_inline($tool['desc'], ['links' => false]); ?></div><?php endif; ?>
                                 </div>
                             </a>
                             <?php hub_link_actions($catName, $i, $tool); ?>

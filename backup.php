@@ -16,6 +16,9 @@ foreach (array_merge(glob(__DIR__ . '/*.json') ?: [], glob(__DIR__ . '/archive/*
     $files[substr($path, strlen(__DIR__) + 1)] = $path;
 }
 
+// Hochgeladene Bilder (Galerie-Vorlage)
+foreach (glob(__DIR__ . '/uploads/*.{jpg,png,gif,webp}', GLOB_BRACE) ?: [] as $path) $files['uploads/' . basename($path)] = $path;
+
 $stamp = date('Y-m-d_His');
 
 // Kalender-Datenbank (SQLite) – konsistente Kopie, auch wenn gerade geschrieben wird

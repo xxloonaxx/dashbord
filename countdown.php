@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/inc/countdown.php';
 require_once __DIR__ . '/inc/auth.php';
+require_once __DIR__ . '/inc/format.php';
 
 auth_require_setup();
 guard_post('countdown.edit');   // Anlegen/Bearbeiten/Löschen nur mit Recht
@@ -202,7 +203,7 @@ $icons = ['⏳', '🐾', '🎉', '🎂', '🎄', '🎆', '✈️', '🚆', '🏨
                         <div class="cd-live" data-target="<?php echo date('c', $ev['ts']); ?>"><?php echo e(relative_days($ev['ts'])); ?></div>
                         <div class="cd-progress" title="<?php echo $progress; ?> % der Wartezeit geschafft"><div style="width: <?php echo $progress; ?>%;"></div></div>
                         <div class="cd-meta"><span><?php echo $progress; ?> % geschafft</span><span><?php echo e(relative_days($ev['ts'])); ?></span></div>
-                        <?php if (!empty($ev['note'])): ?><div class="cd-note"><?php echo e($ev['note']); ?></div><?php endif; ?>
+                        <?php if (!empty($ev['note'])): ?><div class="cd-note fmt-inline"><?php echo format_inline($ev['note']); ?></div><?php endif; ?>
                         <div class="cd-actions">
                             <?php if ($admin): ?>
                             <form method="POST" style="margin:0;"><input type="hidden" name="event_id" value="<?php echo e($ev['id']); ?>"><button type="submit" name="feature_event" class="btn btn-sm <?php echo !empty($ev['featured']) ? '' : 'btn-gold'; ?>" title="Wird im Feed und auf der Startseite angezeigt"><?php echo !empty($ev['featured']) ? '★ Haupt' : '☆ Als Haupt'; ?></button></form>
@@ -232,7 +233,7 @@ $icons = ['⏳', '🐾', '🎉', '🎂', '🎄', '🎆', '✈️', '🚆', '🏨
                 <?php foreach ($icons as $ic): ?><button type="button"><?php echo $ic; ?></button><?php endforeach; ?>
             </div>
             <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
-                <div><label class="field">Notiz (optional)</label><input type="text" name="note" maxlength="300" placeholder="Hotel gebucht, Zug um 9:12 …"></div>
+                <div><label class="field">Notiz (optional)</label><input type="text" name="note" maxlength="300" placeholder="Hotel gebucht, Zug um 9:12 …" data-format="inline"></div>
                 <div><label class="field">Link (optional)</label><input type="url" name="link" placeholder="https://…"></div>
             </div>
             <div class="form-row">
@@ -273,7 +274,7 @@ $icons = ['⏳', '🐾', '🎉', '🎂', '🎄', '🎆', '✈️', '🚆', '🏨
             <div class="icon-pick" data-target="ed_icon">
                 <?php foreach ($icons as $ic): ?><button type="button"><?php echo $ic; ?></button><?php endforeach; ?>
             </div>
-            <div style="margin-bottom: 10px;"><label class="field">Notiz</label><input type="text" name="note" id="ed_note" maxlength="300"></div>
+            <div style="margin-bottom: 10px;"><label class="field">Notiz</label><input type="text" name="note" id="ed_note" maxlength="300" data-format="inline"></div>
             <div style="margin-bottom: 10px;"><label class="field">Link</label><input type="url" name="link" id="ed_link"></div>
             <div class="form-row"><label><input type="checkbox" name="repeat" value="yearly" id="ed_repeat"> Jährlich wiederholen</label></div>
             <button type="submit" name="edit_event" class="btn btn-gold" style="width: 100%;">Speichern</button>
@@ -343,5 +344,6 @@ $icons = ['⏳', '🐾', '🎉', '🎂', '🎄', '🎆', '✈️', '🚆', '🏨
     window.addEventListener('click', e => { if (e.target.id === 'editModal') closeEdit(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEdit(); });
 </script>
+<?php if ($admin): ?><script src="assets/editor.js"></script><?php endif; ?>
 </body>
 </html>
