@@ -2,6 +2,7 @@
 require_once __DIR__ . '/inc/common.php';
 require_once __DIR__ . '/inc/auth.php';
 require_once __DIR__ . '/inc/openbanking.php';
+require_once __DIR__ . '/inc/budget.php';
 
 // Nur für angemeldete Admins sichtbar – alle anderen landen beim Login
 require_permission('budget.access');
@@ -53,17 +54,37 @@ function normalize_status(string $section, ?string $status): string {
 }
 
 /** Monatseintrag aus einer Fixkosten-/Abo-Vorlage erzeugen. */
-function entry_from_template(array $tpl, string $section): array {
+function entry_from_template(array $tpl, string $section, string $month_name = ''): array {
+    // Mit Fälligkeitstag: Datum im Budget-Monat setzen und „Offen“, solange der Tag noch nicht erreicht ist
+    $date = date('d.m.Y H:i');
+    $status = 'Bezahlt';
+    if (!empty($tpl['day'])) {
+        [$m, $y] = budget_month_of($month_name ?: german_month_year());
+        $ts = mktime(12, 0, 0, $m, max(1, min((int)date('t', mktime(0, 0, 0, $m, 1, $y)), (int)$tpl['day'])), $y);
+        $date = date('d.m.Y', $ts) . ' 12:00';
+        if ($ts > time()) $status = 'Offen';
+    }
     return [
         'id' => uniqid(),
         'section' => $section,
         'title' => $tpl['title'],
         'amount' => $tpl['amount'],
         'category' => $tpl['category'],
-        'status' => 'Bezahlt',
+        'status' => $status,
         'docs' => $tpl['docs'] ?? '',
-        'date' => date('d.m.Y H:i'),
+        'date' => $date,
         'template_id' => $tpl['id']
+    ];
+}
+
+/** Felder einer Vorlage aus dem Formular */
+function template_fields(array $in): array {
+    $iv = isset(BUDGET_INTERVALS[$in['interval'] ?? '']) ? $in['interval'] : 'monthly';
+    return [
+        'interval' => $iv,
+        'start_month' => max(1, min(12, (int)($in['start_month'] ?? date('n')))),
+        'day' => max(0, min(31, (int)($in['day'] ?? 0))),
+        'cancel_by' => preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($in['cancel_by'] ?? '')) ? $in['cancel_by'] : '',
     ];
 }
 
@@ -94,10 +115,12 @@ function ensure_fix_subs_in_month(array &$data, array $fix_subs_data): bool {
         $changed = true;
     }
 
+    [$cur_month] = budget_month_of((string)($data['month_name'] ?? ''));
     foreach (['fixed', 'subs'] as $sec) {
         foreach ($fix_subs_data[$sec] as $tpl) {
             if (!in_array($tpl['id'], $data['synced_templates'], true)) {
-                $data['entries'][] = entry_from_template($tpl, $sec);
+                if (!budget_tpl_due($tpl, $cur_month)) continue;   // z. B. Jahresbeitrag nicht in diesem Monat
+                $data['entries'][] = entry_from_template($tpl, $sec, (string)($data['month_name'] ?? ''));
                 $data['synced_templates'][] = $tpl['id'];
                 $changed = true;
             }
@@ -317,7 +340,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $data['entries'][] = [
                         'id' => uniqid(),
                         'section' => $section,
-                        'title' => $desc,
+                        'title' => ($class['title'] ?? '') !== '' ? $class['title'] : $desc,
                         'amount' => $amount,
                         'category' => $category,
                         'status' => done_label($section),
@@ -351,11 +374,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'category' => $category,
                 'status' => normalize_status($section, $_POST['status'] ?? null),
                 'docs' => trim($_POST['docs'] ?? ''),
-                'date' => date('d.m.Y H:i')
+                'date' => preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($_POST['date'] ?? '')) ? date('d.m.Y', strtotime($_POST['date'])) . ' ' . date('H:i') : date('d.m.Y H:i')
             ];
             save_json($data_file, $data);
         }
-        header('Location: budget.php');
+        header('Location: budget.php#sec-' . $section);
         exit;
     }
 
@@ -372,11 +395,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'amount' => $amount,
                 'category' => trim($_POST['category'] ?? ''),
                 'docs' => trim($_POST['docs'] ?? '')
-            ];
+            ] + template_fields($_POST);
             $fix_subs_data[$sec][] = $tpl;
             save_json($fix_subs_file, $fix_subs_data);
+            if (!empty($_POST['dismiss_key'])) {
+                $bs = budget_settings();
+                $bs['dismissed'][] = (string)$_POST['dismiss_key'];
+                budget_settings_save($bs);
+            }
 
-            $data['entries'][] = entry_from_template($tpl, $sec);
+            [$cm] = budget_month_of((string)$data['month_name']);
+            if (budget_tpl_due($tpl, $cm) && empty($_POST['no_entry']) && empty($_POST['dismiss_key'])) {   // aus Vorschlag: Buchung gibt es schon
+                $data['entries'][] = entry_from_template($tpl, $sec, (string)$data['month_name']);
+            }
             $data['synced_templates'][] = $tpl['id'];
             save_json($data_file, $data);
         }
@@ -398,7 +429,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'amount' => parse_amount($_POST['amount'] ?? $item['amount']),
                         'category' => trim($_POST['category'] ?? ''),
                         'docs' => trim($_POST['docs'] ?? '')
-                    ]);
+                    ] + template_fields($_POST));
                     unset($fix_subs_data[$sec][$i]);
                     $fix_subs_data[$sec] = array_values($fix_subs_data[$sec]);
                     break 2;
@@ -452,12 +483,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $entry['category'] = trim($_POST['category'] ?? '');
                 $entry['status'] = normalize_status($section, $_POST['status'] ?? null);
                 $entry['docs'] = trim($_POST['docs'] ?? '');
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($_POST['date'] ?? ''))) $entry['date'] = date('d.m.Y', strtotime($_POST['date'])) . ' ' . (substr((string)($entry['date'] ?? ''), 11, 5) ?: '12:00');
                 break;
             }
         }
         unset($entry);
         save_json($data_file, $data);
-        header('Location: budget.php');
+        header('Location: budget.php#sec-' . $section);
         exit;
     }
 
@@ -493,24 +525,147 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $archive_file = $archive_dir . 'budget_' . $safe_name . '_' . date('Y-m-d_His') . '.json';
         save_json($archive_file, $data);
 
+        // Nächster Monat: nach dem Budget-Monat (nicht nach dem Kalender), vom 1. aus gerechnet
+        [$am, $ay] = budget_month_of((string)$data['month_name']);
+        $next_name = german_month_year(mktime(0, 0, 0, $am + 1, 1, $ay));
         $new_entries = [];
         $synced = [];
         foreach (['fixed', 'subs'] as $sec) {
             foreach ($fix_subs_data[$sec] as $tpl) {
-                $new_entries[] = entry_from_template($tpl, $sec);
+                if (budget_tpl_due($tpl, (int)date('n', mktime(0, 0, 0, $am + 1, 1, $ay)))) $new_entries[] = entry_from_template($tpl, $sec, $next_name);
                 $synced[] = $tpl['id'];
             }
         }
 
-        // Nächster Monat: ausgehend vom 1. des aktuellen Monats (vermeidet den 31.-Januar-Sprung in den März)
         $data = [
-            'month_name' => german_month_year(strtotime('first day of next month')),
+            'month_name' => $next_name,
             'entries' => $new_entries,
             'synced_templates' => $synced
         ];
         save_json($data_file, $data);
         header('Location: budget.php');
         exit;
+    }
+
+    // ----- Neue Aktionen (Planung, Regeln, Komfort) -----
+    $bs = budget_settings();
+    $back = function (string $to) { header('Location: ' . (strpos($to, 'budget.php') === 0 ? $to : 'budget.php')); exit; };
+    $act = (string)($_POST['b_action'] ?? '');
+    switch ($act) {
+        case 'mark_all_paid':
+            foreach ($data['entries'] as &$entry) if (($entry['status'] ?? '') === 'Offen' && ($_POST['section'] ?? '') === ($entry['section'] ?? '')) $entry['status'] = done_label($entry['section']);
+            unset($entry);
+            save_json($data_file, $data);
+            $back('budget.php#sec-' . preg_replace('/\W/', '', (string)($_POST['section'] ?? '')));
+        case 'duplicate_entry':
+            foreach ($data['entries'] as $entry) if ($entry['id'] === ($_POST['entry_id'] ?? '')) {
+                $copy = $entry;
+                $copy['id'] = uniqid();
+                $copy['date'] = date('d.m.Y H:i');
+                unset($copy['import_key'], $copy['template_id']);
+                $data['entries'][] = $copy;
+            }
+            save_json($data_file, $data);
+            $back('budget.php');
+        case 'recategorize':
+            // Importierte Buchungen mit den aktuellen Regeln und Erkennungen neu einordnen
+            $n = 0;
+            foreach ($data['entries'] as &$entry) {
+                $imported = !empty($entry['import_key']) || preg_match('/^(CSV-Import|Bank-Sync)/', (string)($entry['docs'] ?? ''));
+                if (!empty($entry['template_id']) || (!$imported && empty($_POST['all']))) continue;
+                $signed = ($entry['section'] === 'income' ? 1 : -1) * (float)$entry['amount'];
+                $c = budget_classify((string)$entry['title'], $signed);
+                if (!$c) continue;
+                if ($c['category'] !== ($entry['category'] ?? '') || $c['section'] !== $entry['section'] || (($c['title'] ?? '') !== '' && $c['title'] !== $entry['title'])) {
+                    $entry['category'] = $c['category'];
+                    $entry['section'] = $c['section'];
+                    if (($c['title'] ?? '') !== '') $entry['title'] = $c['title'];
+                    $n++;
+                }
+            }
+            unset($entry);
+            save_json($data_file, $data);
+            $_SESSION['ob_flash'] = ['ok', $n . ' Buchung(en) neu eingeordnet.'];
+            $back($_POST['back'] ?? 'budget.php');
+        case 'limit_save':
+            $cat = mb_substr(trim((string)($_POST['category'] ?? '')), 0, 60);
+            $amt = parse_amount($_POST['amount'] ?? 0);
+            if ($cat !== '') { if ($amt > 0) $bs['limits'][$cat] = $amt; else unset($bs['limits'][$cat]); }
+            budget_settings_save($bs);
+            $back('budget.php?view=plan#limits');
+        case 'savings_target':
+            $bs['savings_target'] = max(0, min(100, (int)($_POST['percent'] ?? 0)));
+            budget_settings_save($bs);
+            $back('budget.php?view=plan#limits');
+        case 'goal_save':
+            $name = mb_substr(trim((string)($_POST['name'] ?? '')), 0, 80);
+            $target = parse_amount($_POST['target'] ?? 0);
+            if ($name !== '' && $target > 0) {
+                $g = ['id' => preg_replace('/\W/', '', (string)($_POST['goal_id'] ?? '')) ?: uniqid(), 'name' => $name, 'icon' => mb_substr(trim((string)($_POST['icon'] ?? '')) ?: '🎯', 0, 4),
+                      'target' => $target, 'deadline' => preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($_POST['deadline'] ?? '')) ? $_POST['deadline'] : '', 'saved' => 0.0, 'history' => []];
+                $found = false;
+                foreach ($bs['goals'] as &$x) if ($x['id'] === $g['id']) { $g['saved'] = $x['saved']; $g['history'] = $x['history']; $x = $g; $found = true; }
+                unset($x);
+                if (!$found) {
+                    $start = parse_amount($_POST['saved'] ?? 0);
+                    if ($start > 0) { $g['saved'] = $start; $g['history'][] = ['t' => time(), 'a' => $start, 'n' => 'Startbetrag']; }
+                    $bs['goals'][] = $g;
+                }
+                budget_settings_save($bs);
+            }
+            $back('budget.php?view=plan#goals');
+        case 'goal_move':
+            $amt = parse_amount($_POST['amount'] ?? 0) * (($_POST['dir'] ?? '') === 'out' ? -1 : 1);
+            foreach ($bs['goals'] as &$x) {
+                if ($x['id'] !== ($_POST['goal_id'] ?? '') || $amt == 0) continue;
+                $x['saved'] = round(max(0, $x['saved'] + $amt), 2);
+                array_unshift($x['history'], ['t' => time(), 'a' => $amt, 'n' => mb_substr(trim((string)($_POST['note'] ?? '')), 0, 80)]);
+                $x['history'] = array_slice($x['history'], 0, 60);
+                if ($amt > 0 && !empty($_POST['book'])) {
+                    $data['entries'][] = ['id' => uniqid(), 'section' => 'other', 'title' => 'Sparen: ' . $x['name'], 'amount' => $amt, 'category' => 'Sparen', 'status' => 'Bezahlt', 'docs' => 'Sparziel', 'date' => date('d.m.Y H:i')];
+                    save_json($data_file, $data);
+                }
+            }
+            unset($x);
+            budget_settings_save($bs);
+            $back('budget.php?view=plan#goals');
+        case 'goal_delete':
+            $bs['goals'] = array_values(array_filter($bs['goals'], function ($x) { return $x['id'] !== ($_POST['goal_id'] ?? ''); }));
+            budget_settings_save($bs);
+            $back('budget.php?view=plan#goals');
+        case 'rule_save':
+            $match = mb_substr(trim((string)($_POST['match'] ?? '')), 0, 80);
+            if (mb_strlen($match) >= 2) {
+                $r = ['id' => uniqid(), 'match' => $match, 'section' => in_array($_POST['section'] ?? '', ['', 'income', 'fixed', 'subs', 'other', 'skip'], true) ? $_POST['section'] : '',
+                      'category' => mb_substr(trim((string)($_POST['category'] ?? '')), 0, 60), 'rename' => mb_substr(trim((string)($_POST['rename'] ?? '')), 0, 100)];
+                $bs['rules'] = array_values(array_filter($bs['rules'], function ($x) use ($match) { return mb_strtolower($x['match']) !== mb_strtolower($match); }));
+                array_unshift($bs['rules'], $r);
+                budget_settings_save($bs);
+                if (!empty($_POST['apply'])) {
+                    $n = 0;
+                    foreach ($data['entries'] as &$entry) {
+                        if (!empty($entry['template_id']) || mb_stripos((string)$entry['title'], $match) === false) continue;
+                        if ($r['section'] === 'skip') continue;
+                        if ($r['category'] !== '') $entry['category'] = $r['category'];
+                        if ($r['section'] !== '' && ($r['section'] === 'income') === ($entry['section'] === 'income')) $entry['section'] = $r['section'];
+                        if ($r['rename'] !== '') $entry['title'] = $r['rename'];
+                        $n++;
+                    }
+                    unset($entry);
+                    save_json($data_file, $data);
+                    $_SESSION['ob_flash'] = ['ok', 'Regel gespeichert und auf ' . $n . ' Buchung(en) angewendet.'];
+                }
+            }
+            $back($_POST['back'] ?? 'budget.php?view=plan#rules');
+        case 'rule_delete':
+            $bs['rules'] = array_values(array_filter($bs['rules'], function ($x) { return $x['id'] !== ($_POST['rule_id'] ?? ''); }));
+            budget_settings_save($bs);
+            $back('budget.php?view=plan#rules');
+        case 'suggestion_dismiss':
+            $bs['dismissed'][] = (string)($_POST['key'] ?? '');
+            $bs['dismissed'] = array_slice(array_values(array_unique($bs['dismissed'])), -200);
+            budget_settings_save($bs);
+            $back('budget.php?view=templates');
     }
 
     // Archiv löschen
@@ -578,14 +733,61 @@ $archive_data = null;
 if ($selected_archive && is_file($archive_dir . basename($selected_archive))) {
     $archive_data = load_json($archive_dir . basename($selected_archive), null);
 }
+
+// ---------- Daten für Übersicht, Statistik & Planung ----------
+$bs = budget_settings();
+$sum = budget_summary($data['entries']);
+$history = budget_history($data);
+$cur_idx = 0;
+foreach ($history as $i => $h) if ($h['current']) $cur_idx = $i;
+$prev_sum = $cur_idx > 0 ? budget_summary($history[$cur_idx - 1]['entries']) : null;
+$prev_name = $cur_idx > 0 ? $history[$cur_idx - 1]['name'] : '';
+[$bm, $by] = budget_month_of((string)$data['month_name']);
+$is_now = $bm === (int)date('n') && $by === (int)date('Y');
+$days_in = (int)date('t', mktime(0, 0, 0, $bm, 1, $by));
+$days_left = $is_now ? $days_in - (int)date('j') + 1 : 0;
+$per_day = $days_left > 0 ? max(0, $sum['net']) / $days_left : null;
+
+// Bekannte Kategorien (für Auswahl & Limits)
+$known_cats = array_keys(BUDGET_CATEGORY_ICONS);
+foreach ($history as $h) foreach ($h['entries'] as $e) if (trim((string)($e['category'] ?? '')) !== '') $known_cats[] = trim($e['category']);
+foreach (['fixed', 'subs'] as $sec) foreach ($fix_subs_data[$sec] as $t) if (trim((string)($t['category'] ?? '')) !== '') $known_cats[] = trim($t['category']);
+$known_cats = array_values(array_unique(array_merge($known_cats, array_keys($bs['limits']))));
+sort($known_cats, SORT_NATURAL | SORT_FLAG_CASE);
+
+// Demnächst fällig & Kündigungsfristen
+$upcoming = [];
+$cancel_soon = [];
+foreach (['fixed', 'subs'] as $sec) foreach ($fix_subs_data[$sec] as $t) {
+    if (!empty($t['day'])) {
+        $nx = budget_tpl_next($t);
+        if ($nx <= strtotime('+21 days')) $upcoming[] = ['title' => $t['title'], 'amount' => (float)$t['amount'], 'ts' => $nx, 'sec' => $sec, 'cat' => $t['category'] ?? ''];
+    }
+    if (!empty($t['cancel_by'])) {
+        $cb = strtotime($t['cancel_by']);
+        if ($cb && $cb <= strtotime('+45 days') && $cb >= strtotime('-3 days')) $cancel_soon[] = ['title' => $t['title'], 'ts' => $cb, 'amount' => (float)$t['amount'], 'interval' => $t['interval'] ?? 'monthly'];
+    }
+}
+usort($upcoming, function ($a, $b) { return $a['ts'] <=> $b['ts']; });
+$recurring = budget_recurring($history, $fix_subs_data, $bs['dismissed']);
+
+// Diagramm-Daten (für assets/budget.js)
+$chart_months = [];
+foreach (array_slice($history, -12) as $h) {
+    $hs = budget_summary($h['entries']);
+    $chart_months[] = ['name' => $h['name'], 'income' => round($hs['income'], 2), 'expense' => round($hs['expense'], 2), 'fixed' => round($hs['fixed'] + $hs['subs'], 2), 'other' => round($hs['other'], 2), 'net' => round($hs['net'], 2), 'current' => $h['current']];
+}
+$chart_cats = [];
+foreach ($sum['cats'] as $c => $v) $chart_cats[] = ['name' => $c, 'value' => round($v, 2), 'color' => budget_cat_color($c), 'icon' => budget_cat_icon($c)];
 ?>
 <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MONATS-FINANZ &amp; LOHN NODE</title>
+    <title>Budget – <?php echo e($data['month_name']); ?></title>
     <?php echo emoji_favicon('💶'); ?>
+    <link rel="stylesheet" href="assets/budget.css">
     <style>
         :root {
             --bg-color: #040609;
@@ -734,209 +936,265 @@ if ($selected_archive && is_file($archive_dir . basename($selected_archive))) {
             <a href="index.php" class="nav-back">&larr; ZURÜCK ZUM INDEX</a>
             <div class="nav-tabs">
                 <a href="admin.php" class="nav-tab" title="Mein Konto">⚙ <?php echo e(user_label()); ?></a>
-                <a href="budget.php" class="nav-tab <?php echo ($view_mode === 'active') ? 'active' : ''; ?>">Aktueller Monat</a>
+                <a href="budget.php" class="nav-tab <?php echo ($view_mode === 'active') ? 'active' : ''; ?>">📊 Übersicht</a>
+                <a href="budget.php?view=stats" class="nav-tab <?php echo ($view_mode === 'stats') ? 'active' : ''; ?>">📈 Statistik</a>
+                <a href="budget.php?view=plan" class="nav-tab <?php echo ($view_mode === 'plan') ? 'active' : ''; ?>">🎯 Planung</a>
                 <a href="budget.php?view=bank" class="nav-tab <?php echo ($view_mode === 'bank') ? 'active' : ''; ?>">🏦 Bank-Sync<?php echo ob_connected($ob) ? ' ●' : ''; ?></a>
-                <a href="budget.php?view=import" class="nav-tab <?php echo ($view_mode === 'import') ? 'active' : ''; ?>">CSV-Import</a>
-                <a href="budget.php?view=templates" class="nav-tab <?php echo ($view_mode === 'templates') ? 'active' : ''; ?>">Fix &amp; Abos</a>
-                <a href="budget.php?view=archive" class="nav-tab <?php echo ($view_mode === 'archive' || $selected_archive) ? 'active' : ''; ?>">Archiv</a>
+                <a href="budget.php?view=import" class="nav-tab <?php echo ($view_mode === 'import') ? 'active' : ''; ?>">📄 CSV-Import</a>
+                <a href="budget.php?view=templates" class="nav-tab <?php echo ($view_mode === 'templates') ? 'active' : ''; ?>">🔁 Fix &amp; Abos</a>
+                <a href="budget.php?view=archive" class="nav-tab <?php echo ($view_mode === 'archive' || $selected_archive) ? 'active' : ''; ?>">🗄 Archiv</a>
             </div>
         </div>
 
         <?php if ($view_mode === 'active' && !$selected_archive): ?>
-            <!-- ================= AKTUELER MONAT ================= -->
-            <header>
-                <div class="hud-tag">System // Monthly Financial Terminal</div>
-                <h1><?php echo htmlspecialchars($data['month_name']); ?></h1>
-                <a href="budget.php?export=csv" class="btn btn-sm" style="margin-top: 10px; display: inline-block; text-decoration: none;" title="Für Excel / LibreOffice">&darr; CSV-Export</a>
+            <!-- ================= AKTUELLER MONAT ================= -->
+            <header class="bd-head">
+                <div>
+                    <div class="hud-tag">System // Monthly Financial Terminal</div>
+                    <h1><?php echo e($data['month_name']); ?> <button type="button" class="bd-iconbtn" data-open="monthModal" title="Monat umbenennen">✎</button></h1>
+                    <div class="bd-sub"><?php echo $sum['count']; ?> Buchungen<?php if ($is_now): ?> · noch <?php echo $days_left; ?> Tag<?php echo $days_left === 1 ? '' : 'e'; ?> im Monat<?php endif; ?></div>
+                </div>
+                <div class="bd-headacts">
+                    <button type="button" class="btn btn-sm bd-privacy" title="Beträge verbergen (Taste P)">👁 Privat</button>
+                    <a href="budget.php?export=csv" class="btn btn-sm" title="Für Excel / LibreOffice">↓ CSV</a>
+                </div>
             </header>
 
             <?php if ($ob_message): ?><div class="ob-msg <?php echo e($ob_message[0]); ?>"><?php echo e($ob_message[1]); ?></div><?php endif; ?>
             <?php if (ob_connected($ob)): ?>
                 <div class="ob-bar">
                     <span>🏦 <?php echo e($ob['aspsp']['name'] ?? 'Bank'); ?> verbunden
-                        <?php foreach ($ob['accounts'] as $acc): if (empty($acc['sync']) || !$acc['balance']) continue; ?> &bull; Kontostand <strong><?php echo eur($acc['balance']['amount']); ?> <?php echo e($acc['balance']['currency']); ?></strong><?php endforeach; ?>
+                        <?php foreach ($ob['accounts'] as $acc): if (empty($acc['sync']) || !$acc['balance']) continue; ?> &bull; Kontostand <strong class="money"><?php echo eur($acc['balance']['amount']); ?> <?php echo e($acc['balance']['currency']); ?></strong><?php endforeach; ?>
                         &bull; Abgleich <?php echo $ob['last_sync'] ? e(date('d.m. H:i', (int)$ob['last_sync'])) : 'noch nie'; ?>
                         <?php if ($ob_auto_error): ?> &bull; <span style="color: var(--accent-red);" title="<?php echo e($ob_auto_error); ?>">⚠ Auto-Abgleich fehlgeschlagen</span><?php endif; ?>
                     </span>
-                    <form method="POST" style="margin: 0;"><input type="hidden" name="ob_action" value="sync"><input type="hidden" name="back" value="active"><button type="submit" class="btn btn-sm" style="padding: 4px 10px; font-size: 0.65rem;">⟳ Abgleichen</button></form>
+                    <form method="POST" style="margin: 0;"><input type="hidden" name="ob_action" value="sync"><input type="hidden" name="back" value="active"><button type="submit" class="btn btn-sm">⟳ Abgleichen</button></form>
                 </div>
             <?php elseif ($ob['session_id'] !== '' && !ob_connected($ob)): ?>
-                <div class="ob-bar warn"><span>🏦 Die Bank-Freigabe ist abgelaufen.</span><a href="budget.php?view=bank" class="btn btn-sm" style="padding: 4px 10px; font-size: 0.65rem;">Erneuern</a></div>
+                <div class="ob-bar warn"><span>🏦 Die Bank-Freigabe ist abgelaufen.</span><a href="budget.php?view=bank" class="btn btn-sm">Erneuern</a></div>
             <?php endif; ?>
 
-            <div class="dashboard-grid">
-                <div class="card"><div class="card-title">Einnahmen</div><div class="card-value green">+<?php echo eur($total_income); ?> €</div></div>
-                <div class="card"><div class="card-title">Ausgaben</div><div class="card-value red">-<?php echo eur($total_expense); ?> €</div></div>
-                <div class="card"><div class="card-title">Noch offen</div><div class="card-value <?php echo $total_open > 0 ? 'gold' : ''; ?>"><?php echo eur($total_open); ?> €</div></div>
-                <div class="card"><div class="card-title">Netto Bilanz</div><div class="card-value <?php echo $net_balance >= 0 ? 'purple' : 'red'; ?>"><?php echo eur($net_balance); ?> €</div></div>
-            </div>
-
-            <div class="progress-wrap" title="Anteil der Ausgaben an den Einnahmen">
-                <div class="progress-label">
-                    <span>Ausgaben-Quote</span>
-                    <span><?php echo $total_income > 0 ? round($total_expense / $total_income * 100) . ' % der Einnahmen' : 'keine Einnahmen erfasst'; ?></span>
-                </div>
-                <div class="progress"><div class="progress-fill <?php echo $spend_ratio >= 100 ? 'over' : ($spend_ratio >= 85 ? 'warn' : ''); ?>" style="width: <?php echo $spend_ratio; ?>%;"></div></div>
-            </div>
-
-            <div class="panel">
-                <div class="panel-title"><span>// Abrechnungsmonat Anpassen</span></div>
-                <form method="POST" style="display: flex; gap: 10px;">
-                    <input type="text" name="month_name" value="<?php echo htmlspecialchars($data['month_name']); ?>" required>
-                    <button type="submit" name="update_month" class="btn btn-gold">Aktualisieren</button>
-                </form>
-            </div>
-
-            <div class="panel">
-                <div class="panel-title">// Einnahme oder Sonstige Ausgabe Hinzufügen</div>
-                <form method="POST">
-                    <div class="form-grid">
-                        <select name="section" id="new_section" onchange="updateCat(this.value)">
-                            <option value="income">1. Einnahmen</option>
-                            <option value="other" selected>4. Sonstige</option>
-                        </select>
-                        <input type="text" name="title" placeholder="Bezeichnung..." required>
-                        <input type="number" step="0.01" min="0.01" name="amount" placeholder="Betrag €" inputmode="decimal" required>
-                        <input type="text" name="category" id="new_category" placeholder="Kategorie">
-                        <select name="status" id="new_status">
-                            <option value="Erledigt" id="new_status_done">Bezahlt</option>
-                            <option value="Offen">Offen</option>
-                        </select>
-                    </div>
-                    <div style="margin-bottom: 10px;"><input type="text" name="docs" placeholder="Notizen / Details..."></div>
-                    <button type="submit" name="add_entry" class="btn">Hinzufügen</button>
-                </form>
-            </div>
-
-            <?php 
-            $sections_meta = [
-                'income' => ['title' => '1. Einnahmen', 'color' => 'var(--accent-green)', 'class' => 'sec-income'],
-                'fixed' => ['title' => '2. Fixkosten', 'color' => 'var(--accent-cyan)', 'class' => 'sec-fixed'],
-                'subs' => ['title' => '3. Abos', 'color' => 'var(--accent-purple)', 'class' => 'sec-subs'],
-                'other' => ['title' => '4. Sonstige Ausgaben', 'color' => 'var(--accent-gold)', 'class' => 'sec-other']
-            ];
-            foreach ($sections_meta as $sec_key => $meta): 
+            <?php
+            $delta = function (float $now, ?float $before, bool $good_up) {
+                if ($before === null || $before == 0.0) return '';
+                $d = $now - $before;
+                if (abs($d) < 0.005) return '<span class="bd-delta">± 0</span>';
+                $good = $good_up ? $d > 0 : $d < 0;
+                return '<span class="bd-delta ' . ($good ? 'good' : 'bad') . '" title="gegenüber Vormonat">' . ($d > 0 ? '▲' : '▼') . ' <span class="money">' . eur(abs($d)) . ' €</span></span>';
+            };
             ?>
+            <div class="bd-kpis">
+                <div class="bd-kpi inc"><span class="k">💼 Einnahmen</span><b class="money">+<?php echo eur($sum['income']); ?> €</b><?php echo $delta($sum['income'], $prev_sum['income'] ?? null, true); ?>
+                    <?php if ($sum['open_income'] > 0): ?><small>davon offen <span class="money"><?php echo eur($sum['open_income']); ?> €</span></small><?php endif; ?></div>
+                <div class="bd-kpi exp"><span class="k">💸 Ausgaben</span><b class="money">−<?php echo eur($sum['expense']); ?> €</b><?php echo $delta($sum['expense'], $prev_sum['expense'] ?? null, false); ?>
+                    <small>fix <span class="money"><?php echo eur($sum['fixed'] + $sum['subs']); ?> €</span> · variabel <span class="money"><?php echo eur($sum['other']); ?> €</span></small></div>
+                <div class="bd-kpi <?php echo $sum['net'] >= 0 ? 'net' : 'neg'; ?>"><span class="k">⚖ Netto</span><b class="money"><?php echo ($sum['net'] >= 0 ? '+' : '−') . eur(abs($sum['net'])); ?> €</b>
+                    <small><?php echo $sum['rate'] !== null ? 'Sparquote ' . $sum['rate'] . ' %' . ($bs['savings_target'] ? ' (Ziel ' . (int)$bs['savings_target'] . ' %)' : '') : 'keine Einnahmen erfasst'; ?></small></div>
+                <div class="bd-kpi <?php echo $sum['open'] > 0 ? 'open' : ''; ?>"><span class="k">⏳ Noch offen</span><b class="money"><?php echo eur($sum['open']); ?> €</b><small><?php echo count(array_filter($data['entries'], function ($x) { return ($x['status'] ?? '') === 'Offen' && ($x['section'] ?? '') !== 'income'; })); ?> Posten zu zahlen</small></div>
+                <?php if ($per_day !== null): ?>
+                    <div class="bd-kpi day"><span class="k">📆 Pro Tag übrig</span><b class="money"><?php echo eur($per_day); ?> €</b><small><?php echo $sum['net'] < 0 ? '⚠ der Monat liegt im Minus' : 'für die restlichen ' . $days_left . ' Tage'; ?></small></div>
+                <?php endif; ?>
+            </div>
+
+            <?php $tot = max(0.01, $sum['income'], $sum['expense']); ?>
+            <div class="bd-stack" title="Ausgaben im Verhältnis zu den Einnahmen">
+                <div class="bd-stack-label"><span>Ausgaben-Quote</span><span><?php echo $sum['income'] > 0 ? round($sum['expense'] / $sum['income'] * 100) . ' % der Einnahmen' : 'keine Einnahmen erfasst'; ?></span></div>
+                <div class="bd-stackbar">
+                    <i class="fx" style="width: <?php echo round($sum['fixed'] / $tot * 100, 2); ?>%" title="Fixkosten <?php echo eur($sum['fixed']); ?> €"></i><i class="sb" style="width: <?php echo round($sum['subs'] / $tot * 100, 2); ?>%" title="Abos <?php echo eur($sum['subs']); ?> €"></i><i class="ot" style="width: <?php echo round($sum['other'] / $tot * 100, 2); ?>%" title="Sonstige <?php echo eur($sum['other']); ?> €"></i>
+                    <?php if ($sum['income'] > 0 && $sum['expense'] < $sum['income']): ?><i class="free" style="width: <?php echo round(($sum['income'] - $sum['expense']) / $tot * 100, 2); ?>%" title="Übrig"></i><?php endif; ?>
+                </div>
+                <div class="bd-legend"><span class="fx">Fixkosten</span><span class="sb">Abos</span><span class="ot">Sonstige</span><span class="free">übrig</span></div>
+            </div>
+
+            <div class="bd-grid">
                 <div class="panel">
-                    <div class="panel-title">
-                        <span style="color: <?php echo $meta['color']; ?>;"><?php echo $meta['title']; ?></span>
-                        <span>Summe: <?php echo $sec_key==='income'?'+':'-'; ?><?php echo eur($totals[$sec_key]); ?> € &bull; <?php echo count($categorized_entries[$sec_key]); ?> Posten</span>
-                    </div>
-                    <div class="entry-list">
-                        <?php if (empty($categorized_entries[$sec_key])): ?>
-                            <div class="empty-msg">Keine Einträge in dieser Sektion.</div>
-                        <?php else: ?>
-                            <?php foreach ($categorized_entries[$sec_key] as $entry): ?>
-                                <?php $is_done = (($entry['status'] ?? '') !== 'Offen'); ?>
-                                <div class="entry-item <?php echo $meta['class']; ?>">
-                                    <div class="entry-info">
-                                        <h4><?php echo htmlspecialchars($entry['title']); ?></h4>
-                                        <div class="entry-meta">
-                                            Kat: <strong><?php echo htmlspecialchars($entry['category']); ?></strong> 
-                                            &bull; <span class="badge <?php echo $is_done ? 'paid' : 'open'; ?>"><?php echo e($entry['status'] ?? done_label($sec_key)); ?></span>
-                                            &bull; <?php echo e($entry['date'] ?? ''); ?>
-                                            <?php if (!empty($entry['template_id'])): ?>&bull; <span title="Automatisch aus Vorlage übernommen">↻ Vorlage</span><?php endif; ?>
-                                        </div>
-                                        <?php if (!empty($entry['docs'])): ?>
-                                            <div class="entry-docs">DOCS: <?php echo htmlspecialchars($entry['docs']); ?></div>
-                                        <?php endif; ?>
-                                    </div>
-                                    <div class="entry-right">
-                                        <span class="entry-amount <?php echo $sec_key==='income'?'inc':'exp'; ?>">
-                                            <?php echo $sec_key==='income'?'+':'-'; ?><?php echo eur($entry['amount']); ?> €
-                                        </span>
-                                        <div style="display: flex; gap: 6px;">
-                                            <button type="button" class="btn btn-gold btn-sm" data-entry="<?php echo e(json_encode(['id' => $entry['id'], 'section' => $sec_key, 'title' => $entry['title'], 'amount' => $entry['amount'], 'category' => $entry['category'] ?? '', 'status' => $is_done ? 'Erledigt' : 'Offen', 'docs' => $entry['docs'] ?? ''])); ?>" onclick="openEditEntryModal(JSON.parse(this.dataset.entry))">Edit</button>
-                                            <form method="POST" style="margin:0;"><input type="hidden" name="entry_id" value="<?php echo e($entry['id']); ?>"><button type="submit" name="toggle_status" class="btn btn-sm <?php echo $is_done ? '' : 'btn-gold'; ?>" title="Status umschalten"><?php echo $is_done ? 'Offen' : ($sec_key === 'income' ? 'Erhalten' : 'Bezahlt'); ?></button></form>
-                                            <form method="POST" style="margin:0;" onsubmit="return confirm(<?php echo e(json_encode('Eintrag „' . $entry['title'] . '“ wirklich löschen?', JSON_UNESCAPED_UNICODE)); ?>);"><input type="hidden" name="entry_id" value="<?php echo e($entry['id']); ?>"><button type="submit" name="delete_entry" class="btn btn-danger btn-sm" title="Löschen">X</button></form>
-                                        </div>
-                                    </div>
-                                </div>
+                    <div class="panel-title"><span>// Ausgaben nach Kategorie</span><span><?php echo count($sum['cats']); ?></span></div>
+                    <?php if ($chart_cats): ?><div class="bd-donutwrap"><svg id="catDonut" class="bd-donut" viewBox="0 0 120 120" role="img" aria-label="Ausgaben nach Kategorie"></svg><div id="catLegend" class="bd-catlegend"></div></div>
+                    <?php else: ?><div class="empty-msg">Noch keine Ausgaben.</div><?php endif; ?>
+                </div>
+                <div>
+                    <?php if ($bs['limits']): ?>
+                        <div class="panel">
+                            <div class="panel-title"><span>// Kategorie-Limits</span><a href="budget.php?view=plan#limits" class="bd-link">bearbeiten</a></div>
+                            <?php foreach ($bs['limits'] as $cat => $lim): $spent = $sum['cats'][$cat] ?? 0; $p = $lim > 0 ? $spent / $lim * 100 : 0; ?>
+                                <div class="bd-limit"><div class="bd-limit-top"><span><?php echo budget_cat_icon($cat) . ' ' . e($cat); ?></span><span class="money"><?php echo eur($spent); ?> / <?php echo eur($lim); ?> €</span></div>
+                                    <div class="bd-bar"><i class="<?php echo $p >= 100 ? 'over' : ($p >= 80 ? 'warn' : ''); ?>" style="width: <?php echo min(100, round($p)); ?>%"></i></div>
+                                    <small><?php echo $p >= 100 ? '⚠ um ' . eur($spent - $lim) . ' € überschritten' : 'noch ' . eur($lim - $spent) . ' € frei'; ?></small></div>
                             <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                    <?php if ($upcoming || $cancel_soon): ?>
+                        <div class="panel">
+                            <div class="panel-title"><span>// Demnächst</span></div>
+                            <?php foreach ($cancel_soon as $c): ?><div class="bd-due warn">⚠ <b><?php echo e($c['title']); ?></b> kündigen bis <?php echo e(date('d.m.Y', $c['ts'])); ?></div><?php endforeach; ?>
+                            <?php foreach (array_slice($upcoming, 0, 6) as $u): ?>
+                                <div class="bd-due"><span class="bd-dday"><?php echo e(date('d.m.', $u['ts'])); ?></span><span><?php echo budget_cat_icon($u['cat']) . ' ' . e($u['title']); ?></span><span class="money">−<?php echo eur($u['amount']); ?> €</span></div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                    <?php if ($bs['goals']): ?>
+                        <div class="panel">
+                            <div class="panel-title"><span>// Sparziele</span><a href="budget.php?view=plan#goals" class="bd-link">alle</a></div>
+                            <?php foreach (array_slice($bs['goals'], 0, 4) as $g): $gp = $g['target'] > 0 ? min(100, $g['saved'] / $g['target'] * 100) : 0; ?>
+                                <div class="bd-limit"><div class="bd-limit-top"><span><?php echo e($g['icon'] . ' ' . $g['name']); ?></span><span class="money"><?php echo eur($g['saved']); ?> / <?php echo eur($g['target']); ?> €</span></div>
+                                    <div class="bd-bar goal"><i style="width: <?php echo round($gp); ?>%"></i></div></div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (!$bs['limits'] && !$upcoming && !$bs['goals']): ?>
+                        <div class="panel bd-tip">
+                            <div class="panel-title"><span>// Tipp</span></div>
+                            <p>Unter <a href="budget.php?view=plan">🎯 Planung</a> kannst du <b>Limits pro Kategorie</b> (z. B. Lebensmittel 300 €) und <b>Sparziele</b> anlegen.
+                               Gib Fixkosten &amp; Abos einen <b>Fälligkeitstag</b>, dann erscheinen sie hier unter „Demnächst“.</p>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <div class="panel bd-add">
+                <div class="panel-title"><span>// Buchung hinzufügen</span><span class="bd-hint">Taste N</span></div>
+                <form method="POST" autocomplete="off">
+                    <div class="bd-addgrid">
+                        <select name="section" id="new_section" aria-label="Bereich">
+                            <option value="other" selected>🛍️ Ausgabe</option>
+                            <option value="income">💼 Einnahme</option>
+                            <option value="fixed">🏠 Fixkosten (einmalig)</option>
+                            <option value="subs">🔁 Abo (einmalig)</option>
+                        </select>
+                        <input type="text" name="title" id="new_title" placeholder="Bezeichnung, z. B. REWE" required aria-label="Bezeichnung">
+                        <input type="number" step="0.01" min="0.01" name="amount" placeholder="Betrag €" inputmode="decimal" required aria-label="Betrag">
+                        <input type="text" name="category" id="new_category" placeholder="Kategorie" list="catList" aria-label="Kategorie">
+                        <input type="date" name="date" value="<?php echo $is_now ? date('Y-m-d') : date('Y-m-d', mktime(12, 0, 0, $bm, 1, $by)); ?>" aria-label="Datum">
+                        <select name="status" id="new_status" aria-label="Status"><option value="Erledigt" id="new_status_done">Bezahlt</option><option value="Offen">Offen</option></select>
+                    </div>
+                    <div class="bd-addrow"><input type="text" name="docs" placeholder="Notiz (optional)" aria-label="Notiz"><button type="submit" name="add_entry" class="btn btn-gold">＋ Hinzufügen</button></div>
+                </form>
+            </div>
+            <datalist id="catList"><?php foreach ($known_cats as $c): ?><option value="<?php echo e($c); ?>"><?php endforeach; ?></datalist>
+
+            <div class="bd-toolbar" role="search">
+                <input type="search" id="bdSearch" placeholder="🔎 Suchen (Titel, Notiz, Kategorie) – Taste /" aria-label="Buchungen durchsuchen">
+                <select id="bdCat" aria-label="Kategorie"><option value="">Alle Kategorien</option><?php foreach (array_keys($sum['cats']) as $c): ?><option value="<?php echo e($c); ?>"><?php echo budget_cat_icon($c) . ' ' . e($c); ?></option><?php endforeach; ?></select>
+                <select id="bdStatus" aria-label="Status"><option value="">Alle</option><option value="open">nur offen</option><option value="done">nur erledigt</option></select>
+                <select id="bdSort" aria-label="Sortierung"><option value="date-desc">Neueste zuerst</option><option value="date-asc">Älteste zuerst</option><option value="amount-desc">Betrag ↓</option><option value="amount-asc">Betrag ↑</option><option value="title">Name A–Z</option></select>
+                <span class="bd-count" id="bdCount"></span>
+            </div>
+
+            <?php
+            $sections_meta = [
+                'income' => ['title' => 'Einnahmen', 'icon' => '💼', 'class' => 'sec-income'],
+                'fixed' => ['title' => 'Fixkosten', 'icon' => '🏠', 'class' => 'sec-fixed'],
+                'subs' => ['title' => 'Abos', 'icon' => '🔁', 'class' => 'sec-subs'],
+                'other' => ['title' => 'Sonstige Ausgaben', 'icon' => '🛍️', 'class' => 'sec-other']
+            ];
+            foreach ($sections_meta as $sec_key => $meta):
+                $list = $categorized_entries[$sec_key];
+                usort($list, function ($a, $b) { return budget_entry_ts($b) <=> budget_entry_ts($a); });
+                $open_n = count(array_filter($list, function ($x) { return ($x['status'] ?? '') === 'Offen'; }));
+            ?>
+                <div class="panel bd-section <?php echo $meta['class']; ?>" id="sec-<?php echo $sec_key; ?>">
+                    <div class="panel-title">
+                        <button type="button" class="bd-collapse" aria-expanded="true"><?php echo $meta['icon'] . ' ' . $meta['title']; ?></button>
+                        <span class="bd-sechead"><?php if ($open_n): ?><form method="POST" style="margin:0"><input type="hidden" name="b_action" value="mark_all_paid"><input type="hidden" name="section" value="<?php echo $sec_key; ?>"><button class="btn btn-sm" title="Alle offenen als erledigt markieren">✓ alle <?php echo $sec_key === 'income' ? 'erhalten' : 'bezahlt'; ?> (<?php echo $open_n; ?>)</button></form><?php endif; ?>
+                            <span class="money"><?php echo $sec_key === 'income' ? '+' : '−'; ?><?php echo eur($totals[$sec_key]); ?> €</span> · <?php echo count($list); ?></span>
+                    </div>
+                    <div class="entry-list bd-entries">
+                        <?php if (!$list): ?>
+                            <div class="empty-msg">Keine Einträge.</div>
                         <?php endif; ?>
+                        <?php foreach ($list as $entry): $is_done = (($entry['status'] ?? '') !== 'Offen'); $cat = (string)($entry['category'] ?? ''); $ts = budget_entry_ts($entry); ?>
+                            <div class="bd-entry <?php echo $is_done ? '' : 'is-open'; ?>" data-text="<?php echo e(mb_strtolower($entry['title'] . ' ' . ($entry['docs'] ?? '') . ' ' . $cat)); ?>" data-cat="<?php echo e($cat); ?>" data-status="<?php echo $is_done ? 'done' : 'open'; ?>" data-ts="<?php echo $ts; ?>" data-amount="<?php echo (float)$entry['amount']; ?>" data-title="<?php echo e(mb_strtolower($entry['title'])); ?>">
+                                <span class="bd-eicon" style="--c: <?php echo budget_cat_color($cat ?: 'Sonstiges'); ?>"><?php echo budget_cat_icon($cat); ?></span>
+                                <div class="bd-einfo">
+                                    <b><?php echo e($entry['title']); ?></b>
+                                    <div class="bd-emeta">
+                                        <span class="bd-chip"><?php echo e($cat ?: '—'); ?></span>
+                                        <span><?php echo $ts ? e(date('d.m.Y', $ts)) : ''; ?></span>
+                                        <?php if (!$is_done): ?><span class="badge open"><?php echo $sec_key === 'income' ? 'Erwartet' : 'Offen'; ?></span><?php endif; ?>
+                                        <?php if (!empty($entry['template_id'])): ?><span title="Automatisch aus Vorlage übernommen">↻ Vorlage</span><?php endif; ?>
+                                        <?php $imp = !empty($entry['import_key']) || preg_match('/^(CSV-Import|Bank-Sync)/', (string)($entry['docs'] ?? '')); ?>
+                                        <?php if ($imp): ?><span title="<?php echo e($entry['docs'] ?? ''); ?>"><?php echo strpos((string)($entry['import_key'] ?? ''), 'eb_') === 0 || strpos((string)($entry['docs'] ?? ''), 'Bank-Sync') === 0 ? '🏦 Bank' : '📄 CSV'; ?></span><?php endif; ?>
+                                    </div>
+                                    <?php if (!empty($entry['docs']) && !$imp): ?><div class="bd-enote"><?php echo e($entry['docs']); ?></div><?php endif; ?>
+                                </div>
+                                <span class="bd-eamount money <?php echo $sec_key === 'income' ? 'inc' : 'exp'; ?>"><?php echo $sec_key === 'income' ? '+' : '−'; ?><?php echo eur($entry['amount']); ?> €</span>
+                                <div class="bd-eacts">
+                                    <form method="POST"><input type="hidden" name="entry_id" value="<?php echo e($entry['id']); ?>"><button type="submit" name="toggle_status" class="bd-iconbtn <?php echo $is_done ? 'ok' : 'warn'; ?>" title="<?php echo $is_done ? 'Als offen markieren' : ($sec_key === 'income' ? 'Als erhalten markieren' : 'Als bezahlt markieren'); ?>"><?php echo $is_done ? '✓' : '○'; ?></button></form>
+                                    <button type="button" class="bd-iconbtn" title="Bearbeiten" data-entry="<?php echo e(json_encode(['id' => $entry['id'], 'section' => $sec_key, 'title' => $entry['title'], 'amount' => $entry['amount'], 'category' => $cat, 'status' => $is_done ? 'Erledigt' : 'Offen', 'docs' => $entry['docs'] ?? '', 'date' => $ts ? date('Y-m-d', $ts) : ''], JSON_UNESCAPED_UNICODE)); ?>">✎</button>
+                                    <button type="button" class="bd-iconbtn" title="Regel für ähnliche Buchungen" data-rule="<?php echo e(json_encode(['match' => budget_merchant($entry['title']) ?: $entry['title'], 'category' => $cat, 'section' => $sec_key], JSON_UNESCAPED_UNICODE)); ?>">⚙</button>
+                                    <form method="POST"><input type="hidden" name="b_action" value="duplicate_entry"><input type="hidden" name="entry_id" value="<?php echo e($entry['id']); ?>"><button type="submit" class="bd-iconbtn" title="Duplizieren (heute)">⧉</button></form>
+                                    <form method="POST" data-confirm="<?php echo e('„' . $entry['title'] . '“ wirklich löschen?'); ?>"><input type="hidden" name="entry_id" value="<?php echo e($entry['id']); ?>"><button type="submit" name="delete_entry" class="bd-iconbtn bad" title="Löschen">🗑</button></form>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
                 </div>
             <?php endforeach; ?>
 
-            <div class="archive-section">
-                <div>
-                    <strong style="color: #fff; letter-spacing: 1px; font-size: 0.85rem; text-transform: uppercase;">Monat beenden?</strong>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">Sichert diesen Monat ins Archiv und startet <?php echo e(german_month_year(strtotime('first day of next month'))); ?>. Fixkosten &amp; Abos werden automatisch übernommen.</div>
-                </div>
-                <form method="POST" onsubmit="return confirm('Monat wirklich ins Archiv verschieben?');">
-                    <button type="submit" name="archive_month" class="btn btn-danger">Monat archivieren &amp; Neustart</button>
+            <div class="bd-footer">
+                <form method="POST" data-confirm="Alle importierten Buchungen (CSV &amp; Bank) mit deinen Regeln und der automatischen Erkennung neu einordnen?">
+                    <input type="hidden" name="b_action" value="recategorize"><input type="hidden" name="back" value="budget.php">
+                    <button type="submit" class="btn btn-sm" title="Kategorie und Bereich importierter Buchungen neu erkennen">🪄 Kategorien neu erkennen</button>
                 </form>
+                <div class="archive-section">
+                    <div>
+                        <strong>Monat beenden?</strong>
+                        <div class="bd-sub">Sichert <?php echo e($data['month_name']); ?> ins Archiv und startet <?php echo e(german_month_year(mktime(0, 0, 0, $bm + 1, 1, $by))); ?>. Fällige Fixkosten &amp; Abos werden automatisch übernommen.</div>
+                    </div>
+                    <form method="POST" data-confirm="Monat wirklich ins Archiv verschieben?"><button type="submit" name="archive_month" class="btn btn-danger">Monat archivieren &amp; Neustart</button></form>
+                </div>
             </div>
 
-            <!-- POPUP -->
+            <!-- Dialoge -->
+            <div id="monthModal" class="modal-overlay">
+                <div class="modal-box">
+                    <button type="button" class="modal-close" data-close>&times;</button>
+                    <div class="panel-title">// Abrechnungsmonat umbenennen</div>
+                    <form method="POST"><input type="text" name="month_name" value="<?php echo e($data['month_name']); ?>" required>
+                        <p class="bd-sub">Format „Monat Jahr“ (z. B. „November 2026“) – danach richtet sich, welche Jahres-/Quartalsbeiträge fällig sind.</p>
+                        <button type="submit" name="update_month" class="btn btn-gold" style="width: 100%;">Speichern</button></form>
+                </div>
+            </div>
             <div id="editEntryModal" class="modal-overlay">
                 <div class="modal-box">
-                    <button type="button" class="modal-close" onclick="closeEditEntryModal()">&times;</button>
-                    <div class="panel-title">// Monatsposten Bearbeiten</div>
+                    <button type="button" class="modal-close" data-close>&times;</button>
+                    <div class="panel-title">// Buchung bearbeiten</div>
                     <form method="POST">
                         <input type="hidden" name="entry_id" id="ee_entry_id">
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom: 10px;">
-                            <div>
-                                <label style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Sektion</label>
-                                <select name="section" id="ee_section">
-                                    <option value="income">1. Einnahmen</option>
-                                    <option value="fixed">2. Fixkosten</option>
-                                    <option value="subs">3. Abos</option>
-                                    <option value="other">4. Sonstige</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Status</label>
-                                <select name="status" id="ee_status">
-                                    <option value="Erledigt">Bezahlt / Erhalten</option>
-                                    <option value="Offen">Offen</option>
-                                </select>
-                            </div>
+                        <div class="bd-2col">
+                            <div><label class="bd-label">Bereich</label><select name="section" id="ee_section"><option value="income">💼 Einnahmen</option><option value="fixed">🏠 Fixkosten</option><option value="subs">🔁 Abos</option><option value="other">🛍️ Sonstige</option></select></div>
+                            <div><label class="bd-label">Status</label><select name="status" id="ee_status"><option value="Erledigt">Bezahlt / Erhalten</option><option value="Offen">Offen</option></select></div>
                         </div>
-                        <div style="margin-bottom: 10px;">
-                            <label style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Bezeichnung</label>
-                            <input type="text" name="title" id="ee_title" required>
+                        <label class="bd-label">Bezeichnung</label><input type="text" name="title" id="ee_title" required>
+                        <div class="bd-2col">
+                            <div><label class="bd-label">Betrag (€)</label><input type="number" step="0.01" min="0.01" name="amount" id="ee_amount" inputmode="decimal" required></div>
+                            <div><label class="bd-label">Kategorie</label><input type="text" name="category" id="ee_category" list="catList"></div>
                         </div>
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom: 10px;">
-                            <div>
-                                <label style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Betrag (€)</label>
-                                <input type="number" step="0.01" min="0.01" name="amount" id="ee_amount" inputmode="decimal" required>
-                            </div>
-                            <div>
-                                <label style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Kategorie</label>
-                                <input type="text" name="category" id="ee_category">
-                            </div>
+                        <div class="bd-2col">
+                            <div><label class="bd-label">Datum</label><input type="date" name="date" id="ee_date"></div>
+                            <div><label class="bd-label">Notiz</label><input type="text" name="docs" id="ee_docs"></div>
                         </div>
-                        <div style="margin-bottom: 15px;">
-                            <label style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Notizen</label>
-                            <input type="text" name="docs" id="ee_docs">
-                        </div>
-                        <button type="submit" name="edit_entry" class="btn btn-gold" style="width:100%;">Änderungen Speichern</button>
+                        <button type="submit" name="edit_entry" class="btn btn-gold" style="width:100%; margin-top: 14px;">Änderungen speichern</button>
                     </form>
                 </div>
             </div>
-
-            <script>
-                function updateCat(sec) {
-                    document.getElementById('new_category').value = (sec === 'income') ? 'Lohn / Abschlag' : 'Sonstiges';
-                    document.getElementById('new_status_done').textContent = (sec === 'income') ? 'Erhalten' : 'Bezahlt';
-                }
-                function openEditEntryModal(entry) {
-                    document.getElementById('ee_entry_id').value = entry.id;
-                    document.getElementById('ee_section').value = entry.section;
-                    document.getElementById('ee_title').value = entry.title;
-                    document.getElementById('ee_amount').value = entry.amount;
-                    document.getElementById('ee_category').value = entry.category;
-                    document.getElementById('ee_status').value = entry.status;
-                    document.getElementById('ee_docs').value = entry.docs;
-                    document.getElementById('editEntryModal').style.display = 'flex';
-                    document.getElementById('ee_title').focus();
-                }
-                function closeEditEntryModal() { document.getElementById('editEntryModal').style.display = 'none'; }
-                window.addEventListener('click', e => { if (e.target === document.getElementById('editEntryModal')) closeEditEntryModal(); });
-                document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEditEntryModal(); });
-                updateCat(document.getElementById('new_section').value);
-            </script>
+            <div id="ruleModal" class="modal-overlay">
+                <div class="modal-box">
+                    <button type="button" class="modal-close" data-close>&times;</button>
+                    <div class="panel-title">// Regel für ähnliche Buchungen</div>
+                    <form method="POST">
+                        <input type="hidden" name="b_action" value="rule_save"><input type="hidden" name="back" value="budget.php"><input type="hidden" name="apply" value="1">
+                        <label class="bd-label">Wenn der Text enthält</label><input type="text" name="match" id="rm_match" required minlength="2">
+                        <div class="bd-2col">
+                            <div><label class="bd-label">dann Kategorie</label><input type="text" name="category" id="rm_category" list="catList"></div>
+                            <div><label class="bd-label">und Bereich</label><select name="section" id="rm_section"><option value="">unverändert</option><option value="fixed">🏠 Fixkosten</option><option value="subs">🔁 Abos</option><option value="other">🛍️ Sonstige</option><option value="skip">🚫 nicht übernehmen (Import)</option></select></div>
+                        </div>
+                        <label class="bd-label">Umbenennen in (optional)</label><input type="text" name="rename" placeholder="z. B. Tanken HEM">
+                        <p class="bd-sub">Gilt für alle künftigen CSV-Importe und den Bank-Sync – und wird gleich auf passende Buchungen dieses Monats angewendet.</p>
+                        <button type="submit" class="btn btn-gold" style="width: 100%;">Regel speichern &amp; anwenden</button>
+                    </form>
+                </div>
+            </div>
 
         <?php elseif ($view_mode === 'import'): ?>
             <!-- ================= KONTOAUSZUG IMPORT ================= -->
@@ -1146,6 +1404,29 @@ if ($selected_archive && is_file($archive_dir . basename($selected_archive))) {
                 <h1>Fixkosten &amp; Abos Vorlagen</h1>
             </header>
 
+            <?php
+            $tpl_month = 0; $tpl_year = 0; $tpl_n = 0;
+            foreach (['fixed', 'subs'] as $sec) foreach ($fix_subs_data[$sec] as $t) { $tpl_month += budget_tpl_monthly($t); $tpl_n++; }
+            $subs_month = array_sum(array_map('budget_tpl_monthly', $fix_subs_data['subs']));
+            ?>
+            <div class="bd-kpis">
+                <div class="bd-kpi exp"><span class="k">📌 Fix + Abos / Monat</span><b class="money"><?php echo eur($tpl_month); ?> €</b><small><?php echo $tpl_n; ?> Vorlagen (Jahresbeiträge anteilig)</small></div>
+                <div class="bd-kpi"><span class="k">📅 Pro Jahr</span><b class="money"><?php echo eur($tpl_month * 12); ?> €</b><small>davon Abos <span class="money"><?php echo eur($subs_month * 12); ?> €</span></small></div>
+                <?php if ($sum['income'] > 0): ?><div class="bd-kpi"><span class="k">⚖ Anteil am Einkommen</span><b><?php echo round($tpl_month / $sum['income'] * 100); ?> %</b><small>gemessen an <?php echo e($data['month_name']); ?></small></div><?php endif; ?>
+            </div>
+
+            <?php if ($recurring): ?>
+                <div class="panel bd-suggest">
+                    <div class="panel-title"><span>// 💡 Wiederkehrende Zahlungen erkannt</span></div>
+                    <p class="bd-sub">Diese Ausgaben kamen in mehreren Monaten mit ähnlichem Betrag vor – vielleicht ein Abo? Als Vorlage angelegt, werden sie jeden Monat automatisch eingeplant und beim Bank-Sync abgeglichen.</p>
+                    <?php foreach ($recurring as $r): ?>
+                        <div class="bd-sugg"><span><b><?php echo e($r['title']); ?></b><small><?php echo $r['months']; ?> Monate · Ø <span class="money"><?php echo eur($r['amount']); ?> €</span></small></span>
+                            <span><button type="button" class="btn btn-sm btn-gold" data-suggest="<?php echo e(json_encode(['title' => $r['title'], 'amount' => $r['amount'], 'category' => $r['category'], 'key' => $r['key']], JSON_UNESCAPED_UNICODE)); ?>">＋ Als Abo</button>
+                                <form method="POST" class="bd-inline"><input type="hidden" name="b_action" value="suggestion_dismiss"><input type="hidden" name="key" value="<?php echo e($r['key']); ?>"><button class="btn btn-sm" title="Nicht mehr vorschlagen">Ignorieren</button></form></span></div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
             <div class="panel" style="border-color: var(--accent-cyan);">
                 <div class="panel-title">
                     <span>// Vorlagen-Verwaltung</span>
@@ -1154,7 +1435,7 @@ if ($selected_archive && is_file($archive_dir . basename($selected_archive))) {
                 
                 <div class="two-col">
                     <div>
-                        <h3 style="color: var(--accent-cyan); font-size: 0.9rem; text-transform: uppercase; margin-bottom: 12px; border-bottom: 1px dashed var(--border-color); padding-bottom: 5px;">Fixkosten Vorlagen: <span style="float:right;"><?php echo eur(array_sum(array_column($fix_subs_data['fixed'], 'amount'))); ?> € / Monat</span></h3>
+                        <h3 style="color: var(--accent-cyan); font-size: 0.9rem; text-transform: uppercase; margin-bottom: 12px; border-bottom: 1px dashed var(--border-color); padding-bottom: 5px;">Fixkosten Vorlagen: <span style="float:right;" class="money"><?php echo eur(array_sum(array_map('budget_tpl_monthly', $fix_subs_data['fixed']))); ?> € / Monat</span></h3>
                         <div class="entry-list">
                             <?php if (empty($fix_subs_data['fixed'])): ?>
                                 <div class="empty-msg">Keine Fixkosten-Vorlagen.</div>
@@ -1163,7 +1444,7 @@ if ($selected_archive && is_file($archive_dir . basename($selected_archive))) {
                                     <div class="entry-item sec-fixed" style="align-items: center;">
                                         <div>
                                             <div style="font-weight: 700; font-size: 0.95rem; color:#fff;"><?php echo htmlspecialchars($f['title']); ?></div>
-                                            <div style="font-size: 0.7rem; color:var(--text-muted);"><?php echo eur($f['amount']); ?> € &bull; Kat: <?php echo e($f['category']); ?><?php if (!empty($f['docs'])): ?> &bull; <?php echo e($f['docs']); ?><?php endif; ?></div>
+                                            <div style="font-size: 0.7rem; color:var(--text-muted);"><span class="money"><?php echo eur($f['amount']); ?> €</span> <?php echo e(BUDGET_INTERVALS[$f['interval'] ?? 'monthly'][0]); ?> &bull; <?php echo budget_cat_icon((string)$f['category']) . ' ' . e($f['category']); ?><?php if (!empty($f['day'])): ?> &bull; nächste: <?php echo e(date('d.m.', budget_tpl_next($f))); ?><?php elseif (($f['interval'] ?? 'monthly') !== 'monthly'): ?> &bull; nächste: <?php echo e(german_month_year(budget_tpl_next($f))); ?><?php endif; ?><?php if (!empty($f['cancel_by'])): ?> &bull; <span style="color: var(--accent-gold);">kündbar bis <?php echo e(date('d.m.Y', strtotime($f['cancel_by']))); ?></span><?php endif; ?><?php if (!empty($f['docs'])): ?> &bull; <?php echo e($f['docs']); ?><?php endif; ?></div>
                                         </div>
                                         <div style="display: flex; gap: 6px;">
                                             <button type="button" class="btn btn-gold btn-sm" data-item="<?php echo e(json_encode($f + ['section' => 'fixed'])); ?>" onclick="openEditFixSubModal(JSON.parse(this.dataset.item))">Edit</button>
@@ -1176,7 +1457,7 @@ if ($selected_archive && is_file($archive_dir . basename($selected_archive))) {
                     </div>
 
                     <div>
-                        <h3 style="color: var(--accent-purple); font-size: 0.9rem; text-transform: uppercase; margin-bottom: 12px; border-bottom: 1px dashed var(--border-color); padding-bottom: 5px;">Abo Vorlagen: <span style="float:right;"><?php echo eur(array_sum(array_column($fix_subs_data['subs'], 'amount'))); ?> € / Monat</span></h3>
+                        <h3 style="color: var(--accent-purple); font-size: 0.9rem; text-transform: uppercase; margin-bottom: 12px; border-bottom: 1px dashed var(--border-color); padding-bottom: 5px;">Abo Vorlagen: <span style="float:right;" class="money"><?php echo eur(array_sum(array_map('budget_tpl_monthly', $fix_subs_data['subs']))); ?> € / Monat</span></h3>
                         <div class="entry-list">
                             <?php if (empty($fix_subs_data['subs'])): ?>
                                 <div class="empty-msg">Keine Abo-Vorlagen.</div>
@@ -1185,7 +1466,7 @@ if ($selected_archive && is_file($archive_dir . basename($selected_archive))) {
                                     <div class="entry-item sec-subs" style="align-items: center;">
                                         <div>
                                             <div style="font-weight: 700; font-size: 0.95rem; color:#fff;"><?php echo htmlspecialchars($s['title']); ?></div>
-                                            <div style="font-size: 0.7rem; color:var(--text-muted);"><?php echo eur($s['amount']); ?> € &bull; Kat: <?php echo e($s['category']); ?><?php if (!empty($s['docs'])): ?> &bull; <?php echo e($s['docs']); ?><?php endif; ?></div>
+                                            <div style="font-size: 0.7rem; color:var(--text-muted);"><span class="money"><?php echo eur($s['amount']); ?> €</span> <?php echo e(BUDGET_INTERVALS[$s['interval'] ?? 'monthly'][0]); ?> &bull; <?php echo budget_cat_icon((string)$s['category']) . ' ' . e($s['category']); ?><?php if (!empty($s['day'])): ?> &bull; nächste: <?php echo e(date('d.m.', budget_tpl_next($s))); ?><?php elseif (($s['interval'] ?? 'monthly') !== 'monthly'): ?> &bull; nächste: <?php echo e(german_month_year(budget_tpl_next($s))); ?><?php endif; ?><?php if (!empty($s['cancel_by'])): ?> &bull; <span style="color: var(--accent-gold);">kündbar bis <?php echo e(date('d.m.Y', strtotime($s['cancel_by']))); ?></span><?php endif; ?><?php if (!empty($s['docs'])): ?> &bull; <?php echo e($s['docs']); ?><?php endif; ?></div>
                                         </div>
                                         <div style="display: flex; gap: 6px;">
                                             <button type="button" class="btn btn-gold btn-sm" data-item="<?php echo e(json_encode($s + ['section' => 'subs'])); ?>" onclick="openEditFixSubModal(JSON.parse(this.dataset.item))">Edit</button>
@@ -1227,10 +1508,19 @@ if ($selected_archive && is_file($archive_dir . basename($selected_archive))) {
                                 <input type="text" name="category" id="fs_category">
                             </div>
                         </div>
-                        <div style="margin-bottom: 15px;">
+                        <div class="bd-2col">
+                            <div><label class="bd-label">Rhythmus</label><select name="interval" id="fs_interval"><?php foreach (BUDGET_INTERVALS as $k => [$l]): ?><option value="<?php echo $k; ?>"><?php echo e($l); ?></option><?php endforeach; ?></select></div>
+                            <div><label class="bd-label">Fällig am (Tag im Monat)</label><input type="number" name="day" id="fs_day" min="0" max="31" placeholder="z. B. 1"></div>
+                        </div>
+                        <div class="bd-2col">
+                            <div id="fs_start_wrap"><label class="bd-label">Erstmals fällig im</label><select name="start_month" id="fs_start_month"><?php foreach (['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'] as $i => $mn): ?><option value="<?php echo $i + 1; ?>"><?php echo $mn; ?></option><?php endforeach; ?></select></div>
+                            <div><label class="bd-label">Kündbar bis (optional)</label><input type="date" name="cancel_by" id="fs_cancel_by"></div>
+                        </div>
+                        <div style="margin: 10px 0 15px;">
                             <label style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Notizen</label>
                             <input type="text" name="docs" id="fs_docs">
                         </div>
+                        <input type="hidden" name="dismiss_key" id="fs_dismiss">
                         <button type="submit" name="add_fix_sub_item" id="fs_submit_btn" class="btn btn-gold" style="width:100%;">Speichern</button>
                     </form>
                 </div>
@@ -1244,6 +1534,12 @@ if ($selected_archive && is_file($archive_dir . basename($selected_archive))) {
                     document.getElementById('fs_amount').value = '';
                     document.getElementById('fs_category').value = '';
                     document.getElementById('fs_docs').value = '';
+                    document.getElementById('fs_interval').value = 'monthly';
+                    document.getElementById('fs_day').value = '';
+                    document.getElementById('fs_start_month').value = String(new Date().getMonth() + 1);
+                    document.getElementById('fs_cancel_by').value = '';
+                    document.getElementById('fs_dismiss').value = '';
+                    syncInterval();
                     document.getElementById('fs_submit_btn').name = 'add_fix_sub_item';
                     document.getElementById('fixSubModal').style.display = 'flex';
                 }
@@ -1255,13 +1551,187 @@ if ($selected_archive && is_file($archive_dir . basename($selected_archive))) {
                     document.getElementById('fs_amount').value = item.amount;
                     document.getElementById('fs_category').value = item.category || '';
                     document.getElementById('fs_docs').value = item.docs || '';
+                    document.getElementById('fs_interval').value = item.interval || 'monthly';
+                    document.getElementById('fs_day').value = item.day || '';
+                    document.getElementById('fs_start_month').value = String(item.start_month || (new Date().getMonth() + 1));
+                    document.getElementById('fs_cancel_by').value = item.cancel_by || '';
+                    syncInterval();
                     document.getElementById('fs_submit_btn').name = 'edit_fix_sub_item';
                     document.getElementById('fixSubModal').style.display = 'flex';
                 }
                 function closeFixSubModal() { document.getElementById('fixSubModal').style.display = 'none'; }
+                function syncInterval() { document.getElementById('fs_start_wrap').style.visibility = document.getElementById('fs_interval').value === 'monthly' ? 'hidden' : 'visible'; }
+                document.getElementById('fs_interval').addEventListener('change', syncInterval);
+                document.querySelectorAll('[data-suggest]').forEach(b => b.addEventListener('click', () => {
+                    const x = JSON.parse(b.dataset.suggest);
+                    openAddFixSubModal();
+                    document.getElementById('fs_section').value = 'subs';
+                    document.getElementById('fs_title').value = x.title;
+                    document.getElementById('fs_amount').value = x.amount;
+                    document.getElementById('fs_category').value = x.category || 'Abo';
+                    document.getElementById('fs_dismiss').value = x.key;
+                }));
                 window.addEventListener('click', e => { if (e.target === document.getElementById('fixSubModal')) closeFixSubModal(); });
                 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFixSubModal(); });
             </script>
+
+        <?php elseif ($view_mode === 'stats'): ?>
+            <!-- ================= STATISTIK ================= -->
+            <header class="bd-head"><div><div class="hud-tag">System // Financial Analytics</div><h1>Statistik</h1>
+                <div class="bd-sub"><?php echo count($history); ?> Monat<?php echo count($history) === 1 ? '' : 'e'; ?> ausgewertet (Archiv + aktueller Monat)</div></div>
+                <div class="bd-headacts"><button type="button" class="btn btn-sm bd-privacy">👁 Privat</button></div></header>
+            <?php
+            $all = array_map(function ($h) { return budget_summary($h['entries']) + ['name' => $h['name'], 'current' => $h['current']]; }, $history);
+            $closed = array_values(array_filter($all, function ($x) { return !$x['current']; })) ?: $all;
+            $avg = function (string $k) use ($closed) { return array_sum(array_column($closed, $k)) / max(1, count($closed)); };
+            $best = $closed; usort($best, function ($a, $b) { return $b['net'] <=> $a['net']; });
+            $merchants = [];
+            $cat_months = [];
+            foreach ($history as $h) foreach ($h['entries'] as $e) {
+                if (($e['section'] ?? '') === 'income') continue;
+                $k = budget_merchant((string)$e['title']) ?: mb_strtolower((string)$e['title']);
+                $merchants[$k]['sum'] = ($merchants[$k]['sum'] ?? 0) + (float)$e['amount'];
+                $merchants[$k]['n'] = ($merchants[$k]['n'] ?? 0) + 1;
+                $merchants[$k]['title'] = $merchants[$k]['title'] ?? $e['title'];
+                $merchants[$k]['cat'] = $e['category'] ?? '';
+                $c = trim((string)($e['category'] ?? '')) ?: 'Sonstiges';
+                $cat_months[$c][$h['name']] = ($cat_months[$c][$h['name']] ?? 0) + (float)$e['amount'];
+            }
+            uasort($merchants, function ($a, $b) { return $b['sum'] <=> $a['sum']; });
+            uasort($cat_months, function ($a, $b) { return array_sum($b) <=> array_sum($a); });
+            $last6 = array_slice(array_column($history, 'name'), -6);
+            ?>
+            <div class="bd-kpis">
+                <div class="bd-kpi inc"><span class="k">Ø Einnahmen</span><b class="money"><?php echo eur($avg('income')); ?> €</b><small>pro Monat</small></div>
+                <div class="bd-kpi exp"><span class="k">Ø Ausgaben</span><b class="money"><?php echo eur($avg('expense')); ?> €</b><small>davon fix <span class="money"><?php echo eur($avg('fixed') + $avg('subs')); ?> €</span></small></div>
+                <div class="bd-kpi net"><span class="k">Ø Netto</span><b class="money"><?php echo eur($avg('net')); ?> €</b><small>Summe aller Monate <span class="money"><?php echo eur(array_sum(array_column($all, 'net'))); ?> €</span></small></div>
+                <div class="bd-kpi day"><span class="k">🏆 Bester Monat</span><b><?php echo e($best[0]['name'] ?? '–'); ?></b><small class="money"><?php echo isset($best[0]) ? eur($best[0]['net']) . ' € netto' : ''; ?></small></div>
+            </div>
+            <div class="panel"><div class="panel-title"><span>// Einnahmen &amp; Ausgaben pro Monat</span><span class="bd-legend inline"><span class="inc">Einnahmen</span><span class="fx">Fix + Abos</span><span class="ot">Sonstige</span><span class="netl">Netto</span></span></div>
+                <div id="monthChart" class="bd-chart"></div></div>
+            <div class="bd-grid">
+                <div class="panel"><div class="panel-title"><span>// Kategorien – letzte Monate</span></div>
+                    <div class="bd-tablewrap"><table class="bd-table"><thead><tr><th>Kategorie</th><?php foreach ($last6 as $n): ?><th><?php echo e(preg_replace('/^(\p{L}{3})\p{L}*\s+\d\d(\d\d)$/u', '$1 $2', $n)); ?></th><?php endforeach; ?><th>Ø</th></tr></thead><tbody>
+                        <?php foreach (array_slice($cat_months, 0, 14, true) as $c => $vals): ?>
+                            <tr><td><?php echo budget_cat_icon($c) . ' ' . e($c); ?></td><?php foreach ($last6 as $n): ?><td class="money"><?php echo isset($vals[$n]) ? eur($vals[$n]) : '–'; ?></td><?php endforeach; ?><td class="money"><b><?php echo eur(array_sum($vals) / max(1, count($history))); ?></b></td></tr>
+                        <?php endforeach; ?>
+                    </tbody></table></div></div>
+                <div class="panel"><div class="panel-title"><span>// Wo geht das Geld hin? (Top 12)</span></div>
+                    <?php $mx = $merchants ? max(1, reset($merchants)['sum']) : 1; ?>
+                    <?php foreach (array_slice($merchants, 0, 12) as $m): ?>
+                        <div class="bd-hrow"><span title="<?php echo e($m['title']); ?>"><?php echo budget_cat_icon((string)$m['cat']) . ' ' . e(mb_strimwidth($m['title'], 0, 30, '…')); ?></span><i><b style="width: <?php echo round($m['sum'] / $mx * 100); ?>%"></b></i><em class="money"><?php echo eur($m['sum']); ?> €</em><small><?php echo $m['n']; ?>×</small></div>
+                    <?php endforeach; ?>
+                    <?php if (!$merchants): ?><div class="empty-msg">Noch keine Ausgaben.</div><?php endif; ?>
+                </div>
+            </div>
+            <div class="panel"><div class="panel-title"><span>// Alle Monate</span></div>
+                <div class="bd-tablewrap"><table class="bd-table"><thead><tr><th>Monat</th><th>Einnahmen</th><th>Fixkosten</th><th>Abos</th><th>Sonstige</th><th>Netto</th><th>Sparquote</th></tr></thead><tbody>
+                    <?php foreach (array_reverse($all) as $x): ?>
+                        <tr<?php echo $x['current'] ? ' class="cur"' : ''; ?>><td><?php echo e($x['name']); ?><?php echo $x['current'] ? ' <small>(laufend)</small>' : ''; ?></td><td class="money inc">+<?php echo eur($x['income']); ?></td><td class="money"><?php echo eur($x['fixed']); ?></td><td class="money"><?php echo eur($x['subs']); ?></td><td class="money"><?php echo eur($x['other']); ?></td>
+                            <td class="money <?php echo $x['net'] >= 0 ? 'inc' : 'neg'; ?>"><?php echo eur($x['net']); ?></td><td><?php echo $x['rate'] !== null ? $x['rate'] . ' %' : '–'; ?></td></tr>
+                    <?php endforeach; ?>
+                </tbody></table></div></div>
+
+        <?php elseif ($view_mode === 'plan'): ?>
+            <!-- ================= PLANUNG ================= -->
+            <header class="bd-head"><div><div class="hud-tag">System // Budget Planner</div><h1>Planung</h1><div class="bd-sub">Limits, Sparziele und Regeln für automatische Kategorien</div></div>
+                <div class="bd-headacts"><button type="button" class="btn btn-sm bd-privacy">👁 Privat</button></div></header>
+            <?php if ($ob_message): ?><div class="ob-msg <?php echo e($ob_message[0]); ?>"><?php echo e($ob_message[1]); ?></div><?php endif; ?>
+            <datalist id="catList"><?php foreach ($known_cats as $c): ?><option value="<?php echo e($c); ?>"><?php endforeach; ?></datalist>
+
+            <div class="bd-grid" id="limits">
+                <div class="panel">
+                    <div class="panel-title"><span>// 🚦 Kategorie-Limits (pro Monat)</span></div>
+                    <?php if (!$bs['limits']): ?><div class="empty-msg">Noch keine Limits.</div><?php endif; ?>
+                    <?php foreach ($bs['limits'] as $cat => $lim): $spent = $sum['cats'][$cat] ?? 0; $p = $lim > 0 ? $spent / $lim * 100 : 0; $avg_c = 0; $nm = 0;
+                        foreach ($history as $h) if (!$h['current']) { $nm++; foreach ($h['entries'] as $e) if (($e['section'] ?? '') !== 'income' && ($e['category'] ?? '') === $cat) $avg_c += (float)$e['amount']; } ?>
+                        <div class="bd-limit">
+                            <div class="bd-limit-top"><span><?php echo budget_cat_icon($cat) . ' ' . e($cat); ?></span>
+                                <span><span class="money"><?php echo eur($spent); ?> / <?php echo eur($lim); ?> €</span>
+                                    <form method="POST" class="bd-inline"><input type="hidden" name="b_action" value="limit_save"><input type="hidden" name="category" value="<?php echo e($cat); ?>"><input type="hidden" name="amount" value="0"><button class="bd-iconbtn bad" title="Limit entfernen">×</button></form></span></div>
+                            <div class="bd-bar"><i class="<?php echo $p >= 100 ? 'over' : ($p >= 80 ? 'warn' : ''); ?>" style="width: <?php echo min(100, round($p)); ?>%"></i></div>
+                            <small><?php echo $nm ? 'Ø bisher ' . eur($avg_c / $nm) . ' € pro Monat' : ''; ?></small>
+                        </div>
+                    <?php endforeach; ?>
+                    <form method="POST" class="bd-rowform"><input type="hidden" name="b_action" value="limit_save">
+                        <input type="text" name="category" list="catList" placeholder="Kategorie, z. B. Lebensmittel" required><input type="number" step="1" min="1" name="amount" placeholder="Limit €" required><button class="btn btn-gold btn-sm">Setzen</button></form>
+                </div>
+                <div class="panel">
+                    <div class="panel-title"><span>// 🐷 Sparquote</span></div>
+                    <p class="bd-sub">Wie viel Prozent deiner Einnahmen möchtest du jeden Monat übrig behalten? Wird in der Übersicht beim Netto angezeigt.</p>
+                    <form method="POST" class="bd-rowform"><input type="hidden" name="b_action" value="savings_target"><input type="number" name="percent" min="0" max="100" value="<?php echo (int)$bs['savings_target']; ?>"><span>%</span><button class="btn btn-sm">Speichern</button></form>
+                    <?php if ($sum['income'] > 0 && $bs['savings_target']): $goal_amt = $sum['income'] * $bs['savings_target'] / 100; ?>
+                        <div class="bd-limit"><div class="bd-limit-top"><span>Diesen Monat</span><span class="money"><?php echo eur(max(0, $sum['net'])); ?> / <?php echo eur($goal_amt); ?> €</span></div>
+                            <div class="bd-bar goal"><i style="width: <?php echo min(100, max(0, round($sum['net'] / $goal_amt * 100))); ?>%"></i></div></div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <div class="panel" id="goals">
+                <div class="panel-title"><span>// 🎯 Sparziele</span><button type="button" class="btn btn-gold btn-sm" data-goal="{}">＋ Neues Ziel</button></div>
+                <?php if (!$bs['goals']): ?><div class="empty-msg">Noch keine Sparziele – z. B. „Eurofurence 2027“, „Neuer PC“, „Notgroschen“.</div><?php endif; ?>
+                <div class="bd-goals">
+                    <?php foreach ($bs['goals'] as $g): $gp = $g['target'] > 0 ? min(100, $g['saved'] / $g['target'] * 100) : 0;
+                        $rest = max(0, $g['target'] - $g['saved']);
+                        $months = $g['deadline'] ? max(1, (int)ceil((strtotime($g['deadline']) - time()) / (30.44 * 86400))) : 0; ?>
+                        <div class="bd-goal">
+                            <div class="bd-ring" style="--p: <?php echo round($gp, 1); ?>"><span><?php echo e($g['icon']); ?></span></div>
+                            <div class="bd-goalinfo">
+                                <b><?php echo e($g['name']); ?></b>
+                                <div class="money"><?php echo eur($g['saved']); ?> € von <?php echo eur($g['target']); ?> € · <?php echo round($gp); ?> %</div>
+                                <small><?php if ($rest <= 0): ?>🎉 Ziel erreicht!<?php elseif ($g['deadline']): ?>bis <?php echo e(date('d.m.Y', strtotime($g['deadline']))); ?> · noch <?php echo $months; ?> Monat<?php echo $months === 1 ? '' : 'e'; ?> → <b class="money"><?php echo eur($rest / $months); ?> €/Monat</b><?php else: ?>noch <span class="money"><?php echo eur($rest); ?> €</span><?php endif; ?></small>
+                                <form method="POST" class="bd-rowform">
+                                    <input type="hidden" name="b_action" value="goal_move"><input type="hidden" name="goal_id" value="<?php echo e($g['id']); ?>">
+                                    <input type="number" step="0.01" min="0.01" name="amount" placeholder="Betrag €" required><input type="text" name="note" placeholder="Notiz">
+                                    <label class="bd-check" title="Zusätzlich als Ausgabe „Sparen“ im aktuellen Monat buchen"><input type="checkbox" name="book" value="1"> buchen</label>
+                                    <button class="btn btn-sm btn-gold" name="dir" value="in">＋ Einzahlen</button><button class="btn btn-sm" name="dir" value="out">− Entnehmen</button>
+                                </form>
+                                <?php if ($g['history']): ?><details><summary>Verlauf (<?php echo count($g['history']); ?>)</summary><?php foreach (array_slice($g['history'], 0, 12) as $hh): ?><div class="bd-ghist"><span><?php echo e(date('d.m.Y', $hh['t'])); ?></span><span class="money <?php echo $hh['a'] >= 0 ? 'inc' : 'neg'; ?>"><?php echo ($hh['a'] >= 0 ? '+' : '−') . eur(abs($hh['a'])); ?> €</span><span><?php echo e($hh['n']); ?></span></div><?php endforeach; ?></details><?php endif; ?>
+                            </div>
+                            <div class="bd-goalacts">
+                                <button type="button" class="bd-iconbtn" title="Bearbeiten" data-goal="<?php echo e(json_encode(['goal_id' => $g['id'], 'name' => $g['name'], 'icon' => $g['icon'], 'target' => $g['target'], 'deadline' => $g['deadline']], JSON_UNESCAPED_UNICODE)); ?>">✎</button>
+                                <form method="POST" data-confirm="<?php echo e('Sparziel „' . $g['name'] . '“ löschen?'); ?>"><input type="hidden" name="b_action" value="goal_delete"><input type="hidden" name="goal_id" value="<?php echo e($g['id']); ?>"><button class="bd-iconbtn bad" title="Löschen">🗑</button></form>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <div class="panel" id="rules">
+                <div class="panel-title"><span>// 🪄 Regeln für Kategorien</span>
+                    <form method="POST" class="bd-inline" data-confirm="Alle importierten Buchungen des aktuellen Monats neu einordnen?"><input type="hidden" name="b_action" value="recategorize"><input type="hidden" name="back" value="budget.php?view=plan#rules"><button class="btn btn-sm">Auf aktuellen Monat anwenden</button></form></div>
+                <p class="bd-sub">Regeln gelten beim CSV-Import und Bank-Sync und haben Vorrang vor der automatischen Erkennung (die schon Supermärkte, Tankstellen, Streaming, Gaming, Lieferdienste usw. kennt).
+                   Schnell anlegen: in der Übersicht bei einer Buchung auf ⚙ klicken.</p>
+                <form method="POST" class="bd-rulegrid"><input type="hidden" name="b_action" value="rule_save"><input type="hidden" name="apply" value="1">
+                    <input type="text" name="match" placeholder="Text enthält … (z. B. instant-gaming)" required minlength="2">
+                    <input type="text" name="category" list="catList" placeholder="→ Kategorie">
+                    <select name="section"><option value="">Bereich unverändert</option><option value="fixed">🏠 Fixkosten</option><option value="subs">🔁 Abos</option><option value="other">🛍️ Sonstige</option><option value="skip">🚫 beim Import ignorieren</option></select>
+                    <input type="text" name="rename" placeholder="umbenennen (optional)">
+                    <button class="btn btn-gold btn-sm">Speichern</button>
+                </form>
+                <?php if ($bs['rules']): ?>
+                    <div class="bd-tablewrap"><table class="bd-table"><thead><tr><th>Text enthält</th><th>Kategorie</th><th>Bereich</th><th>Umbenennen</th><th></th></tr></thead><tbody>
+                        <?php foreach ($bs['rules'] as $r): ?>
+                            <tr><td><code><?php echo e($r['match']); ?></code></td><td><?php echo $r['category'] !== '' ? budget_cat_icon($r['category']) . ' ' . e($r['category']) : '–'; ?></td>
+                                <td><?php echo e(['' => '–', 'income' => 'Einnahmen', 'fixed' => 'Fixkosten', 'subs' => 'Abos', 'other' => 'Sonstige', 'skip' => '🚫 ignorieren'][$r['section']] ?? $r['section']); ?></td><td><?php echo e($r['rename'] ?: '–'); ?></td>
+                                <td><form method="POST" class="bd-inline"><input type="hidden" name="b_action" value="rule_delete"><input type="hidden" name="rule_id" value="<?php echo e($r['id']); ?>"><button class="bd-iconbtn bad" title="Löschen">🗑</button></form></td></tr>
+                        <?php endforeach; ?>
+                    </tbody></table></div>
+                <?php else: ?><div class="empty-msg">Noch keine eigenen Regeln.</div><?php endif; ?>
+            </div>
+
+            <div id="goalModal" class="modal-overlay">
+                <div class="modal-box">
+                    <button type="button" class="modal-close" data-close>&times;</button>
+                    <div class="panel-title">// Sparziel</div>
+                    <form method="POST"><input type="hidden" name="b_action" value="goal_save"><input type="hidden" name="goal_id">
+                        <div class="bd-2col" style="grid-template-columns: 80px 1fr;"><div><label class="bd-label">Icon</label><input type="text" name="icon" maxlength="4" value="🎯"></div><div><label class="bd-label">Name</label><input type="text" name="name" required placeholder="z. B. Eurofurence 2027"></div></div>
+                        <div class="bd-2col"><div><label class="bd-label">Zielbetrag (€)</label><input type="number" step="0.01" min="1" name="target" required></div><div><label class="bd-label">Bis (optional)</label><input type="date" name="deadline"></div></div>
+                        <div class="bd-newonly"><label class="bd-label">Schon gespart (€)</label><input type="number" step="0.01" min="0" name="saved" value="0"></div>
+                        <button class="btn btn-gold" style="width: 100%; margin-top: 14px;">Speichern</button>
+                    </form>
+                </div>
+            </div>
 
         <?php else: ?>
             <!-- ================= ARCHIV ================= -->
@@ -1328,5 +1798,7 @@ if ($selected_archive && is_file($archive_dir . basename($selected_archive))) {
             <?php endif; ?>
         <?php endif; ?>
     </div>
+    <script>window.BUDGET = <?php echo json_encode(['cats' => $chart_cats, 'months' => $chart_months, 'view' => $view_mode], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP); ?>;</script>
+    <script src="assets/budget.js"></script>
 </body>
 </html>

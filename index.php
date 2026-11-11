@@ -121,9 +121,11 @@ function live_info(array $p): string {
             case 'budget.php':
                 $b = load_json(__DIR__ . '/budget_data.json', null);
                 if (!$b) return '';
-                $net = 0;
-                foreach ($b['entries'] ?? [] as $e) $net += (($e['section'] ?? '') === 'income' ? 1 : -1) * (float)$e['amount'];
-                return ($b['month_name'] ?? '') . ' · Netto ' . eur($net) . ' €';
+                require_once __DIR__ . '/inc/budget.php';
+                $sm = budget_summary($b['entries'] ?? []);
+                $over = 0;
+                foreach (budget_settings()['limits'] as $c => $l) if (($sm['cats'][$c] ?? 0) > $l) $over++;
+                return ($b['month_name'] ?? '') . ' · Netto ' . eur($sm['net']) . ' €' . ($sm['open'] > 0 ? ' · ' . eur($sm['open']) . ' € offen' : '') . ($over ? ' · ⚠ ' . $over . ' Limit' . ($over > 1 ? 's' : '') . ' überschritten' : '');
             case 'feed.php':
                 $items = load_json(__DIR__ . '/feed_cache.json', []);
                 return $items ? count($items) . ' Meldungen · Stand ' . date('H:i', filemtime(__DIR__ . '/feed_cache.json')) . ' Uhr' : '';

@@ -120,11 +120,42 @@ function budget_classify(string $desc, float $signed_amount, string $type = ''):
     if (mb_strtolower($type) === 'transfer' || preg_match('/unterkonto|einzustecken|pocket|tresor|vault|savings|sparkonto|exchanged to|umgetauscht/u', $d)) {
         return null;
     }
-    if ($signed_amount > 0) return ['section' => 'income', 'category' => 'Lohn / Abschlag'];
-    if (preg_match('/miete|strom|nebenkosten|\bgas\b|wasser|versicherung|kfz|rundfunk|internet|telekom|vodafone|\bo2\b/u', $d)) return ['section' => 'fixed', 'category' => 'Fixkosten'];
-    if (preg_match('/netflix|spotify|gym|youtube|disney|amazon prime|xbox|playstation|patreon|apple\.com\/bill|google \*|steam|discord|crunchyroll|dazn|audible/u', $d)) return ['section' => 'subs', 'category' => 'Abo'];
-    if (preg_match('/tankstelle|\baral\b|\bshell\b|\besso\b|\bjet\b|\btotal\b|\bhem\b/u', $d)) return ['section' => 'other', 'category' => 'Tanken'];
-    if (preg_match('/\brewe\b|\baldi\b|\blidl\b|edeka|\bnetto\b|\bpenny\b|kaufland|\bdm\b|rossmann/u', $d)) return ['section' => 'other', 'category' => 'Lebensmittel'];
+    // Eigene Regeln (Budget → Regeln) haben Vorrang
+    require_once __DIR__ . '/budget.php';
+    $rule = budget_rule_match($desc);
+    if ($rule) {
+        if (($rule['section'] ?? '') === 'skip') return null;
+        $sec = $rule['section'] ?? '';
+        if ($sec === '' || ($sec === 'income') !== ($signed_amount > 0)) $sec = $signed_amount > 0 ? 'income' : 'other';
+        return ['section' => $sec, 'category' => ($rule['category'] ?? '') !== '' ? $rule['category'] : ($signed_amount > 0 ? 'Lohn / Abschlag' : 'Sonstiges'), 'title' => trim((string)($rule['rename'] ?? ''))];
+    }
+    if ($signed_amount > 0) {
+        if (preg_match('/erstattung|rückzahlung|refund|gutschrift|cashback/u', $d)) return ['section' => 'income', 'category' => 'Rückzahlung'];
+        return ['section' => 'income', 'category' => preg_match('/lohn|gehalt|personal|abschlag|salary|arbeitgeber/u', $d) ? 'Lohn / Abschlag' : 'Einnahme'];
+    }
+    $rules = [
+        ['fixed', 'Wohnen', '/miete|wohnung|hausverwaltung|nebenkosten/u'],
+        ['fixed', 'Energie', '/strom|\bgas\b|wasser|stadtwerke|tibber|\be\.?on\b|vattenfall|octopus energy/u'],
+        ['fixed', 'Versicherung', '/versicherung|allianz|huk|ergo|axa|devk|signal iduna/u'],
+        ['fixed', 'Telefon / Internet', '/telekom|vodafone|\bo2\b|congstar|1&1|1und1|1global|aldi talk|fraenk|winsim|rundfunk|ard zdf/u'],
+        ['subs', 'Streaming', '/netflix|spotify|disney|amazon prime|prime video|crunchyroll|dazn|audible|apple music|deezer|youtube|twitch/u'],
+        ['subs', 'Gaming', '/xbox|playstation|psn|nintendo online|game ?pass|ea play|ubisoft\+|wemod|humble choice/u'],
+        ['subs', 'Software', '/patreon|discord|nitro|chatgpt|openai|adobe|microsoft 365|icloud|google one|dropbox|notion|github|paddle|anthropic|claude\.ai/u'],
+        ['subs', 'Sport', '/\bgym\b|fitness|mcfit|urban sports|clever fit/u'],
+        ['other', 'Gaming', '/steam|instant-gaming|instant gaming|g2a|gog\.com|epic games|nintendo|eneba|mmoga|humble|itch\.io|battle\.net|riot/u'],
+        ['other', 'Tanken', '/tankstelle|\baral\b|\bshell\b|\besso\b|\bjet\b|\btotal(energies)?\b|\bhem\b|\bavia\b|\bstar\b tank|agip|\bomv\b|raiffeisen tank/u'],
+        ['other', 'Lebensmittel', '/\brewe\b|\baldi\b|\blidl\b|edeka|\bnetto\b|\bpenny\b|kaufland|norma|globus|tegut|marktkauf|\bholy\b|bäckerei|baeckerei|metzgerei/u'],
+        ['other', 'Drogerie', '/\bdm\b|dm-drogerie|rossmann|müller|mueller|budni/u'],
+        ['other', 'Essen gehen', '/mcdonald|burger king|kfc|subway|lieferando|uber \*?eats|wolt|domino|pizza|döner|doener|restaurant|imbiss|cafe|café|starbucks/u'],
+        ['other', 'Mobilität', '/deutsche bahn|\bdb\b vertrieb|db fernverkehr|flixbus|flixtrain|\buber\b|\bbolt\b|bvg|mvg|hvv|vrr|parken|parkhaus|\btier\b|\blime\b|sixt|deutschlandticket/u'],
+        ['other', 'Online-Shopping', '/amazon|amzn|ebay|zalando|aliexpress|temu|shein|\botto\b|etsy|kleinanzeigen|paypal/u'],
+        ['other', 'Kleidung', '/h&m|\bzara\b|primark|c&a|about you|snipes|deichmann|tk maxx/u'],
+        ['other', 'Gesundheit', '/apotheke|docmorris|shop apotheke|arzt|zahnarzt|optiker|fielmann/u'],
+        ['other', 'Freizeit', '/kino|cinema|cinemaxx|eventim|ticketmaster|museum|bowling|freizeitpark/u'],
+        ['other', 'Cons & Events', '/eurofurence|furry|\bcon\b|convention|pretix|tito\.io/u'],
+        ['other', 'Haustier', '/fressnapf|zooplus|tierarzt|futterhaus/u'],
+    ];
+    foreach ($rules as [$sec, $cat, $re]) if (preg_match($re, $d)) return ['section' => $sec, 'category' => $cat];
     return ['section' => 'other', 'category' => 'Shopping / Sonstiges'];
 }
 
@@ -297,7 +328,7 @@ function ob_sync(array &$cfg, array &$data, bool $psu_present): array {
                 $data['entries'][] = [
                     'id' => uniqid(),
                     'section' => $class['section'],
-                    'title' => $title,
+                    'title' => ($class['title'] ?? '') !== '' ? $class['title'] : $title,
                     'amount' => abs($signed),
                     'category' => $class['category'],
                     'status' => $class['section'] === 'income' ? 'Erhalten' : 'Bezahlt',

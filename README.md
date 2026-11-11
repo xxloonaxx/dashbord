@@ -294,6 +294,27 @@ Werkzeuge), Mein Konto. **Befehlspalette** mit `Strg+K`. Auf dem Handy wird die 
 - Datenbank: `data/calendar_<zufall>.sqlite` (Ordner per `.htaccess` gesperrt, Dateiname nicht erratbar),
   wird beim ersten Aufruf automatisch angelegt und ist im Backup enthalten. Benötigt die PHP-Erweiterung `pdo_sqlite`.
 
+## Budget (`budget.php`)
+
+- **📊 Übersicht**: Kennzahlen mit Vergleich zum Vormonat (Einnahmen, Ausgaben, Netto mit Sparquote, offen, **pro Tag übrig**),
+  gestapelte Ausgaben-Quote (Fixkosten / Abos / Sonstige / übrig), **Donut-Diagramm nach Kategorie** (Klick filtert die Liste),
+  Kategorie-Limits, „Demnächst fällig“ (inkl. Kündigungsfristen) und Sparziele auf einen Blick.
+- **Buchungen**: Schnell-Eingabe mit Datum und Kategorie-Vorschlägen (Taste `N`), Suche (Taste `/`), Filter nach Kategorie und Status,
+  Sortierung, einklappbare Bereiche, Icons je Kategorie, Herkunft (📄 CSV / 🏦 Bank / ↻ Vorlage), ✓ abhaken, „alle bezahlt“,
+  duplizieren, bearbeiten (auch Datum), ⚙ **Regel für ähnliche Buchungen** direkt aus einer Buchung.
+- **🪄 Kategorien neu erkennen**: ordnet importierte Buchungen mit der verbesserten Erkennung (Supermärkte, Tankstellen, Streaming,
+  Gaming, Lieferdienste, Mobilität, Online-Shopping, Software …) und deinen Regeln neu ein.
+- **👁 Privat-Modus** (Taste `P`): verwischt alle Beträge – z. B. beim Bildschirm teilen.
+- **📈 Statistik**: Balkendiagramm Einnahmen/Ausgaben/Netto pro Monat (Archiv + laufender Monat), Durchschnitte, bester Monat,
+  Kategorien der letzten 6 Monate als Tabelle, „Wo geht das Geld hin?“ (Top-Händler), alle Monate mit Sparquote.
+- **🎯 Planung**: **Limits pro Kategorie** (mit Ampel), **Ziel-Sparquote**, **Sparziele** (Fortschrittsring, Einzahlen/Entnehmen mit
+  Verlauf, optional als Ausgabe „Sparen“ buchen, nötige Rate pro Monat bis zum Termin) und **Regeln** („Text enthält … → Kategorie,
+  Bereich, umbenennen oder beim Import ignorieren“) – gelten für CSV-Import und Bank-Sync.
+- **🔁 Fix & Abos**: Rhythmus **monatlich, vierteljährlich, halbjährlich oder jährlich** (wird nur in den fälligen Monaten eingeplant),
+  **Fälligkeitstag** (bis dahin „offen“), **Kündbar bis**-Datum mit Warnung, Kosten pro Monat/Jahr und Anteil am Einkommen sowie
+  **💡 erkannte wiederkehrende Zahlungen** als Abo-Vorschlag.
+- Einstellungen liegen in `budget_settings.json` (vom Backup erfasst, nicht im Repository).
+
 ## Bank-Sync (Revolut über Open Banking)
 
 Im Budget unter **🏦 Bank-Sync**. Revolut gibt seine Open-Banking-Schnittstelle nur an lizenzierte Zahlungsdienstleister
