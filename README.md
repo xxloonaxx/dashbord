@@ -45,6 +45,20 @@ Wer das zuerst ausfüllt, wird Admin – also direkt nach dem Hochladen erledige
 
 Unbedingt **HTTPS** beim Hoster aktivieren, sonst wird das Passwort unverschlüsselt übertragen (die Admin-Zentrale warnt dann).
 
+## Kalender (`calendar.php`, SQLite)
+
+- Ansichten **Monat** (mit Kalenderwochen), **Woche** (Zeitleiste mit Jetzt-Linie, überlappende Termine nebeneinander),
+  **Agenda** (45 Tage) und **Jahr** (12 Mini-Monate mit Punkten) sowie **Suche**
+- Termine: ganztägig oder mit Uhrzeit, mehrtägig, Ort (mit Kartenlink), Link, Notizen, farbige Kategorien,
+  Wiederholung (täglich/wöchentlich/monatlich/jährlich, „alle N …“, bis Datum), einzelne Termine einer Serie löschbar
+- Privat-Markierung: private Termine sehen nur angemeldete Admins (Besucher sehen nur öffentliche)
+- Gesetzliche **Feiertage** (bundesweit + wählbares Bundesland), **Countdowns** als eigene Ebene – nur lesend:
+  der Kalender zeigt die Countdowns an, verändert sie aber nie
+- Drag & Drop (Monatsansicht), Klick in einen Tag/eine Uhrzeit legt dort einen Termin an, Duplizieren
+- Import/Export als `.ics` (Google, Apple, Outlook, Thunderbird), Ebenen-/Kategorie-Filter, Tastenkürzel, Druckansicht
+- Datenbank: `data/calendar_<zufall>.sqlite` (Ordner per `.htaccess` gesperrt, Dateiname nicht erratbar),
+  wird beim ersten Aufruf automatisch angelegt und ist im Backup enthalten. Benötigt die PHP-Erweiterung `pdo_sqlite`.
+
 ## Bank-Sync (Revolut über Open Banking)
 
 Im Budget unter **🏦 Bank-Sync**. Revolut gibt seine Open-Banking-Schnittstelle nur an lizenzierte Zahlungsdienstleister
@@ -85,4 +99,4 @@ Die Zahl am Dateianfang bestimmt die Reihenfolge auf der Startseite.
 ## Hinweis zur Sicherheit
 
 Auf **nginx**-Servern wirkt die `.htaccess` nicht – dann sind die JSON-Datendateien (z. B. `budget_data.json`) direkt abrufbar.
-In dem Fall in der nginx-Konfiguration `location ~ \.json$ { deny all; }` ergänzen.
+In dem Fall in der nginx-Konfiguration `location ~ \.json$ { deny all; }` und `location /data/ { deny all; }` ergänzen.

@@ -17,6 +17,20 @@ foreach (array_merge(glob(__DIR__ . '/*.json') ?: [], glob(__DIR__ . '/archive/*
 
 $stamp = date('Y-m-d_His');
 
+// Kalender-Datenbank (SQLite) – konsistente Kopie, auch wenn gerade geschrieben wird
+$cal_copy = null;
+$cal_db = (glob(__DIR__ . '/data/calendar_*.sqlite') ?: [null])[0];
+if ($cal_db) {
+    $cal_copy = sys_get_temp_dir() . '/cal_backup_' . bin2hex(random_bytes(4)) . '.sqlite';
+    try {
+        $pdo = new PDO('sqlite:' . $cal_db);
+        $pdo->exec('VACUUM INTO ' . $pdo->quote($cal_copy));
+    } catch (Throwable $e) {
+        @copy($cal_db, $cal_copy);
+    }
+    if (is_file($cal_copy)) $files['data/' . basename($cal_db)] = $cal_copy;
+}
+
 if (class_exists('ZipArchive')) {
     $tmp = tempnam(sys_get_temp_dir(), 'bak');
     $zip = new ZipArchive();
@@ -30,12 +44,14 @@ if (class_exists('ZipArchive')) {
     header('Content-Length: ' . filesize($tmp));
     readfile($tmp);
     unlink($tmp);
+    if ($cal_copy) @unlink($cal_copy);
     exit;
 }
 
 // Fallback ohne ZIP-Erweiterung: alles in einer JSON-Datei
 $bundle = [];
-foreach ($files as $name => $path) $bundle[$name] = load_json($path, null);
+foreach ($files as $name => $path) $bundle[$name] = substr($name, -7) === '.sqlite' ? base64_encode((string)file_get_contents($path)) : load_json($path, null);
+if ($cal_copy) @unlink($cal_copy);
 header('Content-Type: application/json; charset=utf-8');
 header('Content-Disposition: attachment; filename="dashboard-backup_' . $stamp . '.json"');
 echo json_encode($bundle, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);

@@ -14,3 +14,5 @@ feed_sources.json
 .admin_log.php
 .site_settings.php
 .openbanking.php
+data/*.sqlite
+data/*.sqlite-*

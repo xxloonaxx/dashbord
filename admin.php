@@ -336,6 +336,7 @@ $flash = $_GET['msg'] ?? '';
                     <a class="btn" href="linkcheck.php">🩺 Link-Check</a>
                     <a class="btn" href="backup.php">⬇ Backup (ZIP)</a>
                     <a class="btn" href="countdown.php">⏳ Countdowns</a>
+                    <a class="btn" href="calendar.php">📅 Kalender</a>
                     <form method="POST"><input type="hidden" name="action" value="clear_feed_cache"><button type="submit" class="btn" style="width: 100%;">📡 Feed neu laden</button></form>
                 </div>
                 <form method="POST" style="display: flex; gap: 8px; margin-top: 14px;" onsubmit="return confirm('Alle im Browser gemachten Änderungen an diesem Hub verwerfen? (Eine Kopie landet im Ordner archive/)');">

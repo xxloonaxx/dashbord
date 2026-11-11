@@ -3,6 +3,7 @@ require_once __DIR__ . '/inc/common.php';
 require_once __DIR__ . '/inc/countdown.php';
 require_once __DIR__ . '/inc/linkcheck.php';
 require_once __DIR__ . '/inc/auth.php';
+require_once __DIR__ . '/inc/calendar.php';
 
 // Beim allerersten Aufruf: Admin-Konto anlegen
 auth_require_setup();
@@ -123,6 +124,8 @@ foreach (scandir($dir) as $file) {
         $desc = budget_preview();
     } elseif ($lower === 'feed.php') {
         $desc = feed_preview();
+    } elseif ($lower === 'calendar.php') {
+        $desc = cal_preview($admin);
     } elseif ($lower === 'countdown.php') {
         $desc = countdown_preview();
     } elseif ($lower === 'linkcheck.php') {

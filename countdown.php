@@ -151,6 +151,7 @@ $icons = ['⏳', '🐾', '🎉', '🎂', '🎄', '🎆', '✈️', '🚆', '🏨
     <div class="nav-bar">
         <a href="index.php" class="nav-back">&larr; ZURÜCK ZUM INDEX</a>
         <div class="nav-tabs">
+            <a href="calendar.php" class="nav-tab" title="Countdowns erscheinen automatisch im Kalender">📅 Kalender</a>
             <a href="feed.php" class="nav-tab">Feed</a>
             <a href="con.php" class="nav-tab">Con</a>
         </div>
