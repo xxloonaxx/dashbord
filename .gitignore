@@ -1,0 +1,7 @@
+# Persönliche Daten & Cache – werden auf dem Server automatisch angelegt
+budget_data.json
+fix_subs_data.json
+con_data.json
+feed_cache.json
+archive/
+archive_budget/
