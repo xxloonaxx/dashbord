@@ -26,20 +26,23 @@
         let visible = 0;
 
         sections.forEach(section => {
-            const catName = (section.querySelector('.category-title') || {}).textContent || '';
+            const titleEl = section.querySelector('.category-title > span:first-child') || section.querySelector('.category-title');
+            const catName = titleEl ? titleEl.textContent : '';
             let sectionVisible = 0;
             section.querySelectorAll('.card').forEach(card => {
                 const haystack = (card.textContent + ' ' + catName + ' ' + card.getAttribute('href')).toLowerCase();
                 const match = terms.every(t => haystack.includes(t));
-                card.style.display = match ? '' : 'none';
+                (card.closest('.card-wrap') || card).style.display = match ? '' : 'none';
                 if (match) sectionVisible++;
             });
-            section.style.display = sectionVisible ? '' : 'none';
+            section.style.display = (sectionVisible || !terms.length) ? '' : 'none';
+            const empty = section.querySelector('.hub-empty');
+            if (empty) empty.style.display = terms.length ? 'none' : '';
             visible += sectionVisible;
         });
 
         counter.textContent = terms.length ? visible + ' von ' + total + ' Links' : total + ' Links';
-        noResults.hidden = visible !== 0;
+        noResults.hidden = visible !== 0 || !terms.length;
     }
 
     // Wird auch vom alten onkeyup-Attribut aufgerufen
@@ -49,7 +52,7 @@
     input.addEventListener('keydown', e => {
         if (e.key === 'Escape') { input.value = ''; filterCards(); }
         if (e.key === 'Enter') {
-            const first = Array.from(document.querySelectorAll('.card')).find(c => c.style.display !== 'none');
+            const first = Array.from(document.querySelectorAll('.card')).find(c => (c.closest('.card-wrap') || c).style.display !== 'none');
             if (first && input.value.trim()) window.open(first.href, '_blank', 'noopener');
         }
     });

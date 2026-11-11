@@ -221,11 +221,18 @@ $categories = [
     ]
 ];
 
+// Im Browser hinzugefügte/geänderte Links laden (gespeichert in links_<hub>.json, hat Vorrang vor der Liste oben)
+require_once __DIR__ . '/inc/hub.php';
+$categories = hub_load(__FILE__, $categories);
+
 // Wird von index.php für die globale Suche eingebunden – dann nur die Daten liefern.
 if (defined('LINKS_ONLY')) return $categories;
 
 // Link-Check-Ergebnisse (⚠-Hinweise an kaputten Links) und Hilfsfunktionen
 require_once __DIR__ . '/inc/linkcheck.php';
+
+// "+ Link" / "+ Kategorie" / Bearbeiten / Löschen verarbeiten
+hub_handle_post(__FILE__, $categories);
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -460,21 +467,33 @@ require_once __DIR__ . '/inc/linkcheck.php';
             <h1>VRChat Creator Hub</h1>
             <p class="subtitle">// Asset-, Prefab- &amp; Tutorial-Zentrale</p>
             <input type="search" id="searchInput" class="search-box" placeholder="Tool, Creator oder Prefab suchen..." autocomplete="off" autofocus aria-label="Links durchsuchen">
+            <?php hub_toolbar(); ?>
         </header>
 
+        <?php hub_flash(); ?>
+
         <div id="contentWrapper">
-            <?php foreach ($categories as $catName => $tools): ?>
+            <?php if (!$categories): ?>
+                <div class="hub-empty">Noch keine Kategorien – <button type="button" data-hub-open="category">erste Kategorie anlegen</button></div>
+            <?php endif; ?>
+            <?php $cat_pos = 0; foreach ($categories as $catName => $tools): ?>
                 <div class="category-section">
-                    <div class="category-title"><?php echo htmlspecialchars($catName); ?></div>
+                    <div class="category-title hub-editable"><span><?php echo htmlspecialchars($catName); ?></span><?php hub_category_actions($catName, $cat_pos++, count($categories)); ?></div>
                     <div class="grid">
-                        <?php foreach ($tools as $tool): ?>
+                        <?php if (!$tools): ?>
+                            <div class="hub-empty">Noch keine Links – <button type="button" data-hub-open="link" data-category="<?php echo htmlspecialchars($catName); ?>">jetzt hinzufügen</button></div>
+                        <?php endif; ?>
+                        <?php foreach ($tools as $i => $tool): ?>
+                            <div class="card-wrap">
                             <a href="<?php echo htmlspecialchars($tool['url']); ?>" class="card" target="_blank" rel="noopener noreferrer">
                                 <div class="icon-wrapper"><?php echo htmlspecialchars($tool['icon']); ?></div>
                                 <div class="info">
                                     <div class="title"><?php echo htmlspecialchars($tool['title']); ?> <?php echo link_badge($tool['url']); ?></div>
-                                    <div class="desc"><?php echo htmlspecialchars($tool['desc']); ?></div>
+                                    <?php if (($tool['desc'] ?? '') !== ''): ?><div class="desc"><?php echo htmlspecialchars($tool['desc']); ?></div><?php endif; ?>
                                 </div>
                             </a>
+                            <?php hub_link_actions($catName, $i, $tool); ?>
+                            </div>
                         <?php endforeach; ?>
                     </div>
                 </div>
@@ -482,6 +501,7 @@ require_once __DIR__ . '/inc/linkcheck.php';
         </div>
     </div>
 
+    <?php hub_dialogs($categories); ?>
     <script src="assets/hub-search.js"></script>
 
 </body>

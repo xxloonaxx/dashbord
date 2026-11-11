@@ -1,0 +1,88 @@
+/* Bearbeiten-Funktionen der Link-Hubs – passt sich der Akzentfarbe des jeweiligen Hubs an */
+:root {
+    --hub-accent: var(--accent-color, var(--accent-cyan, #38d5e6));
+    --hub-accent2: var(--accent-gold, var(--accent-color, #f3c262));
+    --hub-panel: var(--card-bg, var(--panel-bg, rgba(14, 20, 27, 0.95)));
+    --hub-text: var(--text-color, var(--text-main, #e2e8f0));
+    --hub-muted: var(--text-muted, #8b949e);
+    --hub-red: #ff5555;
+}
+
+.hub-toolbar { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+
+.hub-btn {
+    background: transparent;
+    border: 1px solid var(--hub-accent);
+    color: var(--hub-accent);
+    padding: 8px 16px;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.hub-btn:hover { background: var(--hub-accent); color: #06090e; box-shadow: 0 0 12px var(--hub-accent); }
+.hub-btn-main { border-color: var(--hub-accent2); color: var(--hub-accent2); background: color-mix(in srgb, var(--hub-accent2) 12%, transparent); }
+.hub-btn-main:hover { background: var(--hub-accent2); box-shadow: 0 0 12px var(--hub-accent2); }
+
+.hub-flash { max-width: 600px; margin: 0 auto 20px; padding: 10px 14px; font-size: 0.85rem; border: 1px solid; text-align: center; }
+.hub-flash.ok { border-color: #50fa7b; color: #50fa7b; background: rgba(80, 250, 123, 0.08); }
+.hub-flash.err { border-color: var(--hub-red); color: var(--hub-red); background: rgba(255, 85, 85, 0.08); }
+
+/* Kategorie-Kopf */
+.category-title.hub-editable { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.hub-cat-actions { display: inline-flex; gap: 4px; opacity: 0.35; transition: opacity 0.2s; }
+.category-section:hover .hub-cat-actions, .hub-cat-actions:focus-within { opacity: 1; }
+.hub-inline { display: inline; margin: 0; }
+
+.hub-icon-btn {
+    width: 26px; height: 26px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid color-mix(in srgb, var(--hub-accent) 45%, transparent);
+    color: var(--hub-accent);
+    font-size: 0.8rem;
+    cursor: pointer;
+    padding: 0;
+    transition: all 0.15s ease;
+}
+.hub-icon-btn:hover { background: var(--hub-accent); color: #06090e; }
+.hub-icon-btn.danger { color: var(--hub-red); border-color: rgba(255, 85, 85, 0.45); }
+.hub-icon-btn.danger:hover { background: var(--hub-red); color: #06090e; }
+
+/* Link-Karten: Knöpfe liegen über der Karte */
+.card-wrap { position: relative; display: flex; }
+.card-wrap > .card { flex: 1; min-width: 0; }
+.hub-card-actions { position: absolute; top: 6px; right: 14px; display: flex; gap: 4px; opacity: 0; transition: opacity 0.2s; z-index: 2; }
+.card-wrap:hover .hub-card-actions, .hub-card-actions:focus-within { opacity: 1; }
+@media (hover: none) { .hub-card-actions, .hub-cat-actions { opacity: 0.8; } }
+
+.hub-empty { grid-column: 1 / -1; padding: 18px; text-align: center; color: var(--hub-muted); border: 1px dashed color-mix(in srgb, var(--hub-accent) 40%, transparent); font-size: 0.8rem; letter-spacing: 1px; }
+.hub-empty button { background: none; border: none; color: var(--hub-accent); cursor: pointer; font: inherit; text-decoration: underline; }
+
+/* Dialoge */
+.hub-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; background: rgba(4, 6, 9, 0.85); backdrop-filter: blur(6px); padding: 12px; }
+.hub-modal[hidden] { display: none; }
+.hub-modal-box {
+    position: relative; width: 100%; max-width: 520px; max-height: 92vh; overflow-y: auto;
+    background: var(--hub-panel); border: 1px solid var(--hub-accent); padding: 24px;
+    box-shadow: 0 0 25px color-mix(in srgb, var(--hub-accent) 30%, transparent);
+    color: var(--hub-text);
+}
+.hub-modal-title { color: var(--hub-accent); font-weight: 700; letter-spacing: 2px; text-transform: uppercase; font-size: 0.9rem; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid color-mix(in srgb, var(--hub-accent) 35%, transparent); }
+.hub-modal-close { position: absolute; top: 12px; right: 16px; background: none; border: none; color: var(--hub-red); font-size: 1.4rem; cursor: pointer; }
+.hub-label { display: block; font-size: 0.7rem; letter-spacing: 1px; text-transform: uppercase; color: var(--hub-muted); margin-bottom: 12px; }
+.hub-label[hidden] { display: none; }
+.hub-label input, .hub-label select {
+    display: block; width: 100%; margin-top: 4px; padding: 9px 12px;
+    background: rgba(4, 6, 9, 0.95); border: 1px solid color-mix(in srgb, var(--hub-accent) 35%, transparent);
+    color: #fff; font: inherit; font-size: 0.9rem; letter-spacing: 0.5px; text-transform: none; outline: none; color-scheme: dark;
+}
+.hub-label input:focus, .hub-label select:focus { border-color: var(--hub-accent); box-shadow: 0 0 8px color-mix(in srgb, var(--hub-accent) 35%, transparent); }
+.hub-row { display: flex; gap: 10px; }
+.hub-icons { display: flex; flex-wrap: wrap; gap: 4px; margin: -4px 0 16px; }
+.hub-icons button { width: 32px; height: 32px; background: rgba(4, 6, 9, 0.8); border: 1px solid color-mix(in srgb, var(--hub-accent) 30%, transparent); cursor: pointer; font-size: 1rem; }
+.hub-icons button:hover, .hub-icons button.sel { border-color: var(--hub-accent2); background: color-mix(in srgb, var(--hub-accent2) 15%, transparent); }
+.hub-submit { width: 100%; padding: 11px; }

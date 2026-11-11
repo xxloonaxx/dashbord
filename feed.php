@@ -167,6 +167,57 @@ function fetch_fresh_feed_items(array $sources, int $max_items): array {
     return array_slice($items, 0, $max_items);
 }
 
+// ---------- Eigene Feed-Quellen (im Browser hinzugefügt, gespeichert in feed_sources.json) ----------
+$sources_file = __DIR__ . '/feed_sources.json';
+$feed_sources = load_json($sources_file, $feed_sources);
+
+/** Prüft, ob unter der Adresse wirklich ein RSS-/Atom-Feed liegt. */
+function is_valid_feed(string $url): bool {
+    $content = download_all([$url])[0] ?? false;
+    $xml = $content ? @simplexml_load_string($content) : false;
+    return $xml && (isset($xml->channel->item) || isset($xml->entry));
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['feed_action'])) {
+    $msg = '';
+    $error = '';
+
+    if ($_POST['feed_action'] === 'add_source') {
+        $name = mb_substr(trim($_POST['name'] ?? ''), 0, 80);
+        $url = trim($_POST['url'] ?? '');
+        if ($url !== '' && !preg_match('#^https?://#i', $url)) $url = 'https://' . $url;
+        $cat = ($_POST['category'] ?? '') === '__new__' ? mb_substr(trim($_POST['new_category'] ?? ''), 0, 60) : trim($_POST['category'] ?? '');
+
+        $exists = false;
+        foreach ($feed_sources as $list) foreach ($list as $src) if (rtrim($src['url'], '/') === rtrim($url, '/')) $exists = true;
+
+        if ($name === '' || $cat === '' || safe_url($url) === '#') $error = 'Bitte Name, gültige Adresse und Kategorie angeben.';
+        elseif ($exists) $error = 'Diese Feed-Adresse ist schon eingetragen.';
+        elseif (!is_valid_feed($url)) $error = 'Unter dieser Adresse wurde kein RSS-/Atom-Feed gefunden.';
+        else {
+            $feed_sources[$cat][] = ['name' => $name, 'url' => $url];
+            $msg = 'Feed „' . $name . '“ hinzugefügt.';
+        }
+    }
+
+    if ($_POST['feed_action'] === 'delete_source') {
+        $cat = $_POST['category'] ?? '';
+        $idx = (int)($_POST['index'] ?? -1);
+        if (isset($feed_sources[$cat][$idx])) {
+            $msg = 'Feed „' . $feed_sources[$cat][$idx]['name'] . '“ entfernt.';
+            array_splice($feed_sources[$cat], $idx, 1);
+            if (!$feed_sources[$cat]) unset($feed_sources[$cat]);   // leere Kategorie weg
+        }
+    }
+
+    if (!$error) {
+        save_json($sources_file, $feed_sources);
+        @unlink($cache_file);   // Cache verwerfen, damit die Änderung sofort sichtbar ist
+    }
+    header('Location: feed.php?' . http_build_query($error ? ['error' => $error] : ['msg' => $msg]));
+    exit;
+}
+
 // Caching-Logik: Falls Cache existiert und noch frisch ist, aus Datei laden.
 // "?refresh=1" erzwingt ein Neuladen (max. einmal pro Minute, damit niemand den Server dauerhaft beschäftigt).
 $cache_age = is_file($cache_file) ? time() - filemtime($cache_file) : PHP_INT_MAX;
@@ -462,6 +513,31 @@ $cache_time = is_file($cache_file) ? date('H:i', filemtime($cache_file)) : '--:-
         }
 
         .refresh-btn:hover { background: rgba(56, 213, 230, 0.15); color: #fff; }
+        button.refresh-btn { background: none; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
+        .refresh-btn.add-btn { color: var(--accent-gold, #f3c262); border-color: rgba(243, 194, 98, 0.5); }
+        .feed-actions { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+        .feed-flash { padding: 10px 14px; margin-bottom: 16px; font-size: 0.85rem; border: 1px solid; }
+        .feed-flash.ok { border-color: #50fa7b; color: #50fa7b; background: rgba(80, 250, 123, 0.08); }
+        .feed-flash.err { border-color: #ff5555; color: #ff5555; background: rgba(255, 85, 85, 0.08); }
+        .sources { margin-bottom: 18px; font-size: 0.8rem; color: var(--text-muted); }
+        .sources summary { cursor: pointer; letter-spacing: 2px; text-transform: uppercase; font-size: 0.7rem; }
+        .src-cat { margin: 10px 0 4px; color: var(--accent-cyan); letter-spacing: 1px; text-transform: uppercase; font-size: 0.72rem; }
+        .src-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 5px 10px; border: 1px solid rgba(56, 213, 230, 0.15); margin-bottom: 4px; }
+        .src-row span { overflow-wrap: anywhere; }
+        .src-row small { color: var(--text-muted); opacity: 0.7; }
+        .src-del { background: none; border: 1px solid rgba(255, 85, 85, 0.5); color: #ff5555; cursor: pointer; width: 24px; height: 24px; flex-shrink: 0; }
+        .src-del:hover { background: #ff5555; color: #06090e; }
+        .feed-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; background: rgba(4, 6, 9, 0.85); backdrop-filter: blur(6px); padding: 12px; }
+        .feed-modal[hidden] { display: none; }
+        .feed-modal form { width: 100%; max-width: 480px; background: var(--panel-bg); border: 1px solid var(--accent-cyan); padding: 24px; position: relative; }
+        .feed-modal h3 { margin: 0 0 16px; color: var(--accent-cyan); letter-spacing: 2px; text-transform: uppercase; font-size: 0.9rem; }
+        .feed-modal label { display: block; font-size: 0.7rem; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }
+        .feed-modal label[hidden] { display: none; }
+        .feed-modal input, .feed-modal select { display: block; width: 100%; margin-top: 4px; padding: 9px 12px; background: rgba(4, 6, 9, 0.95); border: 1px solid rgba(56, 213, 230, 0.3); color: #fff; font: inherit; text-transform: none; color-scheme: dark; }
+        .feed-modal .close { position: absolute; top: 10px; right: 14px; background: none; border: none; color: #ff5555; font-size: 1.4rem; cursor: pointer; }
+        .feed-modal .submit { width: 100%; padding: 11px; background: rgba(243, 194, 98, 0.12); border: 1px solid #f3c262; color: #f3c262; font: inherit; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; }
+        .feed-modal .submit:hover { background: #f3c262; color: #06090e; }
+        .feed-modal .hint { font-size: 0.72rem; color: var(--text-muted); margin: -4px 0 14px; line-height: 1.5; }
 
         .empty-state[hidden] { display: none; }
 
@@ -490,7 +566,10 @@ $cache_time = is_file($cache_file) ? date('H:i', filemtime($cache_file)) : '--:-
             <h1>Live Feed Node</h1>
             <div class="feed-status">
                 <span><?php echo count($feed_items); ?> Meldungen &bull; Stand <?php echo e($cache_time); ?> Uhr<?php if ($fetch_failed): ?> &bull; <span style="color: var(--accent-red);">Aktualisierung fehlgeschlagen – zeige Cache</span><?php endif; ?></span>
-                <a href="feed.php?refresh=1" class="refresh-btn" title="Feeds jetzt neu laden">&#x21bb; Aktualisieren</a>
+                <span class="feed-actions">
+                    <button type="button" class="refresh-btn add-btn" onclick="openSourceModal()">＋ Feed-Quelle</button>
+                    <a href="feed.php?refresh=1" class="refresh-btn" title="Feeds jetzt neu laden">&#x21bb; Aktualisieren</a>
+                </span>
             </div>
             
             <div class="controls">
@@ -504,6 +583,27 @@ $cache_time = is_file($cache_file) ? date('H:i', filemtime($cache_file)) : '--:-
                 </div>
             </div>
         </header>
+
+        <?php if (!empty($_GET['msg'])): ?><div class="feed-flash ok" role="status"><?php echo e($_GET['msg']); ?></div><?php endif; ?>
+        <?php if (!empty($_GET['error'])): ?><div class="feed-flash err" role="alert"><?php echo e($_GET['error']); ?></div><?php endif; ?>
+
+        <details class="sources">
+            <summary>Feed-Quellen verwalten (<?php echo array_sum(array_map('count', $feed_sources)); ?>)</summary>
+            <?php foreach ($feed_sources as $cat => $list): ?>
+                <div class="src-cat"><?php echo e($cat); ?></div>
+                <?php foreach ($list as $i => $src): ?>
+                    <div class="src-row">
+                        <span><?php echo e($src['name']); ?> <small><?php echo e($src['url']); ?></small></span>
+                        <form method="POST" style="margin:0;" onsubmit="return confirm(<?php echo e(json_encode('Feed „' . $src['name'] . '“ entfernen?', JSON_UNESCAPED_UNICODE)); ?>);">
+                            <input type="hidden" name="feed_action" value="delete_source">
+                            <input type="hidden" name="category" value="<?php echo e($cat); ?>">
+                            <input type="hidden" name="index" value="<?php echo (int)$i; ?>">
+                            <button type="submit" class="src-del" title="Entfernen">✕</button>
+                        </form>
+                    </div>
+                <?php endforeach; ?>
+            <?php endforeach; ?>
+        </details>
 
         <div class="feed-container" id="feedContainer">
             <?php if (empty($feed_items)): ?>
@@ -527,7 +627,56 @@ $cache_time = is_file($cache_file) ? date('H:i', filemtime($cache_file)) : '--:-
         </div>
     </div>
 
+    <div class="feed-modal" id="sourceModal" role="dialog" aria-modal="true" hidden>
+        <form method="POST">
+            <button type="button" class="close" onclick="closeSourceModal()" aria-label="Schließen">&times;</button>
+            <h3>// Feed-Quelle hinzufügen</h3>
+            <input type="hidden" name="feed_action" value="add_source">
+            <label>Name *<input type="text" name="name" maxlength="80" required placeholder="z. B. Tagesschau"></label>
+            <label>Feed-Adresse (RSS / Atom) *<input type="url" name="url" required placeholder="https://…/feed.xml"></label>
+            <p class="hint">Tipp: Bluesky-Profile haben einen Feed unter <code>bsky.app/profile/NAME/rss</code>, YouTube-Kanäle unter <code>youtube.com/feeds/videos.xml?channel_id=…</code>. Die Adresse wird beim Speichern geprüft.</p>
+            <label>Kategorie *
+                <select name="category" id="srcCategory">
+                    <?php foreach (array_keys($feed_sources) as $cat): ?><option value="<?php echo e($cat); ?>"><?php echo e($cat); ?></option><?php endforeach; ?>
+                    <option value="__new__">＋ Neue Kategorie…</option>
+                </select>
+            </label>
+            <label id="srcNewCat" hidden>Name der neuen Kategorie<input type="text" name="new_category" maxlength="60"></label>
+            <button type="submit" class="submit">Prüfen &amp; Speichern</button>
+        </form>
+    </div>
+
     <script>
+        // Feed-Quellen-Dialog
+        const sourceModal = document.getElementById('sourceModal');
+        const srcCat = document.getElementById('srcCategory');
+        const srcNew = document.getElementById('srcNewCat');
+        function syncNewCat() {
+            srcNew.hidden = srcCat.value !== '__new__';
+            srcNew.querySelector('input').required = !srcNew.hidden;
+        }
+        function openSourceModal() {
+            sourceModal.hidden = false;
+            if (srcCat.options.length === 1) srcCat.value = '__new__';
+            syncNewCat();
+            sourceModal.querySelector('input[name=name]').focus();
+        }
+        function closeSourceModal() { sourceModal.hidden = true; }
+        const srcUrl = sourceModal.querySelector('input[name=url]');
+        srcUrl.addEventListener('blur', () => {
+            const v = srcUrl.value.trim();
+            if (v && !/^https?:\/\//i.test(v)) srcUrl.value = 'https://' + v;
+        });
+        srcCat.addEventListener('change', () => { syncNewCat(); if (!srcNew.hidden) srcNew.querySelector('input').focus(); });
+        sourceModal.addEventListener('click', e => { if (e.target === sourceModal) closeSourceModal(); });
+        sourceModal.querySelector('form').addEventListener('submit', e => {
+            const btn = e.target.querySelector('.submit');
+            btn.textContent = '⟳ Prüfe Feed…';
+            btn.disabled = true;
+        });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape' && !sourceModal.hidden) closeSourceModal(); }, true);
+        if (location.search.includes('msg=') || location.search.includes('error=')) history.replaceState(null, '', location.pathname);
+
         // Eurofurence Ziel-Datum (Nächster August-Termin)
         const efDate = new Date(<?php echo json_encode(date('c', $countdown_ts)); ?>).getTime();
 
@@ -578,7 +727,7 @@ $cache_time = is_file($cache_file) ? date('H:i', filemtime($cache_file)) : '--:-
         searchInput.addEventListener('input', filterFeeds);
         searchInput.addEventListener('keydown', e => { if (e.key === 'Escape') { searchInput.value = ''; filterFeeds(); } });
         document.addEventListener('keydown', e => {
-            if (e.key === '/' && document.activeElement !== searchInput) { e.preventDefault(); searchInput.focus(); }
+            if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) { e.preventDefault(); searchInput.focus(); }
         });
 
         function setCategory(category, buttonElement) {

@@ -23,8 +23,21 @@ Alle Dateien und Ordner (inkl. `inc/`, `assets/` und `.htaccess`) auf einen Webs
 Für Feed und Link-Check wird die PHP-Erweiterung cURL benötigt (bei fast allen Hostern aktiv).
 Der Webserver braucht Schreibrechte im Ordner, damit die JSON-Dateien und Archive angelegt werden können.
 
-Die Datendateien (`*_data.json`, `feed_cache.json`, `linkcheck_cache.json`, `archive*/`) sind per `.gitignore` vom Repository ausgeschlossen
+Die Datendateien (`*_data.json`, `links_*.json`, `feed_sources.json`, `feed_cache.json`, `linkcheck_cache.json`, `archive*/`) sind per `.gitignore` vom Repository ausgeschlossen
 und werden beim ersten Aufruf automatisch erzeugt.
+
+## Links & Kategorien im Browser bearbeiten
+
+Jeder Link-Hub hat oben die Knöpfe **＋ Link hinzufügen** und **＋ Kategorie** (Tastenkürzel: `n` = neuer Link).
+Beim Überfahren einer Karte bzw. Kategorie erscheinen außerdem ✎ (bearbeiten), ✕ (löschen) und ▲▼ (Kategorie verschieben).
+
+Die Links im `$categories`-Array der Hub-Datei sind nur der **Startbestand**. Sobald im Browser etwas geändert wird,
+speichert der Hub seinen kompletten Stand in `links_<hubname>.json` – diese Datei hat danach Vorrang.
+Beim Hochladen einer neuen Version der Webseite bleiben die eigenen Änderungen dadurch erhalten.
+Um einen Hub auf den Startbestand zurückzusetzen, einfach die passende `links_….json` löschen.
+
+Im Feed gibt es entsprechend **＋ Feed-Quelle** (wird beim Speichern auf einen gültigen RSS-/Atom-Feed geprüft)
+und unter „Feed-Quellen verwalten" ein ✕ zum Entfernen. Gespeichert wird in `feed_sources.json`.
 
 ## Neuen Link-Hub anlegen
 
