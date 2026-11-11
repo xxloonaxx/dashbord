@@ -5,6 +5,19 @@ require_once __DIR__ . '/inc/linkcheck.php';
 require_once __DIR__ . '/inc/auth.php';
 require_once __DIR__ . '/inc/calendar.php';
 
+/** Termine der nächsten 24 Stunden (für die "Bald"-Leiste) */
+function soon_items(bool $admin): array {
+    try {
+        $now = new DateTimeImmutable();
+        return array_values(array_filter(cal_items($now->setTime(0, 0), $now->modify('+1 day'), $admin, ['events', 'countdowns']),
+            function ($it) use ($now) {
+                return empty($it['cancelled']) && $it['end'] >= $now && $it['start'] <= $now->modify('+24 hours') && (!$it['all_day'] || $it['start']->format('Y-m-d') === $now->format('Y-m-d'));
+            }));
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
 // Beim allerersten Aufruf: Admin-Konto anlegen
 auth_require_setup();
 $admin = is_admin();
@@ -242,6 +255,14 @@ $total_nodes = count($clean_links) + count($global_sub_links);
             clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
         }
 
+        .soon-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: -12px 0 18px; padding: 7px 12px; text-decoration: none; color: var(--text-main);
+            border: 1px solid rgba(56, 213, 230, 0.3); background: rgba(56, 213, 230, 0.05); font-size: 0.78rem; }
+        .soon-bar:hover { border-color: var(--accent-cyan); }
+        .soon-label { font-size: 0.65rem; letter-spacing: 2px; text-transform: uppercase; color: var(--accent-cyan); }
+        .soon-item { padding: 2px 8px; border-left: 3px solid var(--c); background: rgba(255, 255, 255, 0.03); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+        .soon-item b { color: var(--c); margin-right: 4px; font-variant-numeric: tabular-nums; }
+        .soon-more { color: var(--text-muted); font-size: 0.7rem; }
+        .soon-bar + .admin-bar { margin-top: 0; }
         .admin-bar { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin: -12px 0 18px; font-size: 0.7rem; letter-spacing: 1.5px; text-transform: uppercase; flex-wrap: wrap; }
         .admin-bar.is-admin { justify-content: space-between; padding: 7px 12px; border: 1px solid rgba(243, 194, 98, 0.35); background: rgba(243, 194, 98, 0.05); }
         .admin-user { color: var(--accent-gold); text-decoration: none; font-weight: 700; }
@@ -542,6 +563,19 @@ $total_nodes = count($clean_links) + count($global_sub_links);
             <div class="telemetry-item">TIME: <span id="liveClock">--:--:--</span></div>
         </div>
 
+        <?php $soon = soon_items($admin); if ($soon): ?>
+            <a href="calendar.php?view=agenda" class="soon-bar" title="Zum Kalender">
+                <span class="soon-label">📅 Nächste 24 Std.</span>
+                <?php foreach (array_slice($soon, 0, 4) as $it): ?>
+                    <span class="soon-item" style="--c: <?php echo e($it['color']); ?>;">
+                        <b><?php echo $it['all_day'] ? 'heute' : ($it['start'] <= new DateTimeImmutable() ? 'jetzt' : e($it['start']->format('H:i'))); ?></b>
+                        <?php echo e(($it['icon'] ?? '') . ' ' . $it['title']); ?>
+                    </span>
+                <?php endforeach; ?>
+                <?php if (count($soon) > 4): ?><span class="soon-more">+<?php echo count($soon) - 4; ?></span><?php endif; ?>
+            </a>
+        <?php endif; ?>
+
         <!-- Admin-Leiste: NSFW-Schalter nur für angemeldete Admins -->
         <div class="admin-bar <?php echo $admin ? 'is-admin' : ''; ?>">
             <?php if ($admin): ?>
@@ -748,5 +782,6 @@ $total_nodes = count($clean_links) + count($global_sub_links);
         if (savedEngine && select.querySelector('option[value="' + savedEngine + '"]')) select.value = savedEngine;
         updateSearchEngine(select.value);
     </script>
+    <script src="assets/reminders.js" data-endpoint="calendar.php?reminders=1"></script>
 </body>
 </html>

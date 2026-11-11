@@ -22,13 +22,21 @@
         const it = C.items[key];
         if (!it) return;
         const m = $('#detailModal');
-        $('#dType').textContent = (typeLabel[it.type] || '') + (it.category && it.type === 'event' ? ' · ' + it.category : '') + (it.private ? ' · 🔒 privat' : '');
+        $('#dType').textContent = (typeLabel[it.type] || '') + (it.category && it.type === 'event' ? ' · ' + it.category : '') + (it.private ? ' · 🔒 privat' : '') + (it.cancelled ? ' · ABGESAGT' : '');
         $('#dTitle').textContent = (it.icon ? it.icon + ' ' : '') + it.title;
+        $('#dTitle').classList.toggle('cancelled', !!it.cancelled);
         $('#dTitle').style.setProperty('--dc', it.color);
         $('#dWhen').textContent = it.when;
         const rows = [];
+        if (it.cancelled) rows.push(['Status', '<span style="color: var(--accent-red)">Dieser Termin wurde abgesagt.</span>']);
         if (it.recurrence && it.recurrence !== 'Einmalig') rows.push(['Wiederholung', esc(it.recurrence)]);
-        if (it.location) rows.push(['Ort', esc(it.location) + ' · <a href="https://www.openstreetmap.org/search?query=' + encodeURIComponent(it.location) + '" target="_blank" rel="noopener noreferrer">Karte ↗</a>']);
+        if (it.location || it.geo) {
+            const map = it.geo ? 'https://www.openstreetmap.org/?mlat=' + it.geo.split(';')[0] + '&mlon=' + it.geo.split(';')[1] + '#map=16/' + it.geo.replace(';', '/')
+                               : 'https://www.openstreetmap.org/search?query=' + encodeURIComponent(it.location);
+            rows.push(['Ort', esc(it.location || it.geo.replace(';', ', ')) + ' · <a href="' + esc(map) + '" target="_blank" rel="noopener noreferrer">Karte ↗</a>']);
+        }
+        if (it.reminder_label) rows.push(['Erinnerung', '🔔 ' + esc(it.reminder_label)]);
+        if (it.source) rows.push(['Quelle', '📡 Abo „' + esc(it.source.name) + '“' + (it.ext_category ? ' · ' + esc(it.ext_category) : '') + ' – schreibgeschützt']);
         if (it.url) rows.push(['Link', '<a href="' + esc(it.url) + '" target="_blank" rel="noopener noreferrer">' + esc(it.url) + '</a>']);
         if (it.description) rows.push([it.type === 'countdown' ? 'Notiz' : 'Notizen', esc(it.description)]);
         if (it.type === 'countdown') rows.push(['Hinweis', 'Kommt von der Countdown-Seite und wird dort verwaltet.']);
@@ -37,8 +45,12 @@
         const a = $('#dActions');
         a.innerHTML = '';
         if (it.type === 'countdown') a.innerHTML = '<a class="btn btn-sm btn-gold" href="countdown.php">⏳ Zum Countdown</a>';
-        if (it.type === 'event' && C.admin) {
-            a.innerHTML = '<button type="button" class="btn btn-sm btn-gold" data-act="edit">✎ Bearbeiten</button>'
+        if (it.type === 'event') a.innerHTML = '<a class="btn btn-sm" href="calendar.php?ics_event=' + it.id + '" title="In anderen Kalender übernehmen">📥 .ics</a>';
+        if (it.type === 'event' && C.admin && it.source) {
+            a.innerHTML += '<button type="button" class="btn btn-sm btn-gold" data-act="dup" title="Als eigenen, bearbeitbaren Termin kopieren">⧉ Als eigenen Termin kopieren</button>';
+            a.onclick = e => { if ((e.target.closest('[data-act]') || {}).dataset?.act === 'dup') openForm(Object.assign({}, it, { rec: 'none', recur_byday: '', recur_count: '' }), true); };
+        } else if (it.type === 'event' && C.admin) {
+            a.innerHTML += '<button type="button" class="btn btn-sm btn-gold" data-act="edit">✎ Bearbeiten</button>'
                 + '<button type="button" class="btn btn-sm" data-act="dup">⧉ Duplizieren</button>'
                 + (it.rec !== 'none' ? '<button type="button" class="btn btn-sm btn-danger" data-act="del-one">Nur diesen Termin löschen</button>' : '')
                 + '<button type="button" class="btn btn-sm btn-danger" data-act="del-all">' + (it.rec !== 'none' ? 'Ganze Serie löschen' : 'Löschen') + '</button>';
@@ -82,10 +94,39 @@
     // ---------- Termin-Formular ----------
     const form = $('#eventForm');
     let prevStart = null;
+    const WD = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
+    const WD_NAMES = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+    /** Auswahl "Monatlich am …" passend zum Startdatum füllen */
+    function fillMonthly(keep) {
+        const sel = $('#fMonthly');
+        if (!sel || !form.start_date.value) return;
+        const d = new Date(form.start_date.value + 'T12:00');
+        const wd = (d.getDay() + 6) % 7, day = d.getDate();
+        const nth = Math.ceil(day / 7);
+        const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate() - day < 7;
+        const opts = [['', day + '. jeden Monats'], [nth + WD[wd], nth + '. ' + WD_NAMES[wd]]];
+        if (last) opts.push(['-1' + WD[wd], 'letzten ' + WD_NAMES[wd]]);
+        const cur = keep !== undefined ? keep : sel.value;
+        sel.innerHTML = opts.map(([v, l]) => '<option value="' + v + '">' + l + '</option>').join('');
+        if (cur && !opts.some(o => o[0] === cur)) sel.insertAdjacentHTML('beforeend', '<option value="' + esc(cur) + '">' + esc(cur) + '</option>');
+        sel.value = cur || '';
+    }
     function syncForm() {
         if (!form) return;
+        const rec = form.recurrence.value;
         form.classList.toggle('all-day', form.all_day.checked);
-        form.classList.toggle('no-rec', form.recurrence.value === 'none');
+        form.classList.toggle('no-rec', rec === 'none');
+        $$('.rec-weekly', form).forEach(x => x.hidden = rec !== 'weekly');
+        $$('.rec-monthly', form).forEach(x => x.hidden = rec !== 'monthly');
+        $$('.rec-yearly', form).forEach(x => x.hidden = rec !== 'yearly');
+        $$('.rec-end', form).forEach(x => x.hidden = rec === 'none');
+        const units = { daily: 'Tage', weekly: 'Wochen', monthly: 'Monate', yearly: 'Jahre' };
+        if ($('#fRecUnit')) $('#fRecUnit').textContent = units[rec] || '';
+        if (rec === 'weekly' && !$$('input[name="byday[]"]:checked', form).length && form.start_date.value) {
+            const wd = (new Date(form.start_date.value + 'T12:00').getDay() + 6) % 7;
+            $$('input[name="byday[]"]', form)[wd].checked = true;
+        }
+        if (rec === 'monthly') fillMonthly();
     }
     function openForm(it, asNew) {
         if (!form) return;
@@ -97,14 +138,21 @@
         const d = (it && it.start_date) || C.anchor;
         set('start_date', d); set('end_date', (it && it.end_date) || d);
         if (it) {
-            set('title', it.title); set('location', it.location); set('url', it.url); set('description', it.description);
+            set('title', it.base_title || it.title); set('location', it.location); set('url', it.url); set('description', it.description);
             set('start_time', it.start_time); set('end_time', it.end_time);
             if (it.category_id !== undefined) set('category_id', it.category_id || 0);
             if (it.rec) set('recurrence', it.rec);
             set('recur_interval', it.recur_interval); set('recur_until', it.recur_until);
+            if (it.recur_count) set('recur_count', it.recur_count);
+            form.querySelector('input[name=recur_end][value="' + (it.recur_count ? 'count' : (it.recur_until ? 'until' : 'never')) + '"]').checked = true;
+            const days = String(it.recur_byday || '').split(',');
+            $$('input[name="byday[]"]', form).forEach(cb => cb.checked = it.rec === 'weekly' && days.includes(cb.value));
+            if (it.reminder !== undefined) set('reminder', it.reminder || 0);
+            form.show_age.checked = !!it.show_age;
             if (it.all_day !== undefined) form.all_day.checked = !!it.all_day;
             if (it.priv !== undefined) form.private.checked = !!it.priv;
         }
+        fillMonthly(it && it.rec === 'monthly' ? (it.recur_byday || '') : '');
         $('#seriesNote').hidden = !(editing && it.rec && it.rec !== 'none');
         prevStart = form.start_date.value;
         syncForm();
@@ -113,6 +161,10 @@
     }
     if (form) {
         form.all_day.addEventListener('change', syncForm);
+        form.start_date.addEventListener('change', () => { if (form.recurrence.value === 'monthly') fillMonthly(''); });
+        // "bis"/"nach" automatisch auswählen, wenn ein Wert eingetragen wird
+        form.recur_until.addEventListener('input', () => { form.querySelector('input[name=recur_end][value=until]').checked = true; });
+        form.recur_count.addEventListener('input', () => { form.querySelector('input[name=recur_end][value=count]').checked = true; });
         form.recurrence.addEventListener('change', syncForm);
         // Ende verschiebt sich mit dem Beginn (Dauer bleibt erhalten)
         form.start_date.addEventListener('focus', () => { prevStart = form.start_date.value; });
@@ -154,6 +206,33 @@
             openForm({ start_date: col.dataset.day, end_date: col.dataset.day, start_time: p(h) + ':00', end_time: p(h + 1) + ':00' }, true);
         }));
     }
+
+    // ---------- Abo-Dialog ----------
+    const subForm = $('#subForm');
+    $$('[data-sub-edit]').forEach(btn => btn.addEventListener('click', () => {
+        subForm.reset();
+        const d = btn.dataset.subEdit === 'new' ? null : JSON.parse(btn.dataset.subEdit);
+        subForm.elements.sid.value = d ? d.id : '';
+        $('#subFormTitle').textContent = d ? '// Abo bearbeiten' : '// Kalender abonnieren';
+        $('#subEnabledRow').hidden = !d;
+        if (d) {
+            ['name', 'url', 'color', 'refresh_minutes', 'skip_past_days'].forEach(k => subForm.elements[k].value = d[k]);
+            subForm.elements.private.checked = d.private == 1;
+            subForm.elements.enabled.checked = d.enabled == 1;
+        }
+        open($('#subModal'));
+        subForm.elements.url.focus();
+    }));
+    if (subForm) subForm.addEventListener('submit', () => { const b = subForm.querySelector('button[type=submit]'); b.textContent = '⟳ Lade Kalender…'; b.disabled = true; });
+
+    // Link kopieren
+    $$('[data-copy]').forEach(b => b.addEventListener('click', () => {
+        (navigator.clipboard ? navigator.clipboard.writeText(b.dataset.copy) : Promise.reject()).then(() => { b.textContent = '✓'; setTimeout(() => b.textContent = '⧉', 1500); }, () => prompt('Link kopieren:', b.dataset.copy));
+    }));
+
+    // Schnell-Eingabe
+    const qh = $('#quickHelpBtn');
+    if (qh) qh.addEventListener('click', () => { $('#quickHelp').hidden = !$('#quickHelp').hidden; });
 
     // ---------- Drag & Drop (Monat, einmalige Termine) ----------
     let dragId = null;
@@ -210,6 +289,7 @@
         else if (views[e.key]) location.href = 'calendar.php?view=' + views[e.key] + '&date=' + C.anchor;
         else if (e.key === 'n' && C.admin) { e.preventDefault(); openForm({ start_date: C.anchor }, true); }
         else if (e.key === '/') { e.preventDefault(); $('#calSearch').focus(); }
+        else if (e.key === 'q' && $('#quickText')) { e.preventDefault(); $('#quickText').focus(); }
     });
 
     // Hinweis-URL aufräumen

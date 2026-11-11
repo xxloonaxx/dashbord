@@ -56,6 +56,17 @@ Unbedingt **HTTPS** beim Hoster aktivieren, sonst wird das Passwort unverschlüs
   der Kalender zeigt die Countdowns an, verändert sie aber nie
 - Drag & Drop (Monatsansicht), Klick in einen Tag/eine Uhrzeit legt dort einen Termin an, Duplizieren
 - Import/Export als `.ics` (Google, Apple, Outlook, Thunderbird), Ebenen-/Kategorie-Filter, Tastenkürzel, Druckansicht
+- **Kalender-Abos per URL** (iCal/.ics/webcal, z. B. WoltLab-Forenkalender, Google, Outlook, Nextcloud): eigene Farbe,
+  automatische Aktualisierung (15 Min. bis 1 Woche, mit ETag), neue/geänderte/gelöschte/abgesagte Termine werden
+  übernommen, verschobene Einzeltermine von Serien ebenso; Abo-Termine sind schreibgeschützt (können aber als eigener
+  Termin kopiert werden). Abo-Links enthalten oft persönliche Zugangsschlüssel – Abos sind daher standardmäßig privat.
+- **Wiederholungen wie im Profi-Kalender**: wöchentlich an mehreren Tagen, monatlich am n-ten/letzten Wochentag
+  („jeden 2. Samstag“), Ende nach Datum oder nach Anzahl
+- **Schnell-Eingabe** (Taste `Q`): „Morgen 19 Uhr Stammtisch @Stuttgart #Con“, „jeden 2. Samstag 15 Uhr Walk“, „24.12. Heiligabend“
+- **Erinnerungen** (5 Min. bis 1 Woche vorher) als Hinweis + Browser-Benachrichtigung auf Startseite und Kalender,
+  „Nächste 24 Std.“-Leiste auf der Startseite
+- **Kalender aufs Handy**: geheimer Abo-Link (nur öffentliche oder alle Termine) für Google/Apple/Outlook, jederzeit erneuerbar
+- **Jahrestage/Alter** bei jährlichen Terminen („Luna (30)“), **Überschneidungs-Warnung**, einzelne Termine als `.ics`
 - Datenbank: `data/calendar_<zufall>.sqlite` (Ordner per `.htaccess` gesperrt, Dateiname nicht erratbar),
   wird beim ersten Aufruf automatisch angelegt und ist im Backup enthalten. Benötigt die PHP-Erweiterung `pdo_sqlite`.
 

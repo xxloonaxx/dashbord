@@ -166,6 +166,7 @@ if ($mode === 'dashboard') {
         ['PHP-Version', version_compare(PHP_VERSION, '7.4', '>='), PHP_VERSION],
         ['cURL (Feed & Link-Check)', function_exists('curl_multi_init'), function_exists('curl_multi_init') ? 'aktiv' : 'fehlt'],
         ['ZIP (Backup)', class_exists('ZipArchive'), class_exists('ZipArchive') ? 'aktiv' : 'fehlt – Backup als JSON'],
+        ['SQLite (Kalender)', class_exists('PDO') && in_array('sqlite', PDO::getAvailableDrivers(), true), class_exists('PDO') && in_array('sqlite', PDO::getAvailableDrivers(), true) ? 'aktiv' : 'fehlt – Kalender nicht nutzbar (pdo_sqlite aktivieren)'],
         ['Ordner beschreibbar', is_writable(__DIR__), is_writable(__DIR__) ? 'ja' : 'nein – Daten können nicht gespeichert werden'],
         ['.htaccess (Datenschutz)', is_file(__DIR__ . '/.htaccess'), stripos($server_soft, 'nginx') !== false ? 'nginx erkannt – .htaccess wirkt dort nicht!' : (is_file(__DIR__ . '/.htaccess') ? 'vorhanden' : 'fehlt')],
         ['Zeitzone', true, date_default_timezone_get() . ' · ' . date('H:i')],

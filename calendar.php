@@ -3,6 +3,7 @@
  * Kalender (SQLite) – Monat, Woche, Agenda, Jahr; Feiertage; Countdowns als eigene Ebene (nur lesend).
  */
 require_once __DIR__ . '/inc/calendar.php';
+require_once __DIR__ . '/inc/calendar_ics.php';
 require_once __DIR__ . '/inc/auth.php';
 
 auth_require_setup();
@@ -34,15 +35,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'save_event':
                 $ev = cal_event_from_post($_POST);
                 $id = (int)($_POST['id'] ?? 0);
-                if ($id && cal_get($id)) { cal_update($id, $ev); $msg = 'Termin „' . $ev['title'] . '“ gespeichert.'; }
-                else { cal_insert($ev); $msg = 'Termin „' . $ev['title'] . '“ angelegt.'; }
+                $existing = $id ? cal_get($id) : null;
+                if ($existing && $existing['source_id']) throw new InvalidArgumentException('Termine aus Abos sind schreibgeschützt – bitte im Originalkalender ändern.');
+                if ($existing) { cal_update($id, $ev); $msg = 'Termin „' . $ev['title'] . '“ gespeichert.'; }
+                else { $id = cal_insert($ev); $msg = 'Termin „' . $ev['title'] . '“ angelegt.'; }
                 $_POST['date'] = substr($ev['start_at'], 0, 10);
+                if ($conf = cal_conflicts($id, $ev['start_at'], $ev['end_at'], (bool)$ev['all_day'])) $msg .= ' ⚠ Überschneidung mit: ' . implode(', ', $conf);
+                break;
+
+            case 'quick_add':
+                $q = cal_quick_parse((string)($_POST['text'] ?? ''));
+                $ev = cal_event_from_post($q);
+                $id = cal_insert($ev);
+                $_POST['date'] = substr($ev['start_at'], 0, 10);
+                $msg = '„' . $ev['title'] . '“ angelegt: ' . implode(' · ', $q['understood']) . '.';
+                if ($conf = cal_conflicts($id, $ev['start_at'], $ev['end_at'], (bool)$ev['all_day'])) $msg .= ' ⚠ Überschneidung mit: ' . implode(', ', $conf);
+                break;
+
+            case 'sub_save':
+                $url = cal_normalize_feed_url((string)($_POST['url'] ?? ''));
+                if (!cal_url_allowed($url)) throw new InvalidArgumentException('Bitte eine gültige, öffentliche Kalender-Adresse (https://… oder webcal://…) angeben.');
+                $fields = [
+                    'name' => mb_substr(trim($_POST['name'] ?? ''), 0, 80),
+                    'url' => $url,
+                    'color' => preg_match('/^#[0-9a-f]{6}$/i', $_POST['color'] ?? '') ? $_POST['color'] : '#bd93f9',
+                    'private' => !empty($_POST['private']) ? 1 : 0,
+                    'enabled' => isset($_POST['sid']) && !isset($_POST['enabled']) ? 0 : 1,
+                    'refresh_minutes' => max(15, min(10080, (int)($_POST['refresh_minutes'] ?? 60))),
+                    'skip_past_days' => max(0, min(3650, (int)($_POST['skip_past_days'] ?? 0))),
+                ];
+                $sid = (int)($_POST['sid'] ?? 0);
+                if ($sid) {
+                    $old = cal_db()->prepare('SELECT url FROM subscriptions WHERE id = ?');
+                    $old->execute([$sid]);
+                    $url_changed = $old->fetchColumn() !== $url;
+                    $set = implode(', ', array_map(function ($k) { return "$k = :$k"; }, array_keys($fields)));
+                    cal_db()->prepare("UPDATE subscriptions SET $set" . ($url_changed ? ", etag = '', last_modified = ''" : '') . ' WHERE id = :id')->execute($fields + ['id' => $sid]);
+                    // Sichtbarkeit sofort auf vorhandene Termine übertragen
+                    cal_db()->prepare('UPDATE events SET private = ? WHERE source_id = ?')->execute([$fields['private'], $sid]);
+                } else {
+                    cal_db()->prepare('INSERT INTO subscriptions (name, url, color, private, enabled, refresh_minutes, skip_past_days) VALUES (:name, :url, :color, :private, :enabled, :refresh_minutes, :skip_past_days)')->execute($fields);
+                    $sid = (int)cal_db()->lastInsertId();
+                }
+                $r = cal_sync_subscription($sid, true);
+                $msg = 'Abo gespeichert und abgeglichen: ' . $r['total'] . ' Termine (' . $r['added'] . ' neu, ' . $r['updated'] . ' aktualisiert, ' . $r['removed'] . ' entfernt).';
+                break;
+
+            case 'sub_sync':
+                $r = cal_sync_subscription((int)($_POST['sid'] ?? 0), true);
+                $msg = 'Abgleich fertig: ' . $r['total'] . ' Termine – ' . $r['added'] . ' neu, ' . $r['updated'] . ' aktualisiert, ' . $r['removed'] . ' entfernt.';
+                break;
+
+            case 'sub_delete':
+                cal_db()->prepare('DELETE FROM subscriptions WHERE id = ?')->execute([(int)($_POST['sid'] ?? 0)]);
+                $msg = 'Abo und seine Termine wurden entfernt.';
+                break;
+
+            case 'feed_token':
+                cal_feed_token($_POST['kind'] === 'private' ? 'private' : 'public', true);
+                $msg = 'Neuer Abo-Link erzeugt – der alte funktioniert nicht mehr.';
                 break;
 
             case 'delete_event':
                 $id = (int)($_POST['id'] ?? 0);
                 $ev = cal_get($id);
                 if (!$ev) break;
+                if ($ev['source_id']) throw new InvalidArgumentException('Termine aus Abos sind schreibgeschützt.');
                 if (($_POST['scope'] ?? 'all') === 'single' && $ev['recurrence'] !== 'none' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST['day'] ?? '')) {
                     cal_db()->prepare('INSERT OR IGNORE INTO event_exceptions (event_id, day) VALUES (?, ?)')->execute([$id, $_POST['day']]);
                     $msg = 'Termin am ' . date('d.m.Y', strtotime($_POST['day'])) . ' entfernt (Serie bleibt bestehen).';
@@ -56,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $id = (int)($_POST['id'] ?? 0);
                 $ev = cal_get($id);
                 $to = $_POST['to_day'] ?? '';
-                if ($ev && $ev['recurrence'] === 'none' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) {
+                if ($ev && !$ev['source_id'] && $ev['recurrence'] === 'none' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) {
                     $shift = (strtotime($to) - strtotime(substr($ev['start_at'], 0, 10))) / 86400;
                     $mv = function ($dt) use ($shift) { return date('Y-m-d H:i', strtotime(($shift >= 0 ? '+' : '') . (int)$shift . ' days', strtotime($dt))); };
                     cal_db()->prepare("UPDATE events SET start_at = ?, end_at = ?, updated_at = datetime('now','localtime') WHERE id = ?")->execute([$mv($ev['start_at']), $mv($ev['end_at']), $id]);
@@ -110,9 +168,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 if (($_GET['export'] ?? '') === 'ics') {
     header('Content-Type: text/calendar; charset=utf-8');
     header('Content-Disposition: attachment; filename="kalender_' . date('Y-m-d') . '.ics"');
-    echo cal_export_ics($admin);
+    echo cal_export_ics($admin, !empty($_GET['subs']));
     exit;
 }
+
+// Abo-Link für Handy-/Desktop-Kalender: calendar.php?feed=<geheimer Token>
+if (isset($_GET['feed'])) {
+    $kind = cal_feed_kind_for_token((string)$_GET['feed']);
+    if (!$kind) { http_response_code(404); exit('Unbekannter Kalender-Link.'); }
+    header('Content-Type: text/calendar; charset=utf-8');
+    header('Cache-Control: private, max-age=900');
+    header('Content-Disposition: inline; filename="ghostnode.ics"');
+    echo cal_export_ics($kind === 'private', cal_setting('feed_include_subs', '0') === '1');
+    exit;
+}
+
+// Einzelner Termin als .ics
+if (isset($_GET['ics_event'])) {
+    $ev = cal_get((int)$_GET['ics_event']);
+    if (!$ev || ($ev['private'] && !$admin)) { http_response_code(404); exit('Nicht gefunden.'); }
+    header('Content-Type: text/calendar; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . (preg_replace('/[^A-Za-z0-9äöüÄÖÜß_-]+/u', '-', $ev['title']) ?: 'termin') . '.ics"');
+    echo cal_export_ics(true, true, (int)$ev['id']);
+    exit;
+}
+
+// Anstehende Erinnerungen als JSON (für Browser-Benachrichtigungen auf Startseite & Kalender)
+if (isset($_GET['reminders'])) {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    $now = new DateTimeImmutable();
+    $list = [];
+    foreach (cal_items($now->setTime(0, 0), $now->modify('+8 days'), $admin, ['events']) as $it) {
+        if ($it['cancelled'] || $it['start'] < $now) continue;
+        $remind = $it['reminder'] > 0 ? $it['start']->modify('-' . $it['reminder'] . ' minutes') : null;
+        if ($it['start']->getTimestamp() - $now->getTimestamp() > 86400 && (!$remind || $remind->getTimestamp() - $now->getTimestamp() > 86400)) continue;
+        $list[] = ['key' => $it['key'], 'title' => $it['title'], 'start' => $it['start']->format('c'), 'all_day' => $it['all_day'],
+                   'remind_at' => $remind ? $remind->format('c') : null, 'location' => $it['location'], 'color' => $it['color']];
+    }
+    echo json_encode(['now' => $now->format('c'), 'items' => $list], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// Fällige Abos im Hintergrund dieses Aufrufs abgleichen (max. 3, nach ihrem eigenen Intervall)
+$auto_synced = cal_sync_due(3);
 
 // ---------- Ansicht & Zeitraum ----------
 $view = in_array($_GET['view'] ?? '', ['month', 'week', 'agenda', 'year'], true) ? $_GET['view'] : 'month';
@@ -149,6 +248,10 @@ switch ($view) {
 
 $items = cal_items($from, $to, $admin);
 $cats = cal_categories();
+$subs = cal_subscriptions();
+$sub_errors = array_filter($subs, function ($x) { return $x['enabled'] && $x['last_status'] === 'fehler'; });
+$self_url = (((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')) ? 'https' : 'http')
+          . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/calendar.php')), '/') . '/calendar.php';
 $state = cal_setting('state', '');
 
 // Seitenleiste: heute + demnächst
@@ -183,30 +286,35 @@ function cal_item_json(array $it, string $day): array {
             . ($it['end']->format('Y-m-d') !== $it['start']->format('Y-m-d') ? ' – ' . german_datetime($it['end']->getTimestamp(), !$it['all_day']) : ($it['all_day'] ? '' : ' – ' . $it['end']->format('H:i') . ' Uhr')),
         'location' => $it['location'] ?? '', 'description' => $it['description'] ?? '', 'url' => $it['url'] ?? '', 'icon' => $it['icon'] ?? '',
         'recurrence' => CAL_RECURRENCE[$it['recurrence'] ?? 'none'] ?? '', 'private' => !empty($it['private']), 'day' => $day,
+        'start_iso' => $it['start']->format('c'),
     ];
     if ($it['type'] === 'event') {
         $rs = cal_dt($it['raw_start']); $re = cal_dt($it['raw_end']);
         $d += ['id' => $it['id'], 'all_day' => $it['all_day'], 'rec' => $it['recurrence'], 'recur_interval' => $it['recur_interval'], 'recur_until' => $it['recur_until'] ?? '',
                'category_id' => $it['category_id'], 'start_date' => $rs->format('Y-m-d'), 'start_time' => $rs->format('H:i'),
-               'end_date' => $re->format('Y-m-d'), 'end_time' => $re->format('H:i'), 'url' => $it['url'], 'priv' => $it['private']];
-        if ($it['recurrence'] !== 'none' && ($it['recur_interval'] ?? 1) > 1) {
-            $units = ['daily' => 'Tage', 'weekly' => 'Wochen', 'monthly' => 'Monate', 'yearly' => 'Jahre'];
-            $d['recurrence'] = 'Alle ' . $it['recur_interval'] . ' ' . $units[$it['recurrence']];
-        }
-        if (!empty($it['recur_until'])) $d['recurrence'] .= ' bis ' . date('d.m.Y', strtotime($it['recur_until']));
+               'end_date' => $re->format('Y-m-d'), 'end_time' => $re->format('H:i'), 'url' => $it['url'], 'priv' => $it['private'],
+               'recur_byday' => $it['recur_byday'], 'recur_count' => $it['recur_count'] ?: '', 'reminder' => $it['reminder'], 'show_age' => $it['show_age'],
+               'cancelled' => $it['cancelled'], 'geo' => $it['geo'], 'ext_category' => $it['ext_category'], 'source' => $it['source'],
+               'title' => $it['title'], 'base_title' => $it['base_title'],
+               'reminder_label' => $it['reminder'] ? CAL_REMINDERS[$it['reminder']] ?? '' : ''];
+        $d['recurrence'] = cal_recurrence_text($it);
     }
     return $d;
 }
 
 $json_items = [];
+/** Filter-Schlüssel (Kategorie-ID bzw. "s<Abo-ID>") */
+function cal_filter_key(array $it): string {
+    return (string)($it['filter'] ?? $it['type']);
+}
 /** Eintrag als Chip ausgeben */
 function cal_chip(array $it, string $day, bool $admin, bool $compact = true): string {
     global $json_items;
     $json_items[$it['key']] = cal_item_json($it, $day);
     $time = $it['all_day'] ? '' : '<span class="t">' . e(cal_time_label($it, $day) === 'ganztägig' ? '' : $it['start']->format('H:i')) . '</span>';
-    $drag = $admin && $it['type'] === 'event' && $it['recurrence'] === 'none' ? ' draggable="true" data-id="' . (int)$it['id'] . '"' : '';
-    $icon = $it['type'] === 'countdown' ? e($it['icon']) . ' ' : ($it['type'] === 'holiday' ? '★ ' : (!empty($it['private']) && $admin ? '🔒 ' : ''));
-    return '<button type="button" class="chip ' . $it['type'] . ($it['all_day'] ? ' allday' : '') . '" style="--c: ' . e($it['color']) . ';" data-key="' . e($it['key']) . '" data-cat="' . e((string)($it['category_id'] ?? $it['type'])) . '" data-layer="' . $it['type'] . '"' . $drag . ' title="' . e($it['title']) . '">'
+    $drag = $admin && $it['type'] === 'event' && $it['recurrence'] === 'none' && empty($it['source']) ? ' draggable="true" data-id="' . (int)$it['id'] . '"' : '';
+    $icon = $it['type'] === 'countdown' ? e($it['icon']) . ' ' : ($it['type'] === 'holiday' ? '★ ' : (!empty($it['source']) ? '📡 ' : (!empty($it['private']) && $admin ? '🔒 ' : '')));
+    return '<button type="button" class="chip ' . $it['type'] . ($it['all_day'] ? ' allday' : '') . (!empty($it['cancelled']) ? ' cancelled' : '') . '" style="--c: ' . e($it['color']) . ';" data-key="' . e($it['key']) . '" data-cat="' . e(cal_filter_key($it)) . '" data-layer="' . $it['type'] . '"' . $drag . ' title="' . e($it['title'] . (!empty($it['cancelled']) ? ' (abgesagt)' : '')) . '">'
         . $time . '<span class="n">' . $icon . e($it['title']) . '</span></button>';
 }
 
@@ -261,6 +369,26 @@ $flash_err = $_GET['error'] ?? '';
             <input type="search" name="q" id="calSearch" value="<?php echo e($q); ?>" placeholder="Termine durchsuchen… (/)" autocomplete="off">
         </form>
     </div>
+
+    <?php if ($admin): ?>
+        <form method="POST" class="quick-add" id="quickAdd">
+            <input type="hidden" name="action" value="quick_add"><input type="hidden" name="view" value="<?php echo $view; ?>"><input type="hidden" name="date" value="<?php echo $anchor->format('Y-m-d'); ?>">
+            <span class="qa-icon" aria-hidden="true">⚡</span>
+            <input type="text" name="text" id="quickText" maxlength="300" autocomplete="off" required
+                   placeholder="Schnell-Eingabe: „Morgen 19 Uhr Stammtisch @Stuttgart #Con“ · „jeden 2. Samstag 15 Uhr Walk“ · „24.12. Heiligabend“">
+            <button type="submit" class="btn btn-sm btn-gold">Anlegen</button>
+            <button type="button" class="btn btn-sm" id="quickHelpBtn" title="Was verstehe ich?">?</button>
+        </form>
+        <div class="quick-help" id="quickHelp" hidden>
+            <b>Datum:</b> heute, morgen, übermorgen, Freitag, 12.11., 12.11.2026 &nbsp;·&nbsp;
+            <b>Zeit:</b> 19 Uhr, 19:30, 18-22 Uhr, von 19 bis 23 Uhr, ganztägig &nbsp;·&nbsp;
+            <b>Wiederholung:</b> jeden Freitag, jeden 2. Samstag, jeden letzten Freitag, wöchentlich, monatlich, jährlich &nbsp;·&nbsp;
+            <b>Ort:</b> @Stuttgart &nbsp;·&nbsp; <b>Kategorie:</b> #Con &nbsp;·&nbsp; <b>Sichtbar für alle:</b> !öffentlich
+        </div>
+        <?php foreach ($sub_errors as $se): ?>
+            <div class="cal-flash err">📡 Abo „<?php echo e($se['name'] ?: $se['url']); ?>“: <?php echo e($se['last_error']); ?></div>
+        <?php endforeach; ?>
+    <?php endif; ?>
 
     <div class="cal-layout">
         <main class="cal-main">
@@ -337,7 +465,7 @@ $flash_err = $_GET['error'] ?? '';
                                     $top = ((int)$it['start']->format('G') * 60 + (int)$it['start']->format('i')) / 60 * $hour_h;
                                     $height = max(22, ($it['end']->getTimestamp() - $it['start']->getTimestamp()) / 3600 * $hour_h);
                                     global $json_items; $json_items[$it['key']] = cal_item_json($it, $ds); ?>
-                                    <button type="button" class="block <?php echo $it['type']; ?>" data-key="<?php echo e($it['key']); ?>" data-cat="<?php echo e((string)($it['category_id'] ?? $it['type'])); ?>" data-layer="<?php echo $it['type']; ?>"
+                                    <button type="button" class="block <?php echo $it['type']; ?><?php echo !empty($it['cancelled']) ? ' cancelled' : ''; ?>" data-key="<?php echo e($it['key']); ?>" data-cat="<?php echo e(cal_filter_key($it)); ?>" data-layer="<?php echo $it['type']; ?>"
                                             style="--c: <?php echo e($it['color']); ?>; top: <?php echo $top; ?>px; height: <?php echo $height; ?>px; left: calc(<?php echo $lane_of[$k] / $lane_count * 100; ?>% + 2px); width: calc(<?php echo 100 / $lane_count; ?>% - 4px);">
                                         <b><?php echo e(($it['type'] === 'countdown' ? $it['icon'] . ' ' : '') . $it['title']); ?></b>
                                         <small><?php echo e(cal_time_label($it, $ds)); ?><?php echo !empty($it['location']) ? ' · ' . e($it['location']) : ''; ?></small>
@@ -362,7 +490,7 @@ $flash_err = $_GET['error'] ?? '';
                             </div>
                             <div class="agenda-list">
                                 <?php foreach ($day_items as $it): $json_items[$it['key']] = cal_item_json($it, $ds); ?>
-                                    <button type="button" class="agenda-row <?php echo $it['type']; ?>" style="--c: <?php echo e($it['color']); ?>;" data-key="<?php echo e($it['key']); ?>" data-cat="<?php echo e((string)($it['category_id'] ?? $it['type'])); ?>" data-layer="<?php echo $it['type']; ?>">
+                                    <button type="button" class="agenda-row <?php echo $it['type']; ?><?php echo !empty($it['cancelled']) ? ' cancelled' : ''; ?>" style="--c: <?php echo e($it['color']); ?>;" data-key="<?php echo e($it['key']); ?>" data-cat="<?php echo e(cal_filter_key($it)); ?>" data-layer="<?php echo $it['type']; ?>">
                                         <span class="agenda-time"><?php echo e(cal_time_label($it, $ds)); ?></span>
                                         <span class="agenda-body"><strong><?php echo e(($it['type'] === 'countdown' ? $it['icon'] . ' ' : ($it['type'] === 'holiday' ? '★ ' : '')) . $it['title']); ?></strong>
                                             <small><?php echo e(implode(' · ', array_filter([$it['category'], $it['location'] ?? '', $it['recurrence'] ?? '' ? (CAL_RECURRENCE[$it['recurrence']] ?? '') : '']))); ?></small></span>
@@ -431,7 +559,60 @@ $flash_err = $_GET['error'] ?? '';
                     <label class="toggle"><input type="checkbox" data-cat-toggle="<?php echo (int)$c['id']; ?>" checked> <span class="sw" style="background: <?php echo e($c['color']); ?>;"></span> <?php echo e($c['name']); ?></label>
                 <?php endforeach; ?>
                 <label class="toggle"><input type="checkbox" data-cat-toggle="0" checked> <span class="sw" style="background: #8b949e;"></span> Ohne Kategorie</label>
+                <?php if ($subs): ?>
+                    <hr>
+                    <?php foreach ($subs as $sb): if (!$sb['enabled'] || ($sb['private'] && !$admin)) continue; ?>
+                        <label class="toggle"><input type="checkbox" data-cat-toggle="s<?php echo (int)$sb['id']; ?>" checked> <span class="sw" style="background: <?php echo e($sb['color']); ?>;"></span> 📡 <?php echo e($sb['name'] ?: 'Abo'); ?> <small><?php echo (int)$sb['event_count']; ?></small></label>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </div>
+
+            <div class="panel">
+                <div class="panel-title"><span>// Erinnerungen</span></div>
+                <button type="button" class="btn btn-sm" id="notifyBtn" style="width: 100%;">🔔 Browser-Benachrichtigungen aktivieren</button>
+                <p class="side-note" id="notifyNote">Bei Terminen mit Erinnerung meldet sich der Browser, solange Startseite oder Kalender geöffnet sind.</p>
+            </div>
+
+            <?php if ($admin): ?>
+                <div class="panel">
+                    <div class="panel-title"><span>// 📡 Kalender-Abos</span><button type="button" class="btn btn-sm btn-gold" data-sub-edit="new" title="Kalender per URL abonnieren">＋</button></div>
+                    <?php if (!$subs): ?><p class="side-note" style="margin-top: 0;">Fremde Kalender per Link abonnieren – z. B. Forum-Kalender (WoltLab), Google, Outlook, Nextcloud. Sie werden automatisch aktuell gehalten.</p><?php endif; ?>
+                    <?php foreach ($subs as $sb): ?>
+                        <div class="sub-row <?php echo $sb['enabled'] ? '' : 'off'; ?>" style="--c: <?php echo e($sb['color']); ?>;">
+                            <div class="sub-head">
+                                <b><?php echo e($sb['name'] ?: 'Abo'); ?></b>
+                                <span class="sub-state <?php echo $sb['last_status'] === 'fehler' ? 'bad' : ''; ?>" title="<?php echo e($sb['last_error']); ?>">
+                                    <?php echo !$sb['enabled'] ? 'pausiert' : ($sb['last_status'] === 'fehler' ? '⚠ Fehler' : (int)$sb['event_count'] . ' Termine'); ?>
+                                </span>
+                            </div>
+                            <small>
+                                <?php echo $sb['last_sync'] ? 'Abgleich ' . e(date('d.m. H:i', strtotime($sb['last_sync']))) : 'noch nie'; ?>
+                                · alle <?php echo (int)$sb['refresh_minutes'] >= 60 ? round($sb['refresh_minutes'] / 60, 1) . ' Std.' : (int)$sb['refresh_minutes'] . ' Min.'; ?>
+                                · <?php echo $sb['private'] ? '🔒 privat' : 'öffentlich'; ?>
+                            </small>
+                            <div class="sub-actions">
+                                <form method="POST"><input type="hidden" name="action" value="sub_sync"><input type="hidden" name="sid" value="<?php echo (int)$sb['id']; ?>"><input type="hidden" name="view" value="<?php echo $view; ?>"><input type="hidden" name="date" value="<?php echo $anchor->format('Y-m-d'); ?>"><button type="submit" class="btn btn-sm" title="Jetzt abgleichen">⟳</button></form>
+                                <button type="button" class="btn btn-sm" title="Bearbeiten" data-sub-edit="<?php echo e(json_encode(array_intersect_key($sb, array_flip(['id', 'name', 'url', 'color', 'enabled', 'private', 'refresh_minutes', 'skip_past_days'])))); ?>">✎</button>
+                                <form method="POST" onsubmit="return confirm('Abo „<?php echo e(addslashes($sb['name'])); ?>“ und alle seine Termine entfernen?');"><input type="hidden" name="action" value="sub_delete"><input type="hidden" name="sid" value="<?php echo (int)$sb['id']; ?>"><input type="hidden" name="view" value="<?php echo $view; ?>"><input type="hidden" name="date" value="<?php echo $anchor->format('Y-m-d'); ?>"><button type="submit" class="btn btn-sm btn-danger" title="Entfernen">✕</button></form>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-title"><span>// Kalender aufs Handy</span></div>
+                    <p class="side-note" style="margin-top: 0;">Diesen Link in Google Kalender („Per URL hinzufügen“), Apple Kalender („Kalenderabo“) oder Outlook eintragen – er bleibt automatisch aktuell. Link geheim halten!</p>
+                    <?php foreach (['public' => 'Nur öffentliche Termine', 'private' => 'Alle Termine (inkl. privat)'] as $kind => $klabel): $feed = $self_url . '?feed=' . cal_feed_token($kind); ?>
+                        <label class="field" style="margin-top: 10px;"><?php echo $klabel; ?></label>
+                        <div class="feed-link">
+                            <input type="text" readonly value="<?php echo e($feed); ?>" onclick="this.select()">
+                            <button type="button" class="btn btn-sm" data-copy="<?php echo e($feed); ?>" title="Kopieren">⧉</button>
+                            <a class="btn btn-sm" href="<?php echo e(preg_replace('#^https?://#', 'webcal://', $feed)); ?>" title="Direkt im Kalender-Programm öffnen">↗</a>
+                            <form method="POST" onsubmit="return confirm('Neuen Link erzeugen? Der alte hört sofort auf zu funktionieren.');"><input type="hidden" name="action" value="feed_token"><input type="hidden" name="kind" value="<?php echo $kind; ?>"><button type="submit" class="btn btn-sm btn-danger" title="Neuen Link erzeugen">↻</button></form>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
 
             <div class="panel">
                 <div class="panel-title"><span>// Export<?php echo $admin ? ' &amp; Import' : ''; ?></span></div>
@@ -531,11 +712,35 @@ $flash_err = $_GET['error'] ?? '';
             <div><label class="field">Ort</label><input type="text" name="location" maxlength="200" placeholder="Adresse oder Online"></div>
         </div>
 
-        <div class="f-grid three">
+        <div class="f-grid two">
             <div><label class="field">Wiederholen</label>
                 <select name="recurrence" id="fRec"><?php foreach (CAL_RECURRENCE as $k => $n): ?><option value="<?php echo $k; ?>"><?php echo $n; ?></option><?php endforeach; ?></select></div>
-            <div class="rec-f"><label class="field">Alle … </label><input type="number" name="recur_interval" min="1" max="99" value="1"></div>
-            <div class="rec-f"><label class="field">bis (optional)</label><input type="date" name="recur_until"></div>
+            <div class="rec-f"><label class="field">Alle …</label><div class="inline-unit"><input type="number" name="recur_interval" min="1" max="99" value="1"><span id="fRecUnit">Wochen</span></div></div>
+        </div>
+        <div class="rec-f rec-weekly">
+            <label class="field">An diesen Tagen</label>
+            <div class="weekday-pick">
+                <?php foreach (CAL_WEEKDAY_CODES as $code => $num): ?><label><input type="checkbox" name="byday[]" value="<?php echo $code; ?>"><span><?php echo mb_substr(CAL_WEEKDAY_NAMES[$num], 0, 2); ?></span></label><?php endforeach; ?>
+            </div>
+        </div>
+        <div class="rec-f rec-monthly">
+            <label class="field">Monatlich am</label>
+            <select name="monthly_mode" id="fMonthly"></select>
+        </div>
+        <div class="rec-f rec-end">
+            <label class="field">Endet</label>
+            <div class="end-pick">
+                <label><input type="radio" name="recur_end" value="never" checked> nie</label>
+                <label><input type="radio" name="recur_end" value="until"> am <input type="date" name="recur_until"></label>
+                <label><input type="radio" name="recur_end" value="count"> nach <input type="number" name="recur_count" min="1" max="999" value="10" style="width: 70px;"> Terminen</label>
+            </div>
+        </div>
+        <label class="toggle rec-yearly" style="margin-top: 8px;"><input type="checkbox" name="show_age" value="1"> Jahre zählen – zeigt z. B. „Luna (30)“ beim Geburtstag (Startjahr = Geburtsjahr)</label>
+
+        <div class="f-grid two">
+            <div><label class="field">🔔 Erinnerung</label>
+                <select name="reminder"><?php foreach (CAL_REMINDERS as $min => $label): ?><option value="<?php echo $min; ?>"><?php echo e($label); ?></option><?php endforeach; ?></select></div>
+            <div></div>
         </div>
 
         <label class="field">Link</label>
@@ -546,6 +751,31 @@ $flash_err = $_GET['error'] ?? '';
         <label class="toggle" style="margin: 12px 0;"><input type="checkbox" name="private" value="1" checked> 🔒 Privat – nur angemeldet sichtbar</label>
         <p class="side-note" id="seriesNote" hidden>Änderungen gelten für die ganze Serie.</p>
         <button type="submit" class="btn btn-gold" style="width: 100%;">Speichern</button>
+    </form>
+</div>
+
+<div class="modal-overlay" id="subModal" role="dialog" aria-modal="true">
+    <form method="POST" class="modal-box event-form" id="subForm">
+        <button type="button" class="modal-close" data-close aria-label="Schließen">&times;</button>
+        <div class="panel-title" id="subFormTitle">// Kalender abonnieren</div>
+        <input type="hidden" name="action" value="sub_save"><input type="hidden" name="sid" value="">
+        <input type="hidden" name="view" value="<?php echo $view; ?>"><input type="hidden" name="date" value="<?php echo $anchor->format('Y-m-d'); ?>">
+        <label class="field">Kalender-Adresse (iCal / .ics / webcal) *</label>
+        <input type="text" name="url" required placeholder="https://forum.example.de/calendar/calendar-export/…  oder  webcal://…" autocomplete="off" spellcheck="false">
+        <p class="side-note">Im Forum meist unter Kalender → „Exportieren“/„Abonnieren“, bei Google unter „Geheime Adresse im iCal-Format“.</p>
+        <div class="f-grid two">
+            <div><label class="field">Name (leer = aus dem Kalender)</label><input type="text" name="name" maxlength="80" placeholder="z. B. SüdStaaten Forum"></div>
+            <div><label class="field">Farbe</label><input type="color" name="color" value="#bd93f9" style="height: 40px; padding: 2px;"></div>
+        </div>
+        <div class="f-grid two">
+            <div><label class="field">Aktualisieren alle</label>
+                <select name="refresh_minutes"><?php foreach ([15 => '15 Minuten', 30 => '30 Minuten', 60 => '1 Stunde', 180 => '3 Stunden', 360 => '6 Stunden', 720 => '12 Stunden', 1440 => '1 Tag', 10080 => '1 Woche'] as $m => $l): ?><option value="<?php echo $m; ?>" <?php echo $m === 60 ? 'selected' : ''; ?>><?php echo $l; ?></option><?php endforeach; ?></select></div>
+            <div><label class="field">Alte Termine</label>
+                <select name="skip_past_days"><?php foreach ([0 => 'alle übernehmen', 30 => 'älter als 1 Monat weglassen', 365 => 'älter als 1 Jahr weglassen', 730 => 'älter als 2 Jahre weglassen'] as $d => $l): ?><option value="<?php echo $d; ?>"><?php echo $l; ?></option><?php endforeach; ?></select></div>
+        </div>
+        <label class="toggle" style="margin-top: 10px;"><input type="checkbox" name="private" value="1" checked> 🔒 Privat – Termine nur angemeldet sichtbar (Abo-Links enthalten oft persönliche Zugangsschlüssel)</label>
+        <label class="toggle" id="subEnabledRow"><input type="checkbox" name="enabled" value="1" checked> Aktiv (pausierte Abos werden ausgeblendet und nicht abgeglichen)</label>
+        <button type="submit" class="btn btn-gold" style="width: 100%; margin-top: 10px;">Speichern &amp; jetzt abgleichen</button>
     </form>
 </div>
 
@@ -569,5 +799,6 @@ $flash_err = $_GET['error'] ?? '';
     };
 </script>
 <script src="assets/calendar.js"></script>
+<script src="assets/reminders.js" data-endpoint="calendar.php?reminders=1"></script>
 </body>
 </html>

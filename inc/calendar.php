@@ -29,7 +29,7 @@ function cal_db_file(): string {
     }
     return $dir . '/calendar_' . bin2hex(random_bytes(12)) . '.sqlite';
 }
-const CAL_SCHEMA_VERSION = 1;
+const CAL_SCHEMA_VERSION = 2;
 
 const CAL_STATES = [
     '' => 'Nur bundesweite Feiertage', 'BW' => 'Baden-Württemberg', 'BY' => 'Bayern', 'BE' => 'Berlin', 'BB' => 'Brandenburg',
@@ -39,6 +39,10 @@ const CAL_STATES = [
 ];
 
 const CAL_RECURRENCE = ['none' => 'Einmalig', 'daily' => 'Täglich', 'weekly' => 'Wöchentlich', 'monthly' => 'Monatlich', 'yearly' => 'Jährlich'];
+const CAL_WEEKDAY_CODES = ['MO' => 1, 'TU' => 2, 'WE' => 3, 'TH' => 4, 'FR' => 5, 'SA' => 6, 'SU' => 7];
+const CAL_WEEKDAY_NAMES = [1 => 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+const CAL_REMINDERS = [0 => 'keine', 5 => '5 Min. vorher', 15 => '15 Min. vorher', 30 => '30 Min. vorher', 60 => '1 Std. vorher',
+                       120 => '2 Std. vorher', 1440 => '1 Tag vorher', 2880 => '2 Tage vorher', 10080 => '1 Woche vorher'];
 
 function cal_db(): PDO {
     static $db = null;
@@ -110,6 +114,38 @@ function cal_migrate(PDO $db): void {
             $ins->execute([$n, $c, $i]);
         }
         $db->exec("INSERT OR IGNORE INTO settings (key, value) VALUES ('state', 'BW')");
+    }
+    if ($version < 2) {
+        // Abos (ICS-URLs), erweiterte Wiederholungen, Erinnerungen, Jahrestage, Absagen
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS subscriptions (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                name            TEXT NOT NULL,
+                url             TEXT NOT NULL,
+                color           TEXT NOT NULL DEFAULT '#bd93f9',
+                enabled         INTEGER NOT NULL DEFAULT 1,
+                private         INTEGER NOT NULL DEFAULT 1,
+                refresh_minutes INTEGER NOT NULL DEFAULT 60,
+                skip_past_days  INTEGER NOT NULL DEFAULT 0,   -- 0 = alle Termine übernehmen
+                last_sync       TEXT,
+                last_status     TEXT NOT NULL DEFAULT '',
+                last_error      TEXT NOT NULL DEFAULT '',
+                etag            TEXT NOT NULL DEFAULT '',
+                last_modified   TEXT NOT NULL DEFAULT '',
+                event_count     INTEGER NOT NULL DEFAULT 0,
+                created_at      TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+            );
+            ALTER TABLE events ADD COLUMN recur_byday  TEXT;                -- 'MO,WE' (wöchentlich) oder '2SA' / '-1FR' (monatlich)
+            ALTER TABLE events ADD COLUMN recur_count  INTEGER;             -- Anzahl der Termine (statt Enddatum)
+            ALTER TABLE events ADD COLUMN reminder     INTEGER NOT NULL DEFAULT 0;   -- Minuten vorher
+            ALTER TABLE events ADD COLUMN show_age     INTEGER NOT NULL DEFAULT 0;   -- Jahrestag/Alter anzeigen
+            ALTER TABLE events ADD COLUMN geo          TEXT NOT NULL DEFAULT '';     -- 'lat;lon'
+            ALTER TABLE events ADD COLUMN cancelled    INTEGER NOT NULL DEFAULT 0;
+            ALTER TABLE events ADD COLUMN ext_category TEXT NOT NULL DEFAULT '';     -- Kategorie aus fremdem Kalender
+            ALTER TABLE events ADD COLUMN source_id    INTEGER REFERENCES subscriptions(id) ON DELETE CASCADE;
+            ALTER TABLE events ADD COLUMN source_uid   TEXT;
+            CREATE INDEX IF NOT EXISTS idx_events_source ON events(source_id, source_uid);
+        ");
     }
     $db->exec('PRAGMA user_version = ' . CAL_SCHEMA_VERSION);
     $db->commit();
@@ -194,7 +230,10 @@ function cal_items(DateTimeImmutable $from, DateTimeImmutable $to, bool $is_admi
 
     if (in_array('events', $layers, true)) {
         $cats = cal_categories();
-        $sql = 'SELECT * FROM events WHERE start_at <= :to AND (recurrence <> \'none\' OR end_at >= :from)' . ($is_admin ? '' : ' AND private = 0');
+        $subs = cal_subscriptions();
+        $sql = 'SELECT * FROM events WHERE start_at <= :to AND (recurrence <> \'none\' OR end_at >= :from)'
+             . ' AND (source_id IS NULL OR source_id IN (SELECT id FROM subscriptions WHERE enabled = 1))'
+             . ($is_admin ? '' : ' AND private = 0');
         $st = cal_db()->prepare($sql);
         $st->execute([':to' => $to->format('Y-m-d H:i'), ':from' => $from->format('Y-m-d H:i')]);
         $events = $st->fetchAll();
@@ -206,14 +245,22 @@ function cal_items(DateTimeImmutable $from, DateTimeImmutable $to, bool $is_admi
 
         foreach ($events as $ev) {
             $cat = $cats[(int)$ev['category_id']] ?? null;
+            $sub = $ev['source_id'] ? ($subs[(int)$ev['source_id']] ?? null) : null;
+            $first_year = (int)substr($ev['start_at'], 0, 4);
             foreach (cal_expand($ev, $from, $to) as [$s, $e]) {
                 if (isset($exc[(int)$ev['id']][$s->format('Y-m-d')])) continue;
+                $age = ($ev['show_age'] && $ev['recurrence'] === 'yearly') ? (int)$s->format('Y') - $first_year : null;
                 $items[] = [
-                    'type' => 'event', 'key' => 'e' . $ev['id'] . '-' . $s->format('Ymd'), 'id' => (int)$ev['id'],
-                    'title' => $ev['title'], 'start' => $s, 'end' => $e, 'all_day' => (bool)$ev['all_day'],
-                    'color' => $cat['color'] ?? '#8b949e', 'category' => $cat['name'] ?? '', 'category_id' => (int)$ev['category_id'],
-                    'location' => $ev['location'], 'description' => $ev['description'], 'url' => $ev['url'],
+                    'type' => 'event', 'key' => 'e' . $ev['id'] . '-' . $s->format('YmdHi'), 'id' => (int)$ev['id'],
+                    'title' => $ev['title'] . ($age ? ' (' . $age . ')' : ''), 'base_title' => $ev['title'], 'age' => $age,
+                    'start' => $s, 'end' => $e, 'all_day' => (bool)$ev['all_day'],
+                    'color' => $cat['color'] ?? ($sub['color'] ?? '#8b949e'), 'category' => $cat['name'] ?? ($ev['ext_category'] ?: ($sub['name'] ?? '')),
+                    'category_id' => (int)$ev['category_id'], 'filter' => $sub ? 's' . $sub['id'] : (string)(int)$ev['category_id'],
+                    'location' => $ev['location'], 'description' => $ev['description'], 'url' => $ev['url'], 'geo' => $ev['geo'],
                     'recurrence' => $ev['recurrence'], 'recur_interval' => (int)$ev['recur_interval'], 'recur_until' => $ev['recur_until'],
+                    'recur_byday' => (string)$ev['recur_byday'], 'recur_count' => (int)$ev['recur_count'],
+                    'reminder' => (int)$ev['reminder'], 'show_age' => (bool)$ev['show_age'], 'cancelled' => (bool)$ev['cancelled'],
+                    'source' => $sub ? ['id' => (int)$sub['id'], 'name' => $sub['name']] : null, 'ext_category' => $ev['ext_category'],
                     'private' => (bool)$ev['private'], 'raw_start' => $ev['start_at'], 'raw_end' => $ev['end_at'],
                 ];
             }
@@ -264,46 +311,116 @@ function cal_items(DateTimeImmutable $from, DateTimeImmutable $to, bool $is_admi
     return $items;
 }
 
-/** Wiederholungen eines Termins im Zeitraum berechnen: Liste von [start, end]. */
+/** n-ter Wochentag eines Monats (n = 1..5 oder -1 = letzter), sonst null */
+function cal_nth_weekday(DateTimeImmutable $month_first, int $n, int $weekday): ?DateTimeImmutable {
+    $days = (int)$month_first->format('t');
+    if ($n > 0) {
+        $offset = ($weekday - (int)$month_first->format('N') + 7) % 7;
+        $day = 1 + $offset + ($n - 1) * 7;
+    } else {
+        $last = $month_first->setDate((int)$month_first->format('Y'), (int)$month_first->format('n'), $days);
+        $offset = ((int)$last->format('N') - $weekday + 7) % 7;
+        $day = $days - $offset - (abs($n) - 1) * 7;
+    }
+    if ($day < 1 || $day > $days) return null;
+    return $month_first->setDate((int)$month_first->format('Y'), (int)$month_first->format('n'), $day);
+}
+
+/**
+ * Wiederholungen eines Termins im Zeitraum berechnen: Liste von [start, end].
+ * Unterstützt (wie iCalendar): Intervall, Enddatum ODER Anzahl, wöchentlich an mehreren Tagen,
+ * monatlich am n-ten / letzten Wochentag, 31. und 29.02. werden in "fehlenden" Monaten/Jahren übersprungen.
+ */
 function cal_expand(array $ev, DateTimeImmutable $from, DateTimeImmutable $to): array {
     $start = cal_dt($ev['start_at']);
     $end = cal_dt($ev['end_at']);
     $duration = $end->getTimestamp() - $start->getTimestamp();
     $rec = $ev['recurrence'];
-    $n = max(1, (int)$ev['recur_interval']);
-    $until = $ev['recur_until'] ? cal_dt($ev['recur_until'] . ' 23:59:59') : null;
-    $out = [];
+    if ($rec === 'none') return [[$start, $end]];
 
-    if ($rec === 'none') {
-        return [[$start, $end]];
-    }
+    $n = max(1, (int)$ev['recur_interval']);
+    $until = !empty($ev['recur_until']) ? cal_dt($ev['recur_until'] . ' 23:59:59') : null;
+    $count = (int)($ev['recur_count'] ?? 0);
+    $byday = strtoupper(trim((string)($ev['recur_byday'] ?? '')));
+    [$h, $i] = [(int)$start->format('G'), (int)$start->format('i')];
+    $out = [];
+    $made = 0;
+
+    // Liefert false, sobald die Serie zu Ende ist
+    $emit = function (DateTimeImmutable $s) use (&$out, &$made, $count, $until, $to, $from, $duration, $start): bool {
+        if ($s < $start) return true;
+        if (($until && $s > $until) || ($count && $made >= $count) || $s > $to) return false;
+        $made++;
+        $e = $s->setTimestamp($s->getTimestamp() + $duration);
+        if ($e >= $from) $out[] = [$s, $e];
+        return true;
+    };
+
+    $weekdays = [];
+    foreach (explode(',', $byday) as $code) if (isset(CAL_WEEKDAY_CODES[$code])) $weekdays[] = CAL_WEEKDAY_CODES[$code];
+    sort($weekdays);
+    $nth = preg_match('/^([+-]?[1-5])(MO|TU|WE|TH|FR|SA|SU)$/', $byday, $m) ? [(int)$m[1], CAL_WEEKDAY_CODES[$m[2]]] : null;
 
     $day = (int)$start->format('j');
     $month = (int)$start->format('n');
-    $time = $start->format('H:i');
-    for ($k = 0; $k < 5000; $k++) {
+    for ($k = 0; $k < 10000; $k++) {
         switch ($rec) {
-            case 'daily':  $s = $start->modify('+' . ($k * $n) . ' days'); break;
-            case 'weekly': $s = $start->modify('+' . ($k * $n) . ' weeks'); break;
+            case 'daily':
+                if (!$emit($start->modify('+' . ($k * $n) . ' days'))) break 2;
+                break;
+            case 'weekly':
+                if ($weekdays) {
+                    $week = $start->modify('monday this week')->modify('+' . ($k * $n) . ' weeks')->setTime($h, $i);
+                    foreach ($weekdays as $wd) if (!$emit($week->modify('+' . ($wd - 1) . ' days'))) break 3;
+                } elseif (!$emit($start->modify('+' . ($k * $n) . ' weeks'))) break 2;
+                break;
             case 'monthly':
-                // 31. eines Monats: Monate ohne diesen Tag werden übersprungen
-                $base = $start->modify('first day of this month')->modify('+' . ($k * $n) . ' months');
-                if ($day > (int)$base->format('t')) { $s = null; break; }
-                $s = $base->setDate((int)$base->format('Y'), (int)$base->format('n'), $day);
+                $base = $start->modify('first day of this month')->modify('+' . ($k * $n) . ' months')->setTime($h, $i);
+                if ($base > $to || ($until && $base > $until)) break 2;
+                $s = $nth ? cal_nth_weekday($base, $nth[0], $nth[1])
+                          : ($day <= (int)$base->format('t') ? $base->setDate((int)$base->format('Y'), (int)$base->format('n'), $day) : null);
+                if ($s && !$emit($s)) break 2;
                 break;
             case 'yearly':
                 $y = (int)$start->format('Y') + $k * $n;
-                if (!checkdate($month, $day, $y)) { $s = null; break; }   // 29. Februar
-                $s = $start->setDate($y, $month, $day);
+                if ($y > (int)$to->format('Y') + 1) break 2;
+                if (checkdate($month, $day, $y) && !$emit($start->setDate($y, $month, $day))) break 2;
                 break;
-            default: $s = null;
+            default:
+                break 2;
         }
-        if ($s === null) continue;
-        if ($s > $to || ($until && $s > $until)) break;
-        $e = $s->setTimestamp($s->getTimestamp() + $duration);
-        if ($e >= $from) $out[] = [$s, $e];
     }
     return $out;
+}
+
+/** Wiederholung in Worten, z. B. "Monatlich am 2. Samstag, 12 Termine" */
+function cal_recurrence_text(array $ev): string {
+    $rec = $ev['recurrence'] ?? 'none';
+    if ($rec === 'none') return 'Einmalig';
+    $n = max(1, (int)($ev['recur_interval'] ?? 1));
+    $units = ['daily' => ['Täglich', 'Tage'], 'weekly' => ['Wöchentlich', 'Wochen'], 'monthly' => ['Monatlich', 'Monate'], 'yearly' => ['Jährlich', 'Jahre']];
+    $txt = $n > 1 ? 'Alle ' . $n . ' ' . $units[$rec][1] : $units[$rec][0];
+    $byday = strtoupper((string)($ev['recur_byday'] ?? ''));
+    if ($rec === 'weekly' && $byday !== '') {
+        $names = [];
+        foreach (explode(',', $byday) as $c) if (isset(CAL_WEEKDAY_CODES[$c])) $names[] = mb_substr(CAL_WEEKDAY_NAMES[CAL_WEEKDAY_CODES[$c]], 0, 2);
+        if ($names) $txt .= ' am ' . implode(', ', $names);
+    }
+    if ($rec === 'monthly' && preg_match('/^([+-]?[1-5])(MO|TU|WE|TH|FR|SA|SU)$/', $byday, $m)) {
+        $txt .= ' am ' . ((int)$m[1] === -1 ? 'letzten' : (int)$m[1] . '.') . ' ' . CAL_WEEKDAY_NAMES[CAL_WEEKDAY_CODES[$m[2]]];
+    }
+    if (!empty($ev['recur_count'])) $txt .= ', ' . (int)$ev['recur_count'] . ' Termine';
+    if (!empty($ev['recur_until'])) $txt .= ' bis ' . date('d.m.Y', strtotime($ev['recur_until']));
+    return $txt;
+}
+
+function cal_subscriptions(): array {
+    static $subs = null;
+    if ($subs === null) {
+        $subs = [];
+        foreach (cal_db()->query('SELECT * FROM subscriptions ORDER BY name') as $sub) $subs[(int)$sub['id']] = $sub;
+    }
+    return $subs;
 }
 
 /** Einträge eines Tages (berücksichtigt mehrtägige Termine) */
@@ -344,8 +461,20 @@ function cal_event_from_post(array $p): array {
 
     $rec = (string)($p['recurrence'] ?? 'none');
     if (!array_key_exists($rec, CAL_RECURRENCE)) $rec = 'none';
-    $until = ($rec !== 'none' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $p['recur_until'] ?? '')) ? $p['recur_until'] : null;
+    $end_mode = $p['recur_end'] ?? (!empty($p['recur_until']) ? 'until' : (!empty($p['recur_count']) ? 'count' : 'never'));
+    $until = ($rec !== 'none' && $end_mode === 'until' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $p['recur_until'] ?? '')) ? $p['recur_until'] : null;
     if ($until && $until < $sd) throw new InvalidArgumentException('„Wiederholen bis“ liegt vor dem ersten Termin.');
+    $count = ($rec !== 'none' && $end_mode === 'count') ? max(1, min(999, (int)($p['recur_count'] ?? 0))) : null;
+
+    // Wochentage (wöchentlich) bzw. "n-ter Wochentag" (monatlich)
+    $byday = null;
+    if ($rec === 'weekly' && !empty($p['byday']) && is_array($p['byday'])) {
+        $days = array_values(array_intersect(array_keys(CAL_WEEKDAY_CODES), array_map('strtoupper', $p['byday'])));
+        $byday = $days ? implode(',', $days) : null;
+    }
+    if ($rec === 'monthly' && preg_match('/^([+-]?[1-5])(MO|TU|WE|TH|FR|SA|SU)$/', strtoupper($p['monthly_mode'] ?? ''))) {
+        $byday = strtoupper($p['monthly_mode']);
+    }
     $url = trim($p['url'] ?? '');
     if ($url !== '' && !preg_match('#^https?://#i', $url)) $url = 'https://' . $url;
     if ($url !== '' && safe_url($url) === '#') $url = '';
@@ -363,8 +492,25 @@ function cal_event_from_post(array $p): array {
         'recurrence' => $rec,
         'recur_interval' => max(1, min(99, (int)($p['recur_interval'] ?? 1))),
         'recur_until' => $until,
+        'recur_count' => $count,
+        'recur_byday' => $byday,
+        'reminder' => array_key_exists((int)($p['reminder'] ?? 0), CAL_REMINDERS) ? (int)($p['reminder'] ?? 0) : 0,
+        'show_age' => ($rec === 'yearly' && !empty($p['show_age'])) ? 1 : 0,
         'private' => !empty($p['private']) ? 1 : 0,
     ];
+}
+
+/** Überschneidungen eines Termins mit anderen (für eine Warnung nach dem Speichern) */
+function cal_conflicts(int $id, string $start_at, string $end_at, bool $all_day): array {
+    if ($all_day) return [];
+    $s = cal_dt($start_at);
+    $e = cal_dt($end_at);
+    $hits = [];
+    foreach (cal_items($s, $e, true, ['events']) as $it) {
+        if ($it['id'] === $id || $it['all_day'] || $it['cancelled']) continue;
+        if ($it['start'] < $e && $it['end'] > $s) $hits[] = $it['title'] . ' (' . $it['start']->format('H:i') . '–' . $it['end']->format('H:i') . ')';
+    }
+    return array_unique($hits);
 }
 
 function cal_insert(array $ev): int {
@@ -386,144 +532,7 @@ function cal_get(int $id): ?array {
     return $st->fetch() ?: null;
 }
 
-// ---------- iCalendar (.ics) ----------
-
-function ics_escape(string $s): string {
-    return str_replace(["\\", ";", ",", "\r\n", "\n"], ["\\\\", "\\;", "\\,", "\\n", "\\n"], $s);
-}
-
-/** Lange Zeilen nach RFC 5545 umbrechen */
-function ics_fold(string $line): string {
-    $out = '';
-    while (strlen($line) > 74) {
-        $cut = 74;
-        while ($cut > 0 && (ord($line[$cut]) & 0xC0) === 0x80) $cut--;   // nicht mitten im UTF-8-Zeichen
-        $out .= substr($line, 0, $cut) . "\r\n ";
-        $line = substr($line, $cut);
-    }
-    return $out . $line;
-}
-
-function cal_export_ics(bool $is_admin): string {
-    $lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//GHOST NODE//Kalender//DE', 'CALSCALE:GREGORIAN', 'X-WR-CALNAME:GHOST NODE Kalender', 'X-WR-TIMEZONE:Europe/Berlin'];
-    $cats = cal_categories();
-    $exc = [];
-    foreach (cal_db()->query('SELECT event_id, day FROM event_exceptions') as $x) $exc[(int)$x['event_id']][] = $x['day'];
-    $sql = 'SELECT * FROM events' . ($is_admin ? '' : ' WHERE private = 0') . ' ORDER BY start_at';
-    foreach (cal_db()->query($sql) as $ev) {
-        $s = cal_dt($ev['start_at']);
-        $e = cal_dt($ev['end_at']);
-        $l = ['BEGIN:VEVENT', 'UID:event-' . $ev['id'] . '@ghost-node', 'DTSTAMP:' . gmdate('Ymd\THis\Z'), 'SUMMARY:' . ics_escape($ev['title'])];
-        if ($ev['all_day']) {
-            $l[] = 'DTSTART;VALUE=DATE:' . $s->format('Ymd');
-            $l[] = 'DTEND;VALUE=DATE:' . $e->modify('+1 day')->format('Ymd');
-        } else {
-            $l[] = 'DTSTART:' . gmdate('Ymd\THis\Z', $s->getTimestamp());
-            $l[] = 'DTEND:' . gmdate('Ymd\THis\Z', $e->getTimestamp());
-        }
-        if ($ev['recurrence'] !== 'none') {
-            $r = 'RRULE:FREQ=' . strtoupper($ev['recurrence']) . ($ev['recur_interval'] > 1 ? ';INTERVAL=' . $ev['recur_interval'] : '');
-            if ($ev['recur_until']) $r .= ';UNTIL=' . str_replace('-', '', $ev['recur_until']) . ($ev['all_day'] ? '' : 'T235959Z');
-            $l[] = $r;
-            foreach ($exc[(int)$ev['id']] ?? [] as $day) {
-                $l[] = $ev['all_day'] ? 'EXDATE;VALUE=DATE:' . str_replace('-', '', $day) : 'EXDATE:' . gmdate('Ymd\THis\Z', cal_dt($day . ' ' . $s->format('H:i'))->getTimestamp());
-            }
-        }
-        if ($ev['location'] !== '') $l[] = 'LOCATION:' . ics_escape($ev['location']);
-        if ($ev['description'] !== '') $l[] = 'DESCRIPTION:' . ics_escape($ev['description']);
-        if ($ev['url'] !== '') $l[] = 'URL:' . $ev['url'];
-        if (isset($cats[(int)$ev['category_id']])) $l[] = 'CATEGORIES:' . ics_escape($cats[(int)$ev['category_id']]['name']);
-        $l[] = 'CLASS:' . ($ev['private'] ? 'PRIVATE' : 'PUBLIC');
-        $l[] = 'END:VEVENT';
-        foreach ($l as $x) $lines[] = ics_fold($x);
-    }
-    $lines[] = 'END:VCALENDAR';
-    return implode("\r\n", $lines) . "\r\n";
-}
-
-/** Datum/Zeit aus einer ICS-Eigenschaft lesen -> [DateTimeImmutable (Ortszeit), ganztägig?] */
-function ics_parse_date(string $params, string $value): array {
-    $value = trim($value);
-    if (stripos($params, 'VALUE=DATE') !== false || preg_match('/^\d{8}$/', $value)) {
-        return [new DateTimeImmutable(substr($value, 0, 8)), true];
-    }
-    $tz = null;
-    if (preg_match('/TZID=([^;:]+)/i', $params, $m)) {
-        try { $tz = new DateTimeZone(trim($m[1], '"')); } catch (Exception $e) { $tz = null; }
-    }
-    if (substr($value, -1) === 'Z') {
-        $d = new DateTimeImmutable(substr($value, 0, 15), new DateTimeZone('UTC'));
-        return [$d->setTimezone(new DateTimeZone(date_default_timezone_get())), false];
-    }
-    $d = new DateTimeImmutable(substr($value, 0, 15), $tz ?: null);
-    return [$d->setTimezone(new DateTimeZone(date_default_timezone_get())), false];
-}
-
-/** .ics-Datei importieren (z. B. aus Google/Apple/Outlook). Liefert [importiert, übersprungen]. */
-function cal_import_ics(string $ics, ?int $category_id, bool $private): array {
-    $ics = preg_replace("/\r\n[ \t]|\n[ \t]/", '', str_replace("\r\n", "\n", $ics));   // Zeilen entfalten
-    preg_match_all('/BEGIN:VEVENT(.*?)END:VEVENT/s', $ics, $blocks);
-    $imported = 0; $skipped = 0;
-    $exists = cal_db()->prepare('SELECT COUNT(*) FROM events WHERE title = ? AND start_at = ?');
-    $unescape = function ($s) { return str_replace(['\\n', '\\N', '\\,', '\\;', '\\\\'], ["\n", "\n", ',', ';', '\\'], $s); };
-
-    foreach ($blocks[1] as $block) {
-        $props = [];
-        $exdates = [];
-        foreach (explode("\n", trim($block)) as $line) {
-            if (!preg_match('/^([A-Z\-]+)((?:;[^:]*)?):(.*)$/', trim($line), $m)) continue;
-            if ($m[1] === 'EXDATE') { foreach (explode(',', $m[3]) as $v) $exdates[] = [$m[2], $v]; continue; }
-            if (!isset($props[$m[1]])) $props[$m[1]] = [$m[2], $m[3]];
-        }
-        if (empty($props['DTSTART']) || empty($props['SUMMARY'])) { $skipped++; continue; }
-        try {
-            [$s, $all] = ics_parse_date(...$props['DTSTART']);
-            if (!empty($props['DTEND'])) {
-                [$e] = ics_parse_date(...$props['DTEND']);
-                if ($all) $e = $e->modify('-1 day')->setTime(23, 59);   // DTEND ist bei ganztägig exklusiv
-            } else {
-                $e = $all ? $s->setTime(23, 59) : $s->modify('+1 hour');
-            }
-        } catch (Exception $ex) { $skipped++; continue; }
-
-        $rec = 'none'; $interval = 1; $until = null;
-        if (!empty($props['RRULE']) && preg_match('/FREQ=(DAILY|WEEKLY|MONTHLY|YEARLY)/i', $props['RRULE'][1], $m)) {
-            $rec = strtolower($m[1]);
-            if (preg_match('/INTERVAL=(\d+)/', $props['RRULE'][1], $m)) $interval = (int)$m[1];
-            if (preg_match('/UNTIL=(\d{8})/', $props['RRULE'][1], $m)) $until = substr($m[1], 0, 4) . '-' . substr($m[1], 4, 2) . '-' . substr($m[1], 6, 2);
-        }
-        $title = mb_substr(trim($unescape($props['SUMMARY'][1])), 0, 150);
-        $start = $s->format('Y-m-d') . ' ' . ($all ? '00:00' : $s->format('H:i'));
-        $exists->execute([$title, $start]);
-        if ($exists->fetchColumn()) { $skipped++; continue; }
-
-        $url = trim($props['URL'][1] ?? '');
-        cal_insert([
-            'title' => $title,
-            'description' => mb_substr($unescape($props['DESCRIPTION'][1] ?? ''), 0, 4000),
-            'location' => mb_substr($unescape($props['LOCATION'][1] ?? ''), 0, 200),
-            'url' => safe_url($url) === '#' ? '' : $url,
-            'start_at' => $start,
-            'end_at' => max($start, $e->format('Y-m-d') . ' ' . ($all ? '23:59' : $e->format('H:i'))),
-            'all_day' => $all ? 1 : 0,
-            'category_id' => $category_id,
-            'recurrence' => $rec,
-            'recur_interval' => max(1, min(99, $interval)),
-            'recur_until' => $until,
-            'private' => $private ? 1 : 0,
-        ]);
-        // Ausgelassene Termine einer Serie übernehmen
-        $new_id = (int)cal_db()->lastInsertId();
-        foreach ($exdates as [$p, $v]) {
-            try {
-                [$xd] = ics_parse_date($p, $v);
-                cal_db()->prepare('INSERT OR IGNORE INTO event_exceptions (event_id, day) VALUES (?, ?)')->execute([$new_id, $xd->format('Y-m-d')]);
-            } catch (Exception $ex) { /* ungültiges Datum ignorieren */ }
-        }
-        $imported++;
-    }
-    return [$imported, $skipped];
-}
+// iCalendar-Import/-Export, Abos und Schnell-Eingabe: siehe inc/calendar_ics.php
 
 /** Kurzinfo für die Startseite */
 function cal_preview(bool $is_admin): string {
