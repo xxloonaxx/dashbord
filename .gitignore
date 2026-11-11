@@ -7,6 +7,7 @@ archive/
 archive_budget/
 countdown_data.json
 linkcheck_cache.json
+linkcheck_job.json
 *.tmp
 links_*.json
 feed_sources.json

@@ -10,7 +10,7 @@ PHP-Dashboard ohne Datenbank (Daten liegen als JSON-Dateien neben den Seiten).
 | `con.php` | Con-Budget & Dokumentation mit Archiv |
 | `feed.php` | RSS/Atom-Feed-Sammler mit Cache (15 Min.) und Countdown |
 | `countdown.php` | Beliebig viele Countdowns (auch jährlich wiederkehrend), Haupt-Countdown für Feed & Startseite, Kalender-Export (.ics) |
-| `linkcheck.php` | Prüft alle Hub-Links auf Erreichbarkeit; kaputte Links bekommen in den Hubs einen ⚠-Hinweis |
+| `linkcheck.php` | Prüft alle Hub-Links auf Erreichbarkeit (in kleinen Paketen mit Live-Fortschritt, damit kein Hoster-Zeitlimit greift); kaputte Links bekommen in den Hubs einen ⚠-Hinweis |
 | `backup.php` | Lädt alle persönlichen Daten (Budget, Con, Countdowns, Archive) als ZIP herunter |
 | `inc/common.php` | Gemeinsame Hilfsfunktionen (JSON laden/speichern, Beträge, Escaping, Zeitzone) |
 | `inc/countdown.php`, `inc/linkcheck.php` | Logik für Countdowns und Link-Check |
@@ -20,7 +20,7 @@ PHP-Dashboard ohne Datenbank (Daten liegen als JSON-Dateien neben den Seiten).
 ## Installation
 
 Alle Dateien und Ordner (inkl. `inc/`, `assets/` und `.htaccess`) auf einen Webserver mit PHP ≥ 7.4 kopieren.
-Für Feed und Link-Check wird die PHP-Erweiterung cURL benötigt (bei fast allen Hostern aktiv).
+Für Feed und Link-Check wird die PHP-Erweiterung cURL benötigt (bei fast allen Hostern aktiv). Ohne cURL weicht der Link-Check auf `allow_url_fopen` aus. Meldet er „kein einziger Link erreichbar“, blockiert der Hoster vermutlich ausgehende Verbindungen.
 Der Webserver braucht Schreibrechte im Ordner, damit die JSON-Dateien und Archive angelegt werden können.
 
 Die Datendateien (`*_data.json`, `links_*.json`, `feed_sources.json`, `feed_cache.json`, `linkcheck_cache.json`, `archive*/`) sind per `.gitignore` vom Repository ausgeschlossen

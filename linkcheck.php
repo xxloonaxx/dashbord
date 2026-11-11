@@ -5,14 +5,30 @@ require_once __DIR__ . '/inc/auth.php';
 auth_require_setup();
 guard_post('linkcheck.run');   // Prüfung starten nur mit Recht
 
+// Schrittweise Prüfung per JavaScript (jede Anfrage dauert nur wenige Sekunden -> keine Zeitlimit-Abbrüche beim Hoster)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['lc_action'])) {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    try {
+        if ($_POST['lc_action'] === 'start') {
+            audit('Link-Check gestartet');
+            echo json_encode(linkcheck_start());
+        } else {
+            echo json_encode(linkcheck_step());
+        }
+    } catch (Throwable $e) {
+        http_response_code(500);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// Ausweichweg ohne JavaScript: alles in einer Anfrage
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['run_check'])) {
     @set_time_limit(180);
-    if (!function_exists('curl_multi_init')) {
-        header('Location: linkcheck.php?error=curl');
-        exit;
-    }
-    run_linkcheck();
-    header('Location: linkcheck.php?done=1');
+    $report = run_linkcheck();
+    $all_dead = $report['results'] && !array_filter($report['results'], function ($r) { return $r['code'] !== 0; });
+    header('Location: linkcheck.php?' . ($all_dead ? 'offline=1' : 'done=1'));
     exit;
 }
 
@@ -72,7 +88,14 @@ $problems = $counts['dead'] + $counts['broken'];
         .legend b { letter-spacing: 1px; }
         .run-box { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
         .run-box p { margin: 0; font-size: 0.8rem; color: var(--text-muted); }
-        #running { display: none; color: var(--accent-gold); font-size: 0.8rem; letter-spacing: 1px; }
+        .lc-progress { border-color: var(--accent-gold); }
+        .lc-prog-head, .lc-prog-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 0.8rem; }
+        .lc-prog-head { color: var(--accent-gold); letter-spacing: 1px; text-transform: uppercase; font-size: 0.72rem; margin-bottom: 8px; }
+        .lc-prog-foot { color: var(--text-muted); margin-top: 8px; min-height: 26px; }
+        .lc-bar { height: 10px; background: rgba(56, 213, 230, 0.08); border: 1px solid var(--border-color); overflow: hidden; }
+        .lc-bar div { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent-cyan), var(--accent-gold)); box-shadow: 0 0 12px var(--accent-glow); transition: width 0.4s ease; }
+        .lc-error { margin-top: 12px; padding: 10px 12px; border: 1px solid var(--accent-red); color: var(--accent-red); background: rgba(255, 85, 85, 0.07); font-size: 0.82rem; line-height: 1.5; }
+        .lc-error button { margin-top: 8px; }
         @media (max-width: 700px) {
             .stats { grid-template-columns: repeat(3, 1fr); }
             .lc-row { grid-template-columns: 1fr; gap: 4px; }
@@ -95,8 +118,12 @@ $problems = $counts['dead'] + $counts['broken'];
 
     <?php if (isset($_GET['done'])): ?>
         <div class="notice">Prüfung abgeschlossen. <?php echo $problems ? "<strong>$problems</strong> Link(s) sind kaputt – sie werden in den Hubs jetzt mit ⚠ markiert." : 'Alle Links sind erreichbar. 🎉'; ?></div>
-    <?php elseif (isset($_GET['error'])): ?>
-        <div class="notice" style="border-color: var(--accent-red);">Auf diesem Server ist die PHP-Erweiterung cURL nicht aktiv – die Prüfung ist so nicht möglich.</div>
+    <?php elseif (isset($_GET['offline'])): ?>
+        <div class="notice" style="border-color: var(--accent-red);">⚠ Kein einziger Link war erreichbar. Sehr wahrscheinlich blockiert dein Hoster ausgehende Verbindungen
+            (bei manchen Gratis-Hostern üblich) – dann funktionieren auch Feed, Kalender-Abos und Bank-Sync nicht. Bitte beim Hoster nachfragen, ob „ausgehende HTTP-Verbindungen / cURL“ erlaubt sind.</div>
+    <?php endif; ?>
+    <?php if (!function_exists('curl_init') && !ini_get('allow_url_fopen')): ?>
+        <div class="notice" style="border-color: var(--accent-red);">⚠ Auf diesem Server sind weder cURL noch <code>allow_url_fopen</code> aktiv – Links können so nicht geprüft werden. Bitte beim Hoster die PHP-Erweiterung cURL aktivieren lassen.</div>
     <?php endif; ?>
 
     <div class="panel">
@@ -104,17 +131,23 @@ $problems = $counts['dead'] + $counts['broken'];
             <p>
                 Letzte Prüfung:
                 <strong style="color: #fff;"><?php echo $report['checked_at'] ? e(german_datetime((int)$report['checked_at'])) : 'noch nie'; ?></strong><br>
-                Dauert ca. 15–30 Sekunden, alle Links werden parallel abgefragt.
+                Die Links werden in kleinen Paketen geprüft – der Fortschritt erscheint live.
             </p>
             <?php if (can('linkcheck.run')): ?>
-            <form method="POST" onsubmit="document.getElementById('running').style.display='block'; this.querySelector('button').disabled=true;">
-                <button type="submit" name="run_check" class="btn btn-gold">Jetzt prüfen</button>
-                <div id="running">⟳ Prüfe Links… bitte warten</div>
+            <form method="POST" id="lcForm">
+                <button type="submit" name="run_check" value="1" class="btn btn-gold" id="lcBtn">Jetzt prüfen</button>
             </form>
             <?php else: ?>
             <a href="admin.php?next=linkcheck.php" class="btn">🔒 Zum Prüfen anmelden</a>
             <?php endif; ?>
         </div>
+    </div>
+
+    <div class="panel lc-progress" id="lcProgress" hidden>
+        <div class="lc-prog-head"><span id="lcPhase">Prüfe Links…</span><span id="lcCount">0 / 0</span></div>
+        <div class="lc-bar"><div id="lcBar"></div></div>
+        <div class="lc-prog-foot"><span id="lcCurrent"></span><button type="button" class="btn btn-sm btn-danger" id="lcCancel">Abbrechen</button></div>
+        <div class="lc-error" id="lcError" hidden></div>
     </div>
 
     <div class="stats">
@@ -159,6 +192,68 @@ $problems = $counts['dead'] + $counts['broken'];
 </div>
 
 <script>
+    // ---------- Schrittweise Prüfung mit Live-Fortschritt ----------
+    (function () {
+        const form = document.getElementById('lcForm');
+        if (!form) return;
+        const $ = id => document.getElementById(id);
+        let cancelled = false;
+        const post = action => fetch('linkcheck.php', {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
+            body: 'lc_action=' + action
+        }).then(async r => {
+            const text = await r.text();
+            let data;
+            try { data = JSON.parse(text); } catch (e) {
+                if (r.redirected || /name="login"|id="u"/.test(text)) throw new Error('Deine Anmeldung ist abgelaufen – bitte neu anmelden und erneut prüfen.');
+                throw new Error('Der Server hat keine gültige Antwort geliefert (HTTP ' + r.status + '). Häufig ist das ein Zeitlimit oder ein PHP-Fehler beim Hoster.');
+            }
+            if (!r.ok || data.error) throw new Error(data.error || ('HTTP ' + r.status));
+            return data;
+        });
+        function show(d) {
+            const total = d.total + (d.retry_total || 0);
+            const done = d.done + (d.retry_done || 0);
+            $('lcBar').style.width = (total ? Math.round(done / total * 100) : 0) + '%';
+            $('lcCount').textContent = d.phase === 2 ? (d.retry_done + ' / ' + d.retry_total + ' erneut') : (d.done + ' / ' + d.total);
+            $('lcPhase').textContent = d.phase === 2 ? 'Zweiter Versuch für nicht erreichbare Links…' : 'Prüfe Links…';
+            $('lcCurrent').textContent = d.current ? 'zuletzt: ' + d.current : '';
+        }
+        function fail(err) {
+            $('lcError').hidden = false;
+            $('lcError').innerHTML = '';
+            $('lcError').append('⚠ ' + err.message);
+            const b = document.createElement('button');
+            b.type = 'button'; b.className = 'btn btn-sm'; b.textContent = 'Ohne Live-Anzeige prüfen (eine lange Anfrage)';
+            b.onclick = () => { const f = document.createElement('form'); f.method = 'POST'; f.innerHTML = '<input type="hidden" name="run_check" value="1">'; document.body.append(f); f.submit(); };
+            $('lcError').append(document.createElement('br'), b);
+            $('lcBtn').disabled = false;
+            $('lcCancel').hidden = true;
+        }
+        async function run() {
+            cancelled = false;
+            $('lcProgress').hidden = false; $('lcError').hidden = true; $('lcCancel').hidden = false;
+            $('lcBtn').disabled = true;
+            try {
+                const s = await post('start');
+                show({ done: 0, total: s.total, phase: 1 });
+                for (let guard = 0; guard < 500 && !cancelled; guard++) {
+                    const d = await post('step');
+                    if (d.finished) {
+                        $('lcBar').style.width = '100%';
+                        location.href = 'linkcheck.php?' + (d.all_dead ? 'offline=1' : 'done=1');
+                        return;
+                    }
+                    show(d);
+                }
+                if (cancelled) { $('lcPhase').textContent = 'Abgebrochen – bisherige Ergebnisse wurden nicht gespeichert.'; $('lcBtn').disabled = false; }
+            } catch (err) { fail(err); }
+        }
+        form.addEventListener('submit', e => { if (!window.fetch) return; e.preventDefault(); run(); });
+        $('lcCancel').addEventListener('click', () => { cancelled = true; $('lcCancel').hidden = true; });
+    })();
+
     const rows = document.querySelectorAll('.lc-row');
     const shown = document.getElementById('shown');
     function applyFilter(f) {
