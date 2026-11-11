@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/inc/common.php';
 require_once __DIR__ . '/inc/auth.php';
+require_once __DIR__ . '/inc/openbanking.php';
 
 // Nur für angemeldete Admins sichtbar – alle anderen landen beim Login
 require_admin_page();
@@ -111,6 +112,139 @@ if (ensure_fix_subs_in_month($data, $fix_subs_data)) {
     save_json($data_file, $data);
 }
 
+// ================= BANK-SYNC (Enable Banking / Open Banking) =================
+$ob = ob_config();
+$ob_flash = function (string $type, string $text) { $_SESSION['ob_flash'] = [$type, $text]; };
+
+// Rückkehr von der Bank (Enable Banking leitet mit ?code=…&state=… bzw. ?error=… auf budget.php zurück)
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && (isset($_GET['code']) || (isset($_GET['error']) && isset($_GET['state'])))) {
+    if (isset($_GET['error'])) {
+        $ob_flash('err', 'Die Bank-Freigabe wurde abgebrochen: ' . ($_GET['error_description'] ?? $_GET['error']));
+    } else {
+        try {
+            $ob = ob_finish_auth($ob, (string)$_GET['code'], (string)($_GET['state'] ?? ''));
+            ob_save($ob);
+            auth_log('Bank verbunden: ' . ($ob['aspsp']['name'] ?? ''), auth_user());
+            $stats = ob_sync($ob, $data, true);
+            ob_save($ob);
+            save_json($data_file, $data);
+            $ob_flash('ok', 'Verbunden! ' . count($ob['accounts']) . ' Konto/Konten gefunden, ' . $stats['imported'] . ' Buchungen übernommen, ' . $stats['matched'] . ' Fixkosten/Abos abgeglichen.');
+        } catch (Throwable $e) {
+            $ob_flash('err', $e->getMessage());
+        }
+    }
+    header('Location: budget.php?view=bank');
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ob_action'])) {
+    try {
+        switch ($_POST['ob_action']) {
+            case 'save_credentials':
+                $app_id = trim($_POST['app_id'] ?? '');
+                $pem = '';
+                if (!empty($_FILES['pem_file']['tmp_name']) && $_FILES['pem_file']['error'] === UPLOAD_ERR_OK) {
+                    $pem = (string)file_get_contents($_FILES['pem_file']['tmp_name']);
+                } elseif (trim($_POST['pem_text'] ?? '') !== '') {
+                    $pem = trim($_POST['pem_text']);
+                }
+                if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $app_id)) {
+                    throw new RuntimeException('Die Application-ID hat das Format aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee (steht auch im Dateinamen der .pem).');
+                }
+                if ($pem === '' && $ob['private_key'] === '') throw new RuntimeException('Bitte die .pem-Schlüsseldatei hochladen.');
+                if ($pem !== '' && !openssl_pkey_get_private($pem)) throw new RuntimeException('Die Datei ist kein gültiger privater RSA-Schlüssel (.pem).');
+                if ($ob['app_id'] !== $app_id && $ob['session_id'] !== '') $ob = ob_disconnect($ob);
+                $ob['app_id'] = $app_id;
+                if ($pem !== '') $ob['private_key'] = $pem;
+                // Verbindung gleich testen
+                $app = ob_request($ob, 'GET', '/application');
+                ob_save($ob);
+                auth_log('Bank-Zugang hinterlegt', auth_user());
+                $redirect_ok = in_array(ob_redirect_url(), (array)($app['redirect_urls'] ?? []), true);
+                $ob_flash($redirect_ok ? 'ok' : 'warn', 'Zugang gespeichert – App „' . ($app['name'] ?? '?') . '“ (' . ($app['environment'] ?? '?') . ', ' . (!empty($app['active']) ? 'aktiv' : 'noch NICHT aktiviert') . ').'
+                    . ($redirect_ok ? '' : ' Achtung: Die Redirect-URL ' . ob_redirect_url() . ' ist in der App nicht eingetragen – bitte im Enable-Banking-Control-Panel ergänzen.'));
+                break;
+
+            case 'search_banks':
+                $_SESSION['ob_banks'] = ob_aspsps($ob, $_POST['country'] ?? 'DE');
+                $_SESSION['ob_country'] = strtoupper($_POST['country'] ?? 'DE');
+                if (!$_SESSION['ob_banks']) $ob_flash('warn', 'Für dieses Land wurden keine Banken gefunden.');
+                break;
+
+            case 'select_bank':
+                foreach ($_SESSION['ob_banks'] ?? [] as $bank) {
+                    if ($bank['name'] . '|' . $bank['country'] === ($_POST['bank'] ?? '')) {
+                        $ob['aspsp'] = $bank;
+                        ob_save($ob);
+                        $ob_flash('ok', 'Bank „' . $bank['name'] . '“ (' . $bank['country'] . ') ausgewählt – jetzt verbinden.');
+                    }
+                }
+                unset($_SESSION['ob_banks']);
+                break;
+
+            case 'connect':
+                if (!$ob['aspsp']) throw new RuntimeException('Bitte zuerst eine Bank auswählen.');
+                header('Location: ' . ob_start_auth($ob));
+                exit;
+
+            case 'sync':
+                $stats = ob_sync($ob, $data, true);
+                ob_save($ob);
+                save_json($data_file, $data);
+                $ob_flash('ok', 'Abgleich fertig: ' . $stats['imported'] . ' neu übernommen, ' . $stats['matched'] . ' Fixkosten/Abos abgeglichen, '
+                    . $stats['duplicates'] . ' schon vorhanden, ' . $stats['skipped'] . ' interne Umbuchungen übersprungen'
+                    . ($stats['pending'] ? ', ' . $stats['pending'] . ' noch vorgemerkt' : '') . '.');
+                break;
+
+            case 'toggle_account':
+                foreach ($ob['accounts'] as &$acc) if ($acc['uid'] === ($_POST['uid'] ?? '')) $acc['sync'] = empty($acc['sync']);
+                unset($acc);
+                ob_save($ob);
+                break;
+
+            case 'toggle_auto':
+                $ob['auto_sync'] = empty($ob['auto_sync']);
+                ob_save($ob);
+                break;
+
+            case 'disconnect':
+                $ob = ob_disconnect($ob);
+                ob_save($ob);
+                auth_log('Bank getrennt', auth_user());
+                $ob_flash('ok', 'Bankverbindung getrennt. Bereits übernommene Buchungen bleiben im Budget.');
+                break;
+
+            case 'forget':
+                ob_disconnect($ob);
+                @unlink(OB_FILE);
+                auth_log('Bank-Zugang gelöscht', auth_user());
+                $ob_flash('ok', 'Alle Bank-Zugangsdaten wurden gelöscht.');
+                break;
+        }
+    } catch (Throwable $e) {
+        $ob_flash('err', $e->getMessage());
+    }
+    header('Location: ' . ((($_POST['back'] ?? '') === 'active') ? 'budget.php' : 'budget.php?view=bank'));
+    exit;
+}
+
+// Automatischer Abgleich beim Öffnen des Budgets (höchstens alle 6 Std.)
+$ob_auto_error = '';
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['view'] ?? 'active') === 'active' && !isset($_GET['export'])
+    && ob_connected($ob) && !empty($ob['auto_sync']) && time() - (int)$ob['last_sync'] > OB_AUTO_INTERVAL) {
+    try {
+        $stats = ob_sync($ob, $data, false);
+        save_json($data_file, $data);
+        if ($stats['imported'] || $stats['matched']) $ob_flash('ok', 'Automatischer Bank-Abgleich: ' . $stats['imported'] . ' neue Buchungen, ' . $stats['matched'] . ' abgeglichen.');
+    } catch (Throwable $e) {
+        $ob['last_sync'] = time();   // nicht bei jedem Aufruf erneut versuchen
+        $ob_auto_error = $e->getMessage();
+    }
+    ob_save($ob);
+}
+$ob_message = $_SESSION['ob_flash'] ?? null;
+unset($_SESSION['ob_flash']);
+
 /** CSV-Trennzeichen anhand der Kopfzeile erkennen (Komma oder Semikolon). */
 function detect_csv_delimiter(string $line): string {
     return substr_count($line, ';') > substr_count($line, ',') ? ';' : ',';
@@ -160,15 +294,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     if ($amount == 0) continue;
 
-                    $art_lower = mb_strtolower($art);
-                    $desc_lower = mb_strtolower($desc);
-
                     // --- INTERNE TRANSFERS, UNTERKONTEN & FEHLGESCHLAGENE BUCHUNGEN FILTERN ---
-                    if ($art_lower === 'transfer' ||
-                        strpos($desc_lower, 'unterkonto') !== false ||
-                        strpos($desc_lower, 'einzustecken') !== false ||
-                        strpos($desc_lower, 'pocket') !== false ||
-                        in_array($state, ['REVERTED', 'DECLINED', 'FAILED'], true)) {
+                    $class = budget_classify($desc, $amount, $art);
+                    if ($class === null || in_array($state, ['REVERTED', 'DECLINED', 'FAILED'], true)) {
                         $skipped++;
                         continue;
                     }
@@ -181,23 +309,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     $existing[$import_key] = true;
 
-                    // Sektion & Kategorie ermitteln
-                    if ($amount > 0) {
-                        $section = 'income';
-                        $category = 'Lohn / Abschlag';
-                    } else {
-                        $amount = abs($amount);
-                        if (strpos($desc_lower, 'miete') !== false || strpos($desc_lower, 'strom') !== false) {
-                            $section = 'fixed';
-                            $category = 'Fixkosten';
-                        } elseif (preg_match('/netflix|spotify|gym|youtube|disney|amazon prime|xbox|playstation|patreon/', $desc_lower)) {
-                            $section = 'subs';
-                            $category = 'Abo';
-                        } else {
-                            $section = 'other';
-                            $category = 'Shopping / Tanken';
-                        }
-                    }
+                    // Sektion & Kategorie (gemeinsame Regeln mit dem Bank-Sync, siehe inc/openbanking.php)
+                    $section = $class['section'];
+                    $category = $class['category'];
+                    $amount = abs($amount);
 
                     $data['entries'][] = [
                         'id' => uniqid(),
@@ -529,6 +644,38 @@ if ($selected_archive && is_file($archive_dir . basename($selected_archive))) {
         .progress-fill.warn { background: var(--accent-gold); box-shadow: 0 0 10px rgba(243, 194, 98, 0.4); }
         .progress-fill.over { background: var(--accent-red); box-shadow: 0 0 10px rgba(255, 85, 85, 0.4); }
         .btn-sm { padding: 3px 8px; font-size: 0.6rem; }
+        .ob-msg { padding: 11px 15px; margin-bottom: 18px; font-size: 0.85rem; border: 1px solid; line-height: 1.5; }
+        .ob-msg.ok { border-color: var(--accent-green); color: var(--accent-green); background: rgba(80, 250, 123, 0.07); }
+        .ob-msg.warn { border-color: var(--accent-gold); color: var(--accent-gold); background: rgba(243, 194, 98, 0.07); }
+        .ob-msg.err { border-color: var(--accent-red); color: var(--accent-red); background: rgba(255, 85, 85, 0.07); }
+        .ob-bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 14px; margin-bottom: 16px; font-size: 0.75rem; letter-spacing: 0.5px; border: 1px solid rgba(80, 250, 123, 0.35); background: rgba(80, 250, 123, 0.05); color: var(--text-main); }
+        .ob-bar.warn { border-color: rgba(243, 194, 98, 0.5); background: rgba(243, 194, 98, 0.06); }
+        .ob-bar strong { color: var(--accent-green); }
+        .ob-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 22px; }
+        .ob-step { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border-color); background: var(--panel-bg); font-size: 0.72rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); }
+        .ob-step b { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 1px solid currentColor; flex-shrink: 0; }
+        .ob-step.done { color: var(--accent-green); border-color: rgba(80, 250, 123, 0.4); }
+        .ob-step.now { color: var(--accent-gold); border-color: var(--accent-gold); box-shadow: 0 0 12px rgba(243, 194, 98, 0.15); }
+        .ob-explain { font-size: 0.85rem; line-height: 1.6; color: var(--text-main); }
+        .ob-explain p { margin: 0 0 12px; }
+        .ob-explain ol { margin: 0 0 16px; padding-left: 22px; }
+        .ob-explain li { margin-bottom: 8px; }
+        .ob-explain a { color: var(--accent-cyan); }
+        .ob-copy { display: flex; gap: 8px; align-items: center; margin: 6px 0; flex-wrap: wrap; }
+        .ob-copy code { background: rgba(4, 6, 9, 0.9); border: 1px solid var(--border-color); padding: 6px 10px; color: var(--accent-gold); word-break: break-all; }
+        .ob-label { display: block; font-size: 0.7rem; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px; }
+        .ob-hint { font-size: 0.78rem; color: var(--text-muted); line-height: 1.6; margin: 12px 0; }
+        .ob-hint code, .ob-explain code { color: var(--accent-cyan); }
+        .ob-accounts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+        .ob-account { display: grid; grid-template-columns: 1fr auto auto; gap: 14px; align-items: center; padding: 10px 14px; border: 1px solid var(--border-color); border-left: 4px solid var(--accent-green); background: rgba(14, 20, 27, 0.7); }
+        .ob-account.off { border-left-color: var(--text-muted); opacity: 0.6; }
+        .ob-balance { font-size: 1.15rem; font-weight: 700; color: var(--accent-green); font-variant-numeric: tabular-nums; }
+        .ob-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .ob-log div { display: flex; justify-content: space-between; gap: 10px; padding: 6px 2px; border-bottom: 1px solid rgba(56, 213, 230, 0.08); font-size: 0.78rem; color: var(--text-muted); flex-wrap: wrap; }
+        .ob-log b { color: var(--accent-green); }
+        .ob-footer { display: flex; gap: 16px; justify-content: flex-end; font-size: 0.72rem; margin-top: -10px; }
+        .ob-footer a, .ob-footer button { color: var(--text-muted); background: none; border: none; font: inherit; cursor: pointer; text-decoration: underline; padding: 0; }
+        @media (max-width: 768px) { .ob-steps { grid-template-columns: 1fr 1fr; } .ob-account { grid-template-columns: 1fr; gap: 6px; } }
         .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .notice { border: 1px solid var(--accent-gold); background: rgba(243, 194, 98, 0.08); color: var(--text-main); padding: 12px 16px; margin-bottom: 20px; font-size: 0.85rem; letter-spacing: 0.5px; }
         .notice.ok { border-color: var(--accent-green); background: rgba(80, 250, 123, 0.08); }
@@ -588,7 +735,8 @@ if ($selected_archive && is_file($archive_dir . basename($selected_archive))) {
             <div class="nav-tabs">
                 <a href="admin.php" class="nav-tab" title="Admin-Zentrale">⚙ <?php echo e(auth_user()); ?></a>
                 <a href="budget.php" class="nav-tab <?php echo ($view_mode === 'active') ? 'active' : ''; ?>">Aktueller Monat</a>
-                <a href="budget.php?view=import" class="nav-tab <?php echo ($view_mode === 'import') ? 'active' : ''; ?>">Konto-Import</a>
+                <a href="budget.php?view=bank" class="nav-tab <?php echo ($view_mode === 'bank') ? 'active' : ''; ?>">🏦 Bank-Sync<?php echo ob_connected($ob) ? ' ●' : ''; ?></a>
+                <a href="budget.php?view=import" class="nav-tab <?php echo ($view_mode === 'import') ? 'active' : ''; ?>">CSV-Import</a>
                 <a href="budget.php?view=templates" class="nav-tab <?php echo ($view_mode === 'templates') ? 'active' : ''; ?>">Fix &amp; Abos</a>
                 <a href="budget.php?view=archive" class="nav-tab <?php echo ($view_mode === 'archive' || $selected_archive) ? 'active' : ''; ?>">Archiv</a>
             </div>
@@ -601,6 +749,20 @@ if ($selected_archive && is_file($archive_dir . basename($selected_archive))) {
                 <h1><?php echo htmlspecialchars($data['month_name']); ?></h1>
                 <a href="budget.php?export=csv" class="btn btn-sm" style="margin-top: 10px; display: inline-block; text-decoration: none;" title="Für Excel / LibreOffice">&darr; CSV-Export</a>
             </header>
+
+            <?php if ($ob_message): ?><div class="ob-msg <?php echo e($ob_message[0]); ?>"><?php echo e($ob_message[1]); ?></div><?php endif; ?>
+            <?php if (ob_connected($ob)): ?>
+                <div class="ob-bar">
+                    <span>🏦 <?php echo e($ob['aspsp']['name'] ?? 'Bank'); ?> verbunden
+                        <?php foreach ($ob['accounts'] as $acc): if (empty($acc['sync']) || !$acc['balance']) continue; ?> &bull; Kontostand <strong><?php echo eur($acc['balance']['amount']); ?> <?php echo e($acc['balance']['currency']); ?></strong><?php endforeach; ?>
+                        &bull; Abgleich <?php echo $ob['last_sync'] ? e(date('d.m. H:i', (int)$ob['last_sync'])) : 'noch nie'; ?>
+                        <?php if ($ob_auto_error): ?> &bull; <span style="color: var(--accent-red);" title="<?php echo e($ob_auto_error); ?>">⚠ Auto-Abgleich fehlgeschlagen</span><?php endif; ?>
+                    </span>
+                    <form method="POST" style="margin: 0;"><input type="hidden" name="ob_action" value="sync"><input type="hidden" name="back" value="active"><button type="submit" class="btn btn-sm" style="padding: 4px 10px; font-size: 0.65rem;">⟳ Abgleichen</button></form>
+                </div>
+            <?php elseif ($ob['session_id'] !== '' && !ob_connected($ob)): ?>
+                <div class="ob-bar warn"><span>🏦 Die Bank-Freigabe ist abgelaufen.</span><a href="budget.php?view=bank" class="btn btn-sm" style="padding: 4px 10px; font-size: 0.65rem;">Erneuern</a></div>
+            <?php endif; ?>
 
             <div class="dashboard-grid">
                 <div class="card"><div class="card-title">Einnahmen</div><div class="card-value green">+<?php echo eur($total_income); ?> €</div></div>
@@ -805,6 +967,177 @@ if ($selected_archive && is_file($archive_dir . basename($selected_archive))) {
                     <button type="submit" name="import_csv" class="btn btn-gold">Kontoauszug Jetzt Importieren</button>
                 </form>
             </div>
+
+        <?php elseif ($view_mode === 'bank'): ?>
+            <!-- ================= BANK-SYNC ================= -->
+            <header>
+                <div class="hud-tag">System // Open Banking Uplink</div>
+                <h1>Bank-Sync</h1>
+            </header>
+
+            <?php if ($ob_message): ?><div class="ob-msg <?php echo e($ob_message[0]); ?>"><?php echo e($ob_message[1]); ?></div><?php endif; ?>
+
+            <?php
+            $ob_step = $ob['app_id'] === '' ? 1 : (!$ob['aspsp'] ? 2 : (!ob_connected($ob) ? 3 : 5));
+            $ob_days_left = ob_connected($ob) ? (int)floor((strtotime($ob['valid_until']) - time()) / 86400) : 0;
+            ?>
+            <div class="ob-steps">
+                <?php foreach (['Zugang', 'Bank wählen', 'Verbinden', 'Synchron'] as $i => $label): $n = $i + 1; ?>
+                    <div class="ob-step <?php echo $n < $ob_step ? 'done' : ($n === $ob_step ? 'now' : ''); ?>"><b><?php echo $n < $ob_step ? '✓' : $n; ?></b><span><?php echo $label; ?></span></div>
+                <?php endforeach; ?>
+            </div>
+
+            <?php if (ob_connected($ob)): ?>
+                <!-- Verbunden -->
+                <div class="panel" style="border-color: var(--accent-green);">
+                    <div class="panel-title">
+                        <span style="color: var(--accent-green);">● Verbunden mit <?php echo e($ob['aspsp']['name'] ?? 'Bank'); ?></span>
+                        <span>Freigabe gültig bis <?php echo e(date('d.m.Y', strtotime($ob['valid_until']))); ?><?php if ($ob_days_left <= 14): ?> <span style="color: var(--accent-gold);">(noch <?php echo $ob_days_left; ?> Tage – bald erneuern)</span><?php endif; ?></span>
+                    </div>
+
+                    <div class="ob-accounts">
+                        <?php foreach ($ob['accounts'] as $acc): ?>
+                            <div class="ob-account <?php echo empty($acc['sync']) ? 'off' : ''; ?>">
+                                <div>
+                                    <strong><?php echo e($acc['name']); ?></strong>
+                                    <div class="entry-meta"><?php echo e($acc['iban'] !== '' ? substr($acc['iban'], 0, 4) . ' •••• ' . substr($acc['iban'], -4) : $acc['currency']); ?></div>
+                                </div>
+                                <div class="ob-balance"><?php echo $acc['balance'] ? eur($acc['balance']['amount']) . ' ' . e($acc['balance']['currency']) : '–'; ?></div>
+                                <form method="POST" style="margin: 0;">
+                                    <input type="hidden" name="ob_action" value="toggle_account"><input type="hidden" name="uid" value="<?php echo e($acc['uid']); ?>">
+                                    <button type="submit" class="btn btn-sm <?php echo empty($acc['sync']) ? '' : 'btn-gold'; ?>" style="padding: 4px 9px; font-size: 0.62rem;"><?php echo empty($acc['sync']) ? 'Nicht synchron.' : '✓ Synchronisiert'; ?></button>
+                                </form>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <div class="ob-actions">
+                        <form method="POST" style="margin: 0;" onsubmit="this.querySelector('button').textContent='⟳ Gleiche ab…'; this.querySelector('button').disabled=true;">
+                            <input type="hidden" name="ob_action" value="sync">
+                            <button type="submit" class="btn btn-gold">⟳ Jetzt abgleichen</button>
+                        </form>
+                        <form method="POST" style="margin: 0;">
+                            <input type="hidden" name="ob_action" value="toggle_auto">
+                            <button type="submit" class="btn"><?php echo !empty($ob['auto_sync']) ? '✓ Automatisch alle 6 Std.' : 'Automatik aus'; ?></button>
+                        </form>
+                        <form method="POST" style="margin: 0;">
+                            <input type="hidden" name="ob_action" value="connect">
+                            <button type="submit" class="btn" title="Freigabe bei der Bank erneuern (verlängert die Gültigkeit)">↻ Freigabe erneuern</button>
+                        </form>
+                        <form method="POST" style="margin: 0;" onsubmit="return confirm('Bankverbindung trennen? Bereits übernommene Buchungen bleiben erhalten.');">
+                            <input type="hidden" name="ob_action" value="disconnect">
+                            <button type="submit" class="btn btn-danger">Trennen</button>
+                        </form>
+                    </div>
+                    <p class="ob-hint">
+                        Übernommen werden alle <strong>gebuchten</strong> Umsätze des Budget-Monats „<?php echo e($data['month_name']); ?>“.
+                        Interne Umbuchungen (Pockets, Tresore, Unterkonten, Währungstausch) werden übersprungen, bereits vorhandene Buchungen
+                        (auch aus dem CSV-Import) erkannt, und Fixkosten/Abos aus deinen Vorlagen mit der passenden Bankbuchung abgeglichen.
+                        <?php if ($ob['last_sync']): ?>Letzter Abgleich: <?php echo e(german_datetime((int)$ob['last_sync'])); ?>.<?php endif; ?>
+                    </p>
+                </div>
+
+                <?php if ($ob['history']): ?>
+                    <div class="panel">
+                        <div class="panel-title"><span>// Abgleich-Protokoll</span></div>
+                        <div class="ob-log">
+                            <?php foreach ($ob['history'] as $h): ?>
+                                <div><span><?php echo date('d.m. H:i', $h['t']); ?><?php echo !empty($h['auto']) ? ' · auto' : ''; ?></span>
+                                    <span><b><?php echo (int)$h['imported']; ?></b> neu · <?php echo (int)$h['matched']; ?> abgeglichen · <?php echo (int)$h['duplicates']; ?> vorhanden · <?php echo (int)$h['skipped']; ?> intern<?php echo !empty($h['pending']) ? ' · ' . (int)$h['pending'] . ' vorgemerkt' : ''; ?></span></div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            <?php endif; ?>
+
+            <?php if ($ob_step === 1 || isset($_GET['setup'])): ?>
+                <!-- Schritt 1: Zugang -->
+                <div class="panel">
+                    <div class="panel-title"><span>// 1. Zugang zu Enable Banking einrichten</span></div>
+                    <div class="ob-explain">
+                        <p><strong>Warum Enable Banking?</strong> Revolut gibt seine Open-Banking-Schnittstelle nur an lizenzierte Zahlungsdienstleister heraus –
+                            für private Konten gibt es keine eigene Revolut-API. <strong>Enable Banking</strong> ist ein solcher lizenzierter Dienst, nutzt
+                            genau diese Revolut-Open-Banking-Schnittstelle und ist für die private Nutzung mit den <em>eigenen</em> Konten kostenlos.
+                            Er bekommt nur <strong>Lesezugriff</strong> (Kontostand &amp; Umsätze) – Überweisungen sind damit nicht möglich.</p>
+                        <ol>
+                            <li>Auf <a href="https://enablebanking.com/sign-in/" target="_blank" rel="noopener noreferrer">enablebanking.com</a> mit deiner E-Mail anmelden (Konto wird automatisch angelegt).</li>
+                            <li>Im Control Panel unter <em>API applications</em> eine neue App anlegen: Umgebung <strong>Production</strong>, Name z. B. „Mein Budget“.</li>
+                            <li>Als <strong>Redirect URL</strong> genau diese Adresse eintragen:
+                                <div class="ob-copy"><code id="obRedirect"><?php echo e(ob_redirect_url()); ?></code><button type="button" class="btn btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('obRedirect').textContent); this.textContent='✓ Kopiert';">Kopieren</button></div>
+                                <?php if (strpos(ob_redirect_url(), 'https://') !== 0): ?><span style="color: var(--accent-red);">⚠ Deine Seite läuft ohne HTTPS – Banken verlangen eine https-Adresse. Bitte HTTPS beim Hoster aktivieren.</span><?php endif; ?>
+                            </li>
+                            <li>„Register“ klicken – dein Browser lädt eine Datei <code>xxxxxxxx-xxxx-….pem</code> herunter (der Dateiname ist die Application-ID).</li>
+                            <li>Bei der App auf <strong>„Activate by linking accounts“</strong> klicken und dein Revolut-Konto verknüpfen (schaltet den kostenlosen Privatmodus frei).</li>
+                            <li>Application-ID und .pem-Datei hier eintragen:</li>
+                        </ol>
+                    </div>
+                    <form method="POST" enctype="multipart/form-data">
+                        <input type="hidden" name="ob_action" value="save_credentials">
+                        <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
+                            <div><label class="ob-label">Application-ID</label><input type="text" name="app_id" id="obAppId" value="<?php echo e($ob['app_id']); ?>" placeholder="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" required autocomplete="off" spellcheck="false"></div>
+                            <div><label class="ob-label">Privater Schlüssel (.pem)<?php echo $ob['private_key'] !== '' ? ' – hinterlegt ✓' : ''; ?></label><input type="file" name="pem_file" id="obPem" accept=".pem,.key,.txt" <?php echo $ob['private_key'] === '' ? 'required' : ''; ?>></div>
+                        </div>
+                        <p class="ob-hint">Der Schlüssel wird nur auf deinem Server gespeichert (geschützte Datei <code>.openbanking.php</code>) und nie wieder angezeigt.</p>
+                        <button type="submit" class="btn btn-gold">Speichern &amp; Verbindung testen</button>
+                    </form>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($ob_step >= 2 && !ob_connected($ob)): ?>
+                <!-- Schritt 2 + 3: Bank wählen und verbinden -->
+                <div class="panel">
+                    <div class="panel-title"><span>// 2. Bank wählen</span><?php if ($ob['aspsp']): ?><span style="color: var(--accent-green);">✓ <?php echo e($ob['aspsp']['name'] . ' (' . $ob['aspsp']['country'] . ')'); ?></span><?php endif; ?></div>
+                    <form method="POST" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;">
+                        <input type="hidden" name="ob_action" value="search_banks">
+                        <div style="flex: 1; min-width: 180px;"><label class="ob-label">Land deines Revolut-Kontos</label>
+                            <select name="country">
+                                <?php foreach (['DE' => 'Deutschland', 'AT' => 'Österreich', 'CH' => 'Schweiz', 'LT' => 'Litauen (Revolut Bank UAB)', 'NL' => 'Niederlande', 'FR' => 'Frankreich', 'ES' => 'Spanien', 'IT' => 'Italien', 'PL' => 'Polen', 'IE' => 'Irland', 'BE' => 'Belgien', 'FI' => 'Finnland', 'SE' => 'Schweden', 'DK' => 'Dänemark', 'GB' => 'Großbritannien'] as $cc => $cn): ?>
+                                    <option value="<?php echo $cc; ?>" <?php echo ($_SESSION['ob_country'] ?? ($ob['aspsp']['country'] ?? 'DE')) === $cc ? 'selected' : ''; ?>><?php echo e($cn); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn">Banken laden</button>
+                    </form>
+                    <?php if (!empty($_SESSION['ob_banks'])): ?>
+                        <form method="POST" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px;">
+                            <input type="hidden" name="ob_action" value="select_bank">
+                            <select name="bank" style="flex: 1; min-width: 200px;">
+                                <?php foreach ($_SESSION['ob_banks'] as $bank): ?>
+                                    <option value="<?php echo e($bank['name'] . '|' . $bank['country']); ?>"><?php echo e($bank['name']); ?><?php echo $bank['beta'] ? ' (Beta)' : ''; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <button type="submit" class="btn btn-gold">Auswählen</button>
+                        </form>
+                    <?php endif; ?>
+                </div>
+
+                <?php if ($ob['aspsp']): ?>
+                    <div class="panel" style="border-color: var(--accent-gold);">
+                        <div class="panel-title"><span>// 3. Mit <?php echo e($ob['aspsp']['name']); ?> verbinden</span></div>
+                        <p class="ob-hint" style="margin-top: 0;">Du wirst zu Enable Banking und dann zu <?php echo e($ob['aspsp']['name']); ?> weitergeleitet. Dort bestätigst du den Lesezugriff
+                            (bei Revolut meist in der App). Danach kommst du automatisch hierher zurück und die Umsätze des Monats werden übernommen.
+                            Die Freigabe gilt bis zu <?php echo (int)min(180, floor(($ob['aspsp']['max'] ?? 7776000) / 86400)); ?> Tage und muss dann erneuert werden (PSD2-Vorgabe).</p>
+                        <form method="POST"><input type="hidden" name="ob_action" value="connect"><button type="submit" class="btn btn-gold" style="font-size: 0.95rem; padding: 14px 26px;">🏦 Jetzt mit <?php echo e($ob['aspsp']['name']); ?> verbinden</button></form>
+                    </div>
+                <?php endif; ?>
+            <?php endif; ?>
+
+            <?php if ($ob_step > 1): ?>
+                <div class="ob-footer">
+                    <a href="budget.php?view=bank&amp;setup=1">Zugangsdaten ändern</a>
+                    <form method="POST" style="display: inline;" onsubmit="return confirm('Alle Bank-Zugangsdaten (Application-ID, Schlüssel, Verbindung) löschen?');"><input type="hidden" name="ob_action" value="forget"><button type="submit">Alles löschen</button></form>
+                </div>
+            <?php endif; ?>
+
+            <script>
+                // Application-ID automatisch aus dem Dateinamen der .pem übernehmen
+                const pemInput = document.getElementById('obPem');
+                if (pemInput) pemInput.addEventListener('change', () => {
+                    const m = (pemInput.files[0] || {}).name && pemInput.files[0].name.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+                    const id = document.getElementById('obAppId');
+                    if (m && !id.value) id.value = m[0];
+                });
+            </script>
 
         <?php elseif ($view_mode === 'templates'): ?>
             <!-- ================= FIXKOSTEN & ABOS VORLAGEN ================= -->

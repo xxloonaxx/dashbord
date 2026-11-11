@@ -45,6 +45,23 @@ Wer das zuerst ausfüllt, wird Admin – also direkt nach dem Hochladen erledige
 
 Unbedingt **HTTPS** beim Hoster aktivieren, sonst wird das Passwort unverschlüsselt übertragen (die Admin-Zentrale warnt dann).
 
+## Bank-Sync (Revolut über Open Banking)
+
+Im Budget unter **🏦 Bank-Sync**. Revolut gibt seine Open-Banking-Schnittstelle nur an lizenzierte Zahlungsdienstleister
+heraus, für Privatkonten gibt es keine eigene Revolut-API. Die Anbindung läuft daher über **Enable Banking**, einen
+lizenzierten Kontoinformationsdienst, der für die private Nutzung mit den eigenen Konten kostenlos ist (nur Lesezugriff).
+
+1. Auf enablebanking.com anmelden, unter *API applications* eine **Production**-App anlegen.
+2. Als Redirect-URL die Adresse eintragen, die der Bank-Sync-Reiter anzeigt (`https://…/budget.php`).
+3. Die heruntergeladene `.pem`-Datei und die Application-ID im Bank-Sync hinterlegen.
+4. In Enable Banking „Activate by linking accounts“ mit dem eigenen Revolut-Konto ausführen.
+5. Im Bank-Sync Land + „Revolut“ wählen und verbinden – Freigabe in der Revolut-App bestätigen.
+
+Danach werden die gebuchten Umsätze des Budget-Monats übernommen: ohne Duplikate (auch gegen CSV-Importe),
+ohne interne Umbuchungen (Pockets, Tresore, Währungstausch), Fixkosten/Abos werden mit den Vorlagen abgeglichen.
+Automatischer Abgleich beim Öffnen des Budgets höchstens alle 6 Std. Die Freigabe muss laut PSD2 spätestens nach
+180 Tagen erneuert werden. Zugangsdaten liegen geschützt in `.openbanking.php`.
+
 ## Links & Kategorien im Browser bearbeiten
 
 Jeder Link-Hub hat oben die Knöpfe **＋ Link hinzufügen** und **＋ Kategorie** (Tastenkürzel: `n` = neuer Link).
