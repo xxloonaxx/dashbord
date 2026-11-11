@@ -44,7 +44,7 @@
 .ns-item:hover img { transform: scale(1.04); }
 .ns-item.r-e { border-color: rgba(255, 85, 85, 0.45); }
 .ns-item.r-q { border-color: rgba(243, 194, 98, 0.45); }
-.ns-item.broken::after { content: "🖼 Vorschau nicht ladbar"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: var(--text-muted); background: #0b121b; }
+.ns-item.broken::after { content: "🖼 nicht ladbar – 🩺 Bilder-Test in ⚙"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: var(--text-muted); background: #0b121b; }
 .ns-blur .ns-item.r-q img, .ns-blur .ns-item.r-e img { filter: blur(18px) saturate(0.6); }
 .ns-blur .ns-item:hover img, .ns-blur .ns-item:focus-visible img { filter: none; }
 .ns-badges { position: absolute; top: 6px; left: 6px; display: flex; gap: 4px; }
@@ -101,3 +101,6 @@
     .ns-key { grid-template-columns: 1fr; }
     .ns-search select, .ns-search .btn { flex: 1; }
 }
+.ns-diag { margin: 10px 0; font-size: 0.82rem; display: flex; flex-direction: column; gap: 4px; }
+.ns-diaghint { border-left: 3px solid var(--accent-gold); padding: 6px 10px; margin: 6px 0 0; line-height: 1.5; }
+.ns-lbmedia .ns-error a { color: var(--accent-gold); }

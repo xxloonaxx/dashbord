@@ -76,7 +76,7 @@
     prov.addEventListener('change', () => { if (NS.providers[prov.value].cats) form.q.value = ''; provChanged(); });
     form.rating.addEventListener('change', provChanged);
     $('#cats').addEventListener('click', e => { const b = e.target.closest('[data-cat]'); if (b) { form.q.value = b.dataset.cat; provChanged(); search(false); } });
-    document.addEventListener('click', e => { if (e.target.closest('[data-gosettings]')) { e.preventDefault(); tab('settings'); } });
+    document.addEventListener('click', e => { if (e.target.closest('[data-gosettings]')) { e.preventDefault(); $('#lb').hidden = true; document.body.style.overflow = ''; tab('settings'); } });
     provChanged();
 
     let posts = [], page = 1, busy = false, current = null;
@@ -103,9 +103,40 @@
     if ('IntersectionObserver' in window) new IntersectionObserver(en => { if (en[0].isIntersecting && !$('#moreBtn').hidden && !busy && !$('[data-pane=search]').hidden) search(true); }, { rootMargin: '600px' }).observe($('#moreBtn'));
 
     const RT = { s: ['S', 'Sicher'], q: ['Q', 'Fragwürdig'], e: ['E', 'Explizit'] };
+
+    // ---- Bilder laden mit Ausweichweg: direkt → über den eigenen Server → größere Variante über den Server ----
+    // Blockiert der Browser die Bilder-Seite (Werbeblocker, DNS-/Jugendschutzfilter, Hotlink-Schutz), schaltet die Galerie
+    // nach einigen Fehlschlägen automatisch auf „über den Server“ um.
+    const auto = { direct: 0, on: store.get('autoproxy', false) };
+    const isProxy = u => /nsfw\.php\?img=/.test(u || '');
+    function sources(p, kind) {
+        const direct = { preview: p.v_preview, sample: p.v_sample, url: p.v_url }[kind], prox = { preview: p.x_preview, sample: p.x_sample, url: p.x_url }[kind];
+        const extra = kind === 'preview' ? [p.x_sample] : kind === 'sample' ? [p.x_url] : [];
+        const list = (auto.on ? [prox, direct] : [direct, prox]).concat(extra).filter(Boolean);
+        return list.filter((u, i) => list.indexOf(u) === i);
+    }
+    const media = (tag, list, attrs) => '<' + tag + ' src="' + esc(list[0]) + '" data-fb="' + esc(JSON.stringify(list.slice(1))) + '" ' + attrs + (tag === 'img' ? '>' : '></' + tag + '>');
+    document.addEventListener('error', e => {
+        const el = e.target;
+        if (!el || !el.dataset || el.dataset.fb === undefined) return;
+        let fb = [];
+        try { fb = JSON.parse(el.dataset.fb); } catch (x) {}
+        if (!isProxy(el.getAttribute('src'))) auto.direct++;
+        if (fb.length) { el.dataset.fb = JSON.stringify(fb.slice(1)); el.dataset.fell = '1'; el.src = fb[0]; return; }
+        const item = el.closest('.ns-item');
+        if (item) item.classList.add('broken');
+        else if (el.closest('#lbMedia')) $('#lbMedia').innerHTML = '<div class="ns-error">Das Bild ließ sich weder direkt noch über deinen Server laden. <a href="#" data-gosettings>🩺 Bilder-Test</a> zeigt den Grund.</div>';
+    }, true);
+    document.addEventListener('load', e => {
+        const el = e.target;
+        if (!el || !el.dataset || el.dataset.fell !== '1' || auto.on || !isProxy(el.getAttribute('src')) || auto.direct < 3) return;
+        auto.on = true;
+        store.set('autoproxy', true);
+        toast('Dein Browser konnte die Bilder nicht direkt laden – sie kommen ab jetzt über deinen Server.');
+    }, true);
     function renderGrid(box, list) {
         box.innerHTML = list.map((p, i) => '<button type="button" class="ns-item r-' + esc(p.rating) + '" data-i="' + i + '" title="' + esc(p.tags.slice(0, 12).join(' ')) + '">'
-            + '<img src="' + esc(p.v_preview) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest(\'.ns-item\').classList.add(\'broken\')">'
+            + media('img', sources(p, 'preview'), 'alt="" loading="lazy" referrerpolicy="no-referrer"')
             + '<span class="ns-badges"><b class="ns-rt">' + RT[p.rating][0] + '</b>' + (p.video ? '<b>▶ ' + esc(p.ext) + '</b>' : p.ext === 'gif' ? '<b>GIF</b>' : '') + (p.fav ? '<b class="fav">⭐</b>' : '') + '</span>'
             + (p.score ? '<span class="ns-score">⬆ ' + p.score + '</span>' : '') + '</button>').join('');
         box._list = list;
@@ -146,8 +177,8 @@
         const p = lbList[lbIdx];
         if (!p) return;
         const P = NS.providers[p.provider] || { icon: '', name: p.provider };
-        $('#lbMedia').innerHTML = p.video ? '<video src="' + esc(p.v_url) + '" controls autoplay loop playsinline></video>'
-            : '<img src="' + esc(p.v_sample) + '" alt="" referrerpolicy="no-referrer" data-full="' + esc(p.v_url) + '" title="Klicken für volle Auflösung">';
+        $('#lbMedia').innerHTML = p.video ? media('video', sources(p, 'url'), 'controls autoplay loop playsinline referrerpolicy="no-referrer"')
+            : media('img', sources(p, 'sample'), 'alt="" referrerpolicy="no-referrer" data-full="1" title="Klicken für volle Auflösung"');
         const artist = new Set(p.artists);
         $('#lbSide').innerHTML = '<div class="ns-lbtitle">' + esc(P.icon + ' ' + P.name) + ' #' + esc(p.id) + '</div>'
             + '<div class="ns-meta"><span class="ns-rt r-' + esc(p.rating) + '">' + RT[p.rating][1] + '</span>' + (p.w ? '<span>' + p.w + '×' + p.h + '</span>' : '') + (p.ext ? '<span>' + esc(p.ext.toUpperCase()) + '</span>' : '') + (p.score ? '<span>⬆ ' + p.score + '</span>' : '') + (p.favs ? '<span>♥ ' + p.favs + '</span>' : '') + '</div>'
@@ -166,7 +197,7 @@
         const nav = e.target.closest('[data-nav]');
         if (nav) { lbIdx = (lbIdx + +nav.dataset.nav + lbList.length) % lbList.length; renderLb(); return; }
         const im = e.target.closest('img[data-full]');
-        if (im && im.src !== im.dataset.full) { im.src = im.dataset.full; im.classList.add('full'); return; }
+        if (im && !im.classList.contains('full')) { const l = sources(lbList[lbIdx], 'url'); im.dataset.fb = JSON.stringify(l.slice(1)); im.src = l[0]; im.classList.add('full'); return; }
         const t = e.target.closest('[data-t]');
         if (t) {
             const tag = (e.shiftKey ? '-' : '') + t.dataset.t;
@@ -254,6 +285,38 @@
         const run = e.target.closest('[data-run]'), del = e.target.closest('[data-sdel]');
         if (run) { const s = $('#savedBox')._items.find(x => x.id === run.dataset.run); prov.value = s.provider; form.q.value = s.q; form.rating.value = s.rating; form.order.value = s.order; provChanged(); tab('search'); search(false); }
         if (del && confirm('Gespeicherte Suche löschen?')) api('saved_delete', { id: del.dataset.sdel }).then(r => renderSaved(r.items)).catch(x => toast(x.message, true));
+    });
+
+    // =============== Bilder-Test ===============
+    const probe = url => new Promise(res => {
+        const i = new Image(), t0 = Date.now();
+        const done = ok => { clearTimeout(tm); res(ok ? 'ok (' + (Date.now() - t0) + ' ms)' : '✗ blockiert oder Fehler'); };
+        const tm = setTimeout(() => { i.src = ''; res('✗ keine Antwort (Zeitüberschreitung)'); }, 10000);
+        i.referrerPolicy = 'no-referrer';
+        i.onload = () => done(i.naturalWidth > 0);
+        i.onerror = () => done(false);
+        i.src = url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now();
+    });
+    $('#diagBtn').addEventListener('click', async () => {
+        const box = $('#diagBox'), prov = $('#settingsForm select[name=default]').value;
+        box.innerHTML = '<div class="ns-small">Teste …</div>';
+        try {
+            const r = await api('diag', { provider: prov });
+            let h = '<div>🔌 Suche über die API: <b>' + esc(r.api) + '</b></div>';
+            if (r.url) {
+                h += '<div>🖥 Bild über deinen Server: <b>' + esc(r.server) + '</b></div>';
+                box.innerHTML = h + '<div class="ns-small">Prüfe den Browser …</div>';
+                const direct = await probe(r.url), viaServer = await probe(r.proxy);
+                h += '<div>🌐 Bild direkt im Browser (' + esc(r.host) + '): <b>' + esc(direct) + '</b></div><div>🌐 Bild im Browser über den Server: <b>' + esc(viaServer) + '</b></div>';
+                const dOk = direct.startsWith('ok'), sOk = viaServer.startsWith('ok');
+                h += '<p class="ns-diaghint">' + (dOk ? '✅ Alles in Ordnung – die Bilder sollten laden. Falls nicht: Seite neu laden (Strg+F5).'
+                    : sOk ? '⚠ Dein Browser oder Netz blockiert <b>' + esc(r.host) + '</b> – typisch für Werbeblocker (z. B. uBlock mit Filterlisten), Jugendschutz- oder DNS-Filter im Router bzw. beim Anbieter. Über deinen Server klappt es: die Galerie weicht automatisch aus. Für schnelleres Laden „Bilder über deinen Server laden“ einschalten.'
+                    : r.server.startsWith('ok') ? '⚠ Der Server bekommt das Bild, liefert es aber nicht an den Browser aus – evtl. eine Sicherheitsregel des Hosters. Bitte Fehlermeldung aus der Browser-Konsole (F12) schicken.'
+                    : '⚠ Weder Browser noch Server erreichen die Bilder. Meldung vom Server: ' + esc(r.server)) + '</p>';
+                if (!dOk && sOk && !auto.on) { auto.on = true; store.set('autoproxy', true); }
+            } else h += '<p class="ns-diaghint">Keine Treffer zum Testen.</p>';
+            box.innerHTML = h;
+        } catch (x) { box.innerHTML = '<div class="ns-error">⚠ ' + esc(x.message) + '</div>'; }
     });
 
     // =============== Einstellungen ===============

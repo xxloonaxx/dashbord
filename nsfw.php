@@ -38,6 +38,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $favs = array_flip(array_column(nsfw_favs($uid), 'key'));
                 $out = ['posts' => array_map(function ($p) use ($favs) { return nsfw_view($p) + ['fav' => isset($favs[$p['key']])]; }, $r['posts']), 'more' => $r['more'], 'hidden' => $r['hidden']];
                 break;
+            case 'diag':
+                // Fehlersuche: API, Bild über den Server, Bild direkt (prüft der Browser)
+                $p = (string)($in['provider'] ?? 'e621');
+                $res = ['provider' => $p, 'api' => '', 'count' => 0, 'server' => '', 'url' => '', 'proxy' => ''];
+                try {
+                    $t = microtime(true);
+                    $r = nsfw_search($p, '', NSFW_PROVIDERS[$p][5] ? 'safe' : 'nsfw', 'new', 1, 5);
+                    $res['count'] = count($r['posts']);
+                    $res['api'] = 'ok (' . $res['count'] . ' Treffer, ' . round((microtime(true) - $t) * 1000) . ' ms)';
+                    if ($r['posts']) {
+                        $u = $r['posts'][0]['preview'];
+                        $res['url'] = $u;
+                        $res['proxy'] = nsfw_proxy_url($u);
+                        $t = microtime(true);
+                        [$data, $mime, $code, $err] = nsfw_fetch_image($u, 5 * 1024 * 1024);
+                        $res['server'] = $err !== '' ? '✗ ' . $err : 'ok – ' . $mime . ', ' . round(strlen($data) / 1024) . ' KB, ' . round((microtime(true) - $t) * 1000) . ' ms';
+                        $res['host'] = parse_url($u, PHP_URL_HOST);
+                    }
+                } catch (Throwable $e) { $res['api'] = '✗ ' . $e->getMessage(); }
+                $out = $res;
+                break;
             case 'autocomplete':
                 $out = ['tags' => nsfw_autocomplete((string)($in['provider'] ?? 'e621'), (string)($in['term'] ?? ''))];
                 break;
@@ -227,6 +248,10 @@ if ($discord) { require_once __DIR__ . '/inc/discord.php'; $discord = discord_co
                 <p class="ns-small">Immer gesperrt (fest eingebaut): <?php echo e(implode(', ', NSFW_FORCED_BLACKLIST)); ?></p>
                 <div class="panel-title" style="margin-top: 18px;">🛡 Privatsphäre</div>
                 <label class="ns-check"><input type="checkbox" name="proxy" value="1"<?php echo $cfg['proxy'] ? ' checked' : ''; ?>> Bilder über deinen Server laden (die Bilder-Seiten sehen dann deine IP nicht; braucht mehr Server-Traffic)</label>
+                <p class="ns-small">Kann dein Browser die Bilder nicht direkt laden (Werbeblocker, Jugendschutz-/DNS-Filter des Routers oder Anbieters, Hotlink-Schutz),
+                   weicht die Galerie automatisch auf deinen Server aus.</p>
+                <button type="button" class="btn btn-sm" id="diagBtn">🩺 Bilder-Test für die Standard-Quelle</button>
+                <div id="diagBox" class="ns-diag"></div>
                 <label class="field">Standard-Quelle</label>
                 <select name="default"><?php foreach ($providers as $id => $p): ?><option value="<?php echo $id; ?>"<?php echo $cfg['default'] === $id ? ' selected' : ''; ?>><?php echo e($p['icon'] . ' ' . $p['name']); ?></option><?php endforeach; ?></select>
                 <button class="btn btn-gold" style="margin-top: 14px;">Speichern</button>

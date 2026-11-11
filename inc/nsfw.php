@@ -330,31 +330,72 @@ function nsfw_proxy_secret(): string {
     return $s;
 }
 
-function nsfw_img(string $url): string {
-    if (!nsfw_cfg()['proxy'] || !preg_match('#^https?://#', $url)) return $url;
+/** Signierte Proxy-Adresse (Bild über den eigenen Server laden) */
+function nsfw_proxy_url(string $url): string {
+    if (!preg_match('#^https?://#', $url)) return $url;
     return 'nsfw.php?img=' . rawurlencode($url) . '&s=' . substr(hash_hmac('sha256', $url, nsfw_proxy_secret()), 0, 24);
 }
 
-/** Bilder-URLs eines Beitrags ggf. auf den Proxy umschreiben (für die Anzeige im Browser) */
+function nsfw_img(string $url): string {
+    return nsfw_cfg()['proxy'] ? nsfw_proxy_url($url) : $url;
+}
+
+/**
+ * Bilder-URLs für die Anzeige: v_* = wie eingestellt (direkt oder über den Server), x_* = immer über den Server.
+ * Der Browser weicht bei Ladefehlern automatisch auf x_* aus (z. B. wenn ein Werbeblocker, DNS-Filter oder
+ * Hotlink-Schutz die Bilder-Seite blockiert).
+ */
 function nsfw_view(array $post): array {
-    foreach (['preview', 'sample'] as $k) $post['v_' . $k] = nsfw_img($post[$k]);
-    $post['v_url'] = nsfw_img($post['url']);
+    foreach (['preview', 'sample', 'url'] as $k) {
+        $post['v_' . $k] = nsfw_img($post[$k]);
+        $post['x_' . $k] = nsfw_proxy_url($post[$k]);
+    }
     return $post;
+}
+
+/** Bild vom Server aus holen: [Daten, MIME, HTTP-Code, Fehlertext] */
+function nsfw_fetch_image(string $url, int $max = 60 * 1024 * 1024): array {
+    $host = strtolower((string)parse_url($url, PHP_URL_HOST));
+    $referer = '';
+    foreach (NSFW_PROVIDERS as $p) {
+        $h = strtolower((string)parse_url($p[2], PHP_URL_HOST));
+        $root = implode('.', array_slice(explode('.', $h), -2));
+        if ($host === $h || substr($host, -strlen($root) - 1) === '.' . $root) { $referer = ($p[7] !== '' ? preg_replace('#^(https://[^/]+/).*$#', '$1', $p[7]) : $p[2] . '/'); break; }
+    }
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 8, CURLOPT_TIMEOUT => 40, CURLOPT_USERAGENT => nsfw_user_agent(), CURLOPT_FOLLOWLOCATION => true,
+                            CURLOPT_MAXREDIRS => 3, CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS, CURLOPT_MAXFILESIZE => $max,
+                            CURLOPT_HTTPHEADER => array_filter(['Accept: image/avif,image/webp,image/*,video/*;q=0.9,*/*;q=0.5', $referer !== '' ? 'Referer: ' . $referer : ''])]);
+    $data = curl_exec($ch);
+    $type = strtolower((string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE));
+    $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $err = curl_error($ch);
+    curl_close($ch);
+    if ($data === false) return ['', '', 0, 'nicht erreichbar (' . $err . ')'];
+    if ($code >= 400) {
+        $cf = stripos((string)$data, 'challenge') !== false || stripos((string)$data, 'cloudflare') !== false;
+        return ['', '', $code, 'HTTP ' . $code . ($cf ? ' – Cloudflare-Schutz der Bilder-Seite blockiert deinen Server' : '')];
+    }
+    if (!preg_match('#^(image|video)/[\w.+-]+#', $type, $m)) {
+        // manche CDNs liefern application/octet-stream – dann am Inhalt erkennen
+        $sniff = class_exists('finfo') ? (string)(new finfo(FILEINFO_MIME_TYPE))->buffer(substr((string)$data, 0, 4096)) : '';
+        if (!preg_match('#^(image|video)/[\w.+-]+#', $sniff, $m)) return ['', '', $code, 'keine Bilddatei (' . ($type ?: 'unbekannt') . ')'];
+    }
+    return [(string)$data, $m[0], $code, ''];
 }
 
 function nsfw_proxy(string $url, string $sig): void {
     $host = (string)parse_url($url, PHP_URL_HOST);
     if (!hash_equals(substr(hash_hmac('sha256', $url, nsfw_proxy_secret()), 0, 24), $sig) || !nsfw_host_allowed($host)) { http_response_code(403); exit; }
-    $ch = curl_init($url);
-    $type = '';
-    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 8, CURLOPT_TIMEOUT => 40, CURLOPT_USERAGENT => nsfw_user_agent(), CURLOPT_FOLLOWLOCATION => true,
-                            CURLOPT_MAXREDIRS => 3, CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS, CURLOPT_MAXFILESIZE => 60 * 1024 * 1024]);
-    $data = curl_exec($ch);
-    $type = (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-    $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-    curl_close($ch);
-    if ($data === false || $code >= 400 || !preg_match('#^(image|video)/[\w.+-]+#', $type, $m)) { http_response_code(502); exit; }
-    header('Content-Type: ' . $m[0]);
+    [$data, $mime, $code, $err] = nsfw_fetch_image($url);
+    if ($err !== '') {
+        http_response_code(502);
+        header('Content-Type: text/plain; charset=utf-8');
+        header('X-Nsfw-Proxy: ' . rawurlencode($err));
+        exit($err);
+    }
+    header('Content-Type: ' . $mime);
+    header('Content-Length: ' . strlen($data));
     header('Cache-Control: private, max-age=86400');
     header('X-Content-Type-Options: nosniff');
     header('Content-Security-Policy: default-src \'none\'; sandbox');
