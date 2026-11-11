@@ -33,14 +33,15 @@ const PAGE_DEFAULTS = [
     'budget.php'           => ['Budget', '💶', 'Monatsbudget, Fixkosten, Abos & Bank-Sync', 'Finanzen', 'users'],
     'con.php'              => ['Con-Rechner', '🎪', 'Budget & Planung für Conventions', 'Finanzen', 'users'],
     'nexus.php'            => ['VRC Nexus', '🥽', 'VRChat-Zentrale: Freunde, Verlauf, Statistik, Welten, Avatare & Gruppen – Direkt-Zugriff per Zwischenablage', 'Community', 'users'],
-    'discord.php'          => ['Discord-Zentrale', '🤖', 'Discord-Server über deinen Bot: Nachrichten, Mitglieder, Rollen, Events & Moderation', 'Community', 'users'],
+    'discord.php'          => ['Discord-Zentrale', '🤖', 'Discord-Server über deinen Bot: Slash-Befehle, Rollen-Knöpfe, Umfragen, Automatik, Mitglieder & Moderation', 'Community', 'users'],
+    'nsfw.php'             => ['NSFW-Galerie', '🔞', 'Bilder-APIs (e621, Rule34, Danbooru, Gelbooru …) durchsuchen, Favoriten & Discord – 18+', 'Community', 'users'],
     'linkcheck.php'        => ['Link-Check', '🩺', 'Prüft alle Links der Hubs auf Erreichbarkeit', 'System', 'public'],
     'backup.php'           => ['Backup', '💾', 'Alle Daten als ZIP herunterladen', 'System', 'users'],
     'admin.php'            => ['Admin-Zentrale', '⚙️', 'Benutzer, Rechte, Seiten, Protokoll & System', 'System', 'public'],
 ];
 
 /** Rechte, ohne die eine Dateiseite für angemeldete Benutzer ausgeblendet wird */
-const PAGE_REQUIRED_PERMISSION = ['budget.php' => 'budget.access', 'con.php' => 'con.access', 'backup.php' => 'backup.download', 'nexus.php' => 'vrcx.access', 'discord.php' => 'discord.manage'];
+const PAGE_REQUIRED_PERMISSION = ['budget.php' => 'budget.access', 'con.php' => 'con.access', 'backup.php' => 'backup.download', 'nexus.php' => 'vrcx.access', 'discord.php' => 'discord.manage', 'nsfw.php' => 'nsfw.browse'];
 
 /** Seiten, die nie im Register auftauchen (Hilfsdateien) */
 const PAGE_IGNORE = ['index.php', 'page.php', 'preview.php', 'vrcx.php'];

@@ -13,7 +13,8 @@ PHP-Dashboard: Daten als JSON-Dateien neben den Seiten, Benutzer/Seiten/Kalender
 | `linkcheck.php` | Prüft alle Hub-Links auf Erreichbarkeit (in kleinen Paketen mit Live-Fortschritt, damit kein Hoster-Zeitlimit greift); kaputte Links bekommen in den Hubs einen ⚠-Hinweis |
 | `backup.php` | Lädt alle persönlichen Daten (Budget, Con, Countdowns, Archive, Datenbanken, hochgeladene Bilder) als ZIP herunter |
 | `nexus.php` | **VRC Nexus**: VRChat-Freunde, Verlauf, Statistik, Welten & Instanzen, Avatare, Moderation, Gruppen, Direkt-Zugriff – Login mit 2FA (`vrcx.php` leitet weiter) |
-| `discord.php` | **Discord-Zentrale**: Server über den eigenen Bot – Nachrichten & Embeds, Mitglieder, Rollen, Kanäle, Events, Moderation, geplante Nachrichten |
+| `discord.php` | **Discord-Zentrale**: Server über den eigenen Bot – Slash-Befehle, Rollen-Knöpfe, Umfragen, Begrüßung, Auto-Posts, Nachrichten & Embeds, Mitglieder, Rollen, Kanäle, Emojis, AutoMod, Events, geplante Nachrichten |
+| `nsfw.php` | **NSFW-Galerie** (18+): Bilder-APIs e621/e926, Danbooru, Gelbooru, Rule34, Yande.re, Konachan, waifu.im, waifu.pics – Suche, Favoriten, Posten in NSFW-Kanäle |
 | `page.php` | Eigene Seiten aus Vorlagen (Logik in `inc/tpl/*.php`) |
 | `inc/format.php`, `assets/editor.js`, `preview.php` | Gemeinsame Formatierung (Markdown + BBCode + HTML), Werkzeugleiste & Live-Vorschau |
 | `inc/common.php` | Gemeinsame Hilfsfunktionen (JSON laden/speichern, Beträge, Escaping, Zeitzone) |
@@ -40,7 +41,7 @@ Alles liegt in der SQLite-Datenbank `data/site_<zufall>.sqlite`; Passwörter nur
 - **Benutzer** (Admin-Zentrale → Benutzer): anlegen, Rolle zuweisen, deaktivieren, Passwort neu setzen
   (mit Generator), Sitzungen beenden, löschen. Der letzte aktive Administrator kann nicht entmachtet werden.
 - **Rollen & Rechte**: Administrator (immer alles), Redakteur, Mitglied – eigene Rollen beliebig anlegen.
-  20 Einzelrechte, z. B. `vrcx.access` (VRC Nexus), `discord.manage`, `budget.access`, `con.access`, `calendar.edit`, `calendar.private`, `links.edit`,
+  21 Einzelrechte, z. B. `vrcx.access` (VRC Nexus), `discord.manage`, `nsfw.browse` (NSFW-Galerie), `budget.access`, `con.access`, `calendar.edit`, `calendar.private`, `links.edit`,
   `pages.manage`, `users.manage`, `nsfw.view`, `settings.nsfw`, `system.manage`, `audit.view`.
 - Rollenwechsel, Deaktivierung und Passwortänderung melden den Benutzer überall ab.
 - Nach 5 falschen Passwörtern wird die IP für 10 Minuten gesperrt (in „System“ aufhebbar).
@@ -180,6 +181,64 @@ Funktionen:
   pünktlich, wenn die angezeigte **Cron-Adresse** (`discord.php?cron=…`) alle 5 Minuten aufgerufen wird (Hoster-Cronjob oder cron-job.org).
 - **VRC Nexus → „📣 In Discord teilen“** schickt eine Instanz mit Beitreten-Link in den Standard-Kanal.
 - Alle Moderations- und Sendeaktionen landen im Protokoll der Admin-Zentrale.
+
+### Slash-Befehle & Knöpfe (ohne Dauerbetrieb)
+
+Ein PHP-Webspace kann keinen Bot rund um die Uhr laufen lassen. Discord bietet dafür den **Interactions Endpoint**:
+Discord schickt jeden Slash-Befehl und jeden Knopfdruck signiert (Ed25519) an `discord.php?interactions`, die Zentrale antwortet sofort.
+Voraussetzungen: die Seite ist per **HTTPS** erreichbar, und die PHP-Erweiterung **sodium** ist aktiv (Standard ab PHP 7.2).
+
+Einrichtung im Reiter **⚡ Befehle** → „🚀 Automatisch einrichten“: Die Zentrale holt den öffentlichen Schlüssel der Anwendung,
+trägt die Endpunkt-Adresse bei Discord ein (Discord prüft sie dabei sofort) und registriert die Befehle auf dem Server.
+Klappt das automatische Eintragen nicht, die angezeigte Adresse im Developer-Portal unter *General Information → Interactions Endpoint URL*
+eintragen und „Adresse selbst eingetragen“ klicken. Bots, die vor diesem Update eingeladen wurden, einmal mit dem neuen Einladungslink
+(Einstellungen) erneut einladen – er enthält jetzt `applications.commands` und die Rechte für Webhooks, Emojis, Threads und Umfragen.
+
+- **Eingebaute Befehle** (einzeln abschaltbar): `/hilfe`, `/countdown`, `/termine`, `/würfel`, `/münze`, `/wähle`, `/8ball`, `/umfrage` (echte
+  Discord-Umfrage), `/erinnerung` (z. B. `30m`, `2h`, `18:30`, `24.12. 18:00` – wird als geplante Nachricht gespeichert), `/info`, `/server`,
+  `/avatar`, `/bild` (jugendfreie Bilder) und `/nsfw` (nur in altersbeschränkten Kanälen, mit Tag-Vorschlägen und „🔁 Noch eins“).
+- **Eigene Befehle**: Name, Antwort mit Platzhaltern (`{user}`, `{name}`, `{text}`, `{channel}`, `{date}`, `{time}`, `{random:A|B|C}`),
+  wahlweise als Infobox mit Bild/GIF, nur für die aufrufende Person sichtbar oder nur in NSFW-Kanälen. Nutzung wird gezählt.
+- **🧪 Ausprobieren**: jeden Befehl im Dashboard testen, ohne Discord und ohne Seiteneffekte – mit Vorschau im Discord-Look.
+- **Letzte Benutzungen**: wer welchen Befehl wann genutzt hat (inkl. Fehlern).
+
+### Rollen-Knöpfe, Automatik & mehr
+
+- **🎛 Rollen-Knöpfe**: Nachricht mit bis zu 25 Knöpfen, über die sich Mitglieder Rollen selbst nehmen (Spezies, Pronomen, Ping-Rollen,
+  „Regeln akzeptiert“). Modi: an/aus, nur eine aus der Gruppe, nur hinzufügen. Bearbeiten aktualisiert die Nachricht in Discord.
+- **🤖 Automatik**: **Begrüßung** neuer Mitglieder (Text mit `{user}`, `{server}`, `{count}`, als Infobox mit Profilbild), **Auto-Rolle**,
+  **Abschiedsmeldung**; **Auto-Posts** aus den Bilder-APIs (z. B. alle 4 Stunden ein e926-Bild mit bestimmten Tags) oder aus **RSS-/Atom-Feeds**.
+  NSFW-Auto-Posts gehen nur in altersbeschränkte Kanäle und pausieren, falls der Kanal die Einstellung verliert.
+  Das alles läuft über die **Cron-Adresse** (alle 5 Minuten aufrufen lassen) bzw. beim Öffnen der Zentrale.
+- **Nachrichten**: 📊 **Umfragen** anhängen (bis 10 Antworten, Emoji am Anfang = Antwort-Emoji, Laufzeit, Mehrfachauswahl; Ergebnisse
+  und „Beenden“ in der Nachrichtenliste), 🎭 **als Persona senden** (eigener Name und Profilbild über einen Webhook, Personas merkbar),
+  eigene Bot-Nachrichten ✎ **bearbeiten**, 😀 Reaktionen, 🧵 Threads, 🧹 **Aufräumen** (bis 100 Nachrichten der letzten 14 Tage –
+  alle, nur Bots, eine Person, mit Text, Links oder Dateien).
+- **Kanäle**: ⚙ bearbeiten (Name, Thema, Slowmode, 🔞 altersbeschränkt) und löschen, aktive **Threads** (sperren, archivieren),
+  **Webhooks** ansehen, anlegen (Adresse für GitHub, Twitch-Bots usw.) und löschen.
+- **Rollen** anlegen, umbenennen, Farbe und Anzeige ändern, löschen. **😀 Emojis**: hochladen (max. 256 KB), umbenennen, löschen,
+  Code kopieren; Sticker ansehen/löschen; Limit je Boost-Stufe.
+- **Moderation → AutoMod**: Regeln für bestimmte Wörter (mit `*`-Platzhaltern), Discords vorgefertigte Listen, zu viele Erwähnungen
+  oder Spam – blockieren, im Kanal melden und Timeout; pausieren und löschen.
+
+## NSFW-Galerie (`nsfw.php`, 18+)
+
+Recht `nsfw.browse` (Administratoren automatisch). Beim ersten Öffnen fragt die Seite einmal nach dem Alter (18+); die Bestätigung
+wird pro Benutzer im Protokoll vermerkt. Suchmaschinen werden per `noindex` ausgesperrt.
+
+- **Quellen**: e621 (Furry), e926 (jugendfrei), Danbooru, Gelbooru, Rule34, Yande.re, Konachan, waifu.im und waifu.pics (Kategorien).
+  Gelbooru und Rule34 verlangen inzwischen einen kostenlosen API-Schlüssel, bei e621 und Danbooru ist er optional –
+  unter ⚙ Einstellungen eintragen (verschlüsselt gespeichert).
+- **Suche** mit Tag-Vorschlägen (e621/e926/Danbooru), Inhalt (sicher, fragwürdig, explizit, NSFW, alles), Sortierung (neu, Bewertung,
+  Favoriten, zufällig), Endlos-Scrollen. Vorschaubilder auf Wunsch **unscharf** bis zum Drüberfahren.
+- **Lightbox**: groß ansehen (auch Videos/GIFs), ← → blättern, Künstler und Tags anklicken (⇧-Klick = ausschließen),
+  ⭐ Favorit (Taste `F`), Original, Quelle, 📨 **in einen NSFW-Kanal posten** (mit Kommentar).
+- **Favoriten** (filterbar) und **gespeicherte Suchen** – die auch als Auto-Post in der Discord-Zentrale nutzbar sind.
+- **Blacklist**: eigene gesperrte Tags. Zusätzlich ist eine **feste Sperrliste** eingebaut, die sich nicht abschalten lässt:
+  Darstellungen Minderjähriger (`young`, `cub`, `loli`, `shota`, `child` …) werden nie gesucht, angezeigt oder gepostet –
+  auch nicht über `/nsfw` oder Auto-Posts.
+- **Privatsphäre**: Bilder optional über den eigenen Server laden (signierter Proxy, nur bekannte Bilder-Hosts).
+  **Panik-Taste** `⇧ + P` springt sofort zur Startseite.
 
 ## Con-Rechner (`con.php`)
 

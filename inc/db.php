@@ -32,6 +32,7 @@ const PERMISSIONS = [
     'con.access'             => ['Con-Rechner', 'Finanzen'],
     'vrcx.access'            => ['VRC Nexus: eigenes VRChat-Konto verbinden (Freunde, Welten, Avatare, Gruppen)', 'Community'],
     'discord.manage'         => ['Discord-Zentrale: Bot einrichten, Nachrichten senden, Mitglieder moderieren', 'Community'],
+    'nsfw.browse'            => ['NSFW-Galerie (e621, Rule34, Danbooru …) öffnen – nur für Volljährige', 'Inhalte'],
 ];
 
 function site_db_file(): string {

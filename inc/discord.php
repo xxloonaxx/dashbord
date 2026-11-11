@@ -13,7 +13,8 @@ const DISCORD_CDN = 'https://cdn.discordapp.com';
 /** Rechte, um die der Bot beim Einladen bittet */
 const DISCORD_PERMS = [0 => 'Einladungen erstellen', 1 => 'Mitglieder kicken', 2 => 'Mitglieder bannen', 4 => 'Kanäle verwalten', 5 => 'Server verwalten', 6 => 'Reaktionen',
                        7 => 'Audit-Log ansehen', 10 => 'Kanäle sehen', 11 => 'Nachrichten senden', 13 => 'Nachrichten verwalten', 14 => 'Links einbetten', 15 => 'Dateien anhängen',
-                       16 => 'Verlauf lesen', 27 => 'Spitznamen verwalten', 28 => 'Rollen verwalten', 33 => 'Events verwalten', 40 => 'Timeout vergeben'];
+                       16 => 'Verlauf lesen', 27 => 'Spitznamen verwalten', 28 => 'Rollen verwalten', 29 => 'Webhooks verwalten',
+                       30 => 'Emojis & Sticker verwalten', 33 => 'Events verwalten', 34 => 'Threads verwalten', 35 => 'Threads erstellen', 38 => 'In Threads schreiben', 40 => 'Timeout vergeben', 49 => 'Umfragen senden'];
 const DISCORD_CHANNEL_TYPES = [0 => ['#', 'Text'], 2 => ['🔊', 'Sprache'], 4 => ['📁', 'Kategorie'], 5 => ['📢', 'Ankündigungen'], 13 => ['🎙️', 'Bühne'], 15 => ['💬', 'Forum'], 16 => ['🖼️', 'Medien']];
 const DISCORD_AUDIT = [1 => 'Server geändert', 10 => 'Kanal erstellt', 11 => 'Kanal geändert', 12 => 'Kanal gelöscht', 13 => 'Kanal-Rechte erstellt', 14 => 'Kanal-Rechte geändert',
                        15 => 'Kanal-Rechte gelöscht', 20 => 'Mitglied gekickt', 21 => 'Mitglieder aussortiert', 22 => 'Mitglied gebannt', 23 => 'Bann aufgehoben', 24 => 'Mitglied geändert',
@@ -52,7 +53,7 @@ function discord_cron_key(): string {
 function discord_invite_url(string $client_id): string {
     $perm = 0;
     foreach (array_keys(DISCORD_PERMS) as $bit) $perm |= (1 << $bit);
-    return 'https://discord.com/oauth2/authorize?client_id=' . rawurlencode($client_id) . '&scope=bot&permissions=' . $perm;
+    return 'https://discord.com/oauth2/authorize?client_id=' . rawurlencode($client_id) . '&scope=bot%20applications.commands&permissions=' . $perm;
 }
 
 // ---------- HTTP ----------
@@ -150,10 +151,37 @@ function discord_payload(array $in): array {
         if ($fields) $e['fields'] = array_slice($fields, 0, 25);
         if ($e) $p['embeds'] = [$e];
     }
-    if ($p['content'] === '' && empty($p['embeds'])) throw new DiscordError('Die Nachricht ist leer.');
+    if (!empty($in['use_poll'])) {
+        $ans = array_values(array_filter(array_map('trim', (array)($in['poll_a'] ?? [])), 'strlen'));
+        if (trim((string)($in['poll_q'] ?? '')) === '' || count($ans) < 2) throw new DiscordError('Eine Umfrage braucht eine Frage und mindestens zwei Antworten.');
+        $p['poll'] = discord_poll((string)$in['poll_q'], $ans, (int)($in['poll_hours'] ?? 24), !empty($in['poll_multi']));
+    }
+    if ($p['content'] === '' && empty($p['embeds']) && empty($p['poll'])) throw new DiscordError('Die Nachricht ist leer.');
     $p['allowed_mentions'] = ['parse' => !empty($in['mentions']) ? ['users', 'roles', 'everyone'] : ['users']];
     if (!empty($in['reply_to']) && preg_match('/^\d{15,22}$/', $in['reply_to'])) $p['message_reference'] = ['message_id' => $in['reply_to'], 'fail_if_not_exists' => false];
     return $p;
+}
+
+/** Discord-Umfrage (max. 10 Antworten, Laufzeit 1–768 Stunden). Ein Emoji am Anfang einer Antwort wird als Antwort-Emoji genutzt. */
+function discord_poll(string $question, array $answers, int $hours, bool $multi): array {
+    return ['question' => ['text' => mb_substr(trim($question), 0, 300)], 'duration' => max(1, min(768, $hours ?: 24)), 'allow_multiselect' => $multi, 'layout_type' => 1,
+            'answers' => array_map(function ($a) {
+                $a = trim((string)$a);
+                $media = ['text' => $a];
+                if (@preg_match('/^(\p{Extended_Pictographic}(?:\x{FE0F})?(?:\x{200D}\p{Extended_Pictographic}(?:\x{FE0F})?)*)\s+(.+)$/u', $a, $m)) $media = ['text' => $m[2], 'emoji' => ['name' => $m[1]]];
+                $media['text'] = mb_substr($media['text'], 0, 55);
+                return ['poll_media' => $media];
+            }, array_slice($answers, 0, 10))];
+}
+
+/** Umfrage einer Nachricht für die Anzeige */
+function discord_poll_view(array $p): array {
+    $counts = [];
+    foreach ((array)($p['results']['answer_counts'] ?? []) as $c) $counts[(int)$c['id']] = (int)$c['count'];
+    return ['question' => (string)($p['question']['text'] ?? ''), 'multi' => !empty($p['allow_multiselect']), 'expiry' => !empty($p['expiry']) ? strtotime($p['expiry']) : null,
+            'final' => !empty($p['results']['is_finalized']), 'answers' => array_map(function ($a) use ($counts) {
+                return ['text' => trim(($a['poll_media']['emoji']['name'] ?? '') . ' ' . ($a['poll_media']['text'] ?? '')), 'count' => $counts[(int)($a['answer_id'] ?? 0)] ?? 0];
+            }, (array)($p['answers'] ?? []))];
 }
 
 function discord_send(string $channel, array $payload): array {

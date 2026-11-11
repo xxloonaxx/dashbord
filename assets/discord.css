@@ -170,3 +170,54 @@ label.field small { text-transform: none; letter-spacing: 0; }
     .dc-guildpick select { min-width: 0; flex: 1; }
 }
 input[type=color] { height: 41px; padding: 3px; cursor: pointer; }
+
+/* ---- Runde 2: Umfragen, Befehle, Rollen-Knöpfe, Automatik, Emojis ---- */
+.dc-ptools { display: inline-flex; gap: 4px; margin-left: auto; }
+.panel-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dc-nowrap { white-space: nowrap; }
+.dc-field2 { display: grid; grid-template-columns: 1fr auto; gap: 6px; margin-bottom: 6px; align-items: center; }
+.dc-pfield { grid-template-columns: 1.3fr 64px 1.3fr 80px auto; }
+.dc-poll { border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(0, 0, 0, 0.2); padding: 10px 12px; margin-top: 6px; max-width: 460px; display: flex; flex-direction: column; gap: 6px; }
+.dc-poll > small { color: var(--text-muted); font-size: 0.72rem; }
+.dc-pans { position: relative; border: 1px solid rgba(255, 255, 255, 0.1); padding: 6px 10px; display: flex; justify-content: space-between; gap: 10px; font-size: 0.85rem; overflow: hidden; }
+.dc-pans i { position: absolute; inset: 0 auto 0 0; background: rgba(88, 101, 242, 0.25); }
+.dc-pans span, .dc-pans em { position: relative; }
+.dc-pans em { font-style: normal; color: var(--text-muted); }
+.dc-poll .btn { align-self: flex-start; }
+.dc-cmdsetup .dc-steps li { margin-bottom: 8px; }
+.dc-cmdsetup .dc-steps li.done { color: var(--accent-green); }
+.dc-cmdsetup .dc-steps li small { color: var(--text-muted); }
+.dc-cmd { display: grid; grid-template-columns: auto auto 1fr auto; gap: 4px 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); cursor: pointer; }
+.dc-cmd input { width: auto; }
+.dc-cmd small { grid-column: 2 / -1; color: var(--text-muted); font-size: 0.75rem; }
+.dc-cmd em { font-style: normal; font-size: 0.72rem; color: var(--accent-cyan); grid-row: 1; grid-column: 4; }
+.dc-cmd.off code { opacity: 0.45; text-decoration: line-through; }
+.dc-cmd code, .dc-sitem code { color: #aab3ff; }
+.dc-sitem small + small { display: block; }
+.dc-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.dc-btn { font-size: 0.8rem; padding: 4px 12px; border-radius: 3px; background: #4e5058; color: #fff; }
+.dc-btn.s1 { background: var(--dc-blurple); }
+.dc-btn.s3 { background: #248046; }
+.dc-btn.s4 { background: #da373c; }
+.dc-btn.s5 { background: #4e5058; }
+.dc-btn.s5::after { content: " ↗"; }
+.dc-ts { background: rgba(255, 255, 255, 0.08); padding: 0 4px; border-radius: 3px; }
+.dc-mention { background: rgba(88, 101, 242, 0.3); color: #c9cdfb; padding: 0 3px; border-radius: 3px; }
+.dc-emojis { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-top: 10px; }
+.dc-emoji { position: relative; border: 1px solid rgba(255, 255, 255, 0.07); padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+.dc-emoji img { width: 48px; height: 48px; object-fit: contain; }
+.dc-emoji.st img { width: 96px; height: 96px; }
+.dc-emoji b { font-size: 0.78rem; word-break: break-all; }
+.dc-emoji small { font-size: 0.68rem; color: var(--text-muted); }
+.dc-emoji .dc-macts { position: static; opacity: 1; }
+#emojiFilter { margin-bottom: 4px; }
+@media (max-width: 600px) {
+    .dc-pfield { grid-template-columns: 1fr 56px; }
+    .dc-pfield [name="b_label[]"] { grid-column: 1 / 2; }
+    .dc-cmd { grid-template-columns: auto 1fr auto; }
+    .dc-cmd small { grid-column: 1 / -1; }
+    .dc-cmd em { grid-column: 3; }
+}
+.dc-preview:empty { display: none; }
+.dc-small a { color: var(--accent-gold); }
+.dc-cmd > span { min-width: 0; }
