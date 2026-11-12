@@ -140,7 +140,7 @@ $boot = fh_client_data() + [
 ];
 $json = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE;
 $TABS = ['start' => ['🏠', 'Start'], 'tama' => ['🥚', 'Tamagotchi'], 'sona' => ['🎨', 'Fursona'], 'avatar' => ['🧑‍🎨', 'Avatar'], 'cards' => ['🃏', 'Karten'], 'community' => ['🐾', 'Community'],
-         'games' => ['🕹️', 'Minispiele'], 'bingo' => ['🎲', 'Con-Bingo'], 'quiz' => ['❓', 'Quiz'], 'sounds' => ['🔊', 'Sounds'], 'owo' => ['💬', 'OwO'], 'glossary' => ['📖', 'Glossar'], 'paws' => ['✍️', 'Pfotenabdrücke']];
+         'games' => ['🕹️', 'Minispiele'], 'toys' => ['🎉', 'Spielzeug'], 'bingo' => ['🎲', 'Con-Bingo'], 'quiz' => ['❓', 'Quiz'], 'sounds' => ['🔊', 'Sounds'], 'owo' => ['💬', 'OwO'], 'glossary' => ['📖', 'Glossar'], 'paws' => ['✍️', 'Pfotenabdrücke']];
 $GENDERS = ['neutral' => '⚪ Keine Angabe', 'female' => '♀ Weiblich', 'male' => '♂ Männlich', 'nonbinary' => '⚧ Nicht-binär'];
 $EMO = ['neutral' => ['😐', 'Normal'], 'happy' => ['😊', 'Fröhlich'], 'sad' => ['🥺', 'Traurig'], 'angry' => ['😠', 'Wütend'], 'surprised' => ['😳', 'Überrascht'], 'sleepy' => ['😴', 'Müde']];
 ?>
@@ -388,6 +388,11 @@ $EMO = ['neutral' => ['😐', 'Normal'], 'happy' => ['😊', 'Fröhlich'], 'sad'
         <div class="fh-card game-box" id="gameBox"><p class="muted">Wähle ein Spiel. Gewonnene 🪙 Münzen landen im Tamagotchi-Shop!</p></div>
     </section>
 
+    <!-- Spielzeug -->
+    <section class="fh-panel" data-panel="toys" hidden>
+        <div class="toys" id="toysGrid"></div>
+    </section>
+
     <!-- Community -->
     <section class="fh-panel" data-panel="community" hidden>
         <div class="fh-toolbar">
@@ -473,7 +478,7 @@ $EMO = ['neutral' => ['😐', 'Normal'], 'happy' => ['😊', 'Fröhlich'], 'sad'
 <div class="fh-toast" id="fhToast" hidden></div>
 <div class="fh-lightbox" id="fhLightbox" hidden><button type="button" class="lb-x" data-lb="close" aria-label="Schließen">×</button><button type="button" class="lb-nav prev" data-lb="prev" aria-label="Zurück">‹</button><figure><img id="lbImg" alt=""><figcaption id="lbCap"></figcaption></figure><button type="button" class="lb-nav next" data-lb="next" aria-label="Weiter">›</button></div>
 <script>window.FH = <?php echo json_encode($boot, $json); ?>;</script>
-<?php foreach (['furhub', 'furhub-tama', 'furhub-cards', 'furhub-games'] as $js): ?><script src="assets/<?php echo $js; ?>.js?v=<?php echo filemtime(__DIR__ . '/assets/' . $js . '.js'); ?>"></script>
+<?php foreach (['furhub', 'furhub-tama', 'furhub-cards', 'furhub-games', 'furhub-toys'] as $js): ?><script src="assets/<?php echo $js; ?>.js?v=<?php echo filemtime(__DIR__ . '/assets/' . $js . '.js'); ?>"></script>
 <?php endforeach; ?>
 </body>
 </html>

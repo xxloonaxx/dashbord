@@ -110,9 +110,9 @@ function fh_stats(): array {
 // ---------- Fursonas ----------
 
 const FH_LOOK_ENUMS = [
-    'ears' => ['pointy', 'round', 'long', 'floppy', 'big', 'small', 'none'],
+    'ears' => ['pointy', 'round', 'long', 'floppy', 'big', 'small', 'swept', 'none'],
     'muzzle' => ['long', 'medium', 'short', 'beak'],
-    'marking' => ['none', 'mask', 'stripes', 'spots', 'blaze', 'cheeks', 'freckles'],
+    'marking' => ['none', 'mask', 'stripes', 'spots', 'blaze', 'cheeks', 'freckles', 'glow'],
     'extra' => ['none', 'horns', 'antlers', 'mane', 'fins', 'tuft', 'visor'],
     'acc' => ['none', 'glasses', 'bandana', 'bow', 'collar', 'headphones', 'flower', 'earring', 'scarf'],
     'eyeShape' => ['round', 'happy', 'sleepy', 'sharp'],

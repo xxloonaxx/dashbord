@@ -575,6 +575,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 case 'stats':
                     $out = vrc_stats($uid);
                     break;
+                case 'encounters':
+                    $out = ['items' => array_slice(vrc_encounters($uid, 30), 0, 40)];
+                    break;
+                case 'timeline':
+                    $out = vrc_timeline($uid, (int)($in['day'] ?? 0));
+                    break;
 
                 // ----- Welten & Instanzen -----
                 case 'worlds':
@@ -939,6 +945,7 @@ session_write_close();
                 <option value="name">Name A–Z</option><option value="author">Nach Autor</option><option value="platform">PC + Quest zuerst</option><option value="vrchat">Reihenfolge wie in VRChat</option>
             </select>
             <select id="avatarPf" aria-label="Plattform"><option value="">Alle Plattformen</option><option value="cross">💻+📱 PC &amp; Quest</option><option value="PC">💻 PC</option><option value="Quest / Android">📱 Quest</option></select>
+            <button type="button" class="btn btn-sm" id="avatarRandom" title="Zufälligen Avatar aus der (gefilterten) Liste anziehen">🎲 Zufall</button>
             <span class="vx-small" id="avatarCount"></span>
         </div>
         <div id="avatarsBox"></div>

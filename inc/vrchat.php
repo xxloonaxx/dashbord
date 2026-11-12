@@ -656,12 +656,131 @@ function vrc_friend_stats(int $uid, string $id): array {
     $q = vrc_db()->prepare('SELECT friend_since FROM friends WHERE user_id = ? AND vrc_id = ?');
     $q->execute([$uid, $id]);
     $out = ['week' => $sum($s, time() - 7 * 86400), 'month' => $sum($s, time() - 30 * 86400), 'sessions' => count($s), 'last_seen' => $last_seen, 'friend_since' => (int)$q->fetchColumn()];
+    // Wann ist die Person online? Minuten je Wochentag & Stunde (30 Tage)
+    $heat = array_fill(0, 7, array_fill(0, 24, 0));
+    foreach ($s as [$a, $b]) {
+        for ($t = $a; $t < $b; ) {
+            $end = min($b, (intdiv($t, 3600) + 1) * 3600);
+            $heat[(int)date('N', $t) - 1][(int)date('G', $t)] += ($end - $t) / 60;
+            $t = $end;
+        }
+    }
+    $out['heat'] = array_map(function ($row) { return array_map('intval', $row); }, $heat);
+    $hours = array_fill(0, 24, 0);
+    foreach ($heat as $row) foreach ($row as $h => $m) $hours[$h] += $m;
+    arsort($hours);
+    $out['best_hours'] = array_values(array_slice(array_keys(array_filter($hours)), 0, 3));
+    $days = array_map('array_sum', $heat);
+    arsort($days);
+    $out['best_days'] = array_values(array_slice(array_keys(array_filter($days)), 0, 2));
+    // Mit wem ist die Person oft gleichzeitig online?
+    $all = vrc_sessions($uid, time() - 30 * 86400);
+    $ov = [];
+    foreach ($all as $other => $list) {
+        if ($other === $id) continue;
+        $t = 0;
+        foreach ($s as [$a1, $b1]) foreach ($list as [$a2, $b2]) { $o = min($b1, $b2) - max($a1, $a2); if ($o > 0) $t += $o; }
+        if ($t >= 600) $ov[$other] = $t;
+    }
+    arsort($ov);
+    $names = vrc_db()->prepare('SELECT vrc_id, display_name, image FROM friends WHERE user_id = ? AND vrc_id = ?');
+    $out['together'] = vrc_encounters($uid, 30, $id)[0] ?? null;
+    $out['buddies'] = [];
+    foreach (array_slice($ov, 0, 6, true) as $other => $t) {
+        $names->execute([$uid, $other]);
+        if ($r = $names->fetch()) $out['buddies'][] = ['id' => $other, 'name' => $r['display_name'], 'image' => $r['image'], 'seconds' => $t];
+    }
     if ($last_world) {
         $l = vrc_location($last_world['new']);
         $l['world_name'] = vrc_worlds([$l['world'] ?? ''])[$l['world'] ?? '']['name'] ?? '';
         $out['last_world'] = $l + ['ts' => (int)$last_world['ts']];
     }
     return $out;
+}
+
+/**
+ * Begegnungen: Wann warst du mit Freunden in derselben Instanz? (aus deinen eigenen Orten + den Orten deiner Freunde)
+ * Liefert je Freund: gemeinsame Zeit, Anzahl Instanzen, zuletzt zusammen (Zeit & Welt).
+ */
+function vrc_encounters(int $uid, int $days = 30, ?string $friend = null): array {
+    $db = vrc_db();
+    $from = time() - $days * 86400;
+    $cap = 6 * 3600;
+    $now = time();
+    // eigene Aufenthalte
+    $st = $db->prepare("SELECT ts, type, new FROM feed WHERE user_id = ? AND ts >= ? AND type = 'self' ORDER BY ts");
+    $st->execute([$uid, $from]);
+    $mine = [];
+    $prev = null;
+    foreach ($st as $r) {
+        if ($prev && strpos($prev['new'], 'wrld_') === 0) $mine[$prev['new']][] = [(int)$prev['ts'], min((int)$r['ts'], (int)$prev['ts'] + $cap)];
+        $prev = $r;
+    }
+    if ($prev && strpos($prev['new'], 'wrld_') === 0) $mine[$prev['new']][] = [(int)$prev['ts'], min($now, (int)$prev['ts'] + $cap)];
+    if (!$mine) return [];
+    // Aufenthalte der Freunde
+    $sql = "SELECT vrc_id, ts, type, new FROM feed WHERE user_id = ? AND ts >= ? AND type IN ('gps', 'online', 'offline', 'active')" . ($friend ? ' AND vrc_id = ?' : '') . ' ORDER BY vrc_id, ts';
+    $st = $db->prepare($sql);
+    $st->execute($friend ? [$uid, $from, $friend] : [$uid, $from]);
+    $res = [];
+    $add = function (string $id, string $loc, int $a, int $b) use (&$res, $mine) {
+        if (!isset($mine[$loc]) || $b <= $a) return;
+        foreach ($mine[$loc] as [$ma, $mb]) {
+            $o = min($b, $mb) - max($a, $ma);
+            if ($o < 120) continue;   // weniger als 2 Minuten zählt nicht
+            $r = &$res[$id];
+            $r['seconds'] = ($r['seconds'] ?? 0) + $o;
+            $r['instances'][$loc] = true;
+            if (($r['last'] ?? 0) < min($b, $mb)) { $r['last'] = min($b, $mb); $r['loc'] = $loc; }
+            unset($r);
+        }
+    };
+    $cur = [];
+    foreach ($st as $r) {
+        $id = $r['vrc_id'];
+        if (isset($cur[$id])) { $add($id, $cur[$id][1], $cur[$id][0], min((int)$r['ts'], $cur[$id][0] + $cap)); unset($cur[$id]); }
+        if (in_array($r['type'], ['gps', 'online'], true) && strpos($r['new'], 'wrld_') === 0) $cur[$id] = [(int)$r['ts'], $r['new']];
+    }
+    foreach ($cur as $id => [$a, $loc]) $add($id, $loc, $a, min($now, $a + $cap));
+    if (!$res) return [];
+    $names = [];
+    $st = $db->prepare('SELECT vrc_id, display_name, image FROM friends WHERE user_id = ?');
+    $st->execute([$uid]);
+    foreach ($st as $r) $names[$r['vrc_id']] = $r;
+    $worlds = vrc_worlds(array_map(function ($x) { return explode(':', $x['loc'])[0]; }, $res));
+    $out = [];
+    foreach ($res as $id => $r) {
+        if (!isset($names[$id])) continue;
+        $l = vrc_location($r['loc']);
+        $out[] = ['id' => $id, 'name' => $names[$id]['display_name'], 'image' => $names[$id]['image'], 'seconds' => $r['seconds'], 'instances' => count($r['instances']),
+                  'last' => $r['last'], 'world' => $l['world'] ?? '', 'world_name' => $worlds[$l['world'] ?? '']['name'] ?? 'Welt', 'access' => $l['access'] ?? ''];
+    }
+    usort($out, function ($a, $b) { return $b['last'] <=> $a['last']; });
+    return $out;
+}
+
+/** Zeitleiste: wer war an einem Tag wann online (0 = heute, 1 = gestern …) */
+function vrc_timeline(int $uid, int $offset = 0): array {
+    $start = strtotime('today') - max(0, min(6, $offset)) * 86400;
+    $end = min(time(), $start + 86400);
+    $rows = [];
+    $names = [];
+    $st = vrc_db()->prepare('SELECT vrc_id, display_name, image FROM friends WHERE user_id = ?');
+    $st->execute([$uid]);
+    foreach ($st as $r) $names[$r['vrc_id']] = $r;
+    foreach (vrc_sessions($uid, $start) as $id => $list) {
+        if (!isset($names[$id])) continue;
+        $seg = [];
+        $total = 0;
+        foreach ($list as [$a, $b]) {
+            $a = max($a, $start); $b = min($b, $end);
+            if ($b - $a < 60) continue;
+            $seg[] = [$a, $b]; $total += $b - $a;
+        }
+        if ($seg) $rows[] = ['id' => $id, 'name' => $names[$id]['display_name'], 'image' => $names[$id]['image'], 'seg' => $seg, 'total' => $total, 'first' => $seg[0][0]];
+    }
+    usort($rows, function ($x, $y) { return $x['first'] <=> $y['first']; });
+    return ['start' => $start, 'end' => $start + 86400, 'now' => time(), 'rows' => array_slice($rows, 0, 120)];
 }
 
 function vrc_stats(int $uid): array {

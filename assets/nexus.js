@@ -353,6 +353,13 @@
         h += '<div class="vx-kpis sm"><div><b>' + hm(s.week || 0) + '</b><span>im Spiel (7 Tage)</span></div><div><b>' + hm(s.month || 0) + '</b><span>im Spiel (30 Tage)</span></div>'
             + '<div><b>' + (s.sessions || 0) + '</b><span>Sitzungen (30 Tage)</span></div><div><b>' + (l.kind && l.kind !== 'offline' ? 'jetzt online' : s.last_seen ? esc(ago(s.last_seen)) : '–') + '</b><span>zuletzt gesehen</span></div>'
             + '<div><b>' + (s.friend_since ? esc(new Date(s.friend_since * 1000).toLocaleDateString('de-DE')) : '–') + '</b><span>Freund seit (aufgezeichnet)</span></div></div>';
+        if (s.together) h += '<div class="vx-together">🤝 <b>Mit dir zusammen:</b> ' + hm(s.together.seconds) + ' in ' + s.together.instances + ' Instanz' + (s.together.instances === 1 ? '' : 'en') + ' (30 Tage) · zuletzt ' + esc(ago(s.together.last)) + ' in <a href="#" data-world="' + esc(s.together.world) + '">' + esc(s.together.world_name) + '</a></div>';
+        if (s.heat && s.heat.flat().some(v => v > 0)) {
+            const DN = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+            h += '<details class="vx-uheat" open><summary>🕑 Wann ist ' + esc(u.name) + ' online? <small>(30 Tage)</small></summary>' + heatmap(s.heat, 'min')
+                + '<p class="vx-small">⭐ Beste Zeit: ' + (s.best_days || []).map(d => DN[d]).join(' & ') + (s.best_hours && s.best_hours.length ? ', meist um ' + s.best_hours.slice().sort((a, b) => a - b).map(x => x + ' Uhr').join(', ') : '') + '</p>'
+                + (s.buddies && s.buddies.length ? '<p class="vx-small">👯 Oft gleichzeitig online mit: ' + s.buddies.map(b => '<a href="#" data-user="' + esc(b.id) + '" title="' + esc(hm(b.seconds)) + ' gleichzeitig">' + esc(b.name) + '</a>').join(', ') + '</p>' : '') + '</details>';
+        }
         if (s.last_world && l.kind !== 'world') h += '<p class="vx-small">Zuletzt gesehen in <a href="#" data-world="' + esc(s.last_world.world) + '">' + esc(s.last_world.world_name || 'Welt') + '</a> (' + esc(s.last_world.access) + ', ' + esc(ago(s.last_world.ts)) + ')</p>';
         h += '<div class="vx-u-cols"><div>';
         if (u.bio_html) h += '<h4>Bio</h4><div class="fmt vx-u-bio">' + u.bio_html + '</div>';
@@ -560,6 +567,18 @@
         if (!s) return;
         api('avatar_fav', { id: s.dataset.avmove, move: 1, group: s.value, fav_id: s.dataset.favid }).then(r => { toast(r.msg); const a = avatarList.find(x => x.id === s.dataset.avmove); if (a) a.fav_group = s.value; renderAvatars(); }).catch(x => toast(x.message, true));
     });
+    $('#avatarRandom').addEventListener('click', () => {
+        const q = $('#avatarSearch').value.trim().toLowerCase(), pf = $('#avatarPf').value;
+        const pool = avatarList.filter(a => !a.current && (!q || (a.name + ' ' + a.author + ' ' + a.desc).toLowerCase().includes(q)) && (!pf || (pf === 'cross' ? a.platforms.length > 1 : a.platforms.includes(pf))));
+        if (!pool.length) { toast('Keine passenden Avatare zum Auswürfeln.', true); return; }
+        const a = pool[Math.floor(Math.random() * pool.length)];
+        const card = $('[data-avatar-open="' + CSS.escape(a.id) + '"]');
+        if (card) { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); card.classList.add('vx-pick'); setTimeout(() => card.classList.remove('vx-pick'), 2500); }
+        setTimeout(() => {
+            if (!confirm('🎲 Zufalls-Avatar: „' + a.name + '“' + (a.author ? ' von ' + a.author : '') + ' anziehen?')) return;
+            api('avatar_select', { id: a.id }).then(d => { toast(d.msg); avatarList.forEach(x => { x.current = x.id === a.id; }); renderAvatars(); load(false); }).catch(x => toast(x.message, true));
+        }, 450);
+    });
     $('#avatarsBox').addEventListener('click', e => {
         const b = e.target.closest('[data-avatar]');
         if (!b) return;
@@ -627,10 +646,11 @@
             + '<polyline points="' + line('active') + '" class="l2"/><polyline points="' + line('online') + '" class="l1"/></svg>'
             + '<div class="vx-legend"><span><i class="l1"></i> im Spiel</span><span><i class="l2"></i> Website / App</span></div>';
     }
-    function heatmap(heat) {
+    function heatmap(heat, unit) {
         const max = Math.max(1, ...heat.flat()), days = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+        const tip = v => unit === 'min' ? (v >= 60 ? Math.round(v / 6) / 10 + ' Std.' : v + ' Min.') + ' online (30 Tage)' : v + '× online gekommen';
         let h = '<div class="vx-heat"><span></span>' + Array.from({ length: 24 }, (_, i) => '<span class="hh">' + (i % 3 ? '' : i) + '</span>').join('');
-        heat.forEach((row, d) => { h += '<span class="hd">' + days[d] + '</span>' + row.map((v, i) => '<span class="hc" style="--a:' + (v / max).toFixed(2) + '" title="' + days[d] + ' ' + i + ' Uhr: ' + v + '× online gekommen"></span>').join(''); });
+        heat.forEach((row, d) => { h += '<span class="hd">' + days[d] + '</span>' + row.map((v, i) => '<span class="hc" style="--a:' + (v / max).toFixed(2) + '" title="' + days[d] + ' ' + i + ' Uhr: ' + tip(v) + '"></span>').join(''); });
         return h + '</div>';
     }
     function inactivePanel() {
@@ -654,6 +674,7 @@
                 + '<div><b>' + num(t.gps || 0) + '</b><span>Weltwechsel (30 T.)</span></div><div><b>' + ((t.friend_add || 0) + ' / ' + (t.friend_remove || 0)) + '</b><span>Freunde + / −</span></div>'
                 + '<div><b>' + (s.recording_since ? esc(new Date(s.recording_since * 1000).toLocaleDateString('de-DE')) : '–') + '</b><span>Aufzeichnung seit</span></div></div>'
                 + '<div class="panel"><div class="panel-title">Freunde online – letzte 7 Tage</div>' + lineChart(s.history) + '</div>'
+                + '<div class="panel" id="tlPanel"><div class="panel-title">📊 Zeitleiste – wer war wann online? <span class="chips" id="tlDays"><button type="button" class="chip on" data-day="0">Heute</button><button type="button" class="chip" data-day="1">Gestern</button><button type="button" class="chip" data-day="2">Vorgestern</button></span></div><div id="tlBox"><div class="vx-loading">Lade …</div></div></div>'
                 + '<div class="vx-cols">'
                 + '<div class="panel"><div class="panel-title">🏆 Meiste Spielzeit (30 Tage)</div>' + (s.play.length ? bars(s.play.map(p => Object.assign(p, { _v: hm(p.seconds) })), p => p.seconds, p => '<a href="#" data-user="' + esc(p.id) + '">' + esc(p.name) + '</a>') : '<div class="vx-empty">Noch keine Daten.</div>') + '</div>'
                 + '<div class="panel"><div class="panel-title">🌐 Beliebteste Welten deiner Freunde</div>' + (s.worlds.length ? bars(s.worlds, w => w.count, w => '<a href="#" data-world="' + esc(w.id) + '">' + esc(w.name) + '</a>') : '<div class="vx-empty">Noch keine Daten.</div>') + '</div>'
@@ -661,9 +682,54 @@
                 + '<div class="panel"><div class="panel-title">🛡️ Vertrauensstufen</div>' + bars(s.trust, x => x.count, x => '<span style="color:' + esc(x.color) + '">' + esc(x.name) + '</span>', x => x.color) + '</div>'
                 + '<div class="panel"><div class="panel-title">💻 Plattformen (zuletzt)</div>' + bars(Object.entries(s.platform).map(([k, v]) => ({ k, v })), x => x.v, x => esc(x.k)) + '</div>'
                 + inactivePanel()
+                + '<div class="panel"><div class="panel-title">🤝 Zuletzt zusammen mit <small>(gleiche Instanz, 30 Tage)</small></div><div id="encBox"><div class="vx-loading">Lade …</div></div></div>'
+                + anniversaryPanel()
                 + '<div class="panel"><div class="panel-title">🧭 Deine meistbesuchten Welten</div>' + (s.my_worlds.length ? bars(s.my_worlds, w => w.count, w => '<a href="#" data-world="' + esc(w.id) + '">' + esc(w.name) + '</a>') : '<div class="vx-empty">Wird aufgezeichnet, sobald du im Spiel bist und diese Seite offen ist.</div>') + '</div>'
                 + '</div>';
+            loadTimeline(0); loadEncounters();
         }).catch(fail(box));
+    }
+    // Zeitleiste: Balken je Freund über 24 Stunden
+    function loadTimeline(day) {
+        const box = $('#tlBox'); if (!box) return;
+        $$('#tlDays .chip').forEach(c => c.classList.toggle('on', +c.dataset.day === day));
+        api('timeline', { day }).then(t => {
+            if (!t.rows.length) { box.innerHTML = '<div class="vx-empty">Für diesen Tag ist nichts aufgezeichnet.</div>'; return; }
+            const span = t.end - t.start, pct = x => ((x - t.start) / span * 100).toFixed(2) + '%';
+            const hh = new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' });
+            box.innerHTML = '<div class="vx-tl"><div class="vx-tl-row head"><span></span><div class="vx-tl-track">' + [0, 3, 6, 9, 12, 15, 18, 21].map(h => '<i style="left:' + (h / 24 * 100) + '%">' + h + '</i>').join('') + '</div></div>'
+                + t.rows.map(r => '<div class="vx-tl-row"><a href="#" data-user="' + esc(r.id) + '" class="vx-tl-name">' + img(r.image, 'vx-av xs', r.name) + '<span>' + esc(r.name) + '</span></a><div class="vx-tl-track">'
+                    + r.seg.map(([a, b]) => '<span class="vx-tl-seg" style="left:' + pct(a) + ';width:' + ((b - a) / span * 100).toFixed(2) + '%" title="' + hh.format(a * 1000) + '–' + hh.format(b * 1000) + ' (' + hm(b - a) + ')"></span>').join('')
+                    + (t.now < t.end ? '<span class="vx-tl-now" style="left:' + pct(t.now) + '"></span>' : '') + '</div><small>' + hm(r.total) + '</small></div>').join('') + '</div>';
+        }).catch(fail(box));
+    }
+    document.addEventListener('click', e => { const c = e.target.closest('#tlDays [data-day]'); if (c) loadTimeline(+c.dataset.day); });
+    function loadEncounters() {
+        const box = $('#encBox'); if (!box) return;
+        api('encounters').then(d => {
+            box.innerHTML = d.items.length ? '<div class="vx-members">' + d.items.slice(0, 20).map(x => '<div class="vx-member">' + img(x.image, 'vx-av sm', x.name) + '<a href="#" data-user="' + esc(x.id) + '">' + esc(x.name) + '</a><small>'
+                + esc(ago(x.last)) + ' in <a href="#" data-world="' + esc(x.world) + '">' + esc(x.world_name) + '</a> · ' + hm(x.seconds) + ' gesamt · ' + x.instances + '×</small></div>').join('') + '</div>'
+                : '<div class="vx-empty">Noch keine Begegnungen aufgezeichnet – das passiert, während du im Spiel bist und diese Seite (oder der Cron) läuft.</div>';
+        }).catch(fail(box));
+    }
+    // Freundschafts-Jahrestage & neueste Freunde
+    function anniversaryPanel() {
+        const now = new Date(), today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const list = [];
+        state.friends.filter(f => f.friend_since > 0).forEach(f => {
+            const d = new Date(f.friend_since * 1000);
+            let next = new Date(today.getFullYear(), d.getMonth(), d.getDate());
+            if (next < today) next = new Date(today.getFullYear() + 1, d.getMonth(), d.getDate());
+            const years = next.getFullYear() - d.getFullYear(), days = Math.round((next - today) / 86400000);
+            if (years >= 1 && days <= 30) list.push({ f, years, days, next });
+        });
+        list.sort((a, b) => a.days - b.days);
+        const newest = state.friends.filter(f => f.friend_since > 0 && Date.now() / 1000 - f.friend_since < 30 * 86400).sort((a, b) => b.friend_since - a.friend_since).slice(0, 12);
+        return '<div class="panel"><div class="panel-title">🎂 Freundschafts-Jahrestage <small>(nächste 30 Tage)</small></div>'
+            + (list.length ? '<div class="vx-members">' + list.map(x => '<div class="vx-member">' + img(x.f.image, 'vx-av sm', x.f.name) + '<a href="#" data-user="' + esc(x.f.id) + '">' + esc(x.f.name) + '</a><small>' + (x.days === 0 ? '🎉 <b>heute</b>' : 'in ' + x.days + ' Tag' + (x.days === 1 ? '' : 'en')) + ' · ' + x.years + ' Jahr' + (x.years === 1 ? '' : 'e') + ' befreundet</small></div>').join('') + '</div>'
+                : '<div class="vx-empty">Keine Jahrestage in den nächsten 30 Tagen' + (state.friends.some(f => f.friend_since > 0) ? '.' : ' – Freundschaften werden ab Beginn der Aufzeichnung gezählt.') + '</div>')
+            + (newest.length ? '<h4 class="vx-sub">🆕 Neueste Freunde</h4><div class="vx-members">' + newest.map(f => '<div class="vx-member">' + img(f.image, 'vx-av sm', f.name) + '<a href="#" data-user="' + esc(f.id) + '">' + esc(f.name) + '</a><small>seit ' + esc(new Date(f.friend_since * 1000).toLocaleDateString('de-DE')) + '</small></div>').join('') + '</div>' : '')
+            + '</div>';
     }
 
     // ---------- Favoriten (wie VRCX): VRChat-Gruppen, lokale Gruppen, Verlauf ----------

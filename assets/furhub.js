@@ -56,6 +56,7 @@
         lion:     ['🦁 Löwe', { ears: 'round', muzzle: 'medium', marking: 'none', extra: 'mane', fluff: false, main: '#e0b265', second: '#9b5d1e', muzzleC: '#f7e3bd', inner: '#c98b4a', eye: '#d99a1e', nose: '#7a4a2a', markC: '#9b5d1e' }],
         tiger:    ['🐯 Tiger', { ears: 'round', muzzle: 'medium', marking: 'stripes', extra: 'none', fluff: true, main: '#f08a24', second: '#1f1f1f', muzzleC: '#ffffff', inner: '#ffffff', eye: '#e6c229', nose: '#e67a8a', markC: '#1f1f1f' }],
         rabbit:   ['🐰 Hase', { ears: 'long', muzzle: 'short', marking: 'none', extra: 'none', fluff: true, main: '#d9c3a5', second: '#b59b7b', muzzleC: '#fbf3e6', inner: '#ffb6c8', eye: '#6b4226', nose: '#ff8fa8', markC: '#b59b7b' }],
+        novabeast: ['🌌 Novabeast', { ears: 'swept', muzzle: 'long', marking: 'glow', extra: 'tuft', fluff: true, main: '#2b2540', second: '#17122a', muzzleC: '#3f3760', inner: '#7cf3ff', eye: '#7cf3ff', nose: '#120e1e', markC: '#7cf3ff', eyeShape: 'sharp' }],
         redpanda: ['🐼 Roter Panda', { ears: 'round', muzzle: 'short', marking: 'cheeks', extra: 'none', fluff: true, main: '#c8502a', second: '#3a1d12', muzzleC: '#ffffff', inner: '#ffffff', eye: '#3b2314', nose: '#1d1414', markC: '#ffffff' }],
         raccoon:  ['🦝 Waschbär', { ears: 'round', muzzle: 'medium', marking: 'mask', extra: 'none', fluff: true, main: '#8d8d8d', second: '#4a4a4a', muzzleC: '#f0f0f0', inner: '#e8e8e8', eye: '#3b2a1a', nose: '#1d1d1d', markC: '#2b2b2b' }],
         otter:    ['🦦 Otter', { ears: 'small', muzzle: 'short', marking: 'none', extra: 'none', fluff: false, main: '#7a5034', second: '#5a3a24', muzzleC: '#d9b48f', inner: '#a77a58', eye: '#2b1b10', nose: '#2b1b10', markC: '#d9b48f' }],
@@ -71,9 +72,9 @@
     const BGS = ['#1d3557', '#3a2e5c', '#264d3b', '#5c2e45', '#2e4a5c', '#4a3b1f', '#203040', '#40203a', '#1f3f3f', '#30254d'];
     const ACC_COLORS = ['#e63946', '#f3c262', '#4cc9f0', '#7bd88f', '#c77dff', '#ff8fab', '#ffffff', '#ff9f1c'];
     const LABELS = {
-        ears: { pointy: 'Spitz', round: 'Rund', long: 'Lang (Hase)', floppy: 'Schlapp', big: 'Riesig', small: 'Klein', none: 'Keine' },
+        ears: { pointy: 'Spitz', round: 'Rund', long: 'Lang (Hase)', floppy: 'Schlapp', big: 'Riesig', small: 'Klein', swept: 'Lang & zurückgelegt', none: 'Keine' },
         muzzle: { long: 'Lange Schnauze', medium: 'Mittel', short: 'Kurz (Katze)', beak: 'Schnabel' },
-        marking: { none: 'Keine', mask: 'Maske', stripes: 'Streifen', spots: 'Flecken', blaze: 'Blesse', cheeks: 'Wangenflecken', freckles: 'Sommersprossen' },
+        marking: { none: 'Keine', mask: 'Maske', stripes: 'Streifen', spots: 'Flecken', blaze: 'Blesse', cheeks: 'Wangenflecken', freckles: 'Sommersprossen', glow: '✨ Leuchtlinien' },
         extra: { none: 'Nichts', horns: 'Hörner', antlers: 'Geweih', mane: 'Mähne', fins: 'Flossen/Kämme', tuft: 'Haarbüschel', visor: 'Visier' },
         acc: { none: 'Nichts', glasses: 'Brille', bandana: 'Halstuch', bow: 'Schleife', collar: 'Halsband', headphones: 'Kopfhörer', flower: 'Blume', earring: 'Ohrring', scarf: 'Schal' },
         eyeShape: { round: 'Rund', happy: 'Fröhlich', sleepy: 'Verschlafen', sharp: 'Scharf' },
@@ -121,6 +122,7 @@
         const ears = {
             pointy: [['M 50 92 L 46 14 L 94 60 Z', L.main], ['M 58 80 L 55 32 L 84 62 Z', L.inner]],
             big:    [['M 56 94 L 16 4 L 98 56 Z', L.main], ['M 60 84 L 30 22 L 86 58 Z', L.inner]],
+            swept:  [['M 56 90 Q 34 58 4 18 Q 48 30 90 62 Z', L.main], ['M 60 80 Q 42 58 20 32 Q 50 42 80 64 Z', L.inner]],
             long:   [['M 66 70 C 50 40 50 0 68 -2 C 86 0 88 40 84 68 Z', L.main], ['M 70 62 C 60 40 60 10 69 8 C 78 10 80 40 79 62 Z', L.inner]],
         }[L.ears];
         if (ears) ears.forEach(([d, c]) => o.push(both(d, c)));
@@ -141,6 +143,12 @@
         if (L.marking === 'spots') [[70, 70, 6], [130, 66, 5], [52, 96, 5], [150, 98, 6], [114, 58, 4], [86, 60, 3]].forEach(([x, y, r]) => mk.push(`<circle cx="${x}" cy="${y}" r="${r}" fill="${mc}"/>`));
         if (L.marking === 'blaze') mk.push(M('M 100 50 Q 86 92 100 132 Q 114 92 100 50 Z', mc));
         if (L.marking === 'cheeks') { mk.push(both('M 36 118 Q 58 96 82 118 Q 60 150 36 118 Z', mc)); mk.push(both('M 74 84 Q 82 76 90 84 Q 82 92 74 84 Z', mc)); }
+        if (L.marking === 'glow') {
+            const gl = `stroke="${mc}" fill="none" stroke-linecap="round" stroke-linejoin="round"`;
+            mk.push(`<g style="filter:drop-shadow(0 0 3px ${mc})"><path d="M 82 62 L 100 78 L 118 62" stroke-width="4" ${gl}/><path d="M 92 54 L 100 62 L 108 54" stroke-width="3" ${gl}/>`
+                + `<path d="M 38 116 L 60 112 L 52 124" stroke-width="3.5" ${gl}/><path d="M 162 116 L 140 112 L 148 124" stroke-width="3.5" ${gl}/>`
+                + `<circle cx="74" cy="126" r="2.4" fill="${mc}"/><circle cx="126" cy="126" r="2.4" fill="${mc}"/></g>`);
+        }
         if (L.marking === 'freckles') [[64, 128], [70, 134], [58, 134], [136, 128], [130, 134], [142, 134]].forEach(([x, y]) => mk.push(`<circle cx="${x}" cy="${y}" r="2.2" fill="${mc}"/>`));
         if (mk.length) o.push(`<g clip-path="url(#${id}h)">${mk.join('')}</g>`);
         const hairFront = {
@@ -368,7 +376,9 @@
         card: ['🃏', 'Kartenkünstler*in', 'Eine Karte gespeichert oder exportiert'], catch: ['🍖', 'Fangkünstler*in', '50 Punkte beim Leckerli fangen'],
         memory: ['🧠', 'Gutes Gedächtnis', 'Memory gelöst'], whack: ['👃', 'Nasen-Ninja', '30 Nasen gebooped'], ear: ['👂', 'Gutes Gehör', '8 von 10 Tierlauten erkannt'], wheel: ['🎡', 'Dreh am Rad', 'Das Glücksrad gedreht'],
         hcadult: ['💀', 'Hardcore-Held*in', 'Im Hardcore-Modus ohne Cheats erwachsen geworden'], slots: ['💾', 'Großfamilie', '3 Spielstände angelegt'],
-        cheater: ['🃏', 'Schummler*in', 'Einen Cheat-Code benutzt'], rainbow: ['🌈', 'Regenbogenbrücke', 'Ein Hardcore-Haustier verloren'],
+        cheater: ['🃏', 'Schummler*in', 'Einen Cheat-Code benutzt'],
+        oracle: ['🔮', 'Wahrsager*in', 'Das Fluff-Orakel befragt'], cookie: ['🥠', 'Glückspilz', 'Einen Glückskeks geknackt'], pop: ['🫧', 'Plopp-Profi', '100 Blasen geploppt'],
+        pixel: ['🎨', 'Pixel-Pfote', 'Einen Pixel-Sticker gemalt'], suit: ['⏱️', 'Gut gekühlt', 'Den Fursuit-Pausen-Timer gestartet'], ship: ['💞', 'Kuppler*in', 'Einen Ship-Namen erfunden'], rainbow: ['🌈', 'Regenbogenbrücke', 'Ein Hardcore-Haustier verloren'],
         owo: ['💬', 'OwO, was ist das?', 'Den Übersetzer benutzt'], paw: ['✍️', 'Pfotenabdruck', 'Im Gästebuch unterschrieben'],
         konami: ['🎮', 'Retro-Fluff', 'Den Konami-Code eingegeben'], secret: ['🦊', 'Neugierfuchs', 'Den Fuchs 10× angeklickt'], night: ['🌙', 'Nachteule', 'Zwischen 0 und 4 Uhr vorbeigeschaut'],
     };

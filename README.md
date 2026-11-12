@@ -222,6 +222,19 @@ Favoriten alle 15 min, Weltnamen werden gespeichert) und führt nichts automatis
 solange die Seite offen ist. VRChat bittet darum, dass sich Programme per User-Agent mit einer Kontaktmöglichkeit ausweisen –
 das lässt sich in VRC Nexus → Konto einstellen (Recht `system.manage`). Voraussetzung: cURL und ausgehende Verbindungen zu `api.vrchat.cloud`.
 
+### Nexus: Zeitleiste, Begegnungen & Online-Heatmap
+
+- **📊 Zeitleiste** (Statistik): Für heute, gestern und vorgestern zeigt sie als Balken über 24 Stunden, welcher Freund wann online war; eine rote Linie markiert „jetzt“.
+- **🤝 Zuletzt zusammen mit**: Freunde, mit denen du in **derselben Instanz** warst (30 Tage).
+  - Pro Freund: wann zuletzt, in welcher Welt, gemeinsame Zeit und Anzahl der Instanzen.
+  - Berechnet aus deinen eigenen Orten und denen deiner Freunde.
+- **🎂 Freundschafts-Jahrestage** in den nächsten 30 Tagen und **🆕 neueste Freunde**.
+- **Profil-Dialog**:
+  - „🤝 Mit dir zusammen“ (Zeit, Instanzen, zuletzt wo)
+  - **🕑 Online-Heatmap** der Person (Minuten je Wochentag und Stunde, 30 Tage) mit „⭐ beste Zeit“
+  - „👯 oft gleichzeitig online mit …“
+- **🎲 Zufalls-Avatar** (Avatare): würfelt aus der gefilterten Liste und zieht den Avatar nach Rückfrage an.
+
 ## Discord-Zentrale (`discord.php`)
 
 Den eigenen Discord-Server über einen **eigenen Bot** verwalten. Recht: `discord.manage` (Administratoren automatisch).
@@ -323,7 +336,7 @@ Spielwiese für die Community – öffentlich, vieles geht auch ohne Konto:
   - Deine Bilder erscheinen in Community, Karten, Tamagotchi und Minispielen.
 - **🧑‍🎨 Avatar**: der gezeichnete Baukasten, jetzt dein **Profilbild**.
   - Zu sehen in der Community-Ecke und bei Pfotenabdrücken; er springt überall ein, wo kein eigenes Bild da ist.
-  - 19 Tierarten, 10 Farben, Ohren, Schnauze, Zeichnung, Extras und Accessoires.
+  - 20 Tierarten (u. a. 🌌 **Novabeast** mit langen, zurückgelegten Ohren und leuchtenden Neon-Linien), 10 Farben, Ohren, Schnauze, Zeichnung, Extras und Accessoires.
   - **Geschlecht**: Weiblich (Wimpern, schmalere Schultern), Männlich (kräftige Brauen, breite Schultern), Nicht-binär (dezente Wimpern) oder keine Angabe.
   - **Frisuren**: Pony, lange Haare, Stachelig, Dutt, Locken, Irokese – mit eigener Haarfarbe.
   - **Pride-Anstecker**: Regenbogen, Trans, Nicht-binär, Bi, Pan, Lesbisch, Ace, Gay.
@@ -339,6 +352,14 @@ Spielwiese für die Community – öffentlich, vieles geht auch ohne Konto:
   - Pfoten-Memory.
   - Tierlaute raten.
   - Glücksrad mit eigenen Einträgen.
+- **🎉 Spielzeug**:
+  - 🔮 Fluff-Orakel (Ja/Nein-Fragen)
+  - ✨ Horoskop des Tages je Tierart, mit Glücks-Snack und Glückszahl
+  - 🥠 Glückskeks
+  - 🫧 Plopp-Folie mit Zähler
+  - 🎨 **Pixel-Sticker** 16×16: Farbpalette, Stift, Radierer, Füllen, Pipette, 🪞 Spiegel-Modus, Pfoten-Vorlage, PNG-Export in 512 px
+  - ⏱️ **Fursuit-Pausen-Timer**: erinnert an Pausen, mit Ton, Vibration und Benachrichtigung, dazu ein Wasser-Zähler
+  - 💞 Ship-Namen-Generator mit „Fluff-Kompatibilität“
 - **🐾 Community**: gespeicherte Sonas (Suche, Likes, Ref-Link, direkt boopen) und geteilte Karten (mit PNG-Download).
 - Außerdem:
   - Con-Bingo
@@ -348,7 +369,7 @@ Spielwiese für die Community – öffentlich, vieles geht auch ohne Konto:
   - Glossar
   - Pfotenabdrücke (Gästebuch)
   - Tierfakt und Zeichen-Idee des Tages
-  - **35 Erfolge**
+  - **41 Erfolge**
   - Easter Eggs
   - 🐾-Spur am Mauszeiger
 - Widget **„Boop!“** für die Startseite (unter „＋ Widget“).
