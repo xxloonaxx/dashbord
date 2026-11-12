@@ -795,6 +795,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 'platforms' => array_values(array_unique(array_map(function ($p) { return VRC_PLATFORM[$p['platform'] ?? ''] ?? ($p['platform'] ?? ''); }, (array)($a['unityPackages'] ?? []))))];
                     }, is_array($res) ? array_filter($res, 'is_array') : []))];
                     break;
+                case 'avatar_db':
+                    $out = ['avatars' => vrc_avatar_db_search((int)($in['provider'] ?? 0), (string)($in['q'] ?? '')), 'current' => (string)($acc['me']['currentAvatar'] ?? '')];
+                    foreach ($out['avatars'] as &$av) $av['current'] = $av['id'] === $out['current'];
+                    unset($av);
+                    break;
+                case 'avatar_providers':
+                    if (isset($in['save'])) {
+                        if (!can('system.manage')) throw new RuntimeException('Nur Admins (System) dürfen Provider ändern.');
+                        vrc_avatar_providers_save((string)($in['list'] ?? ''));
+                        audit('Nexus: Avatar-Provider geändert');
+                    }
+                    $out = ['providers' => vrc_avatar_providers(), 'can_edit' => can('system.manage')];
+                    break;
                 case 'avatar_select':
                     $u = vrc_call($acc, 'PUT', '/avatars/' . rawurlencode($valid($id, 'avtr')) . '/select');
                     if (!empty($u['id'])) vrc_db()->prepare('UPDATE accounts SET me_json = ?, avatar = ? WHERE user_id = ?')->execute([json_encode(vrc_me_slim($u), JSON_UNESCAPED_UNICODE), vrc_user_image($u), $uid]);
@@ -1040,7 +1053,7 @@ session_write_close();
 
     <section class="vx-tab" data-pane="avatars" hidden>
         <div class="vx-tools">
-            <div class="chips" id="avatarKinds"><button type="button" class="chip on" data-kind="mine">🎭 Meine Avatare</button><button type="button" class="chip" data-kind="favorites">⭐ Favoriten</button></div>
+            <div class="chips" id="avatarKinds"><button type="button" class="chip on" data-kind="mine">🎭 Meine Avatare</button><button type="button" class="chip" data-kind="favorites">⭐ Favoriten</button><button type="button" class="chip" data-kind="search">🔎 Avatar-Suche</button></div>
             <input type="search" id="avatarSearch" placeholder="Avatare filtern (Name, Autor) …" aria-label="Avatare filtern">
             <select id="avatarSort" aria-label="Sortierung">
                 <option value="group">Nach Favoritengruppe</option><option value="updated">Zuletzt aktualisiert</option><option value="created">Neueste zuerst</option>
@@ -1050,6 +1063,12 @@ session_write_close();
             <button type="button" class="btn btn-sm" id="avatarRandom" title="Zufälligen Avatar aus der (gefilterten) Liste anziehen">🎲 Zufall</button>
             <span class="vx-small" id="avatarCount"></span>
         </div>
+        <form class="vx-bar avdb-bar" id="avDbForm" hidden>
+            <input type="search" name="q" placeholder="Avatar suchen – Name, Stichwort, Autor-ID (usr_…) oder Avatar-ID" required minlength="2">
+            <select name="provider" id="avDbProv" aria-label="Datenbank"></select>
+            <button class="btn btn-sm btn-gold">🔎 Suchen</button>
+            <button type="button" class="btn btn-sm" id="avDbEdit" hidden title="Provider verwalten">⚙</button>
+        </form>
         <div id="avatarsBox"></div>
     </section>
 

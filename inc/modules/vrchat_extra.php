@@ -276,3 +276,75 @@ function vrc_hot_worlds(array &$acc): array {
     usort($out, function ($a, $b) { return $b['occupants'] <=> $a['occupants']; });
     return $out;
 }
+
+// =====================================================================
+// Avatar-Suche über externe Datenbanken (VRCX-kompatible „Avatar Database Provider“)
+// =====================================================================
+
+const VRC_AVATAR_PROVIDERS_DEFAULT = ['https://api.avtrdb.com/v3/avatar/search/vrcx'];
+
+function vrc_avatar_providers(): array {
+    $list = json_decode(setting('vrc_avatar_providers', ''), true);
+    return is_array($list) && $list ? array_values($list) : VRC_AVATAR_PROVIDERS_DEFAULT;
+}
+
+/** Provider-Liste speichern (nur https, keine internen Adressen) */
+function vrc_avatar_providers_save(string $text): array {
+    $out = [];
+    foreach (preg_split('/\s+/', trim($text)) as $u) {
+        if ($u === '') continue;
+        if (!preg_match('#^https://[a-z0-9.\-]+(:\d+)?(/[^\s?\#]*)?$#i', $u)) throw new RuntimeException('Nur https-Adressen ohne ?-Teil erlaubt: ' . $u);
+        $host = strtolower((string)parse_url($u, PHP_URL_HOST));
+        if (preg_match('/^(localhost|.*\.local|.*\.internal)$/', $host) || filter_var($host, FILTER_VALIDATE_IP)) throw new RuntimeException('Interne Adressen sind nicht erlaubt: ' . $host);
+        $out[] = $u;
+    }
+    $out = array_slice(array_values(array_unique($out)), 0, 8);
+    set_setting('vrc_avatar_providers', json_encode($out ?: VRC_AVATAR_PROVIDERS_DEFAULT, JSON_UNESCAPED_SLASHES));
+    return vrc_avatar_providers();
+}
+
+/** Suche bei einem Provider: Text oder Autor (usr_…) */
+function vrc_avatar_db_search(int $provider, string $q): array {
+    $list = vrc_avatar_providers();
+    if (!isset($list[$provider])) throw new RuntimeException('Unbekannter Provider.');
+    $q = trim($q);
+    if (mb_strlen($q) < 2) throw new RuntimeException('Bitte mindestens 2 Zeichen eingeben.');
+    if (preg_match('/(usr_[0-9a-f\-]{36})/i', $q, $m)) $params = ['authorId' => $m[1], 'n' => 500];
+    elseif (preg_match('/(avtr_[0-9a-f\-]{36})/i', $q, $m)) $params = ['search' => $m[1], 'n' => 50];
+    else $params = ['search' => mb_substr($q, 0, 100), 'n' => 500];
+    $url = $list[$provider] . '?' . http_build_query($params);
+    $host = (string)parse_url($url, PHP_URL_HOST);
+    $ip = gethostbyname($host);
+    $resolved = $ip !== $host && filter_var($ip, FILTER_VALIDATE_IP);   // ohne eigene Namensauflösung (z. B. hinter einem Proxy) entscheidet cURL
+    if ($resolved && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) throw new RuntimeException('Provider zeigt auf eine interne Adresse.');
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 20, CURLOPT_CONNECTTIMEOUT => 8, CURLOPT_FOLLOWLOCATION => false,
+                            CURLOPT_PROTOCOLS => CURLPROTO_HTTPS, CURLOPT_MAXFILESIZE => 20000000,
+                            CURLOPT_HTTPHEADER => ['Accept: application/json', 'User-Agent: GhostNode-Dashboard/1.0 (VRC Nexus avatar search)']]);
+    if ($resolved) curl_setopt($ch, CURLOPT_RESOLVE, [$host . ':' . ((int)parse_url($url, PHP_URL_PORT) ?: 443) . ':' . $ip]);   // geprüfte Adresse festhalten
+    $raw = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $err = curl_error($ch);
+    curl_close($ch);
+    if ($raw === false) throw new RuntimeException('Provider nicht erreichbar: ' . $err);
+    if ($code === 404) return [];
+    if ($code !== 200) throw new RuntimeException('Provider antwortet mit HTTP ' . $code . '.');
+    $data = json_decode((string)$raw, true);
+    if (!is_array($data)) throw new RuntimeException('Provider liefert kein gültiges Ergebnis.');
+    $https = function ($u) { return is_string($u) && preg_match('#^https://#', $u) ? $u : ''; };
+    $out = [];
+    foreach (array_slice($data, 0, 500) as $a) {
+        if (!is_array($a) || !preg_match('/^avtr_[0-9a-f\-]{36}$/i', (string)($a['id'] ?? ''))) continue;
+        $perf = is_array($a['performance'] ?? null) ? $a['performance'] : [];
+        $pf = [];
+        if (!empty($perf['pc_rating']) && $perf['pc_rating'] !== 'None') $pf[] = 'PC';
+        if (!empty($perf['android_rating']) && $perf['android_rating'] !== 'None') $pf[] = 'Quest / Android';
+        if (!empty($perf['ios_rating']) && $perf['ios_rating'] !== 'None') $pf[] = 'iOS';
+        $out[] = ['id' => $a['id'], 'name' => mb_substr((string)($a['name'] ?? ''), 0, 120), 'author' => mb_substr((string)($a['authorName'] ?? ''), 0, 64),
+                  'author_id' => preg_match('/^usr_[0-9a-f\-]{36}$/i', (string)($a['authorId'] ?? '')) ? $a['authorId'] : '',
+                  'thumb' => $https($a['thumbnailImageUrl'] ?? '') ?: $https($a['imageUrl'] ?? ''), 'desc' => mb_substr((string)($a['description'] ?? ''), 0, 300),
+                  'status' => (string)($a['releaseStatus'] ?? ''), 'updated' => (string)($a['updated_at'] ?? ''), 'created' => (string)($a['created_at'] ?? ''),
+                  'platforms' => $pf, 'perf' => array_filter(['PC' => $perf['pc_rating'] ?? '', 'Quest' => $perf['android_rating'] ?? '', 'iOS' => $perf['ios_rating'] ?? ''])];
+    }
+    return $out;
+}

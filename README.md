@@ -301,6 +301,10 @@ das lässt sich in VRC Nexus → Konto einstellen (Recht `system.manage`). Vorau
   Tabelle mit Zeit, Art, Von, Gruppe, Bild und Nachricht; Aktionen direkt in der Zeile: annehmen, ablehnen, blockieren,
   abbestellen, zurück-boopen, einladen, als gelesen markieren, löschen. Jede Benachrichtigung landet zusätzlich im
   **eigenen Verlauf** (bleibt auch, wenn VRChat sie löscht) – „Offen bei VRChat“ / „Ganzer Verlauf“, Filter nach Art und Suche.
+- **🔎 Avatar-Suche** (Reiter Avatare): durchsucht öffentliche Avatare über VRCX-kompatible Avatar-Datenbanken – Standard
+  `https://api.avtrdb.com/v3/avatar/search/vrcx`. Suche nach Name/Stichwort, Autor-ID (`usr_…`) oder Avatar-ID; Treffer mit
+  Plattformen und Leistungsstufe (PC/Quest/iOS), direkt **anziehen**, **⭐ favorisieren** oder **👤 mehr vom Autor**. Weitere Provider
+  trägt ein Admin über ⚙ ein (nur https, keine internen Adressen).
 - **🛒 Shop**: VRChat-Credits, VRC+-Abo (Laufzeit), aktive Lizenzen, eigene Käufe (Preis, Verkäufer, Geschenke, Ablauf),
   eigene Angebote – und **Shop ansehen** eines Creators (Profil-Link/`usr_…`) oder Stores (`esto_…`) mit Preisen, VRC+-Preis
   und Verkaufszahlen. Gekauft wird bewusst nur im VRChat-Marktplatz.

@@ -531,15 +531,47 @@
         if (kind === 'favorites' && !store.get('avSortSet', false)) $('#avatarSort').value = 'group';
         if (kind !== 'favorites' && $('#avatarSort').value === 'group') $('#avatarSort').value = 'updated';
         const box = $('#avatarsBox');
+        $('#avDbForm').hidden = kind !== 'search';
+        if (kind === 'search') {
+            avatarList = [];
+            if (['group', 'updated'].includes($('#avatarSort').value)) $('#avatarSort').value = 'vrchat';
+            if (!avProviders) api('avatar_providers').then(d => { avProviders = d.providers; avCanEdit = d.can_edit; fillProviders(); }).catch(x => toast(x.message, true));
+            box.innerHTML = '<div class="vx-empty">🔎 Durchsucht öffentliche Avatare über eine Avatar-Datenbank (z. B. avtrdb). Gefundene Avatare kannst du direkt anziehen oder favorisieren.</div>';
+            $('#avatarCount').textContent = '';
+            $('#avDbForm [name=q]').focus();
+            return;
+        }
         loading(box, 'Lade Avatare …');
         api('avatars', { kind }).then(d => { avatarList = d.avatars.map((a, i) => Object.assign(a, { _i: i })); avatarGroups = d.fav_groups || {}; renderAvatars(); }).catch(fail(box));
     }
+    let avProviders = null, avCanEdit = false;
+    function fillProviders() {
+        $('#avDbProv').innerHTML = avProviders.map((u, i) => { let h = u; try { h = new URL(u).hostname; } catch (e) { /* egal */ } return '<option value="' + i + '">' + esc(h) + '</option>'; }).join('');
+        $('#avDbEdit').hidden = !avCanEdit;
+    }
+    $('#avDbForm').addEventListener('submit', e => {
+        e.preventDefault();
+        const f = e.target, box = $('#avatarsBox');
+        loading(box, 'Suche bei ' + ($('#avDbProv').selectedOptions[0] || {}).textContent + ' …');
+        api('avatar_db', { q: f.q.value, provider: f.provider.value }).then(d => {
+            avatarList = d.avatars.map((a, i) => Object.assign(a, { _i: i }));
+            if (!avatarList.length) { box.innerHTML = '<div class="vx-empty">Nichts gefunden.</div>'; $('#avatarCount').textContent = '0 Treffer'; return; }
+            renderAvatars();
+        }).catch(fail(box));
+    });
+    $('#avDbEdit').addEventListener('click', () => {
+        const list = prompt('Avatar-Datenbanken (VRCX-kompatibel), eine https-Adresse pro Zeile bzw. mit Leerzeichen getrennt:', avProviders.join(' '));
+        if (list === null) return;
+        api('avatar_providers', { save: 1, list }).then(d => { avProviders = d.providers; fillProviders(); toast('Provider gespeichert.'); }).catch(x => toast(x.message, true));
+    });
     const groupName = k => avatarGroups[k] || (k ? 'Gruppe ' + k.replace(/\D/g, '') : 'Ohne Gruppe');
     function avatarCard(a) {
         const groups = Object.keys(avatarGroups).length ? Object.keys(avatarGroups) : ['avatars1', 'avatars2', 'avatars3', 'avatars4'];
         return '<div class="vx-card' + (a.current ? ' current' : '') + '" data-avatar-open="' + esc(a.id) + '" role="button" tabindex="0">' + img(a.thumb, 'vx-card-img', a.name) + '<span class="vx-card-body"><b>' + esc(a.name) + (a.current ? ' <span class="vx-pill rep">trägst du</span>' : '') + '</b>'
             + '<small>' + esc(a.author ? 'von ' + a.author : '') + (a.status ? ' · ' + esc(a.status) : '') + (a.updated ? ' · ' + esc(isoDate(a.updated)) : '') + '</small><span class="vx-card-meta">' + a.platforms.map(p => '<span>' + esc(p) + '</span>').join('') + '</span>'
+            + (a.perf && Object.keys(a.perf).length ? '<span class="vx-card-meta avdb-perf">' + Object.entries(a.perf).map(([p, r]) => '<span class="perf-' + esc(String(r).toLowerCase().replace(/\s+/g, '')) + '" title="Leistung ' + esc(p) + '">' + esc(p + ': ' + r) + '</span>').join('') + '</span>' : '')
             + '<span class="vx-card-acts">' + (a.current ? '' : '<button type="button" class="btn btn-sm btn-gold" data-avatar="' + esc(a.id) + '">Anziehen</button>')
+            + (avatarKind === 'search' ? '<button type="button" class="btn btn-sm" data-avfav="' + esc(a.id) + '" title="Zu den VRChat-Favoriten">⭐</button>' + (a.author_id ? '<button type="button" class="btn btn-sm" data-avauthor="' + esc(a.author_id) + '" title="Weitere Avatare dieses Autors suchen">👤</button>' : '') : '')
             + (avatarKind === 'favorites' ? '<select class="vx-avgrp" data-avmove="' + esc(a.id) + '" data-favid="' + esc(a.fav_id || '') + '" title="In Favoritengruppe verschieben">' + groups.map(g => '<option value="' + esc(g) + '"' + (g === a.fav_group ? ' selected' : '') + '>' + esc(groupName(g)) + '</option>').join('') + '</select>' : '')
             + '</span></span></div>';
     }
@@ -584,6 +616,10 @@
         }, 450);
     });
     $('#avatarsBox').addEventListener('click', e => {
+        const fv = e.target.closest('[data-avfav]');
+        if (fv) { e.stopImmediatePropagation(); fv.disabled = true; api('avatar_fav', { id: fv.dataset.avfav, on: 1 }).then(r => { toast(r.msg); fv.textContent = '★'; }).catch(x => { toast(x.message, true); fv.disabled = false; }); return; }
+        const au = e.target.closest('[data-avauthor]');
+        if (au) { e.stopImmediatePropagation(); $('#avDbForm [name=q]').value = au.dataset.avauthor; $('#avDbForm').requestSubmit(); return; }
         const b = e.target.closest('[data-avatar]');
         if (!b) return;
         b.disabled = true;
