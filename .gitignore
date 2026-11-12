@@ -36,3 +36,4 @@ __pycache__/
 clients/nexus-desktop/build/
 clients/nexus-desktop/dist/
 *.spec
+GhostNodeNexus-windows.zip
