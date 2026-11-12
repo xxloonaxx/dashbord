@@ -124,7 +124,9 @@
         if (name === 'avatars' && !loaded.avatars) loadAvatars('mine');
         if (name === 'groups' && !loaded.groups) loadGroups();
         if (name === 'favs' && (!loaded.favs || loaded.favsDirty)) { loaded.favs = true; loaded.favsDirty = false; loadFavs(); }
-        if (name === 'notifs' && !loaded.notifs) loadNotifs();
+        if (name === 'notifs') loadNotifs();
+        if (name === 'shop' && !loaded.shop) loadShop();
+        if (name === 'global') loadGlobal();
         if (name === 'moderation') loadModeration();
         if (name === 'calendar') loadCalendar(false);
         if (name === 'gallery' && !loaded.gallery) loadGallery(false);
@@ -1109,31 +1111,148 @@
         }).catch(x => { toast(x.message, true); b.disabled = false; });
     }, true);
 
-    // ---------- Anfragen / Benachrichtigungen ----------
-    const NT = { friendRequest: '🤝 Freundschaftsanfrage', invite: '📨 Einladung', requestInvite: '🙋 möchte eingeladen werden', inviteResponse: '↩ Antwort auf Einladung', requestInviteResponse: '↩ Antwort', votetokick: '🗳 Abstimmung', message: '💬 Nachricht' };
-    function loadNotifs() {
-        $('#notifBox').innerHTML = '<div class="vx-loading">Lade …</div>';
-        api('notifications').then(d => {
+    // ---------- Benachrichtigungen (alte API + V2, mit Verlauf) ----------
+    let nfView = 'open', nfLabels = {}, nfTimer = null;
+    const fileImg = (id, cls) => /^file_[0-9a-f-]{36}$/i.test(id || '') ? '<img class="' + cls + '" src="nexus.php?img=' + encodeURIComponent(id) + '" alt="" loading="lazy">' : '';
+    const ago2 = ts => ts ? new Date(ts * 1000).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+    function loadNotifs(cached) {
+        const box = $('#notifBox');
+        if (!cached) loading(box, 'Hole Benachrichtigungen von VRChat …');
+        api('notifications', { view: nfView, type: $('#nfType').value, q: $('#nfQ').value, cached: cached ? 1 : '' }).then(d => {
             loaded.notifs = true;
-            $('#notifBox').innerHTML = d.items.length ? '<div class="vx-members">' + d.items.map(n => '<div class="vx-member' + (n.seen ? '' : ' unseen') + '"><span>' + esc(NT[n.type] || n.type) + '</span>'
-                + '<a href="#" data-user="' + esc(n.from_id) + '">' + esc(n.from) + '</a><small>' + esc(n.message || '') + ' · ' + esc(n.created ? new Date(n.created).toLocaleString('de-DE') : '') + '</small><span class="vx-m-acts">'
-                + (n.type === 'friendRequest' ? '<button type="button" class="btn btn-sm btn-gold" data-nact="notif_accept" data-id="' + esc(n.id) + '">✓ Annehmen</button>' : '')
-                + (n.type === 'requestInvite' && state.me.location ? '<button type="button" class="btn btn-sm btn-gold" data-nact="invite" data-user="' + esc(n.from_id) + '">📨 Einladen</button>' : '')
-                + '<button type="button" class="btn btn-sm" data-nact="notif_hide" data-id="' + esc(n.id) + '">Ausblenden</button></span></div>').join('') + '</div>'
-                : '<div class="vx-empty">Keine offenen Anfragen.</div>';
-            const n = d.items.filter(x => x.type === 'friendRequest').length;
-            $('[data-tab=notifs]').innerHTML = '<span>🔔</span>Anfragen' + (n ? ' <b class="vx-badge">' + n + '</b>' : '');
-        }).catch(x => { $('#notifBox').innerHTML = '<div class="vx-error">⚠ ' + esc(x.message) + '</div>'; });
+            nfLabels = d.labels;
+            const sel = $('#nfType'), cur = sel.value;
+            sel.innerHTML = '<option value="">Alle Arten</option>' + Object.entries(d.types).map(([t, n]) => '<option value="' + esc(t) + '">' + esc((d.labels[t] || ['•', t]).join(' ')) + ' (' + n + ')</option>').join('');
+            sel.value = cur;
+            const warn = (d.warn || []).map(w => '<div class="vx-error">⚠ ' + esc(w) + '</div>').join('');
+            box.innerHTML = warn + (d.items.length ? '<div class="nf-table"><div class="nf-row nf-head"><span>Zeit</span><span>Art</span><span>Von</span><span>Gruppe</span><span></span><span>Nachricht</span><span>Aktionen</span></div>'
+                + d.items.map(n => {
+                    const lab = d.labels[n.type] || ['•', n.type];
+                    const acts = [];
+                    if (n.active && n.src === 'v1' && n.type === 'friendRequest') acts.push('<button type="button" class="nf-a ok" data-nop="accept" title="Annehmen">✓</button>');
+                    if (n.active && n.src === 'v1' && n.type === 'requestInvite' && state && state.me.location) acts.push('<button type="button" class="nf-a ok" data-ninvite="' + esc(n.sender_id) + '" title="Einladen">📨</button>');
+                    if (n.active) n.responses.forEach(r => { if (r.type !== 'delete') acts.push('<button type="button" class="nf-a' + (r.type === 'accept' ? ' ok' : r.type === 'block' || r.type === 'decline' ? ' bad' : '') + '" data-nop="respond" data-rtype="' + esc(r.type) + '" title="' + esc(r.text || d.resp_labels[r.type]) + '">' + esc((d.resp_labels[r.type] || r.type).split(' ')[0]) + '</button>'); });
+                    if (n.active && !n.seen) acts.push('<button type="button" class="nf-a" data-nop="see" title="Als gelesen markieren">👁</button>');
+                    acts.push(n.active ? '<button type="button" class="nf-a" data-nop="delete" title="Bei VRChat entfernen">🗑</button>' : '<button type="button" class="nf-a" data-nop="forget" title="Aus dem Verlauf löschen">✕</button>');
+                    const msg = (n.title && n.message.indexOf(n.title) < 0 ? '<b>' + esc(n.title) + '</b> ' : '') + esc(n.message);
+                    return '<div class="nf-row' + (n.seen ? '' : ' unseen') + (n.active ? '' : ' gone') + '" data-nid="' + esc(n.id) + '">'
+                        + '<span class="mono small">' + ago2(n.created) + '</span>'
+                        + '<span><span class="nf-type">' + esc(lab[0] + ' ' + lab[1]) + '</span></span>'
+                        + '<span>' + (n.sender_id ? '<a href="#" data-user="' + esc(n.sender_id) + '">' + esc(n.sender_name) + '</a>' : esc(n.sender_name)) + '</span>'
+                        + '<span>' + (n.group_id ? '<a href="#" data-ngroup="' + esc(n.group_id) + '">' + esc(n.group_name || 'Gruppe') + '</a>' : esc(n.group_name)) + '</span>'
+                        + '<span>' + (n.image ? img(n.image, 'nf-img', '') : '') + '</span>'
+                        + '<span class="nf-msg" title="' + esc(n.message) + '">' + msg + '</span>'
+                        + '<span class="nf-acts">' + acts.join('') + '</span></div>';
+                }).join('') + '</div>' : '<div class="vx-empty">' + (nfView === 'open' ? 'Keine offenen Benachrichtigungen. 🎉' : 'Noch nichts im Verlauf.') + '</div>');
+            $('[data-tab=notifs]').innerHTML = '<span>🔔</span>Benachrichtigungen' + (d.unseen ? ' <b class="vx-badge">' + d.unseen + '</b>' : '');
+        }).catch(fail(box));
     }
+    $('#nfView').addEventListener('click', e => { const b = e.target.closest('[data-view]'); if (!b) return; nfView = b.dataset.view; $$('#nfView .chip').forEach(c => c.classList.toggle('on', c === b)); loadNotifs(true); });
+    $('#nfType').addEventListener('change', () => loadNotifs(true));
+    $('#nfQ').addEventListener('input', () => { clearTimeout(nfTimer); nfTimer = setTimeout(() => loadNotifs(true), 300); });
+    $('#nfReload').addEventListener('click', () => loadNotifs(false));
+    $('#nfClear').addEventListener('click', () => { if (confirm('Alle Einträge aus dem Verlauf löschen, die es bei VRChat nicht mehr gibt?')) api('notif_clear').then(r => { toast(r.msg); loadNotifs(true); }).catch(x => toast(x.message, true)); });
     $('#notifBox').addEventListener('click', e => {
-        const b = e.target.closest('[data-nact]');
+        const g = e.target.closest('[data-ngroup]');
+        if (g) { e.preventDefault(); e.stopPropagation(); tab('groups'); openGroup(g.dataset.ngroup); return; }
+        const inv = e.target.closest('[data-ninvite]');
+        if (inv) { e.stopPropagation(); inv.disabled = true; api('invite', { id: inv.dataset.ninvite }).then(r => toast(r.msg || 'Eingeladen.')).catch(x => { toast(x.message, true); inv.disabled = false; }); return; }
+        const b = e.target.closest('[data-nop]');
         if (!b) return;
         e.stopPropagation();
+        const row = b.closest('[data-nid]');
+        if (b.dataset.rtype === 'block' && !confirm('Wirklich blockieren?')) return;
         b.disabled = true;
-        const a = b.dataset.nact;
-        api(a, a === 'invite' ? { id: b.dataset.user } : { id: b.dataset.id }).then(r => { toast(r.msg || 'Erledigt.'); if (a !== 'invite') b.closest('.vx-member').remove(); if (a === 'notif_accept') load(true, true); })
-            .catch(x => { toast(x.message, true); b.disabled = false; });
+        api('notif_act', { id: row.dataset.nid, op: b.dataset.nop, rtype: b.dataset.rtype || '' }).then(r => {
+            toast(r.msg || 'Erledigt.');
+            if (b.dataset.nop === 'accept') load(true, true);
+            loadNotifs(true);
+        }).catch(x => { toast(x.message, true); b.disabled = false; });
     }, true);
+
+    // ---------- Shop ----------
+    const credits = n => '<span class="sh-cr">◈ ' + num(n) + '</span>';
+    const LT = { subscription: 'Abo', permanent: 'Dauerhaft', instant: 'Sofort', duration: 'Zeitlich' };
+    const listingCard = l => '<div class="sh-card' + (l.active ? '' : ' off') + '">' + (l.image ? img(l.image, 'sh-img', '') : fileImg(l.image_id, 'sh-img') || '<span class="sh-img vx-noimg">🛒</span>')
+        + '<div class="sh-body"><b>' + esc(l.name) + '</b>' + (l.subtitle ? '<small>' + esc(l.subtitle) + '</small>' : '')
+        + '<div class="sh-meta">' + credits(l.price) + (l.vrcplus_price !== null && l.vrcplus_price !== l.price ? ' <span class="sh-plus" title="Preis mit VRC+">VRC+ ' + num(l.vrcplus_price) + '</span>' : '')
+        + ' · ' + esc(LT[l.type] || l.type) + (l.duration ? ' · ' + esc(l.duration + ' ' + l.duration_type) : '') + (l.kinds.length ? ' · ' + esc(l.kinds.join(', ')) : '') + '</div>'
+        + '<div class="sh-meta">' + (l.seller_id ? 'von <a href="#" data-user="' + esc(l.seller_id) + '">' + esc(l.seller) + '</a>' : esc(l.seller)) + (l.group ? ' · 🛡 ' + esc(l.group) : '') + (l.sold ? ' · ' + num(l.sold) + '× verkauft' : '') + (l.by_vrc ? ' · VRChat' : '') + '</div>'
+        + (l.desc ? '<p class="sh-desc">' + esc(l.desc) + '</p>' : '') + '</div></div>';
+    function loadShop() {
+        const box = $('#shopBox');
+        loading(box, 'Lade Shop-Konto …');
+        api('shop').then(d => {
+            loaded.shop = true;
+            const active = d.subs.filter(s => s.active);
+            box.innerHTML = '<div class="sh-kpis">'
+                + '<div class="sh-kpi"><span>◈</span><b>' + (d.balance === null ? '–' : num(d.balance)) + '</b><small>VRChat Credits</small></div>'
+                + '<div class="sh-kpi"><span>💎</span><b>' + (active.length ? 'aktiv' : 'kein Abo') + '</b><small>' + (active.length ? esc(active.map(s => s.name).join(', ')) + (active[0].expires ? ' · bis ' + esc(isoDate(active[0].expires)) : '') : 'VRC+') + '</small></div>'
+                + '<div class="sh-kpi"><span>🎟️</span><b>' + num(d.licenses) + '</b><small>aktive Lizenzen</small></div>'
+                + '<div class="sh-kpi"><span>🧾</span><b>' + num(d.purchases.length) + '</b><small>Käufe</small></div>'
+                + '<div class="sh-kpi"><span>🏷️</span><b>' + num(d.listings.length) + '</b><small>eigene Angebote</small></div></div>'
+                + (d.errors.length ? '<div class="vx-note small">ℹ Nicht verfügbar: ' + esc(d.errors.join(' · ')) + '</div>' : '')
+                + '<p class="muted small">Kaufen geht bewusst nur im <a href="https://vrchat.com/home/marketplace" target="_blank" rel="noopener noreferrer">VRChat-Marktplatz</a> – hier kannst du alles in Ruhe ansehen.</p>'
+                + (d.subs.length ? '<div class="vx-sec"><h3>💎 Abos</h3><div class="sh-list">' + d.subs.map(s => '<div class="sh-row"><b>' + esc(s.name) + '</b><span>' + (s.active ? '🟢 aktiv' : '⚪ ' + esc(s.status || 'beendet')) + '</span><span class="muted small">'
+                    + esc([({ year: 'jährlich', month: 'monatlich' })[s.period] || s.period, s.store, s.gift ? 'Geschenk' : '', s.starts ? 'seit ' + isoDate(s.starts) : '', s.expires ? 'bis ' + isoDate(s.expires) : ''].filter(Boolean).join(' · ')) + '</span></div>').join('') + '</div></div>' : '')
+                + '<div class="vx-sec"><h3>🧾 Meine Käufe</h3>' + (d.purchases.length ? '<div class="sh-list">' + d.purchases.map(p => '<div class="sh-row">' + (fileImg(p.image_id, 'sh-thumb') || '<span class="sh-thumb vx-noimg">🛒</span>')
+                    + '<b>' + esc(p.name) + (p.subtitle ? ' <small>' + esc(p.subtitle) + '</small>' : '') + '</b><span>' + credits(p.price) + '</span><span class="muted small">' + esc(isoDate(p.date))
+                    + (p.seller ? ' · von <a href="#" data-user="' + esc(p.seller_id) + '">' + esc(p.seller) + '</a>' : '') + (p.gift ? ' · 🎁 ' + esc(p.receiver ? 'an ' + p.receiver : 'Geschenk') : '')
+                    + (p.end ? ' · bis ' + esc(isoDate(p.end)) : '') + (p.recurs ? ' · verlängert sich' : '') + (p.active ? '' : ' · abgelaufen') + '</span></div>').join('') + '</div>' : '<div class="vx-empty">Noch nichts gekauft.</div>') + '</div>'
+                + (d.listings.length ? '<div class="vx-sec"><h3>🏷️ Meine Angebote</h3><div class="sh-grid">' + d.listings.map(listingCard).join('') + '</div></div>' : '');
+        }).catch(fail(box));
+    }
+    $('#shopForm').addEventListener('submit', e => {
+        e.preventDefault();
+        const box = $('#shopBrowse');
+        loading(box, 'Lade Angebote …');
+        api('shop_browse', { target: e.target.target.value }).then(d => {
+            box.innerHTML = '<div class="vx-sec"><h3>🛒 ' + esc(d.title) + (d.seller ? ' <small>von ' + esc(d.seller) + '</small>' : '') + '</h3>'
+                + (d.shelves.some(s => s.listings.length) ? d.shelves.filter(s => s.listings.length).map(s => (d.shelves.length > 1 ? '<h4 class="sh-shelf">' + esc(s.title) + (s.desc ? ' <small>' + esc(s.desc) + '</small>' : '') + '</h4>' : '')
+                    + '<div class="sh-grid">' + s.listings.map(listingCard).join('') + '</div>').join('') : '<div class="vx-empty">Keine Angebote gefunden.</div>') + '</div>';
+        }).catch(fail(box));
+    });
+
+    // ---------- VRChat weltweit ----------
+    let gDays = 1;
+    function sparkPath(series, w, h) {
+        if (series.length < 2) return '';
+        const t0 = series[0][0], t1 = series[series.length - 1][0], vals = series.map(s => s[1]);
+        const lo = Math.min(...vals) * 0.97, hi = Math.max(...vals) * 1.01 || 1;
+        return series.map((s, i) => (i ? 'L' : 'M') + ((s[0] - t0) / Math.max(1, t1 - t0) * w).toFixed(1) + ' ' + (h - (s[1] - lo) / Math.max(1, hi - lo) * h).toFixed(1)).join(' ');
+    }
+    function loadGlobal() {
+        const box = $('#globalBox');
+        if (!box.innerHTML) loading(box, 'Frage VRChat …');
+        api('global_stats', { days: gDays }).then(d => {
+            const diff = d.yesterday ? Math.round((d.now - d.yesterday) / d.yesterday * 100) : null;
+            const W = 900, H = 160, path = sparkPath(d.series, W, H);
+            const days = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+            const hv = d.heat.flat().filter(v => v !== null), hmax = Math.max(1, ...hv), hmin = hv.length ? Math.min(...hv) : 0;
+            const fr = d.friends || { n: 0, online: 0 };
+            box.innerHTML = '<div class="sh-kpis">'
+                + '<div class="sh-kpi big"><span>🌍</span><b>' + (d.now === null ? '–' : num(d.now)) + '</b><small>gerade in VRChat' + (diff !== null ? ' · <span class="' + (diff >= 0 ? 'up' : 'down') + '">' + (diff >= 0 ? '▲ +' : '▼ ') + diff + ' % zu gestern</span>' : '') + '</small></div>'
+                + '<div class="sh-kpi"><span>📈</span><b>' + (d.max === null ? '–' : num(d.max)) + '</b><small>Spitze (' + (gDays === 1 ? '24 Std.' : gDays + ' Tage') + ')</small></div>'
+                + '<div class="sh-kpi"><span>📉</span><b>' + (d.min === null ? '–' : num(d.min)) + '</b><small>Tiefstwert</small></div>'
+                + '<div class="sh-kpi"><span>⌀</span><b>' + (d.avg === null ? '–' : num(d.avg)) + '</b><small>Durchschnitt</small></div>'
+                + '<div class="sh-kpi"><span>🏆</span><b>' + (d.record ? num(d.record.online) : '–') + '</b><small>Rekord' + (d.record ? ' · ' + ago2(d.record.ts) : '') + '</small></div>'
+                + '<div class="sh-kpi"><span>👥</span><b>' + num(fr.online) + ' / ' + num(fr.n) + '</b><small>deiner Freund*innen im Spiel</small></div></div>'
+                + '<div class="vx-sec"><h3>Spieler online <span class="chips gl-days">' + [[1, '24 Std.'], [7, '7 Tage'], [30, '30 Tage'], [365, '1 Jahr']].map(([v, l]) => '<button type="button" class="chip' + (v === gDays ? ' on' : '') + '" data-gdays="' + v + '">' + l + '</button>').join('') + '</span></h3>'
+                + (path ? '<svg class="gl-chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"><path d="' + path + ' L' + W + ' ' + H + ' L0 ' + H + ' Z" class="gl-area"/><path d="' + path + '" class="gl-line"/></svg>'
+                    + '<div class="gl-axis"><span>' + ago2(d.series[0][0]) + '</span><span>' + d.samples + ' Messpunkte</span><span>' + ago2(d.series[d.series.length - 1][0]) + '</span></div>'
+                    : '<div class="vx-empty">Noch zu wenige Messpunkte – das Dashboard misst alle 10–15 Minuten (Aufgabenplaner „VRChat-Spielerzahl“). Morgen gibt es hier eine Kurve.</div>')
+                + '</div>'
+                + (hv.length > 5 ? '<div class="vx-sec"><h3>⌀ Spieler je Wochentag & Uhrzeit <small>seit ' + new Date(d.since * 1000).toLocaleDateString('de-DE') + '</small></h3><div class="gl-heat"><span></span>'
+                    + Array.from({ length: 24 }, (_, h) => '<span class="gl-h">' + (h % 3 ? '' : h) + '</span>').join('')
+                    + d.heat.map((row, i) => '<span class="gl-d">' + days[i] + '</span>' + row.map((v, h) => '<i title="' + days[i] + ' ' + h + ' Uhr: ' + (v === null ? 'keine Daten' : num(v)) + '" style="opacity:' + (v === null ? 0.06 : (0.15 + 0.85 * (v - hmin) / Math.max(1, hmax - hmin)).toFixed(2)) + '"></i>').join('')).join('')
+                    + '</div></div>' : '');
+        }).catch(fail(box));
+        if (!loaded.hot) api('hot_worlds').then(d => {
+            loaded.hot = true;
+            $('#hotWorlds').innerHTML = d.worlds.length ? '<div class="gl-worlds">' + d.worlds.map((w, i) => '<a href="#" class="gl-w" data-world="' + esc(w.id) + '">' + img(w.thumb, 'gl-wimg', '') + '<span class="gl-rank">' + (i + 1) + '</span><b>' + esc(w.name) + '</b><small>👥 ' + num(w.occupants) + ' · ⭐ ' + num(w.favorites) + ' · von ' + esc(w.author) + '</small></a>').join('') + '</div>' : '<div class="vx-empty">Keine Daten.</div>';
+        }).catch(fail($('#hotWorlds')));
+    }
+    $('#globalBox').addEventListener('click', e => { const b = e.target.closest('[data-gdays]'); if (b) { gDays = +b.dataset.gdays; loadGlobal(); } });
 
     // ---------- Moderation ----------
     const MT = { block: '⛔ Blockiert', mute: '🔇 Stummgeschaltet', unmute: '🔊 Immer hören', hideAvatar: '🙈 Avatar ausgeblendet', showAvatar: '👁 Avatar immer zeigen', interactOff: '✋ Interaktion aus', interactOn: '🤝 Interaktion an', muteChat: '💬 Chat stumm' };

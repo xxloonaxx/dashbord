@@ -7,6 +7,7 @@
 require_once __DIR__ . '/inc/modules/vrchat.php';
 require_once __DIR__ . '/inc/modules/vrchat_favs.php';
 require_once __DIR__ . '/inc/modules/nexus_client.php';
+require_once __DIR__ . '/inc/modules/vrchat_extra.php';
 
 // Handy-/Kalender-Abo der VRChat-Gruppen-Events: nexus.php?ics=<token> (ohne Anmeldung, nur mit geheimem Token)
 if (isset($_GET['ics'])) {
@@ -229,9 +230,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                                          'status' => $u['status'] ?? '', 'status_desc' => $u['statusDescription'] ?? '', 'is_friend' => !empty($u['isFriend'])]; }, is_array($res) ? $res : [])];
                     break;
                 case 'notifications':
-                    $res = vrc_call($acc, 'GET', '/auth/user/notifications', ['n' => 60]);
-                    $out = ['items' => array_map(function ($n) { return ['id' => $n['id'] ?? '', 'type' => $n['type'] ?? '', 'from' => $n['senderUsername'] ?? '', 'from_id' => $n['senderUserId'] ?? '',
-                                                                          'message' => $n['message'] ?? '', 'created' => $n['created_at'] ?? '', 'seen' => !empty($n['seen'])]; }, is_array($res) ? $res : [])];
+                    $errors = empty($in['cached']) ? vrc_notif_sync($uid, $acc) : [];
+                    $out = vrc_notif_list($uid, ['view' => (string)($in['view'] ?? 'open'), 'type' => (string)($in['type'] ?? ''), 'q' => (string)($in['q'] ?? '')])
+                         + ['labels' => VRC_NOTIF_TYPES, 'resp_labels' => VRC_NOTIF_RESPONSES, 'warn' => $errors];
+                    break;
+                case 'notif_act':
+                    $out = ['msg' => vrc_notif_action($uid, $acc, $id, (string)($in['op'] ?? ''), (string)($in['rtype'] ?? ''))];
+                    break;
+                case 'notif_clear':
+                    $out = ['msg' => vrc_notif_clear_history($uid) . ' alte Einträge aus dem Verlauf gelöscht.'];
+                    break;
+                case 'shop':
+                    $out = vrc_shop_overview($acc);
+                    break;
+                case 'shop_browse':
+                    $out = vrc_shop_browse($acc, (string)($in['target'] ?? ''));
+                    break;
+                case 'global_stats':
+                    $out = vrc_global_stats(max(1, min(365, (int)($in['days'] ?? 1))));
+                    $fr = vrc_db()->prepare("SELECT COUNT(*) AS n, SUM(CASE WHEN state = 'online' THEN 1 ELSE 0 END) AS online FROM friends WHERE user_id = ?");
+                    $fr->execute([$uid]);
+                    $out['friends'] = $fr->fetch();
+                    break;
+                case 'hot_worlds':
+                    $out = ['worlds' => vrc_hot_worlds($acc)];
                     break;
                 case 'notif_accept':
                     if (!preg_match('/^frq_[0-9a-f\-]{8,40}$|^not_[0-9a-f\-]{8,40}$/i', $id)) throw new RuntimeException('Ungültige Benachrichtigung.');
@@ -943,7 +965,9 @@ session_write_close();
         <button type="button" class="vx-tabbtn" data-tab="groups" role="tab"><span>🛡️</span>Gruppen</button>
         <button type="button" class="vx-tabbtn" data-tab="calendar" role="tab"><span>📅</span>Kalender</button>
         <button type="button" class="vx-tabbtn" data-tab="gallery" role="tab"><span>🖼️</span>Galerie</button>
-        <button type="button" class="vx-tabbtn" data-tab="notifs" role="tab"><span>🔔</span>Anfragen</button>
+        <button type="button" class="vx-tabbtn" data-tab="notifs" role="tab"><span>🔔</span>Benachrichtigungen</button>
+        <button type="button" class="vx-tabbtn" data-tab="shop" role="tab"><span>🛒</span>Shop</button>
+        <button type="button" class="vx-tabbtn" data-tab="global" role="tab"><span>🌍</span>VRChat</button>
         <button type="button" class="vx-tabbtn" data-tab="moderation" role="tab"><span>🚫</span>Moderation</button>
         <button type="button" class="vx-tabbtn" data-tab="news" role="tab"><span>📰</span>Info-Push</button>
         <button type="button" class="vx-tabbtn" data-tab="search" role="tab"><span>🔍</span>Suche</button>
@@ -1093,7 +1117,27 @@ session_write_close();
     </section>
 
     <section class="vx-tab" data-pane="notifs" hidden>
+        <div class="vx-bar nf-bar">
+            <span class="chips" id="nfView"><button type="button" class="chip on" data-view="open">Offen bei VRChat</button><button type="button" class="chip" data-view="all">Ganzer Verlauf</button></span>
+            <select id="nfType"><option value="">Alle Arten</option></select>
+            <input type="search" id="nfQ" placeholder="Von, Gruppe, Text …">
+            <button type="button" class="btn btn-sm" id="nfReload">⟳ Neu laden</button>
+            <button type="button" class="btn btn-sm btn-danger" id="nfClear" title="Einträge löschen, die es bei VRChat nicht mehr gibt">🧹 Verlauf leeren</button>
+        </div>
         <div id="notifBox"></div>
+    </section>
+    <section class="vx-tab" data-pane="shop" hidden>
+        <div id="shopBox"></div>
+        <form class="vx-bar shop-browse" id="shopForm">
+            <b>🔎 Shop ansehen:</b>
+            <input type="text" name="target" placeholder="Profil-Link / usr_… eines Creators oder Store-ID esto_…" required>
+            <button class="btn btn-sm btn-gold">Anzeigen</button>
+        </form>
+        <div id="shopBrowse"></div>
+    </section>
+    <section class="vx-tab" data-pane="global" hidden>
+        <div id="globalBox"></div>
+        <div class="vx-sec"><h3>🔥 Gerade beliebte Welten</h3><div id="hotWorlds"></div></div>
     </section>
 
     <section class="vx-tab" data-pane="moderation" hidden>

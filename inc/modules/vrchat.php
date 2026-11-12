@@ -177,6 +177,19 @@ function vrc_migrate(PDO $db): void {
             PRAGMA user_version = 6;
         ");
     }
+    if ((int)$db->query('PRAGMA user_version')->fetchColumn() < 7) {
+        // Benachrichtigungs-Verlauf (alte API + V2) und weltweite Spielerzahlen
+        $db->exec("
+        CREATE TABLE IF NOT EXISTS notif_log (user_id INTEGER NOT NULL, id TEXT NOT NULL, src TEXT NOT NULL DEFAULT 'v1', type TEXT NOT NULL, created INTEGER NOT NULL,
+                                sender_id TEXT NOT NULL DEFAULT '', sender_name TEXT NOT NULL DEFAULT '', group_id TEXT NOT NULL DEFAULT '', group_name TEXT NOT NULL DEFAULT '',
+                                image TEXT NOT NULL DEFAULT '', title TEXT NOT NULL DEFAULT '', message TEXT NOT NULL DEFAULT '', link TEXT NOT NULL DEFAULT '',
+                                responses TEXT NOT NULL DEFAULT '[]', seen INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1, can_delete INTEGER NOT NULL DEFAULT 1,
+                                PRIMARY KEY (user_id, id));
+        CREATE INDEX IF NOT EXISTS idx_notif_created ON notif_log(user_id, created);
+        CREATE TABLE IF NOT EXISTS global_stats (ts INTEGER PRIMARY KEY, online INTEGER NOT NULL);
+        PRAGMA user_version = 7;
+    ");
+    }
 }
 
 // ---------- Verschlüsselung der Sitzungs-Cookies ----------

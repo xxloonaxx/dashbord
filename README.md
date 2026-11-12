@@ -294,6 +294,20 @@ das lässt sich in VRC Nexus → Konto einstellen (Recht `system.manage`). Vorau
   - „👯 oft gleichzeitig online mit …“
 - **🎲 Zufalls-Avatar** (Avatare): würfelt aus der gefilterten Liste und zieht den Avatar nach Rückfrage an.
 
+### Nexus: 🔔 Benachrichtigungen, 🛒 Shop & 🌍 VRChat weltweit
+
+- **🔔 Benachrichtigungen** (ersetzt „Anfragen“): alte API **und** die neuen V2-Benachrichtigungen – Freundschafts- und
+  Einladungsanfragen, Einladungen, Gruppen-Ankündigungen, Beitrittsanfragen, Gruppen-Events, Boops, Abzeichen, Geschenke …
+  Tabelle mit Zeit, Art, Von, Gruppe, Bild und Nachricht; Aktionen direkt in der Zeile: annehmen, ablehnen, blockieren,
+  abbestellen, zurück-boopen, einladen, als gelesen markieren, löschen. Jede Benachrichtigung landet zusätzlich im
+  **eigenen Verlauf** (bleibt auch, wenn VRChat sie löscht) – „Offen bei VRChat“ / „Ganzer Verlauf“, Filter nach Art und Suche.
+- **🛒 Shop**: VRChat-Credits, VRC+-Abo (Laufzeit), aktive Lizenzen, eigene Käufe (Preis, Verkäufer, Geschenke, Ablauf),
+  eigene Angebote – und **Shop ansehen** eines Creators (Profil-Link/`usr_…`) oder Stores (`esto_…`) mit Preisen, VRC+-Preis
+  und Verkaufszahlen. Gekauft wird bewusst nur im VRChat-Marktplatz.
+- **🌍 VRChat**: Spieler gerade online (mit Vergleich zu gestern), Kurve über 24 Std./7/30 Tage/1 Jahr, Spitze, Tiefstwert,
+  Durchschnitt, Rekord, **⌀ je Wochentag & Uhrzeit**, Anteil deiner Freund*innen im Spiel und **🔥 gerade beliebte Welten**.
+  Die Spielerzahl misst der Aufgabenplaner („🌍 VRChat-Spielerzahl“, alle 15 min, öffentlich ohne Anmeldung).
+
 ### Nexus: 🖥️ Desktop-Client (Windows) mit Spiel-Log & OSC
 
 Der Windows-Client (`clients/nexus-desktop`, Download direkt im Reiter **🖥️ Client**) liest die **VRChat-Logdateien** und
