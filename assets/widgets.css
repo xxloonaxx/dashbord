@@ -5,7 +5,20 @@
 .wg-area-head .wg-link, .wg-link { background: none; border: 0; color: var(--text-muted); font: inherit; font-size: 0.72rem; cursor: pointer; letter-spacing: 1px; padding: 0; }
 .wg-link:hover { color: var(--accent-cyan); }
 .wg-area.collapsed .wg-grid { display: none; }
-.wg-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; align-items: start; grid-auto-flow: dense; }
+.wg-grid { --gap: 14px; --row: 4px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: var(--gap); row-gap: 0; grid-auto-rows: var(--row); align-items: start; grid-auto-flow: row dense; position: relative; }
+/* Mauerwerk: Höhe jedes Widgets wird per JS in Zeilen à 4 px umgerechnet (grid-row-end: span n) → keine Lücken */
+.wg-grid > .wg { align-self: start; }
+.wg-grid:not(.ready) > .wg { margin-bottom: var(--gap); }
+.wg-body img, .wg-body video { max-width: 100%; height: auto; }
+/* Bearbeiten-Modus: Raster mit Spalten-Hilfslinien */
+.editing .wg-grid { margin-bottom: 30px; min-height: 160px; outline: 1px dashed rgba(243, 194, 98, 0.35); outline-offset: 6px;
+    background-image: repeating-linear-gradient(90deg, rgba(243, 194, 98, 0.07) 0 var(--colw, 25%), transparent var(--colw, 25%) calc(var(--colw, 25%) + var(--gap))),
+                      repeating-linear-gradient(0deg, rgba(56, 213, 230, 0.07) 0 1px, transparent 1px 40px); }
+.wg-grid > .wg.fill { align-self: stretch; margin-bottom: var(--gap); display: flex; flex-direction: column; }
+.wg-grid > .wg.fill .wg-body { flex: 1; }
+.editing .wg-grid::before { pointer-events: none; content: attr(data-cols); position: absolute; bottom: -24px; left: 0; font-size: 0.65rem; letter-spacing: 1px; color: var(--accent-gold); text-transform: uppercase; }
+.wg.drop-before { box-shadow: -4px 0 0 var(--accent-gold); }
+.wg.drop-after { box-shadow: 4px 0 0 var(--accent-gold); }
 .wg { position: relative; background: var(--panel-bg); border: 1px solid var(--border-color); padding: 12px 14px 14px; clip-path: var(--cut-md); backdrop-filter: blur(10px); min-width: 0; transition: border-color 0.2s, opacity 0.2s; }
 .wg:hover { border-color: rgba(56, 213, 230, 0.55); }
 .wg-s { grid-column: span 1; }

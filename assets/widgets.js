@@ -31,7 +31,39 @@
         toast,
     };
 
+    // ---------- Mauerwerk-Raster: Höhe → Zeilen-Span, damit keine Lücken entstehen ----------
+    let layoutQueued = false;
+    function layout() {
+        const g = document.getElementById('wgGrid');
+        if (!g) return;
+        const cs = getComputedStyle(g), row = parseFloat(cs.gridAutoRows) || 4, gap = parseFloat(cs.columnGap) || 14;
+        const ws = $$('.wg', g);
+        g.classList.add('ready');
+        // 1. Spans nach Inhaltshöhe
+        ws.forEach(el => { el.classList.remove('fill'); el.style.gridRowEnd = 'span ' + Math.max(1, Math.ceil((el.offsetHeight + gap) / row)); });
+        // 2. Verbleibende Lücken schließen: jedes Widget bis zum nächsten darunter (bzw. bis zum Ende des Rasters) verlängern
+        const rects = ws.map(el => ({ el, r: el.getBoundingClientRect() }));
+        const bottom = Math.max(0, ...rects.map(x => x.r.bottom));
+        rects.forEach(({ el, r }) => {
+            if (el.classList.contains('min')) return;
+            const below = rects.filter(o => o.el !== el && o.r.top >= r.bottom - 2 && o.r.left < r.right - 5 && o.r.right > r.left + 5).map(o => o.r.top - gap);
+            const target = below.length ? Math.min(...below) : bottom;
+            const extra = target - r.bottom;
+            if (extra > 2) { el.style.gridRowEnd = 'span ' + Math.max(1, Math.round((r.height + extra + gap) / row)); el.classList.add('fill'); }
+        });
+        const cols = cs.gridTemplateColumns.split(' ').filter(Boolean);
+        g.style.setProperty('--colw', (parseFloat(cols[0]) || 0) + 'px');
+        g.dataset.cols = cols.length + ' Spalten · Widgets ziehen zum Sortieren';
+    }
+    const relayout = () => { if (layoutQueued) return; layoutQueued = true; requestAnimationFrame(() => { layoutQueued = false; layout(); }); };
+    window.addEventListener('resize', relayout);
+    window.addEventListener('load', relayout);
+    const ro = 'ResizeObserver' in window ? new ResizeObserver(relayout) : null;
+
     function mount(el) {
+        // Inhalt beobachten (nicht die Karte selbst – die wird beim Lückenfüllen gestreckt, sonst entstünde eine Schleife)
+        if (ro) [...(el.querySelector('.wg-body') || el).children].forEach(c => ro.observe(c));
+        relayout();
         const old = cleanups.get(el);
         if (typeof old === 'function') { try { old(); } catch (e) {} }
         cleanups.delete(el);
@@ -43,7 +75,8 @@
         // Formatierungs-Werkzeugleiste für neue Textfelder (falls editor.js geladen ist)
         if (window.FormatEditor && window.FormatEditor.attach) $$('textarea[data-format]', el).forEach(t => window.FormatEditor.attach(t));
     }
-    function setBody(el, html) { $('.wg-body', el).innerHTML = html; mount(el); }
+    function setBody(el, html) { $('.wg-body', el).innerHTML = html; mount(el); $$('img', el).forEach(i => i.addEventListener('load', relayout, { once: true })); }
+    document.addEventListener('load', e => { if (e.target.tagName === 'IMG' && e.target.closest('.wg')) relayout(); }, true);
     function reload(el) {
         el.classList.add('loading');
         return call('render', { uid: el.dataset.uid }, true).then(r => setBody(el, r.html)).catch(x => toast(x.message, true)).finally(() => el.classList.remove('loading'));
@@ -87,6 +120,7 @@
         if (!b) return;
         const el = b.closest('.wg');
         el.classList.toggle('min');
+        relayout();
         mins[el.dataset.uid] = el.classList.contains('min');
         store.set('min', mins);
     });
@@ -94,8 +128,9 @@
     if (tog) {
         const hidden = store.get('hidden', false);
         area.classList.toggle('collapsed', hidden);
+        relayout();
         tog.textContent = hidden ? '▸ einblenden' : '▾ ausblenden';
-        tog.addEventListener('click', () => { const h = !area.classList.contains('collapsed'); area.classList.toggle('collapsed', h); store.set('hidden', h); tog.textContent = h ? '▸ einblenden' : '▾ ausblenden'; });
+        tog.addEventListener('click', () => { const h = !area.classList.contains('collapsed'); area.classList.toggle('collapsed', h); relayout(); store.set('hidden', h); tog.textContent = h ? '▸ einblenden' : '▾ ausblenden'; });
     }
 
     if (!EDIT) return;
@@ -111,7 +146,8 @@
             open('<div class="panel-title">// Widget hinzufügen</div><p class="side-note">Widgets liegen im Ordner <code>widgets/</code>. Eigene Widgets: <code>widgets/_vorlage</code> kopieren und anpassen – sie erscheinen dann hier.</p><div class="wg-cat">'
                 + r.widgets.map(w => '<button type="button" class="wg-pick' + (w.error ? ' err' : '') + '" data-type="' + esc(w.type) + '"' + (w.error ? ' disabled' : '') + '><span class="wg-pick-ic">' + esc(w.icon) + '</span><span><b>' + esc(w.name) + '</b>'
                     + '<small>' + esc(w.description) + '</small><em>' + esc('widgets/' + w.type + ' · v' + w.version + (w.author ? ' · ' + w.author : '') + (w.permission ? ' · 🔑 ' + w.permission : w.login ? ' · 🔑 angemeldet' : '') + (w.used ? ' · ' + w.used + '× auf der Startseite' : '')) + '</em></span></button>').join('') + '</div>');
-            $$('.wg-pick', mbody).forEach(b => b.addEventListener('click', () => call('add', { type: b.dataset.type }).then(x => {
+            $$('.wg-pick', mbody).forEach(b => b.addEventListener('click', () => call('add', { type: b.dataset.type }).then(async x => {
+                await loadAssets(x.assets || {});
                 grid.insertAdjacentHTML('beforeend', x.html);
                 const el = grid.lastElementChild;
                 mount(el); dragify(el);
@@ -155,17 +191,30 @@
         }).catch(x => toast(x.message, true));
     }
 
+    // Gestaltung/Skript eines neuen Widget-Typs sofort laden (sonst erst nach dem Neuladen)
+    function loadAssets(a) {
+        const jobs = [];
+        if (a.css && !document.querySelector('link[href^="' + a.css.split('?')[0] + '"]')) {
+            jobs.push(new Promise(res => { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = a.css; l.onload = l.onerror = res; document.head.append(l); }));
+        }
+        if (a.js && !document.querySelector('script[src^="' + a.js.split('?')[0] + '"]')) {
+            jobs.push(new Promise(res => { const sc = document.createElement('script'); sc.src = a.js; sc.onload = sc.onerror = res; document.body.append(sc); }));
+        }
+        return Promise.all(jobs);
+    }
+
     // Drag & Drop zum Sortieren
     let dragged = null;
     function dragify(el) {
         el.addEventListener('dragstart', e => { if (!e.target.closest('.wg-head')) { /* nur am Kopf ziehen */ } dragged = el; el.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
-        el.addEventListener('dragend', () => { el.classList.remove('dragging'); dragged = null; saveOrder(); });
+        el.addEventListener('dragend', () => { el.classList.remove('dragging'); dragged = null; relayout(); saveOrder(); });
         el.addEventListener('dragover', e => {
             if (!dragged || dragged === el) return;
             e.preventDefault();
             const r = el.getBoundingClientRect();
             const after = (e.clientY - r.top) > r.height / 2 || (e.clientX - r.left) > r.width * 0.66;
             el.parentNode.insertBefore(dragged, after ? el.nextSibling : el);
+            relayout();
         });
     }
     $$('.wg', grid).forEach(dragify);

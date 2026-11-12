@@ -46,6 +46,8 @@ try {
             widgets_layout_save($layout);
             audit('Widget hinzugefügt', $avail[$type]['name']);
             $out['html'] = widget_card($inst, true);
+            $m = $avail[$type];
+            $out['assets'] = ['css' => $m['has_css'] ? 'widgets/' . $type . '/widget.css?v=' . $m['mtime'] : '', 'js' => $m['has_js'] ? 'widgets/' . $type . '/widget.js?v=' . $m['mtime'] : ''];
             break;
         case 'remove':
             $layout = array_values(array_filter($layout, function ($w) use ($uid) { return $w['uid'] !== $uid; }));
