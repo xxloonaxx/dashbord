@@ -399,7 +399,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 // ----- Info-Push (VRChat-Neuigkeiten) -----
                 case 'infopush':
-                    $r = (array)vrc_call($acc, 'GET', '/infoPush');
+                    // VRChat verlangt die Filter „require“ und „include“ als Liste (wie der VRChat-Client: require=[]&include=[]).
+                    // Ältere/andere Server-Versionen erwarten die Listen-Schreibweise require[]= – dann zweiter Versuch.
+                    $r = [];
+                    $variants = [['require' => '[]', 'include' => '[]'], ['require' => [''], 'include' => ['']], []];
+                    foreach ($variants as $i => $q) {
+                        try { $r = (array)vrc_call($acc, 'GET', '/infoPush', $q); break; }
+                        catch (Throwable $e) { if ($i === count($variants) - 1 || stripos($e->getMessage(), 'require') === false && stripos($e->getMessage(), 'include') === false && strpos($e->getMessage(), '400') === false) throw $e; }
+                    }
                     $out = ['items' => array_values(array_map(function ($i) {
                         $d = (array)($i['data'] ?? []);
                         $tags = implode(' ', (array)($i['tags'] ?? []));
