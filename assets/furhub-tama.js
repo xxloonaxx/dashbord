@@ -55,12 +55,13 @@
         return { v: 3, name: opts.name || genName().split(' ')[0], born: now, hatchAt: now + 90000, last: now, food: 80, fun: 80, energy: 85, clean: 90, health: 100, love: 30,
                  xp: 0, level: 1, coins: cfg.hardcore ? 10 : 20, sleeping: false, sick: false, poops: 0, nextPoop: now + (2.5 + Math.random() * 1.5) * H,
                  pers: rnd(Object.keys(PERS)), fav: rnd(['meat', 'fish', 'berries', 'carrot', 'cake', 'pizza']), voice: rnd(Object.keys(VOICES)),
-                 lookSrc: K.currentLook() ? 'sona' : 'random', randomLook: randomLook(), images: {}, hat: null, owned: [], perm: [], inv: { treat: 3, medicine: 1 },
+                 lookSrc: 'avatar', avatarSet: true, randomLook: randomLook(), images: {}, hat: null, owned: [], perm: [], inv: { treat: 3, medicine: 1 },
                  bg: 'meadow', shell: rnd(SHELLS), log: [[now, cfg.hardcore ? '💀 Ein Hardcore-Ei! Viel Glück …' : '🥚 Ein neues Ei!']], stat: { boops: 0, pats: 0, hugs: 0, feeds: 0, games: 0, cleaned: 0 },
                  daily: today(), stageSeen: 'egg', cfg, fx: {}, cheated: false, cheats: [], dead: false, diedAt: 0, created: now, lastNotify: 0 };
     }
     /** Objekte reparieren (PHP liefert leere Objekte als []) und fehlende Felder ergänzen */
     function norm(x) {
+        const wasSet = !!(x && x.avatarSet);
         const d = fresh({ cfg: x && x.cfg });
         x = Object.assign(d, x || {});
         ['images', 'inv', 'fx'].forEach(k => { if (!x[k] || Array.isArray(x[k])) x[k] = {}; });
@@ -68,6 +69,8 @@
         if (x.cfg.hardcore) Object.assign(x.cfg, { diff: 'hardcore', time: 'real', poop: true, sick: true, vacation: false });
         x.stat = Object.assign({ boops: 0, pats: 0, hugs: 0, feeds: 0, games: 0, cleaned: 0 }, Array.isArray(x.stat) ? {} : x.stat);
         ['owned', 'perm', 'log', 'cheats'].forEach(k => { if (!Array.isArray(x[k])) x[k] = []; });
+        // Einmalig: bestehende Haustiere zeigen ab jetzt den Avatar (eigene Bilder bleiben)
+        if (!wasSet) { if (x.lookSrc !== 'custom') x.lookSrc = 'avatar'; x.avatarSet = true; }
         return x;
     }
     const newId = () => 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
@@ -187,6 +190,7 @@
     function lookOf(p = s) {
         if (p.lookSrc === 'custom') return Object.assign({}, p.randomLook, { mode: 'custom', images: p.images });
         if (p.lookSrc === 'sona') return K.currentLook() || p.randomLook;
+        if (p.lookSrc === 'avatar') { const L = K.currentLook(); return L ? Object.assign({}, L, { mode: 'svg' }) : p.randomLook; }   // gezeichneter Avatar mit seinen Emotionen
         return p.randomLook;
     }
     function needs(p = s) {
@@ -418,9 +422,10 @@
                 <div class="f2"><label>Lieblingsessen <select id="tcFav">${Object.entries(FOODS).filter(([k]) => k !== 'kibble').map(([k, [ic, l]]) => `<option value="${k}" ${s.fav === k ? 'selected' : ''}>${ic} ${l}</option>`).join('')}</select></label>
                 <label>Stimme <span class="inl"><select id="tcVoice">${Object.entries(VOICES).map(([k, l]) => `<option value="${k}" ${s.voice === k ? 'selected' : ''}>${l}</option>`).join('')}</select><button type="button" class="fh-btn sm" id="tcVoiceTest">▶</button></span></label></div>
                 <div class="sub">Aussehen</div>
-                <div class="mode-switch three"><button type="button" data-src="sona" class="${s.lookSrc === 'sona' ? 'on' : ''}">🎨 Meine Fursona</button><button type="button" data-src="random" class="${s.lookSrc === 'random' ? 'on' : ''}">🎲 Zufallstier</button><button type="button" data-src="custom" class="${s.lookSrc === 'custom' ? 'on' : ''}">🖼️ Eigene Bilder</button></div>
+                <div class="mode-switch four"><button type="button" data-src="avatar" class="${s.lookSrc === 'avatar' ? 'on' : ''}">🧑‍🎨 Mein Avatar</button><button type="button" data-src="sona" class="${s.lookSrc === 'sona' ? 'on' : ''}">🎨 Fursona-Bilder</button><button type="button" data-src="random" class="${s.lookSrc === 'random' ? 'on' : ''}">🎲 Zufallstier</button><button type="button" data-src="custom" class="${s.lookSrc === 'custom' ? 'on' : ''}">🖼️ Eigene Bilder</button></div>
                 ${s.lookSrc === 'random' ? '<button type="button" class="fh-btn sm" id="tcReroll">🎲 Neues Zufallstier</button>' : ''}
                 ${s.lookSrc === 'sona' ? '<p class="muted small">Benutzt deine Fursona – mit deinen eigenen Bildern, falls du dort welche hochgeladen hast.</p>' : ''}
+                ${s.lookSrc === 'avatar' ? `<p class="muted small">${K.currentLook() ? 'Dein gezeichneter Avatar – mit allen 6 Emotionen, passend zur Laune.' : 'Du hast noch keinen Avatar – solange wird das Zufallstier gezeigt.'} <a href="#avatar" data-goto="avatar">Avatar bearbeiten →</a></p>` : ''}
                 <div class="emo-slots" id="tcSlots" ${s.lookSrc === 'custom' ? '' : 'hidden'}></div>
                 <div class="sub">Hintergrund</div><div class="chips">${Object.entries(BGS).map(([k, [l]]) => `<button type="button" data-bg="${k}" class="${s.bg === k ? 'on' : ''}">${l}</button>`).join('')}</div>
                 <div class="sub">Gehäusefarbe</div><div class="chips">${SHELLS.map(c => `<button type="button" data-shell="${c}" class="sw ${s.shell === c ? 'on' : ''}" style="background:${c}" aria-label="${c}"></button>`).join('')}<input type="color" id="tcShell" value="${s.shell}"></div>`;
@@ -627,7 +632,7 @@
             const tt = t.closest('[data-tt]'); if (tt) { tab = tt.dataset.tt; renderTab(); return; }
             const b = t.closest('[data-buy]'); if (b) { const [kind, k] = b.dataset.buy.split(':'); buy(kind, k); return; }
             const h = t.closest('[data-hat]'); if (h) { s.hat = s.hat === h.dataset.hat ? null : h.dataset.hat; if (s.hat) unlock('hat'); touch(); renderAll(); return; }
-            const src = t.closest('[data-src]'); if (src) { s.lookSrc = src.dataset.src; if (s.lookSrc === 'sona' && !K.currentLook()) toast('Du hast noch keine Fursona – solange wird das Zufallstier gezeigt.'); touch(); renderAll(); return; }
+            const src = t.closest('[data-src]'); if (src) { s.lookSrc = src.dataset.src; if ((s.lookSrc === 'sona' || s.lookSrc === 'avatar') && !K.currentLook()) toast('Du hast noch keinen Avatar bzw. keine Fursona – solange wird das Zufallstier gezeigt.'); touch(); renderAll(); return; }
             const bg = t.closest('[data-bg]'); if (bg) { s.bg = bg.dataset.bg; touch(); renderAll(); return; }
             const sh = t.closest('[data-shell]'); if (sh) { s.shell = sh.dataset.shell; touch(); renderAll(); }
         });

@@ -324,7 +324,7 @@ Die Bereiche im Einzelnen:
   - **Münzen 🪙** gibt es für Stufen, jeden 25. Boop, den täglichen Besuch und die Minispiele.
   - **Shop**: Essen, Medizin, Schaumbad, dauerhafte Extras (Ball, Kuscheltier, Kuschelbett) und **Accessoires** (Schleife, Krone, Sonnenbrille …).
   - **Anpassbar**: Name, Persönlichkeit (verspielt, verfressen, verschlafen, kuschelig, frech – beeinflusst die Werte), Lieblingsessen und Stimme.
-  - Aussehen wahlweise wie deine Fursona, als Zufallstier oder mit **eigenen Bildern für 6 Emotionen**; dazu Hintergrund und Gehäusefarbe.
+  - Aussehen standardmäßig **dein gezeichneter Avatar** (mit allen 6 Emotionen je nach Laune); alternativ deine Fursona-Bilder, ein Zufallstier oder **eigene Bilder für 6 Emotionen**; dazu Hintergrund und Gehäusefarbe.
   - Wer angemeldet ist, bekommt den Stand auf dem Server gespeichert (geräteübergreifend). Die Hardware-Knöpfe A/B/C funktionieren auch.
   - **💾 Spielstände**: bis zu 6 Haustiere gleichzeitig.
     - Wechseln, duplizieren und als Datei exportieren oder importieren (einzeln oder alle).
