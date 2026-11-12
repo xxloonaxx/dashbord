@@ -13,4 +13,9 @@ RedirectMatch 404 ^.*/inc/.*$
 # Private Daten, Werkzeuge und Client-Quelltext (Download nur angemeldet über nexus.php)
 RedirectMatch 404 ^.*/(data|tools|clients)/.*$
 
+# Anmelde-Kopfzeile an PHP durchreichen (Nexus-Desktop-Client), auch wenn PHP als CGI/FastCGI läuft
+<IfModule mod_setenvif.c>
+    SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+</IfModule>
+
 Options -Indexes

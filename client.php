@@ -26,7 +26,9 @@ function nc_reply(array $data, int $code = 200): void {
 
 $auth = (string)($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
 if ($auth === '' && function_exists('getallheaders')) foreach (getallheaders() as $k => $v) if (strtolower($k) === 'authorization') $auth = (string)$v;
-$token = preg_match('/^Bearer\s+(\S+)$/i', trim($auth), $m) ? $m[1] : (string)($_SERVER['HTTP_X_NEXUS_TOKEN'] ?? '');
+$token = preg_match('/^Bearer\s+(\S+)$/i', trim($auth), $m) ? $m[1] : '';
+// Viele Hoster (PHP als CGI/FastCGI) filtern „Authorization“ heraus – darum schickt der Client das Token auch als X-Nexus-Token
+if ($token === '') $token = trim((string)($_SERVER['HTTP_X_NEXUS_TOKEN'] ?? ''));
 
 // Gesperrte IPs ablehnen; falsche Tokens zählen getrennt vom Web-Login (sonst sperrt ein alter Client die Anmeldung)
 if (ip_blocked(client_ip())) nc_reply(['error' => 'Zugriff gesperrt.'], 403);
@@ -39,7 +41,10 @@ $c = nc_auth($token);
 if (!$c) {
     site_db()->prepare('INSERT INTO login_attempts (ip, count, last) VALUES (:ip, 1, :t) ON CONFLICT(ip) DO UPDATE SET count = CASE WHEN :t - last > 600 THEN 1 ELSE count + 1 END, last = :t')
         ->execute([':ip' => $fail_key, ':t' => time()]);
-    nc_reply(['error' => 'Unbekanntes oder entferntes Geräte-Token.', 'auth' => true], 401);
+    if ($token === '') $why = 'Es kam kein Token beim Server an – der Webserver filtert vermutlich die Anmelde-Kopfzeile. Bitte den Client aktualisieren (schickt das Token zusätzlich als X-Nexus-Token).';
+    elseif (!preg_match('/^gnx_[0-9a-f]{40}$/', $token)) $why = 'Das Token hat das falsche Format (gnx_ + 40 Zeichen, ' . strlen($token) . ' Zeichen angekommen) – bitte vollständig kopieren.';
+    else $why = 'Unbekanntes oder entferntes Geräte-Token – im Nexus unter 🖥️ Client → Geräte neu erstellen (gehört es zu dieser Seite/Datenbank?).';
+    nc_reply(['error' => $why, 'auth' => true], 401);
 }
 $uid = (int)$c['user']['id'];
 $cid = (int)$c['token']['id'];

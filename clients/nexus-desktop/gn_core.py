@@ -13,7 +13,7 @@ import urllib.request
 from gn_logparse import LogParser, LogWatcher, SessionState, default_log_dir
 from gn_osc import OscListener, OscSender
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 APP = "GhostNodeNexus"
 
 
@@ -117,7 +117,7 @@ class Api:
         if server.endswith(".php"):
             server = server.rsplit("/", 1)[0]
         self.base = server.rstrip("/") + "/client.php"
-        self.token = (token or "").strip()
+        self.token = (token or "").strip().strip("'\"").strip()
 
     @property
     def configured(self) -> bool:
@@ -127,7 +127,7 @@ class Api:
         url = self.base + "?a=" + action
         data = json.dumps(body).encode("utf-8") if body is not None else None
         req = urllib.request.Request(url, data=data, method="POST" if data is not None else "GET", headers={
-            "Authorization": "Bearer " + self.token, "Accept": "application/json", "Content-Type": "application/json",
+            "Authorization": "Bearer " + self.token, "X-Nexus-Token": self.token, "Accept": "application/json", "Content-Type": "application/json",
             "User-Agent": "GhostNodeNexus/" + VERSION, "X-Client-Version": VERSION, "X-Client-Platform": platform.system() + " " + platform.release()})
         try:
             with urllib.request.urlopen(req, timeout=timeout) as r:
