@@ -26,6 +26,17 @@ final class VrcAuthError extends RuntimeException {}
 
 // ---------- Datenbank ----------
 
+/** Alle VRChat-Favoriten einer Art – VRChat erlaubt höchstens 100 je Abfrage, darum seitenweise */
+function vrc_favorites_all(array $acc, string $type): array {
+    $all = [];
+    for ($off = 0; $off < 1000; $off += 100) {
+        $page = (array)vrc_call($acc, 'GET', '/favorites', ['type' => $type, 'n' => 100, 'offset' => $off]);
+        $all = array_merge($all, array_values($page));
+        if (count($page) < 100) break;
+    }
+    return $all;
+}
+
 function vrc_db(): PDO { return db_get('vrchat'); }
 
 function vrc_migrate(PDO $db): void {
@@ -519,7 +530,7 @@ function vrc_sync(int $uid, bool $force = false): array {
 /** VRChat-Favoriten (Freunde) und Namen der Favoritengruppen übernehmen – nicht schlimm, wenn es scheitert */
 function vrc_sync_favorites(array &$acc): void {
     try {
-        $favs = vrc_call($acc, 'GET', '/favorites', ['type' => 'friend', 'n' => 400]);
+        $favs = vrc_favorites_all($acc, 'friend');
         $groups = vrc_call($acc, 'GET', '/favorite/groups', ['type' => 'friend', 'n' => 50]);
     } catch (VrcAuthError $e) {
         throw $e;

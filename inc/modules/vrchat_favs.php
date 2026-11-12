@@ -42,7 +42,7 @@ function vrc_fav_groups(array &$acc, string $kind): array {
 function vrc_fav_remote(array &$acc, string $kind): array {
     $items = [];
     if ($kind === 'friend') {
-        $favs = (array)vrc_call($acc, 'GET', '/favorites', ['type' => 'friend', 'n' => 400]);
+        $favs = vrc_favorites_all($acc, 'friend');
         $friends = [];
         foreach (vrc_friend_list((int)$acc['user_id']) as $f) $friends[$f['id']] = $f;
         foreach ($favs as $f) {

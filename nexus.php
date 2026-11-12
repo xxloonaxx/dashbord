@@ -521,7 +521,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $vid = $valid($id, $prefix);
                     $groups = vrc_fav_groups($acc, $kind);
                     $cur = null;
-                    foreach ((array)vrc_call($acc, 'GET', '/favorites', ['type' => $kind, 'n' => 400]) as $f) if (($f['favoriteId'] ?? '') === $vid) $cur = ['group' => (string)(((array)($f['tags'] ?? []))[0] ?? ''), 'fav_id' => (string)$f['id']];
+                    foreach (vrc_favorites_all($acc, $kind) as $f) if (($f['favoriteId'] ?? '') === $vid) $cur = ['group' => (string)(((array)($f['tags'] ?? []))[0] ?? ''), 'fav_id' => (string)$f['id']];
                     $out = ['groups' => array_values($groups), 'current' => $cur, 'local_groups' => vrc_local_groups($uid, $kind), 'local' => vrc_local_of($uid, $kind, $vid)];
                     break;
                 case 'fav_set':
@@ -762,7 +762,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $fgroup = []; $fnames = [];
                     if ($kind === 'favorites') {
                         try {
-                            foreach ((array)vrc_call($acc, 'GET', '/favorites', ['type' => 'avatar', 'n' => 400]) as $f) if (!empty($f['favoriteId'])) $fgroup[$f['favoriteId']] = [(string)(((array)($f['tags'] ?? []))[0] ?? 'avatars1'), (string)($f['id'] ?? '')];
+                            foreach (vrc_favorites_all($acc, 'avatar') as $f) if (!empty($f['favoriteId'])) $fgroup[$f['favoriteId']] = [(string)(((array)($f['tags'] ?? []))[0] ?? 'avatars1'), (string)($f['id'] ?? '')];
                             foreach ((array)vrc_call($acc, 'GET', '/favorite/groups', ['type' => 'avatar', 'n' => 50]) as $g) if (!empty($g['name'])) $fnames[$g['name']] = (string)($g['displayName'] ?? $g['name']);
                         } catch (VrcAuthError $e) { throw $e; } catch (Throwable $e) {}
                     }
