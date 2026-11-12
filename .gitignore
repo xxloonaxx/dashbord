@@ -22,3 +22,6 @@ uploads/
 *.v1-backup
 budget_settings.json
 data/index.html
+
+# Auslieferungs-ZIPs (enthalten persönliche Daten)
+webseite-verbessert-*.zip
