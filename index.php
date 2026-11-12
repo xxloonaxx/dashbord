@@ -278,7 +278,8 @@ foreach ($wg_layout as $w) if (isset($wg_avail[$w['type']])) $wg_assets[$w['type
     <div class="user-bar <?php echo $user ? 'in' : ''; ?>">
         <?php if ($user): ?>
             <a href="admin.php" class="ub-user" title="<?php echo e($user['role_name']); ?>">
-                <span class="ub-avatar" style="--rc: <?php echo e($user['role_color']); ?>;"><?php echo e(mb_strtoupper(mb_substr(user_label($user), 0, 1))); ?></span>
+                <?php require_once __DIR__ . '/inc/furhub.php'; $pfp = fh_avatar_img((int)$user['id'], 'ub-pfp'); ?>
+                <span class="ub-avatar<?php echo $pfp ? ' has-pfp' : ''; ?>" style="--rc: <?php echo e($user['role_color']); ?>;"><?php echo $pfp ?: e(mb_strtoupper(mb_substr(user_label($user), 0, 1))); ?></span>
                 <span><?php echo e(user_label($user)); ?><small><?php echo e($user['role_name']); ?></small></span>
             </a>
             <?php if (can('settings.nsfw')): ?>

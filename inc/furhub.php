@@ -49,6 +49,12 @@ function fh_db(): PDO {
     if ((int)$db->query('PRAGMA user_version')->fetchColumn() < 3) {
         $db->exec("ALTER TABLE sonas ADD COLUMN gallery TEXT NOT NULL DEFAULT '[]'; PRAGMA user_version = 3;");
     }
+    if ((int)$db->query('PRAGMA user_version')->fetchColumn() < 4) {
+        // Avatar als Profilbild (gerendertes SVG) & persönliche Hub-Daten je Benutzer (Erfolge, Bingo, Pixel …)
+        $db->exec("ALTER TABLE sonas ADD COLUMN avatar_svg TEXT NOT NULL DEFAULT '';
+                   CREATE TABLE IF NOT EXISTS userdata (user_id INTEGER NOT NULL, k TEXT NOT NULL, v TEXT NOT NULL, updated INTEGER NOT NULL, PRIMARY KEY (user_id, k));
+                   PRAGMA user_version = 4;");
+    }
     return $db;
 }
 
@@ -96,7 +102,7 @@ function fh_stats(): array {
     $names = fh_user_names();
     foreach ($db->query("SELECT user_id, SUM(n) AS n FROM user_counts WHERE key = 'boop' GROUP BY user_id ORDER BY n DESC LIMIT 10") as $r) {
         if (!isset($names[(int)$r['user_id']])) continue;
-        $out['top'][] = ['name' => $names[(int)$r['user_id']]['name'], 'color' => $names[(int)$r['user_id']]['color'], 'n' => (int)$r['n']];
+        $out['top'][] = ['name' => $names[(int)$r['user_id']]['name'], 'color' => $names[(int)$r['user_id']]['color'], 'n' => (int)$r['n'], 'avatar' => fh_avatar_url((int)$r['user_id'])];
     }
     if ($u = current_user()) {
         $st = $db->prepare('SELECT key, SUM(n) AS n, SUM(CASE WHEN day = ? THEN n ELSE 0 END) AS today FROM user_counts WHERE user_id = ? GROUP BY key');
@@ -164,12 +170,13 @@ function fh_sona_save(int $uid, array $in): array {
     $traits = array_slice(array_values(array_filter(array_map(function ($t) { return mb_substr(trim((string)$t), 0, 40); }, (array)($in['traits'] ?? [])))), 0, 6);
     $ref = trim((string)($in['ref_url'] ?? ''));
     if ($ref !== '' && safe_url($ref) === '#') throw new InvalidArgumentException('Der Ref-Link muss mit https:// beginnen.');
-    fh_db()->prepare('INSERT INTO sonas (user_id, name, species, pronouns, bio, ref_url, look, traits, updated, gallery) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    $avatar = fh_avatar_clean((string)($in['avatar_svg'] ?? ''));
+    fh_db()->prepare('INSERT INTO sonas (user_id, name, species, pronouns, bio, ref_url, look, traits, updated, gallery, avatar_svg) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                       ON CONFLICT(user_id) DO UPDATE SET name = excluded.name, species = excluded.species, pronouns = excluded.pronouns, bio = excluded.bio,
-                      ref_url = excluded.ref_url, look = excluded.look, traits = excluded.traits, updated = excluded.updated, gallery = excluded.gallery')
+                      ref_url = excluded.ref_url, look = excluded.look, traits = excluded.traits, updated = excluded.updated, gallery = excluded.gallery, avatar_svg = excluded.avatar_svg')
         ->execute([$uid, $name, mb_substr(trim((string)($in['species'] ?? '')), 0, 40), mb_substr(trim((string)($in['pronouns'] ?? '')), 0, 30),
                    mb_substr(trim((string)($in['bio'] ?? '')), 0, 500), $ref, json_encode(fh_clean_look($in['look'] ?? [], $uid)), json_encode($traits, JSON_UNESCAPED_UNICODE), time(),
-                   json_encode(fh_clean_gallery($in['gallery'] ?? [], $uid), JSON_UNESCAPED_UNICODE)]);
+                   json_encode(fh_clean_gallery($in['gallery'] ?? [], $uid), JSON_UNESCAPED_UNICODE), $avatar]);
     return fh_sona((int)$uid) ?? [];
 }
 
@@ -180,6 +187,7 @@ function fh_sona_row(array $r, ?int $me = null, array $liked = []): ?array {
             'name' => $r['name'], 'species' => $r['species'], 'pronouns' => $r['pronouns'], 'bio' => $r['bio'], 'ref_url' => $r['ref_url'],
             'look' => json_decode($r['look'], true) ?: [], 'traits' => json_decode($r['traits'], true) ?: [], 'likes' => (int)$r['likes'],
             'gallery' => json_decode($r['gallery'] ?? '[]', true) ?: [],
+            'avatar' => ($r['avatar_svg'] ?? '') !== '' ? 'furhub.php?avatar=' . (int)$r['user_id'] . '&v=' . (int)$r['updated'] : '',
             'liked' => in_array((int)$r['user_id'], $liked, true), 'mine' => $me === (int)$r['user_id'], 'updated' => (int)$r['updated']];
 }
 
@@ -199,7 +207,7 @@ function fh_sonas(): array {
         $liked = array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN));
     }
     return array_values(array_filter(array_map(function ($r) use ($me, $liked) { return fh_sona_row($r, $me, $liked); },
-        fh_db()->query('SELECT * FROM sonas ORDER BY updated DESC LIMIT 300')->fetchAll())));
+        fh_db()->query("SELECT user_id, name, species, pronouns, bio, ref_url, look, traits, likes, updated, gallery, CASE WHEN avatar_svg <> '' THEN 'x' ELSE '' END AS avatar_svg FROM sonas ORDER BY updated DESC LIMIT 300")->fetchAll())));
 }
 
 function fh_sona_like(int $sona_user, int $liker): array {
@@ -405,6 +413,76 @@ function fh_cards_shared(): array {
     return $out;
 }
 
+// ---------- Avatar als Profilbild ----------
+
+/** Nur unser eigenes, harmloses SVG annehmen (wird außerdem nur per <img> mit strenger CSP ausgeliefert) */
+function fh_avatar_clean(string $svg): string {
+    $svg = trim($svg);
+    if ($svg === '' || strlen($svg) > 40000 || strpos($svg, '<svg') !== 0) return '';
+    if (preg_match('/<\s*(script|foreignObject|image|iframe|object|embed|use|a|style|animate|set)\b|\bon[a-z]+\s*=|javascript:|href\s*=|xlink:|@import|<!/i', $svg)) return '';
+    if (!preg_match('/<\/svg>\s*$/', $svg)) return '';
+    return $svg;
+}
+
+/** Benutzer-ID => Version (Zeitstempel) aller vorhandenen Avatare */
+function fh_avatar_map(): array {
+    static $map = null;
+    if ($map !== null) return $map;
+    $map = [];
+    if (!glob(dirname(__DIR__) . '/data/furhub_*.sqlite')) return $map;   // Furry Hub noch nie benutzt
+    try { foreach (fh_db()->query("SELECT user_id, updated FROM sonas WHERE avatar_svg <> ''") as $r) $map[(int)$r['user_id']] = (int)$r['updated']; } catch (Throwable $e) { /* egal */ }
+    return $map;
+}
+
+function fh_avatar_url(int $uid): string {
+    $m = fh_avatar_map();
+    return isset($m[$uid]) ? 'furhub.php?avatar=' . $uid . '&v=' . $m[$uid] : '';
+}
+
+/** <img> mit Avatar oder '' */
+function fh_avatar_img(int $uid, string $cls = 'fh-pfp', string $alt = ''): string {
+    $u = fh_avatar_url($uid);
+    return $u ? '<img class="' . e($cls) . '" src="' . e($u) . '" alt="' . e($alt) . '" loading="lazy">' : '';
+}
+
+function fh_avatar_serve(int $uid): void {
+    $st = fh_db()->prepare('SELECT avatar_svg FROM sonas WHERE user_id = ?');
+    $st->execute([$uid]);
+    $svg = fh_avatar_clean((string)$st->fetchColumn());
+    if ($svg === '') { http_response_code(404); exit; }
+    header('Content-Type: image/svg+xml; charset=utf-8');
+    header('X-Content-Type-Options: nosniff');
+    header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'");
+    header('Cache-Control: public, max-age=86400');
+    echo $svg;
+    exit;
+}
+
+// ---------- Persönliche Hub-Daten (je Benutzer, geräteübergreifend) ----------
+
+const FH_USERDATA_KEYS = ['ach', 'boops', 'bingo', 'quiz', 'best', 'pops', 'pixel', 'pixMirror', 'played', 'wheel', 'horoSp', 'owoMode', 'vol', 'trail', 'suit', 'draft', 'cardDraft'];
+
+function fh_userdata(int $uid): array {
+    $st = fh_db()->prepare('SELECT k, v FROM userdata WHERE user_id = ?');
+    $st->execute([$uid]);
+    $out = [];
+    foreach ($st as $r) $out[$r['k']] = json_decode($r['v'], true);
+    return $out;
+}
+
+function fh_userdata_save(int $uid, array $data): void {
+    $db = fh_db();
+    $up = $db->prepare('INSERT INTO userdata (user_id, k, v, updated) VALUES (?, ?, ?, ?) ON CONFLICT(user_id, k) DO UPDATE SET v = excluded.v, updated = excluded.updated');
+    $del = $db->prepare('DELETE FROM userdata WHERE user_id = ? AND k = ?');
+    foreach ($data as $k => $v) {
+        if (!in_array($k, FH_USERDATA_KEYS, true)) continue;
+        if ($v === null) { $del->execute([$uid, $k]); continue; }
+        $json = json_encode($v, JSON_UNESCAPED_UNICODE);
+        if ($json === false || strlen($json) > 150000) continue;   // zu groß (z. B. Bilder im Entwurf) → nur lokal
+        $up->execute([$uid, $k, $json, time()]);
+    }
+}
+
 // ---------- Pfotenabdrücke ----------
 
 function fh_guestbook(): array {
@@ -416,7 +494,7 @@ function fh_guestbook(): array {
     foreach (fh_db()->query('SELECT user_id, look FROM sonas') as $r) $av[(int)$r['user_id']] = json_decode($r['look'], true);
     foreach (fh_db()->query('SELECT * FROM guestbook ORDER BY id DESC LIMIT 80') as $r) {
         $out[] = ['id' => (int)$r['id'], 'name' => $names[(int)$r['user_id']]['name'] ?? 'Ehemaliges Mitglied', 'msg' => $r['msg'], 'paw' => $r['paw'], 'ts' => (int)$r['ts'],
-                  'can_delete' => $mod || ($me && (int)$me['id'] === (int)$r['user_id']), 'avatar' => $av[(int)$r['user_id']] ?? null];
+                  'can_delete' => $mod || ($me && (int)$me['id'] === (int)$r['user_id']), 'avatar' => $av[(int)$r['user_id']] ?? null, 'avatar_url' => fh_avatar_url((int)$r['user_id'])];
     }
     return $out;
 }

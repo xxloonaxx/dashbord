@@ -7,10 +7,44 @@
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const rnd = a => a[Math.floor(Math.random() * a.length)];
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    // Jeder Benutzer hat seinen eigenen Bereich (Besucher: „g“); angemeldet zusätzlich auf dem Server
+    const NS = FH.me ? 'u' + FH.me.id : 'g';
+    const SYNC = new Set(FH.syncKeys || []);
+    const key = k => 'fh-' + NS + '-' + k;
+    let udDirty = {}, udT = null;
+    function udPush(beacon) {
+        const d = udDirty; udDirty = {};
+        if (!Object.keys(d).length) return;
+        const f = new FormData(); f.append('data', JSON.stringify(d));
+        if (beacon && navigator.sendBeacon) { navigator.sendBeacon('furhub.php?api=ud_save', f); return; }
+        fetch('furhub.php?api=ud_save', { method: 'POST', body: f }).catch(() => { Object.assign(udDirty, d); });
+    }
     const store = {
-        get(k, d) { try { const v = localStorage.getItem('fh-' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
-        set(k, v) { try { localStorage.setItem('fh-' + k, JSON.stringify(v)); } catch (e) { /* privat */ } },
+        get(k, d) { try { const v = localStorage.getItem(key(k)); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+        set(k, v) {
+            try { localStorage.setItem(key(k), JSON.stringify(v)); } catch (e) { /* privat oder voll */ }
+            if (FH.me && SYNC.has(k)) { udDirty[k] = v; clearTimeout(udT); udT = setTimeout(udPush, 1500); }
+        },
     };
+    (function initStore() {
+        try {
+            // Alte, gemeinsame Daten (vor der Trennung) einmalig dem ersten angemeldeten Benutzer zuordnen
+            if (FH.me && !localStorage.getItem('fh-legacy-done')) {
+                const old = [];
+                for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('fh-') && !/^fh-(u\d+|g)-/.test(k) && k !== 'fh-legacy-done') old.push(k); }
+                old.forEach(k => { const t = key(k.slice(3)); if (localStorage.getItem(t) === null) localStorage.setItem(t, localStorage.getItem(k)); localStorage.removeItem(k); });
+                localStorage.setItem('fh-legacy-done', '1');
+            }
+            // Server-Stand übernehmen; was nur lokal existiert, wird hochgeladen
+            if (FH.me) {
+                const ud = FH.userData || {};
+                Object.entries(ud).forEach(([k, v]) => { localStorage.setItem(key(k), JSON.stringify(v)); });
+                SYNC.forEach(k => { if (!(k in ud)) { const v = localStorage.getItem(key(k)); if (v !== null) udDirty[k] = JSON.parse(v); } });
+                if (Object.keys(udDirty).length) udT = setTimeout(udPush, 2000);
+            }
+        } catch (e) { /* privat */ }
+    })();
+    window.addEventListener('beforeunload', () => udPush(true));
     const hash = s => { let h = 2166136261; for (const c of String(s)) { h ^= c.codePointAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
 
     async function api(act, data) {
@@ -286,6 +320,8 @@
         const u = look && look.mode === 'custom' ? (emo === 'neutral' ? safeImg(look.mainImg) || imgFor(look, emo) : imgFor(look, emo)) : '';
         return u ? `<img class="fh-hero-img" src="${esc(u)}" alt="" draggable="false">` : sonaSVG(look, emo);
     }
+    /** Gespeichertes Profilbild (Avatar) als <img> */
+    const pfp = (url, cls = '') => /^furhub\.php\?avatar=\d+&v=\d+$/.test(url || '') ? `<img class="fh-pfp ${cls}" src="${esc(url)}" alt="" loading="lazy">` : '';
     /** Kleines rundes Profilbild (immer der gezeichnete Avatar) */
     const avatar = (look, cls = '') => `<span class="fh-av ${cls}">${sonaSVG(look || defaultLook('fox'))}</span>`;
     /** Gesicht einer Figur: eigenes Bild der Emotion oder gezeichneter Avatar */
@@ -423,8 +459,9 @@
     // Tabs
     // =====================================================================
     const loaded = {};
+    const HOME = FH.me ? 'start' : 'overview';
     function showTab(t) {
-        if (!$(`[data-panel="${t}"]`)) t = 'start';
+        if (!$(`[data-panel="${t}"]`) || !$(`#fhTabs [data-tab="${t}"]`)) t = HOME;
         $$('.fh-panel').forEach(p => { p.hidden = p.dataset.panel !== t; });
         $$('#fhTabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
         if (location.hash.slice(1) !== t) history.replaceState(null, '', '#' + t);
@@ -468,6 +505,51 @@
         if (holder) { holder.innerHTML = face(s.look, 'surprised'); holder.classList.remove('booped'); void holder.offsetWidth; holder.classList.add('booped'); clearTimeout(holder._t); holder._t = setTimeout(() => { holder.innerHTML = holder.classList.contains('sotd-face') ? face(s.look, 'happy') : hero(s.look) + (s.look.mode === 'custom' ? avatar(s.look, 'corner') : ''); }, 600); }
         react('boop'); boopCount(); sfx.boop();
         floatText(e.pageX - 10, e.pageY - 30, rnd(['boop!', '*boop*', 'eep!', '>w<']));
+    });
+
+    // =====================================================================
+    // Übersicht (für alle – Startseite für Besucher)
+    // =====================================================================
+    async function renderOverview() {
+        const box = $('#ovBox');
+        box.innerHTML = '<div class="muted">Lädt …</div>';
+        const [ov, list, cards, gb] = await Promise.all([api('overview').catch(() => ({ counts: {} })), loadSonas(), api('cards_shared').then(r => r.cards).catch(() => []), api('gb').then(r => r.entries).catch(() => [])]);
+        const c = ov.counts || {}, t = stats.total || {};
+        const face4 = s => s.avatar ? `<img class="ov-av" src="${esc(s.avatar)}" alt="">` : `<span class="ov-av">${sonaSVG(Object.assign({}, s.look, { mode: 'svg' }))}</span>`;
+        const sotd = list.length ? list[hash(new Date().toDateString()) % list.length] : null;
+        const locked = (ic, l, d, tab) => `<a class="ov-feat ${FH.me ? '' : 'lock'}" href="${FH.me ? '#' + tab : 'admin.php?next=furhub.php'}" ${FH.me ? `data-goto="${tab}"` : ''}><b>${ic}</b><span>${l}</span><small>${d}</small>${FH.me ? '' : '<i>🔒 Anmelden</i>'}</a>`;
+        const open = (ic, l, d, tab) => `<a class="ov-feat" href="#${tab}" data-goto="${tab}"><b>${ic}</b><span>${l}</span><small>${d}</small></a>`;
+        box.innerHTML = `
+            <div class="fh-card ov-hero">
+                <div class="ov-mosaic">${list.slice(0, 14).map(s => `<button type="button" data-boop-ov="${s.user_id}" title="${esc(s.name)} boopen">${face4(s)}</button>`).join('') || '<span class="ov-empty">🦊🐺🐱🦦🐉</span>'}</div>
+                <div class="ov-text"><h2>${FH.me ? 'Willkommen zurück, ' + esc(FH.me.name) + '!' : 'Willkommen im Furry Hub!'}</h2>
+                    <p>Der Treffpunkt der Community: Fursonas mit eigenen Bildern und Avataren, ein eigenes Tamagotchi, Sammelkarten, Minispiele und jede Menge Spielzeug. Jeder Boop zählt für alle!</p>
+                    <div class="ov-btns">${FH.me ? '<button type="button" class="fh-btn gold" data-goto="start">🏠 Mein Bereich</button>' : '<a class="fh-btn gold" href="admin.php?next=furhub.php">🔑 Anmelden</a><a class="fh-btn" href="admin.php?invite=-">🎟️ Mit Einladung registrieren</a>'}<button type="button" class="fh-btn" data-goto="community">🐾 Community ansehen</button></div></div>
+            </div>
+            <div class="ov-kpis">
+                <div><b>${(t.boop || 0).toLocaleString('de-DE')}</b><span>👃 Boops</span></div><div><b>${(c.sonas || 0).toLocaleString('de-DE')}</b><span>🎨 Fursonas</span></div>
+                <div><b>${(c.pets || 0).toLocaleString('de-DE')}</b><span>🥚 Tamagotchi-Halter*innen</span></div><div><b>${(c.cards || 0).toLocaleString('de-DE')}</b><span>🃏 geteilte Karten</span></div>
+                <div><b>${(c.paws || 0).toLocaleString('de-DE')}</b><span>✍️ Pfotenabdrücke</span></div>
+            </div>
+            <div class="fh-grid">
+                ${sotd ? `<div class="fh-card ov-sotd"><div class="fh-ct">⭐ Sona des Tages</div><div class="ov-sotd-b"><div class="ov-sotd-img">${hero(sotd.look, 'happy')}</div><div><b>${esc(sotd.name)}</b><small>${esc(sotd.species)}${sotd.pronouns ? ' · ' + esc(sotd.pronouns) : ''}</small><small>von ${esc(sotd.owner)}</small>${sotd.bio ? `<p>${esc(sotd.bio.slice(0, 140))}</p>` : ''}</div></div></div>` : ''}
+                <div class="fh-card"><div class="fh-ct">👑 Boop-Bestenliste</div><ol class="boop-top">${(stats.top || []).slice(0, 5).map((x, i) => `<li><span class="medal">${['🥇', '🥈', '🥉'][i] || (i + 1) + '.'}</span><b style="color:${esc(x.color)}">${pfp(x.avatar)}${esc(x.name)}</b><span>${x.n.toLocaleString('de-DE')}</span></li>`).join('') || '<li class="muted">Noch niemand.</li>'}</ol></div>
+                <div class="fh-card"><div class="fh-ct">🐾 Tierfakt des Tages</div><p>${esc(FH.fact || '')}</p><div class="fh-ct" style="margin-top:12px">✏️ Zeichen-Idee</div><p>${esc(FH.prompt || '')}</p></div>
+                <div class="fh-card wide"><div class="fh-ct">🆕 Neue Fursonas <button type="button" class="fh-btn sm" data-goto="community">Alle ansehen →</button></div><div class="ov-sonas">${list.slice(0, 8).map(s => `<button type="button" class="ov-sona" data-goto="community"><span class="ov-sona-img">${hero(s.look)}</span><b>${esc(s.name)}</b><small>${esc(s.species)} · ${s.avatar ? `<img class="fh-pfp" src="${esc(s.avatar)}" alt="">` : ''}${esc(s.owner)}</small></button>`).join('') || '<p class="muted">Noch keine Sonas – sei die erste!</p>'}</div></div>
+                ${cards.length && K.cardSVG ? `<div class="fh-card wide"><div class="fh-ct">🃏 Neue Karten</div><div class="ov-cards">${cards.slice(0, 4).map(cd => `<div class="ov-card ${cd.data.holo ? 'holo card-mini' : ''}">${K.cardSVG(cd.data, (list.find(x => x.user_id === cd.user_id) || {}).look)}<small>von ${esc(cd.owner)}</small></div>`).join('')}</div></div>` : ''}
+                <div class="fh-card wide"><div class="fh-ct">✍️ Neueste Pfotenabdrücke <button type="button" class="fh-btn sm" data-goto="paws">Alle →</button></div><div class="ov-paws">${gb.slice(0, 4).map(p => `<div class="ov-paw">${p.avatar_url ? pfp(p.avatar_url) : '🐾'}<div><p>${esc(p.msg)}</p><small>${esc(p.name)}</small></div></div>`).join('') || '<p class="muted">Noch keine Einträge.</p>'}</div></div>
+                <div class="fh-card wide"><div class="fh-ct">🎮 Das gibt es hier</div><div class="ov-feats">
+                    ${locked('🥚', 'Tamagotchi', 'Eigenes Haustier, Spielstände & Hardcore', 'tama')}${locked('🎨', 'Fursona', 'Deine Sona mit eigenen Bildern & Galerie', 'sona')}
+                    ${locked('🧑‍🎨', 'Avatar', 'Gezeichnetes Profilbild – auch Novabeast', 'avatar')}${locked('🃏', 'Karten', 'Sammelkarten, Badges & Steckbriefe', 'cards')}
+                    ${open('🕹️', 'Minispiele', 'Leckerli fangen, Memory, Nasen-Boopen …', 'games')}${open('🎉', 'Spielzeug', 'Orakel, Pixel-Sticker, Suit-Timer …', 'toys')}
+                    ${open('🎲', 'Con-Bingo', 'Für die nächste Con', 'bingo')}${open('❓', 'Quiz', 'Welches Tier steckt in dir?', 'quiz')}
+                    ${open('🔊', 'Sounds', '12 Tierlaute', 'sounds')}${open('💬', 'OwO', 'Übersetzer für den Chat', 'owo')}</div></div>
+            </div>`;
+    }
+    document.addEventListener('click', e => {
+        const b = e.target.closest('[data-boop-ov]'); if (!b) return;
+        b.classList.remove('booped'); void b.offsetWidth; b.classList.add('booped');
+        react('boop'); boopCount(); sfx.boop(); floatText(e.pageX - 10, e.pageY - 30, rnd(['boop!', '*boop*', '>w<']));
     });
 
     // Zufallslink aus dem Furry-Link-Hub
@@ -516,7 +598,7 @@
     }
     function renderTop() {
         const box = $('#boopTop'); if (!box) return;
-        box.innerHTML = (stats.top || []).map((t, i) => `<li><span class="medal">${['🥇', '🥈', '🥉'][i] || (i + 1) + '.'}</span><b style="color:${esc(t.color)}">${esc(t.name)}</b><span>${t.n.toLocaleString('de-DE')}</span></li>`).join('') || '<li class="muted">Noch niemand – sei die erste Nase!</li>';
+        box.innerHTML = (stats.top || []).map((t, i) => `<li><span class="medal">${['🥇', '🥈', '🥉'][i] || (i + 1) + '.'}</span><b style="color:${esc(t.color)}">${pfp(t.avatar)}${esc(t.name)}</b><span>${t.n.toLocaleString('de-DE')}</span></li>`).join('') || '<li class="muted">Noch niemand – sei die erste Nase!</li>';
     }
 
     // =====================================================================
@@ -747,7 +829,8 @@
                 await ensureServerImages(sona.look.images, 'sona');
                 await ensureServerImages(sona.look, 'gallery');
                 for (const g of sona.gallery) await ensureServerImages(g, 'gallery');
-                const r = await api('sona_save', { data: JSON.stringify(Object.assign({}, sona, { traits: (sona.traits || []).filter(Boolean) })) });
+                const r = await api('sona_save', { data: JSON.stringify(Object.assign({}, sona, { traits: (sona.traits || []).filter(Boolean), avatar_svg: sonaSVG(Object.assign({}, sona.look, { mode: 'svg' }), 'neutral') })) });
+                if (r.sona.avatar) { FH.myAvatar = r.sona.avatar; $$('.fh-me-pfp').forEach(i => { i.src = r.sona.avatar; i.hidden = false; }); }
                 if (sona.look.mode === 'custom' && r.sona.look.mode !== 'custom') toast('Die Bilder konnten nicht übernommen werden.', true);
                 else toast('💾 Gespeichert! Deine Sona ist jetzt in der Community zu sehen.');
                 FH.mySona = r.sona; sona.gallery = r.sona.gallery || []; sonas = null; unlock('sona');
@@ -1022,7 +1105,7 @@
     // =====================================================================
     const pawSvg = c => `<svg viewBox="0 0 64 64" class="paw-ic"><g fill="${esc(c)}"><ellipse cx="32" cy="42" rx="14" ry="12"/><ellipse cx="14" cy="26" rx="6" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="8"/><ellipse cx="38" cy="16" rx="6" ry="8"/><ellipse cx="50" cy="26" rx="6" ry="8"/></g></svg>`;
     function renderPaws(list) {
-        $('#paws').innerHTML = list.map((p, i) => `<div class="paw" style="--pc:${esc(p.paw)};--rot:${(hash(p.id) % 7) - 3}deg">${p.avatar ? avatar(p.avatar, 'paw-av') : pawSvg(p.paw)}<div><p>${esc(p.msg)}</p><small>${esc(p.name)} · ${new Date(p.ts * 1000).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}</small></div>${p.can_delete ? `<button type="button" data-gdel="${p.id}" title="Löschen">×</button>` : ''}</div>`).join('')
+        $('#paws').innerHTML = list.map((p, i) => `<div class="paw" style="--pc:${esc(p.paw)};--rot:${(hash(p.id) % 7) - 3}deg">${p.avatar_url ? pfp(p.avatar_url, 'paw-av') : p.avatar ? avatar(p.avatar, 'paw-av') : pawSvg(p.paw)}<div><p>${esc(p.msg)}</p><small>${esc(p.name)} · ${new Date(p.ts * 1000).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}</small></div>${p.can_delete ? `<button type="button" data-gdel="${p.id}" title="Löschen">×</button>` : ''}</div>`).join('')
             || '<div class="fh-card empty">Noch keine Pfotenabdrücke. Mach den ersten! 🐾</div>';
     }
     async function initPaws() {
@@ -1080,18 +1163,18 @@
     // =====================================================================
     // Start
     // =====================================================================
-    const INIT = { start: () => { renderSotd(); randLink(); renderAch(); }, sona: () => { if (!sona) initSona(); }, avatar: () => { if (!sona) initSona(); }, community: initCommunity, bingo: initBingo, quiz: initQuiz, sounds: initSounds, owo: initOwo, glossary: initGlossary, paws: initPaws };
+    const INIT = { overview: renderOverview, start: () => { renderSotd(); randLink(); renderAch(); }, sona: () => { if (!sona) initSona(); }, avatar: () => { if (!sona) initSona(); }, community: initCommunity, bingo: initBingo, quiz: initQuiz, sounds: initSounds, owo: initOwo, glossary: initGlossary, paws: initPaws };
     const SHOW = {};
     // Werkzeugkasten für die Module (Tamagotchi, Karten, Minispiele)
     const K = window.FHK = {
         FH, $, $$, esc, rnd, clamp, store, hash, api, toast, confetti, floatText, download, unlock, react, boopCount, sfx, SOUNDS,
-        sonaSVG, face, hero, avatar, lightbox, sonaPics, GENDERS, imgFor, safeImg, EMO, emoSlots, uploadImage, ensureServerImages, randomLook, defaultLook, SPECIES, genName, jitter, shade,
+        sonaSVG, face, hero, avatar, pfp, lightbox, sonaPics, GENDERS, imgFor, safeImg, EMO, emoSlots, uploadImage, ensureServerImages, randomLook, defaultLook, SPECIES, genName, jitter, shade,
         currentLook: () => currentLook(), loadSonas, showTab: t => showTab(t), INIT, SHOW, renderMine, renderTop,
     };
     $('#randLinkBtn').addEventListener('click', randLink);
     renderCounters();
     document.addEventListener('DOMContentLoaded', () => {
-        showTab(location.hash.slice(1) || 'start');
+        showTab(location.hash.slice(1) || HOME);
         window.addEventListener('hashchange', () => showTab(location.hash.slice(1)));
     });
     // Zähler alle 30 s auffrischen (sieht man andere boopen)

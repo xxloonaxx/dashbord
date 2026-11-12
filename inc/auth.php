@@ -412,7 +412,8 @@ function auth_corner(): void {
     site_banners(); ?>
     <div class="auth-corner">
         <?php if ($u): ?>
-            <a href="admin.php" title="<?php echo e($u['role_name']); ?>"><span class="ac-dot" style="background: <?php echo e($u['role_color']); ?>;"></span><?php echo e(user_label($u)); ?></a>
+            <?php require_once __DIR__ . '/furhub.php'; $pfp = fh_avatar_img((int)$u['id'], 'ac-pfp'); ?>
+            <a href="admin.php" title="<?php echo e($u['role_name']); ?>"><?php echo $pfp ?: '<span class="ac-dot" style="background: ' . e($u['role_color']) . ';"></span>'; ?><?php echo e(user_label($u)); ?></a>
         <?php else: ?>
             <a href="admin.php?next=<?php echo urlencode(basename($_SERVER['SCRIPT_NAME'])); ?>" title="Anmelden">🔒 Login</a>
         <?php endif; ?>
@@ -423,6 +424,7 @@ function auth_corner(): void {
             color: #e2e8f0; background: rgba(4, 6, 9, 0.85); border: 1px solid rgba(56, 213, 230, 0.35); backdrop-filter: blur(6px); }
         .auth-corner a:hover { border-color: #38d5e6; color: #38d5e6; }
         .ac-dot { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+        .ac-pfp { width: 22px; height: 22px; border-radius: 50%; margin: -3px 0; object-fit: cover; box-shadow: 0 0 0 1px rgba(56, 213, 230, 0.6); }
         @media (max-width: 640px) { .auth-corner { top: auto; bottom: 12px; } }
     </style>
     <script src="assets/gender.js" defer></script>

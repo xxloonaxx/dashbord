@@ -299,7 +299,22 @@ eintragen und „Adresse selbst eingetragen“ klicken. Bots, die vor diesem Upd
 
 ## Furry Hub (`furhub.php`)
 
-Spielwiese für die Community – öffentlich, vieles geht auch ohne Konto:
+Spielwiese für die Community.
+
+- **🌍 Übersicht für Besucher:** Wer nicht angemeldet ist, landet auf einer allgemeinen Übersicht.
+  - Inhalt: Avatar-Mosaik der Community (zum Boopen), Kennzahlen, Sona des Tages, Boop-Bestenliste, neue Fursonas, Karten und Pfotenabdrücke.
+  - Ein Wegweiser zeigt alle Bereiche. Tamagotchi, Fursona, Avatar und Karten sind **nur mit Anmeldung** nutzbar.
+  - Offen für alle: Minispiele, Spielzeug, Bingo, Quiz, Sounds, OwO, Glossar und Community.
+- **👤 Für jeden Benutzer getrennt:**
+  - Jedes Konto hat eigene Daten: Erfolge, Bingo-Karte, Rekorde, Pixel-Sticker, Timer, Einstellungen, Entwürfe und Tamagotchi.
+  - Die Daten liegen zusätzlich auf dem Server und folgen dem Konto auf jedes Gerät.
+  - Auch mehrere Personen im selben Browser sehen nur ihre eigenen Sachen.
+  - Ältere, gemeinsame Browser-Daten werden einmalig dem ersten angemeldeten Konto zugeordnet.
+- **🖼️ Avatar als Profilbild:** Der gezeichnete Avatar wird beim Speichern als Profilbild hinterlegt (`furhub.php?avatar=ID`, ausgeliefert als Bild mit strenger CSP).
+  - Er erscheint in der Begrüßung, in Bestenliste, Übersicht und Pfotenabdrücken.
+  - Außerdem **auf der ganzen Seite**: Startseiten-Leiste, Login-Ecke und Benutzerlisten der Admin-Zentrale.
+
+Die Bereiche im Einzelnen:
 
 - **🥚 Tamagotchi** (früher Boop + Begleiter): Ein eigenes Haustier in einem Tamagotchi-Gehäuse.
   - Es schlüpft aus einem **Ei** (Boops wärmen es) und wächst über Baby, Kind und Teenie zu Erwachsen.
@@ -369,7 +384,7 @@ Spielwiese für die Community – öffentlich, vieles geht auch ohne Konto:
   - Glossar
   - Pfotenabdrücke (Gästebuch)
   - Tierfakt und Zeichen-Idee des Tages
-  - **41 Erfolge**
+  - **39 Erfolge**
   - Easter Eggs
   - 🐾-Spur am Mauszeiger
 - Widget **„Boop!“** für die Startseite (unter „＋ Widget“).

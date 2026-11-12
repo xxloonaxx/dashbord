@@ -12,6 +12,7 @@ require_once __DIR__ . '/inc/linkcheck.php';
 auth_require_setup();
 $me = current_user();
 if (isset($_GET['img'])) fh_img_serve((string)$_GET['img']);
+if (isset($_GET['avatar'])) fh_avatar_serve((int)$_GET['avatar']);
 
 // ---------- JSON-Schnittstelle ----------
 if (isset($_GET['api'])) {
@@ -86,6 +87,19 @@ if (isset($_GET['api'])) {
                 } else fh_db()->prepare('DELETE FROM cards WHERE id = ? AND user_id = ?')->execute([$cid, (int)$me['id']]);
                 $out['cards'] = fh_cards((int)$me['id']);
                 break;
+            case 'ud_save':
+                $need_post(); $need_login();
+                fh_userdata_save((int)$me['id'], (array)json_decode((string)($_POST['data'] ?? '{}'), true));
+                break;
+            case 'overview':
+                $db = fh_db();
+                $out['counts'] = [
+                    'sonas' => (int)$db->query('SELECT COUNT(*) FROM sonas')->fetchColumn(),
+                    'cards' => (int)$db->query('SELECT COUNT(*) FROM cards WHERE shared = 1')->fetchColumn(),
+                    'paws' => (int)$db->query('SELECT COUNT(*) FROM guestbook')->fetchColumn(),
+                    'pets' => (int)$db->query('SELECT COUNT(*) FROM pets')->fetchColumn(),
+                ];
+                break;
             case 'gb':
                 $out['entries'] = fh_guestbook();
                 break;
@@ -137,10 +151,16 @@ $boot = fh_client_data() + [
     'stats' => fh_stats(),
     'links' => $links,
     'canModerate' => can('furhub.moderate'),
+    'userData' => $me ? fh_userdata((int)$me['id']) : null,
+    'syncKeys' => FH_USERDATA_KEYS,
+    'myAvatar' => $me ? fh_avatar_url((int)$me['id']) : '',
+    'fact' => $fact, 'prompt' => $prompt,
 ];
 $json = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE;
-$TABS = ['start' => ['🏠', 'Start'], 'tama' => ['🥚', 'Tamagotchi'], 'sona' => ['🎨', 'Fursona'], 'avatar' => ['🧑‍🎨', 'Avatar'], 'cards' => ['🃏', 'Karten'], 'community' => ['🐾', 'Community'],
+$TABS = ['start' => ['🏠', 'Mein Bereich'], 'overview' => ['🌍', 'Übersicht'], 'tama' => ['🥚', 'Tamagotchi'], 'sona' => ['🎨', 'Fursona'], 'avatar' => ['🧑‍🎨', 'Avatar'], 'cards' => ['🃏', 'Karten'], 'community' => ['🐾', 'Community'],
          'games' => ['🕹️', 'Minispiele'], 'toys' => ['🎉', 'Spielzeug'], 'bingo' => ['🎲', 'Con-Bingo'], 'quiz' => ['❓', 'Quiz'], 'sounds' => ['🔊', 'Sounds'], 'owo' => ['💬', 'OwO'], 'glossary' => ['📖', 'Glossar'], 'paws' => ['✍️', 'Pfotenabdrücke']];
+// Persönliche Bereiche nur mit Anmeldung – Besucher sehen die allgemeine Übersicht
+if (!$me) $TABS = array_diff_key($TABS, array_flip(['start', 'tama', 'sona', 'avatar', 'cards']));
 $GENDERS = ['neutral' => '⚪ Keine Angabe', 'female' => '♀ Weiblich', 'male' => '♂ Männlich', 'nonbinary' => '⚧ Nicht-binär'];
 $EMO = ['neutral' => ['😐', 'Normal'], 'happy' => ['😊', 'Fröhlich'], 'sad' => ['🥺', 'Traurig'], 'angry' => ['😠', 'Wütend'], 'surprised' => ['😳', 'Überrascht'], 'sleepy' => ['😴', 'Müde']];
 ?>
@@ -172,7 +192,7 @@ $EMO = ['neutral' => ['😐', 'Normal'], 'happy' => ['😊', 'Fröhlich'], 'sad'
         <div>
             <div class="hud-tag">Community // Fluff Department</div>
             <h1>Furry Hub</h1>
-            <p class="subtitle" id="fhHello"><?php echo $me ? 'Hallo ' . e(user_label($me)) . '! Schön, dass du da bist. 🐾' : 'Willkommen! Boopen geht auch ohne Konto. 🐾'; ?></p>
+            <p class="subtitle" id="fhHello"><?php if ($me): ?><img class="fh-pfp fh-me-pfp" src="<?php echo e(fh_avatar_url((int)$me['id'])); ?>" alt="" <?php echo fh_avatar_url((int)$me['id']) ? '' : 'hidden'; ?>>Hallo <?php echo e(user_label($me)); ?>! Schön, dass du da bist. 🐾<?php else: ?>Willkommen! Schau dich um – <a href="admin.php?next=furhub.php">melde dich an</a> für dein eigenes Tamagotchi, deine Fursona &amp; mehr. 🐾<?php endif; ?></p>
         </div>
         <div class="fh-counters" id="fhCounters"></div>
     </header>
@@ -180,6 +200,11 @@ $EMO = ['neutral' => ['😐', 'Normal'], 'happy' => ['😊', 'Fröhlich'], 'sad'
     <nav class="fh-tabs" id="fhTabs" role="tablist">
         <?php foreach ($TABS as $k => [$ic, $l]): ?><button type="button" role="tab" data-tab="<?php echo $k; ?>"><span><?php echo $ic; ?></span><?php echo e($l); ?></button><?php endforeach; ?>
     </nav>
+
+    <!-- Übersicht (für alle) -->
+    <section class="fh-panel" data-panel="overview" hidden>
+        <div id="ovBox"></div>
+    </section>
 
     <!-- Start -->
     <section class="fh-panel" data-panel="start">
@@ -478,7 +503,7 @@ $EMO = ['neutral' => ['😐', 'Normal'], 'happy' => ['😊', 'Fröhlich'], 'sad'
 <div class="fh-toast" id="fhToast" hidden></div>
 <div class="fh-lightbox" id="fhLightbox" hidden><button type="button" class="lb-x" data-lb="close" aria-label="Schließen">×</button><button type="button" class="lb-nav prev" data-lb="prev" aria-label="Zurück">‹</button><figure><img id="lbImg" alt=""><figcaption id="lbCap"></figcaption></figure><button type="button" class="lb-nav next" data-lb="next" aria-label="Weiter">›</button></div>
 <script>window.FH = <?php echo json_encode($boot, $json); ?>;</script>
-<?php foreach (['furhub', 'furhub-tama', 'furhub-cards', 'furhub-games', 'furhub-toys'] as $js): ?><script src="assets/<?php echo $js; ?>.js?v=<?php echo filemtime(__DIR__ . '/assets/' . $js . '.js'); ?>"></script>
+<?php foreach (array_merge(['furhub'], $me ? ['furhub-tama'] : [], ['furhub-cards', 'furhub-games', 'furhub-toys']) as $js): ?><script src="assets/<?php echo $js; ?>.js?v=<?php echo filemtime(__DIR__ . '/assets/' . $js . '.js'); ?>"></script>
 <?php endforeach; ?>
 </body>
 </html>

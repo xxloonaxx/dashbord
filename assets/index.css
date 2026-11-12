@@ -139,3 +139,5 @@ kbd { display: inline-block; padding: 0 6px; border: 1px solid var(--border-colo
     .nsfw-label { display: none; }
     .user-bar.in { gap: 8px; }
 }
+.ub-avatar.has-pfp { background: #1d3557; overflow: hidden; }
+.ub-pfp { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }

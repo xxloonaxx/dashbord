@@ -835,7 +835,11 @@ function ago(?string $ts): string {
 }
 function avatar(array $u, string $cls = ''): string {
     $name = $u['display_name'] ?: $u['username'];
-    return '<span class="av ' . $cls . '" style="--rc: ' . e($u['role_color']) . ';">' . e(mb_strtoupper(mb_substr($name, 0, 1))) . '</span>';
+    // Furry-Hub-Avatar als Profilbild (Sitzungs-Zeilen haben user_id, Benutzer-Zeilen id)
+    require_once __DIR__ . '/inc/furhub.php';
+    $uid = (int)($u['user_id'] ?? (is_numeric($u['id'] ?? null) ? $u['id'] : 0));
+    $img = $uid ? fh_avatar_img($uid, 'av-img', $name) : '';
+    return '<span class="av ' . $cls . ($img ? ' has-img' : '') . '" style="--rc: ' . e($u['role_color']) . ';">' . ($img ?: e(mb_strtoupper(mb_substr($name, 0, 1)))) . '</span>';
 }
 function bytes(int $b): string {
     return $b > 1048576 ? number_format($b / 1048576, 1, ',', '.') . ' MB' : number_format($b / 1024, 1, ',', '.') . ' KB';

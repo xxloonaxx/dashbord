@@ -322,3 +322,5 @@ a.ucell:hover b { color: var(--accent-cyan); }
 @media (max-width: 760px) { .shell { grid-template-columns: minmax(0, 1fr); } .side, .main { min-width: 0; } .side nav { max-width: 100%%; } .matrix th:first-child { min-width: 180px; } }
 .matrix-wrap { min-width: 0; max-width: 100%; overflow: hidden; } .matrix-wrap .table-wrap { max-width: 100%; }
 .rc-actions { flex-wrap: wrap; } .roles > * { min-width: 0; }
+.av.has-img { background: #1d3557; overflow: hidden; padding: 0; }
+.av-img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
