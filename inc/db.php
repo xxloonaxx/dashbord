@@ -8,22 +8,31 @@
  */
 require_once __DIR__ . '/common.php';
 
-const SITE_SCHEMA_VERSION = 1;
+const SITE_SCHEMA_VERSION = 2;
 
 /** Alle Rechte, die Rollen haben können: key => [Beschreibung, Gruppe] */
 const PERMISSIONS = [
     'admin.access'           => ['Admin-Zentrale öffnen', 'Verwaltung'],
-    'users.manage'           => ['Benutzer, Rollen & Rechte verwalten', 'Verwaltung'],
+    'users.view'             => ['Benutzerliste & Login-Verlauf ansehen (ohne Ändern)', 'Verwaltung'],
+    'users.manage'           => ['Benutzer anlegen, bearbeiten, sperren & löschen', 'Verwaltung'],
+    'roles.manage'           => ['Rollen & Rechte bearbeiten, „Ansicht als Rolle“', 'Verwaltung'],
+    'invites.manage'         => ['Einladungscodes für die Selbst-Registrierung erstellen', 'Verwaltung'],
     'pages.manage'           => ['Seiten anlegen, Index sortieren & Kategorien verwalten', 'Verwaltung'],
     'system.manage'          => ['System, Wartungsmodus & Einstellungen', 'Verwaltung'],
     'audit.view'             => ['Protokoll ansehen', 'Verwaltung'],
+    'audit.export'           => ['Protokoll als CSV exportieren', 'Verwaltung'],
+    'announce.manage'        => ['Ankündigungs-Banner für alle setzen', 'Verwaltung'],
     'backup.download'        => ['Backup herunterladen', 'Verwaltung'],
+    'security.manage'        => ['Sicherheit: Passwort-Richtlinie, IP-Sperren, 2FA zurücksetzen', 'Sicherheit'],
+    'sessions.manage'        => ['Sitzungen & Geräte aller Benutzer sehen und beenden', 'Sicherheit'],
     'settings.nsfw'          => ['NSFW-Schalter für Besucher bedienen', 'Inhalte'],
     'nsfw.view'              => ['NSFW-Inhalte immer sehen', 'Inhalte'],
     'links.edit'             => ['Links & Kategorien in Link-Hubs bearbeiten', 'Inhalte'],
     'pages.edit'             => ['Inhalte eigener Seiten bearbeiten (Notizen, Checklisten)', 'Inhalte'],
     'feed.edit'              => ['Feed-Quellen verwalten', 'Inhalte'],
     'linkcheck.run'          => ['Link-Check starten', 'Inhalte'],
+    'widgets.manage'         => ['Startseiten-Widgets hinzufügen, anordnen & einstellen', 'Inhalte'],
+    'nsfw.browse'            => ['NSFW-Galerie (e621, Rule34, Danbooru …) öffnen – nur für Volljährige', 'Inhalte'],
     'countdown.edit'         => ['Countdowns bearbeiten', 'Kalender'],
     'calendar.edit'          => ['Kalender-Termine anlegen & bearbeiten', 'Kalender'],
     'calendar.private'       => ['Private Kalender-Termine sehen', 'Kalender'],
@@ -32,7 +41,6 @@ const PERMISSIONS = [
     'con.access'             => ['Con-Rechner', 'Finanzen'],
     'vrcx.access'            => ['VRC Nexus: eigenes VRChat-Konto verbinden (Freunde, Welten, Avatare, Gruppen)', 'Community'],
     'discord.manage'         => ['Discord-Zentrale: Bot einrichten, Nachrichten senden, Mitglieder moderieren', 'Community'],
-    'nsfw.browse'            => ['NSFW-Galerie (e621, Rule34, Danbooru …) öffnen – nur für Volljährige', 'Inhalte'],
 ];
 
 function site_db_file(): string {
@@ -149,6 +157,45 @@ function site_migrate(PDO $db): void {
         $grant = $db->prepare('INSERT INTO role_permissions (role_id, permission) VALUES (?, ?)');
         foreach (['links.edit', 'pages.edit', 'feed.edit', 'linkcheck.run', 'countdown.edit', 'calendar.edit', 'calendar.private', 'nsfw.view'] as $p) $grant->execute([2, $p]);
         foreach (['calendar.private'] as $p) $grant->execute([3, $p]);
+    }
+    if ($version < 2) {
+        // Sicherheit: Passwortwechsel erzwingen, Ablaufdatum, Zwei-Faktor, Sitzungen je Gerät, Einladungen
+        $db->exec("
+            ALTER TABLE users ADD COLUMN must_change_pw INTEGER NOT NULL DEFAULT 0;
+            ALTER TABLE users ADD COLUMN expires_at TEXT;
+            ALTER TABLE users ADD COLUMN totp_secret TEXT NOT NULL DEFAULT '';
+            ALTER TABLE users ADD COLUMN totp_recovery TEXT NOT NULL DEFAULT '[]';
+            ALTER TABLE users ADD COLUMN invited_by TEXT NOT NULL DEFAULT '';
+            CREATE TABLE user_sessions (
+                id        TEXT PRIMARY KEY,
+                user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                ip        TEXT NOT NULL DEFAULT '',
+                agent     TEXT NOT NULL DEFAULT '',
+                remember  INTEGER NOT NULL DEFAULT 0,
+                created   TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+                last_seen TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+            );
+            CREATE INDEX idx_sessions_user ON user_sessions(user_id);
+            CREATE TABLE invites (
+                code       TEXT PRIMARY KEY,
+                role_id    INTEGER NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+                max_uses   INTEGER NOT NULL DEFAULT 1,
+                uses       INTEGER NOT NULL DEFAULT 0,
+                expires_at TEXT,
+                note       TEXT NOT NULL DEFAULT '',
+                created_by TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+            );
+        ");
+        // Neue, feinere Rechte an Rollen geben, die das bisher über ein gröberes Recht durften
+        $map = ['users.manage' => ['users.view', 'roles.manage', 'invites.manage', 'sessions.manage', 'security.manage'],
+                'pages.manage' => ['widgets.manage'], 'audit.view' => ['audit.export'], 'system.manage' => ['announce.manage']];
+        $ins = $db->prepare('INSERT OR IGNORE INTO role_permissions (role_id, permission) VALUES (?, ?)');
+        foreach ($map as $old => $new) {
+            $st = $db->prepare('SELECT role_id FROM role_permissions WHERE permission = ?');
+            $st->execute([$old]);
+            foreach ($st->fetchAll(PDO::FETCH_COLUMN) as $rid) foreach ($new as $p) $ins->execute([$rid, $p]);
+        }
     }
     $db->exec('PRAGMA user_version = ' . SITE_SCHEMA_VERSION);
     $db->commit();

@@ -5,7 +5,7 @@
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const store = { get(k, d) { try { const v = localStorage.getItem('wg-' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem('wg-' + k, JSON.stringify(v)); } catch (e) {} } };
     const handlers = {}, cleanups = new Map(), timers = new Map();
-    const EDIT = !!(window.IDX && window.IDX.edit);
+    const EDIT = !!(window.IDX && (window.IDX.wgEdit !== undefined ? window.IDX.wgEdit : window.IDX.edit));
 
     function call(act, data, get) {
         const body = new URLSearchParams();

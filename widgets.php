@@ -3,7 +3,7 @@
  * JSON-Schnittstelle der Startseiten-Widgets:
  *   render  – Widget neu zeichnen (Auto-Aktualisierung)
  *   action  – Aktion eines Widgets ausführen (z. B. Aufgabe abhaken), danach neu zeichnen
- *   add / remove / size / settings / reorder – Anordnung ändern (Recht „pages.manage“)
+ *   add / remove / size / settings / reorder – Anordnung ändern (Recht „widgets.manage“)
  */
 require_once __DIR__ . '/inc/common.php';
 require_once __DIR__ . '/inc/widgets.php';
@@ -17,8 +17,8 @@ $act = (string)($in['act'] ?? '');
 $out = ['ok' => true];
 try {
     $manage = ['add', 'remove', 'size', 'settings', 'reorder'];
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') guard_post(in_array($act, $manage, true) ? 'pages.manage' : null);
-    if (in_array($act, $manage, true) && !can('pages.manage')) throw new RuntimeException('Dafür fehlt das Recht „Seiten verwalten“.');
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') guard_post(in_array($act, $manage, true) ? 'widgets.manage' : null);
+    if (in_array($act, $manage, true) && !can('widgets.manage')) throw new RuntimeException('Dafür fehlt das Recht „Startseiten-Widgets anordnen“.');
     $uid = preg_replace('/\W/', '', (string)($in['uid'] ?? ''));
     $layout = widgets_layout();
     $avail = widgets_available();
@@ -86,7 +86,7 @@ try {
             widgets_layout_save($layout);
             break;
         case 'catalog':
-            if (!can('pages.manage')) throw new RuntimeException('Kein Zugriff.');
+            if (!can('widgets.manage')) throw new RuntimeException('Kein Zugriff.');
             $used = array_count_values(array_column($layout, 'type'));
             $out['widgets'] = array_values(array_map(function ($t, $m) use ($used) {
                 return ['type' => $t, 'name' => $m['name'], 'icon' => $m['icon'], 'description' => $m['description'], 'version' => $m['version'], 'author' => $m['author'],

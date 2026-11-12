@@ -9,6 +9,7 @@
  * - Wartungsmodus: nur Benutzer mit Admin-Zugang sehen die Seite.
  */
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/security.php';
 
 const AUTH_MAX_FAILS = 5;          // Fehlversuche pro IP …
 const AUTH_LOCK_SECONDS = 600;     // … dann 10 Minuten Sperre
@@ -37,7 +38,10 @@ function secure_save(string $path, array $data): bool {
 function site_settings(): array {
     return [
         'show_nsfw' => setting('show_nsfw', '0') === '1',
-        'maintenance' => setting('maintenance', '0') === '1',
+        'maintenance' => setting('maintenance', '0') === '1' && maintenance_window_active(),
+        'maintenance_flag' => setting('maintenance', '0') === '1',
+        'maintenance_from' => setting('maintenance_from', ''),
+        'maintenance_until' => setting('maintenance_until', ''),
         'maintenance_message' => setting('maintenance_message', 'Wir sind gleich wieder da.'),
         'site_title' => setting('site_title', 'Startseite'),
         'site_tagline' => setting('site_tagline', 'Zentrale Schnittstelle & Datenknoten'),
@@ -99,11 +103,13 @@ function current_user(bool $refresh = false): ?array {
     $u = user_load((int)$s['uid']);
     $limit = !empty($s['remember']) ? AUTH_REMEMBER : AUTH_IDLE_TIMEOUT;
     // Passwortwechsel / "überall abmelden" / Deaktivierung machen alte Sitzungen ungültig
-    if (!$u || !$u['active'] || (int)($s['version'] ?? -1) !== (int)$u['session_version'] || time() - ($s['last'] ?? 0) > $limit) {
+    if (!$u || !$u['active'] || (int)($s['version'] ?? -1) !== (int)$u['session_version'] || time() - ($s['last'] ?? 0) > $limit
+        || user_expired($u) || !session_row_touch((int)$u['id'], !empty($s['remember']))) {
         unset($_SESSION['auth']);
         return null;
     }
     $_SESSION['auth']['last'] = time();
+    if (!empty($s['preview'])) $u = role_preview_apply($u, (int)$s['preview']);
     return $user = $u;
 }
 
@@ -189,7 +195,11 @@ function auth_validate(string $user, string $pass, string $pass2): string {
 }
 
 function auth_validate_password(string $pass, string $pass2, string $user = ''): string {
-    if (mb_strlen($pass) < 8) return 'Das Passwort muss mindestens 8 Zeichen lang sein.';
+    $pol = password_policy();
+    if (mb_strlen($pass) < $pol['min']) return 'Das Passwort muss mindestens ' . $pol['min'] . ' Zeichen lang sein.';
+    $classes = (int)preg_match('/[a-z]/', $pass) + (int)preg_match('/[A-Z]/', $pass) + (int)preg_match('/\d/', $pass) + (int)preg_match('/[^A-Za-z0-9]/', $pass);
+    if ($classes < $pol['classes']) return 'Das Passwort braucht mindestens ' . $pol['classes'] . ' der 4 Zeichenarten (klein, GROSS, Ziffer, Sonderzeichen).';
+    if ($pol['common'] && password_is_common($pass)) return 'Dieses Passwort ist zu verbreitet – bitte ein anderes wählen.';
     if ($pass !== $pass2) return 'Die beiden Passwörter stimmen nicht überein.';
     if ($user !== '' && mb_strtolower($pass) === mb_strtolower($user)) return 'Passwort und Benutzername dürfen nicht gleich sein.';
     return '';
@@ -208,11 +218,18 @@ function auth_account(): ?array {
     return $id ? user_load((int)$id) : null;
 }
 
-function auth_login(string $username, string $pass, bool $remember): bool {
+/** Liefert true (angemeldet), false (falsch) oder '2fa' (Passwort ok, Code nötig) */
+function auth_login(string $username, string $pass, bool $remember) {
     $st = site_db()->prepare('SELECT id, password_hash, active FROM users WHERE username = ? COLLATE NOCASE');
     $st->execute([$username]);
     $row = $st->fetch();
     $ok = $row && password_verify($pass, $row['password_hash']);
+    $exp = $ok ? user_load((int)$row['id']) : null;
+    if ($exp && user_expired($exp)) {
+        auth_register_fail();
+        audit('Login abgelehnt (Konto abgelaufen)', 'Benutzername: ' . mb_substr($username, 0, 40), 'security', ['id' => $row['id'], 'username' => $username]);
+        return false;
+    }
     if (!$ok || !$row['active']) {
         auth_register_fail();
         audit($ok ? 'Login abgelehnt (Konto deaktiviert)' : 'Login fehlgeschlagen', 'Benutzername: ' . mb_substr($username, 0, 40), 'security', ['id' => $row['id'] ?? null, 'username' => $username]);
@@ -222,18 +239,32 @@ function auth_login(string $username, string $pass, bool $remember): bool {
     if (password_needs_rehash($row['password_hash'], PASSWORD_DEFAULT)) {
         site_db()->prepare('UPDATE users SET password_hash = ? WHERE id = ?')->execute([password_hash($pass, PASSWORD_DEFAULT), $row['id']]);
     }
-    site_db()->prepare("UPDATE users SET last_login = datetime('now','localtime'), last_ip = ? WHERE id = ?")->execute([client_ip(), $row['id']]);
     $u = user_load((int)$row['id']);
-    auth_start_session($u, $remember);
-    auth_clear_fails();
-    audit('Login', $remember ? 'angemeldet bleiben' : '', 'info', $u);
+    if ($u['totp_secret'] !== '') {
+        auth_session();
+        $_SESSION['auth_pending'] = ['uid' => (int)$u['id'], 'remember' => $remember, 't' => time(), 'tries' => 0];
+        return '2fa';
+    }
+    auth_finish_login($u, $remember);
     return true;
+}
+
+/** Anmeldung abschließen (nach Passwort bzw. Zwei-Faktor-Code) */
+function auth_finish_login(array $u, bool $remember, string $how = ''): void {
+    site_db()->prepare("UPDATE users SET last_login = datetime('now','localtime'), last_ip = ? WHERE id = ?")->execute([client_ip(), $u['id']]);
+    // Passwort zu alt? → beim nächsten Seitenaufruf Wechsel erzwingen
+    $age = password_policy()['max_age'];
+    if ($age > 0 && strtotime($u['password_changed']) < time() - $age * 86400) site_db()->prepare('UPDATE users SET must_change_pw = 1 WHERE id = ?')->execute([$u['id']]);
+    unset($_SESSION['auth_pending']);
+    auth_start_session(user_load((int)$u['id']), $remember);
+    auth_clear_fails();
+    audit('Login', trim(($remember ? 'angemeldet bleiben' : '') . ($how ? ' · ' . $how : ''), ' ·'), 'info', $u);
 }
 
 function auth_start_session(array $u, bool $remember = false): void {
     auth_session();
     session_regenerate_id(true);
-    $_SESSION['auth'] = ['uid' => (int)$u['id'], 'version' => (int)$u['session_version'], 'last' => time(), 'since' => time(), 'remember' => $remember];
+    $_SESSION['auth'] = ['uid' => (int)$u['id'], 'version' => (int)$u['session_version'], 'last' => time(), 'since' => time(), 'remember' => $remember, 'sid' => session_row_create((int)$u['id'], $remember)];
     current_user(true);   // Zwischenspeicher auffrischen
     if ($remember) {
         $p = session_get_cookie_params();
@@ -243,6 +274,7 @@ function auth_start_session(array $u, bool $remember = false): void {
 
 function auth_logout(): void {
     auth_session();
+    if (!empty($_SESSION['auth']['sid'])) site_db()->prepare('DELETE FROM user_sessions WHERE id = ?')->execute([$_SESSION['auth']['sid']]);
     $_SESSION = [];
     $p = session_get_cookie_params();
     setcookie(session_name(), '', ['expires' => time() - 3600, 'path' => $p['path'], 'httponly' => true, 'samesite' => 'Lax', 'secure' => $p['secure']]);
@@ -253,6 +285,7 @@ function auth_logout(): void {
 /** Alle Sitzungen eines Benutzers beenden (z. B. nach Passwortwechsel) */
 function user_bump_sessions(int $uid): void {
     site_db()->prepare('UPDATE users SET session_version = session_version + 1 WHERE id = ?')->execute([$uid]);
+    site_db()->prepare('DELETE FROM user_sessions WHERE user_id = ?')->execute([$uid]);
 }
 
 // ---------- Schutz für Seiten & Formulare ----------
@@ -278,9 +311,15 @@ function auth_require_setup(): void {
         header('Location: admin.php');
         exit;
     }
-    current_user();
+    $u = current_user();
+    ip_block_check();
     $script = basename($_SERVER['SCRIPT_NAME'] ?? '');
     if ($script === 'admin.php') return;
+    if ($u && !empty($u['must_change_pw']) && empty($u['preview'])) {
+        if (($_SERVER['HTTP_ACCEPT'] ?? '') === 'application/json' || $_SERVER['REQUEST_METHOD'] === 'POST') { http_response_code(403); exit('Bitte zuerst dein Passwort ändern.'); }
+        header('Location: admin.php?tab=account&must=1');
+        exit;
+    }
     if (site_settings()['maintenance'] && !can('admin.access')) {
         render_notice_page(503, '🛠️', 'Wartungsarbeiten', site_settings()['maintenance_message'], !is_logged_in());
     }
@@ -369,7 +408,8 @@ function nsfw_visible(array $link, string $category = ''): bool {
 
 /** Kleine Leiste "Angemeldet als … / Login" für die Seiten */
 function auth_corner(): void {
-    $u = current_user(); ?>
+    $u = current_user();
+    site_banners(); ?>
     <div class="auth-corner">
         <?php if ($u): ?>
             <a href="admin.php" title="<?php echo e($u['role_name']); ?>"><span class="ac-dot" style="background: <?php echo e($u['role_color']); ?>;"></span><?php echo e(user_label($u)); ?></a>

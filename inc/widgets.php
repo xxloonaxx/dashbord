@@ -96,13 +96,13 @@ function widgets_available(): array {
 
 /** Darf der aktuelle Besucher dieses Widget sehen? */
 function widget_allowed(array $m): bool {
-    if (!empty($m['error'])) return can('pages.manage');
+    if (!empty($m['error'])) return can('widgets.manage');
     if (!empty($m['login']) && !is_logged_in()) return false;
     if (!empty($m['permission']) && !can($m['permission'])) return false;
     return true;
 }
 
-/** Anordnung auf der Startseite (für alle gleich, bearbeitbar mit „pages.manage“) */
+/** Anordnung auf der Startseite (für alle gleich, bearbeitbar mit „widgets.manage“) */
 function widgets_layout(): array {
     $raw = setting('widgets_layout', '');
     if ($raw === '') {

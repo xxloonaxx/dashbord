@@ -57,6 +57,8 @@
                 const r = uf.querySelector('input[name=role_id][value="' + u.role_id + '"]');
                 if (r) r.checked = true;
                 F('active').checked = u.active == 1;
+                F('expires_at').value = u.expires_at || '';
+                F('must_change_pw').checked = u.must_change_pw == 1;
             }
             $('#userModal').classList.add('open');
             F('username').focus();
@@ -75,6 +77,58 @@
     $$('[data-perm-all], [data-perm-none]').forEach(b => b.addEventListener('click', () => {
         $$('input[name="perms[]"]', b.closest('form')).forEach(cb => cb.checked = b.hasAttribute('data-perm-all'));
     }));
+
+    // Kopieren (Einladungslinks, Wiederherstellungscodes)
+    const copyOk = b => { const t = b.textContent; b.textContent = '✓ kopiert'; setTimeout(() => b.textContent = t, 1500); };
+    $$('[data-copy], [data-copy-text]').forEach(b => b.addEventListener('click', () => {
+        const txt = b.dataset.copyText !== undefined ? b.dataset.copyText : document.querySelector(b.dataset.copy).value;
+        if (navigator.clipboard) navigator.clipboard.writeText(txt).then(() => copyOk(b));
+    }));
+
+    // Benutzerliste: Suche & Filter
+    const ut = $('#userTable');
+    if (ut) {
+        const q = $('#uSearch'), role = $('#uRole'), st = $('#uState'), cnt = $('#uCount');
+        const bf = $('#bulkForm');
+        const bulkUpdate = () => {
+            if (!bf) return;
+            const n = $$('.u-cb:checked').length;
+            bf.hidden = n === 0;
+            $('#bulkN').textContent = n;
+        };
+        const filter = () => {
+            const s = q.value.toLowerCase().trim();
+            let n = 0;
+            $$('tbody tr', ut).forEach(tr => {
+                const ok = (!s || tr.dataset.search.includes(s)) && (!role.value || tr.dataset.role === role.value) && (!st.value || tr.dataset.flags.split(' ').includes(st.value));
+                tr.hidden = !ok;
+                if (ok) n++;
+                else { const cb = $('.u-cb', tr); if (cb) cb.checked = false; }
+            });
+            cnt.textContent = n + ' angezeigt';
+            bulkUpdate();
+        };
+        [q, role, st].forEach(el => el.addEventListener('input', filter));
+        if (bf) {
+            $$('.u-cb').forEach(cb => cb.addEventListener('change', bulkUpdate));
+            $('#uAll').addEventListener('change', e => { $$('tbody tr:not([hidden]) .u-cb', ut).forEach(cb => cb.checked = e.target.checked); bulkUpdate(); });
+            $('#bulkOp').addEventListener('change', e => { $('#bulkRole').hidden = e.target.value !== 'role'; $('#bulkDate').hidden = e.target.value !== 'expire'; });
+            $('#bulkClear').addEventListener('click', () => { $$('.u-cb').forEach(cb => cb.checked = false); $('#uAll').checked = false; bulkUpdate(); });
+        }
+        filter();
+    }
+
+    // Rechte-Matrix: Spaltenkopf schaltet die ganze Rolle
+    const mx = $('table.matrix');
+    if (mx) $$('thead th', mx).forEach((th, col) => {
+        if (!col) return;
+        th.style.cursor = 'pointer';
+        th.addEventListener('click', () => {
+            const boxes = $$('tbody tr', mx).map(tr => tr.children[col]).filter(td => td && td.classList.contains('mx-c')).map(td => td.firstElementChild).filter(cb => !cb.disabled);
+            const on = boxes.some(cb => !cb.checked);
+            boxes.forEach(cb => { cb.checked = on; });
+        });
+    });
 
     // ---------- Befehlspalette ----------
     const pal = $('#palette');

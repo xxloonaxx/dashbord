@@ -39,13 +39,32 @@ aktualisiert, wird automatisch übernommen (gleicher Benutzername, gleiches Pass
 Alles liegt in der SQLite-Datenbank `data/site_<zufall>.sqlite`; Passwörter nur als bcrypt-Hash.
 
 - **Benutzer** (Admin-Zentrale → Benutzer): anlegen, Rolle zuweisen, deaktivieren, Passwort neu setzen
-  (mit Generator), Sitzungen beenden, löschen. Der letzte aktive Administrator kann nicht entmachtet werden.
-- **Rollen & Rechte**: Administrator (immer alles), Redakteur, Mitglied – eigene Rollen beliebig anlegen.
-  21 Einzelrechte, z. B. `vrcx.access` (VRC Nexus), `discord.manage`, `nsfw.browse` (NSFW-Galerie), `budget.access`, `con.access`, `calendar.edit`, `calendar.private`, `links.edit`,
-  `pages.manage`, `users.manage`, `nsfw.view`, `settings.nsfw`, `system.manage`, `audit.view`.
+  (mit Generator), **Ablaufdatum**, **Passwortwechsel beim nächsten Login erzwingen**, Sitzungen beenden, löschen.
+  Suche & Filter (Rolle, online, ohne 2FA, abgelaufen …), **Sammelaktionen** für mehrere Benutzer (aktivieren,
+  deaktivieren, abmelden, Rolle ändern, Ablaufdatum, Passwortwechsel, löschen) und eine **Detailansicht** je Benutzer
+  (Geräte & Sitzungen, Login-Adressen, Verlauf). Der letzte aktive Administrator kann nicht entmachtet werden.
+- **Rollen & Rechte**: Administrator (immer alles), Redakteur, Mitglied – eigene Rollen beliebig anlegen, **kopieren**,
+  alle Rollen in einer **Rechte-Matrix** bearbeiten und mit **👁 Ansicht als Rolle** die Webseite genau so sehen wie diese Rolle.
+  29 Einzelrechte in 6 Gruppen, u. a. `users.view` (nur ansehen), `users.manage`, `roles.manage`, `invites.manage`,
+  `sessions.manage`, `security.manage`, `audit.view`, `audit.export`, `announce.manage`, `widgets.manage`,
+  `pages.manage`, `system.manage`, `vrcx.access`, `discord.manage`, `nsfw.browse`, `budget.access`, `calendar.edit` …
+  Bestehende Rollen bekommen die neuen, feineren Rechte automatisch passend zu ihren bisherigen.
+- **Schutz vor Rechte-Ausweitung**: Wer kein Administrator ist, kann nur Rechte vergeben, die er selbst hat,
+  niemanden zum Administrator machen (auch nicht per Einladung) und keine Administratoren bearbeiten.
+- **Einladungen** (🎟️): Link mit Code erzeugen (Rolle, wie oft nutzbar, Gültigkeit) – Eingeladene legen ihr Konto
+  unter `admin.php?invite=CODE` selbst an. Auf der Anmeldeseite gibt es dafür „Konto erstellen“.
+- **Zwei-Faktor-Anmeldung** (Mein Konto → 🔐): QR-Code mit jeder Authenticator-App scannen (Aegis, 2FAS, Google/Microsoft
+  Authenticator, Bitwarden …), dazu 8 einmalige **Wiederherstellungscodes**. Der Schlüssel liegt verschlüsselt in der Datenbank.
+  Admins mit dem Recht `security.manage` können 2FA eines Benutzers zurücksetzen.
+- **Sitzungen & Geräte** (🖥️): jede Anmeldung einzeln sichtbar (Browser, System, IP, zuletzt aktiv) und einzeln beendbar –
+  für alle Benutzer im Reiter „Sitzungen“, für sich selbst unter „Mein Konto → Meine Geräte“.
+- **Sicherheit** (🔐): Passwort-Richtlinie (Mindestlänge, Zeichenarten, Höchstalter in Tagen, verbreitete Passwörter
+  ablehnen, 2FA-Pflicht für Administratoren), **IP-Sperrliste** (einzelne Adressen oder Bereiche wie `203.0.113.0/24`,
+  befristet oder dauerhaft – die eigene Adresse lässt sich nicht aussperren), Fehlversuche der letzten 7 Tage mit
+  „sperren“-Knopf, Login-Sperren einzeln aufheben, 2FA-Status aller Benutzer.
 - Rollenwechsel, Deaktivierung und Passwortänderung melden den Benutzer überall ab.
-- Nach 5 falschen Passwörtern wird die IP für 10 Minuten gesperrt (in „System“ aufhebbar).
-- Jeder Benutzer hat unter „Mein Konto“ Profil, Passwort, seine Rechte und seine letzten Aktivitäten.
+- Nach 5 falschen Passwörtern bzw. 2FA-Codes wird die IP für 10 Minuten gesperrt (in „Sicherheit“/„System“ aufhebbar).
+- Jeder Benutzer hat unter „Mein Konto“ Profil, Passwort, 2FA, Geräte, seine Rechte (gruppiert) und seine letzten Aktivitäten.
 
 **Passwort vergessen?** Ein anderer Administrator setzt es unter „Benutzer“ neu. Gibt es keinen:
 per FTP die Datei `data/site_….sqlite` umbenennen → beim nächsten Aufruf erscheint die Einrichtung
@@ -307,9 +326,12 @@ wird pro Benutzer im Protokoll vermerkt. Suchmaschinen werden per `noindex` ausg
 
 ## Admin-Zentrale
 
-Übersicht (Kennzahlen, Aktivitäts-Diagramm 14 Tage, letzte Ereignisse, Team), Benutzer, Rollen & Rechte (Matrix),
-Seiten, Protokoll (Suche, Filter, CSV-Export), System (Seitentitel, **Wartungsmodus**, Systemstatus, Speicherbelegung,
-Werkzeuge), Mein Konto. **Befehlspalette** mit `Strg+K`. Auf dem Handy wird die Seitenleiste zur Reiterleiste.
+Übersicht (Kennzahlen inkl. „gerade online“ und 2FA-Quote, Aktivitäts-Diagramm 14 Tage, letzte Ereignisse, Team,
+**📢 Ankündigungs-Banner** für alle / nur Angemeldete / nur Besucher mit Stil, Ablaufzeit und „wegklickbar“),
+Benutzer, Rollen & Rechte (Matrix), Einladungen, Sitzungen, Sicherheit, Seiten, Protokoll (Suche, Stufe, **Benutzer,
+Zeitraum**, CSV-Export des gefilterten Ergebnisses, IP direkt sperren), System (Seitentitel, **Wartungsmodus – auch
+geplant mit Start/Ende**, Systemstatus, Speicherbelegung, Werkzeuge inkl. Feeds neu laden und Datenbank optimieren), Mein Konto.
+Wer nur das Recht `widgets.manage` hat, bekommt auf der Startseite den Knopf „🧩 Widgets“ zum Anordnen. **Befehlspalette** mit `Strg+K`. Auf dem Handy wird die Seitenleiste zur Reiterleiste.
 
 **HTTPS** beim Hoster aktivieren, sonst werden Passwörter unverschlüsselt übertragen (die Admin-Zentrale warnt dann).
 

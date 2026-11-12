@@ -104,6 +104,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $can_manage = can('pages.manage');
 $edit = $can_manage && !empty($_GET['edit']);
+// Widgets haben ein eigenes Recht – wer nur das hat, bekommt einen reinen Widget-Bearbeiten-Modus (?widgets=1)
+$wg_edit = can('widgets.manage') && ($edit || !empty($_GET['widgets']));
 $user = current_user();
 $settings = site_settings();
 $show_nsfw = $settings['show_nsfw'];
@@ -227,9 +229,9 @@ $access_icon = ['public' => '', 'users' => '🔑', 'roles' => '🛡️'];
 
 // ---------- Widgets ----------
 $wg_avail = widgets_available();
-$wg_layout = array_values(array_filter(widgets_layout(), function ($w) use ($wg_avail, $edit) {
+$wg_layout = array_values(array_filter(widgets_layout(), function ($w) use ($wg_avail, $wg_edit) {
     $m = $wg_avail[$w['type']] ?? null;
-    return $m ? widget_allowed($m) : $edit;
+    return $m ? widget_allowed($m) : $wg_edit;
 }));
 $wg_assets = [];
 foreach ($wg_layout as $w) if (isset($wg_avail[$w['type']])) $wg_assets[$w['type']] = $wg_avail[$w['type']];
@@ -248,7 +250,8 @@ foreach ($wg_layout as $w) if (isset($wg_avail[$w['type']])) $wg_assets[$w['type
     <?php foreach ($wg_assets as $t => $m): if ($m['has_css']): ?><link rel="stylesheet" href="widgets/<?php echo e($t); ?>/widget.css?v=<?php echo (int)$m['mtime']; ?>">
     <?php endif; endforeach; ?>
 </head>
-<body class="<?php echo $edit ? 'editing' : ''; ?>">
+<body class="<?php echo $edit || $wg_edit ? 'editing' : ''; ?>">
+<?php site_banners(); ?>
 <div class="wrapper idx">
     <div class="telemetry-bar">
         <div class="telemetry-item">STATUS: <span><?php echo $settings['maintenance'] ? 'WARTUNG' : 'ONLINE // SECURE'; ?></span></div>
@@ -287,7 +290,8 @@ foreach ($wg_layout as $w) if (isset($wg_avail[$w['type']])) $wg_assets[$w['type
                 </form>
             <?php endif; ?>
             <span class="ub-actions">
-                <?php if ($can_manage): ?><a href="index.php<?php echo $edit ? '' : '?edit=1'; ?>" class="ub-btn <?php echo $edit ? 'on' : ''; ?>" title="Index bearbeiten (Taste E)"><?php echo $edit ? '✓ Fertig' : '✎ Bearbeiten'; ?></a><?php endif; ?>
+                <?php if ($can_manage): ?><a href="index.php<?php echo $edit ? '' : '?edit=1'; ?>" class="ub-btn <?php echo $edit ? 'on' : ''; ?>" title="Index bearbeiten (Taste E)"><?php echo $edit ? '✓ Fertig' : '✎ Bearbeiten'; ?></a>
+                <?php elseif (can('widgets.manage')): ?><a href="index.php<?php echo $wg_edit ? '' : '?widgets=1'; ?>" class="ub-btn <?php echo $wg_edit ? 'on' : ''; ?>" title="Widgets anordnen"><?php echo $wg_edit ? '✓ Fertig' : '🧩 Widgets'; ?></a><?php endif; ?>
                 <?php if (can('admin.access')): ?><a href="admin.php" class="ub-btn" title="Admin-Zentrale">⚙</a><?php endif; ?>
                 <form method="POST" action="admin.php" style="margin: 0;"><input type="hidden" name="action" value="logout"><button type="submit" class="ub-btn danger" title="Abmelden">⏻</button></form>
             </span>
@@ -333,17 +337,17 @@ foreach ($wg_layout as $w) if (isset($wg_avail[$w['type']])) $wg_assets[$w['type
         </div>
     <?php endif; ?>
 
-    <?php if ($wg_layout || $edit): ?>
+    <?php if ($wg_layout || $wg_edit): ?>
         <section class="wg-area" id="wgArea">
             <div class="wg-area-head">
                 <h2>🧩 Widgets</h2>
                 <span>
-                    <?php if ($edit): ?><button type="button" class="btn btn-sm btn-gold" id="wgAdd">＋ Widget</button>
+                    <?php if ($wg_edit): ?><button type="button" class="btn btn-sm btn-gold" id="wgAdd">＋ Widget</button>
                     <?php else: ?><button type="button" class="wg-link" id="wgToggle">▾ ausblenden</button><?php endif; ?>
                 </span>
             </div>
             <div class="wg-grid" id="wgGrid">
-                <?php foreach ($wg_layout as $w) echo widget_card($w, $edit); ?>
+                <?php foreach ($wg_layout as $w) echo widget_card($w, $wg_edit); ?>
                 <?php if (!$wg_layout): ?><div class="wg-empty-grid">Noch keine Widgets – „＋ Widget“ klicken.</div><?php endif; ?>
             </div>
         </section>
@@ -419,6 +423,12 @@ foreach ($wg_layout as $w) if (isset($wg_avail[$w['type']])) $wg_assets[$w['type
     </section>
 </div>
 
+<?php if ($wg_edit): ?>
+<!-- Widgets -->
+<div class="modal-overlay" id="wgModal" role="dialog" aria-modal="true">
+    <div class="modal-box"><button type="button" class="modal-close" data-close aria-label="Schließen">&times;</button><div id="wgModalBody"></div></div>
+</div>
+<?php endif; ?>
 <?php if ($edit): ?>
 <!-- Seite anlegen / bearbeiten -->
 <div class="modal-overlay" id="pageModal" role="dialog" aria-modal="true">
@@ -468,10 +478,6 @@ foreach ($wg_layout as $w) if (isset($wg_avail[$w['type']])) $wg_assets[$w['type
     </form>
 </div>
 
-<!-- Widgets -->
-<div class="modal-overlay" id="wgModal" role="dialog" aria-modal="true">
-    <div class="modal-box"><button type="button" class="modal-close" data-close aria-label="Schließen">&times;</button><div id="wgModalBody"></div></div>
-</div>
 
 <!-- Kategorie -->
 <div class="modal-overlay" id="catModal" role="dialog" aria-modal="true">
@@ -488,7 +494,7 @@ foreach ($wg_layout as $w) if (isset($wg_avail[$w['type']])) $wg_assets[$w['type
 </div>
 <?php endif; ?>
 
-<script>window.IDX = { edit: <?php echo $edit ? 'true' : 'false'; ?>, canManage: <?php echo $can_manage ? 'true' : 'false'; ?> };</script>
+<script>window.IDX = { edit: <?php echo $edit ? 'true' : 'false'; ?>, wgEdit: <?php echo $wg_edit ? 'true' : 'false'; ?>, canManage: <?php echo $can_manage ? 'true' : 'false'; ?> };</script>
 <script src="assets/index.js"></script>
 <script src="assets/widgets.js"></script>
 <?php foreach ($wg_assets as $t => $m): if ($m['has_js']): ?><script src="widgets/<?php echo e($t); ?>/widget.js?v=<?php echo (int)$m['mtime']; ?>"></script>
