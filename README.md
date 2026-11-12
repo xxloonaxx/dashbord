@@ -14,6 +14,7 @@ PHP-Dashboard: Daten als JSON-Dateien neben den Seiten, Benutzer/Seiten/Kalender
 | `backup.php` | Lädt alle persönlichen Daten (Budget, Con, Countdowns, Archive, Datenbanken, hochgeladene Bilder) als ZIP herunter |
 | `nexus.php` | **VRC Nexus**: VRChat-Freunde, Verlauf, Statistik, Welten & Instanzen, Avatare, Moderation, Gruppen, Direkt-Zugriff – Login mit 2FA (`vrcx.php` leitet weiter) |
 | `discord.php` | **Discord-Zentrale**: Server über den eigenen Bot – Slash-Befehle, Rollen-Knöpfe, Umfragen, Begrüßung, Auto-Posts, Nachrichten & Embeds, Mitglieder, Rollen, Kanäle, Emojis, AutoMod, Events, geplante Nachrichten |
+| `furhub.php` | **Furry Hub**: Boop-Zähler, Fursona-Baukasten mit gezeichnetem Avatar, Community-Sonas, virtueller Begleiter, Con-Bingo, Tier-Quiz, Soundboard, OwO-Übersetzer, Glossar, Pfotenabdrücke, Erfolge & Easter Eggs |
 | `nsfw.php` | **NSFW-Galerie** (18+): Bilder-APIs e621/e926, Danbooru, Gelbooru, Rule34, Yande.re, Konachan, waifu.im, waifu.pics – Suche, Favoriten, Posten in NSFW-Kanäle |
 | `page.php` | Eigene Seiten aus Vorlagen (Logik in `inc/tpl/*.php`) |
 | `inc/format.php`, `assets/editor.js`, `preview.php` | Gemeinsame Formatierung (Markdown + BBCode + HTML), Werkzeugleiste & Live-Vorschau |
@@ -282,6 +283,32 @@ eintragen und „Adresse selbst eingetragen“ klicken. Bots, die vor diesem Upd
   Code kopieren; Sticker ansehen/löschen; Limit je Boost-Stufe.
 - **Moderation → AutoMod**: Regeln für bestimmte Wörter (mit `*`-Platzhaltern), Discords vorgefertigte Listen, zu viele Erwähnungen
   oder Spam – blockieren, im Kanal melden und Timeout; pausieren und löschen.
+
+## Furry Hub (`furhub.php`)
+
+Spielwiese für die Community – öffentlich, vieles geht auch ohne Konto:
+
+- **👃 Boop**: Eine Nase zum Boopen (Klick oder Leertaste) mit Combo-Zähler, Gesichtsreaktion und Effekten.
+  Dazu gibt es Awoo, Headpat und Umarmen. Alle Klicks laufen in **gemeinsame Zähler** für alle; angemeldete Benutzer
+  sehen ihre eigenen Zahlen (heute/gesamt) und landen in der **Bestenliste**. Ein Schutz pro Adresse bremst Skripte.
+- **🎨 Fursona-Baukasten**: Avatar wird live als SVG gezeichnet – 19 Tierarten als Vorlage (Fuchs, Wolf, Husky, Hund,
+  Katze, Löwe, Tiger, Hase, Roter Panda, Waschbär, Otter, Hirsch, Drache, Fledermaus, Hyäne, Vogel, Protogen, Maus,
+  Stinktier), 9 Farben, Ohren, Schnauze, Zeichnung, Extras (Hörner, Geweih, Mähne, Visier …), Accessoires, Augen,
+  5 Gesichtsausdrücke. Namens- und Persönlichkeits-Würfel, Download als **PNG (1024 px)** oder **SVG**.
+  Angemeldet lässt sich die Sona speichern und erscheint in der Community.
+- **🐾 Community**: Alle gespeicherten Sonas mit Suche, Sortierung, Likes, Ref-Link und „Boopen“; „Sona des Tages“ auf der Startseite.
+- **🐣 Begleiter**: Virtuelles Haustier im Look deiner Fursona – füttern, spielen, bürsten, kraulen, schlafen lassen.
+  Werte sinken auch, während du weg bist; Stufen & Tagebuch. Lebt im Browser.
+- **🎲 Con-Bingo**: Zufällige 5×5-Karte mit Con-Momenten, Bingo-Erkennung mit Konfetti, druckbar.
+- **❓ Quiz** „Welches Tier steckt in dir?“ – Ergebnis direkt als Vorlage im Baukasten übernehmen.
+- **🔊 Soundboard**: 12 Tierlaute (Awoo, Wuff, Miau, Schnurren, Mrrp, Fuchs-Yip …), komplett im Browser synthetisiert, Tasten 1–0.
+- **💬 OwO-Übersetzer**: UwU, Hundisch, Katzisch, Drachisch, Otterisch, Pfötchen – mit Kopieren.
+- **📖 Glossar** mit 30 Fandom-Begriffen, **✍️ Pfotenabdrücke** (Gästebuch für Angemeldete, Moderation mit
+  dem Recht `furhub.moderate`), Tierfakt und Zeichen-Idee des Tages, nächste Countdowns, Zufallslink aus dem Furry-Link-Hub.
+- **🏆 17 Erfolge** und Easter Eggs (Konami-Code, „awoo“ tippen, Fuchs-Logo …), optional eine 🐾-Spur am Mauszeiger.
+- Widget **„Boop!“** für die Startseite (unter „＋ Widget“).
+
+Daten: `data/furhub_<zufall>.sqlite` (Zähler, Sonas, Likes, Pfotenabdrücke).
 
 ## NSFW-Galerie (`nsfw.php`, 18+)
 

@@ -27,6 +27,7 @@ const PAGE_DEFAULTS = [
     '2VRchat.php'          => ['VRChat Creator Hub', '🥽', 'Assets, Prefabs, Shader & Tutorials für VRChat-Creator', 'Link-Hubs', 'public'],
     '3hueter-Zentrale.php' => ['Hüter-Zentrale', '🛡️', 'Destiny 2: Builds, Datenbanken, God-Rolls & Guides', 'Link-Hubs', 'public'],
     'furry.php'            => ['Furry Community Hub', '🐾', 'Cons, Stammtische, Shops & Kunst aus der Community', 'Link-Hubs', 'public'],
+    'furhub.php'           => ['Furry Hub', '🦊', 'Boop-Zähler, Fursona-Baukasten, Begleiter, Con-Bingo, Quiz, Soundboard, OwO-Übersetzer & mehr', 'Community', 'public'],
     'calendar.php'         => ['Kalender', '📅', 'Termine, Kalender-Abos, Feiertage & Erinnerungen', 'Planung', 'public'],
     'countdown.php'        => ['Countdowns', '⏳', 'Countdowns bis Cons, Urlaub & Geburtstagen', 'Planung', 'public'],
     'feed.php'             => ['Live-Feed', '📡', 'RSS-Reader: Neuigkeiten aus Tech, Gaming & Furry-Fandom – eigene Quellen, gemerkt & gelesen', 'Planung', 'public'],

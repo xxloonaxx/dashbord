@@ -41,6 +41,7 @@ const PERMISSIONS = [
     'con.access'             => ['Con-Rechner', 'Finanzen'],
     'vrcx.access'            => ['VRC Nexus: eigenes VRChat-Konto verbinden (Freunde, Welten, Avatare, Gruppen)', 'Community'],
     'discord.manage'         => ['Discord-Zentrale: Bot einrichten, Nachrichten senden, Mitglieder moderieren', 'Community'],
+    'furhub.moderate'        => ['Furry Hub: Pfotenabdrücke & Community-Sonas moderieren', 'Community'],
 ];
 
 function site_db_file(): string {
