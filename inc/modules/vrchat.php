@@ -10,9 +10,9 @@
  *  - Jeder Benutzer des Dashboards verbindet sein eigenes VRChat-Konto.
  *  - Die VRChat-API ist inoffiziell: sparsam abfragen (Freunde höchstens alle 45 s), sonst drohen Sperren.
  */
-require_once __DIR__ . '/auth.php';
-require_once __DIR__ . '/format.php';
-require_once __DIR__ . '/crypto.php';
+require_once __DIR__ . '/../core/auth.php';
+require_once __DIR__ . '/../core/format.php';
+require_once __DIR__ . '/../core/crypto.php';
 
 const VRC_API_DEFAULT = 'https://api.vrchat.cloud/api/1';
 const VRC_SYNC_MIN = 45;           // Sekunden zwischen zwei Freundes-Abgleichen
@@ -30,7 +30,7 @@ function vrc_db(): PDO {
     static $db = null;
     if ($db) return $db;
     site_db();   // legt data/ samt .htaccess an
-    $dir = dirname(__DIR__) . '/data';
+    $dir = DATA_DIR . '/db';
     $file = (glob($dir . '/vrcx_*.sqlite') ?: [])[0] ?? $dir . '/vrcx_' . bin2hex(random_bytes(12)) . '.sqlite';
     $db = new PDO('sqlite:' . $file, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
     $db->exec('PRAGMA journal_mode = WAL');

@@ -1,6 +1,6 @@
 <?php
 // Eine einzelne Quelle (oder Kategorie) aus dem RSS-Reader – mit Vorschaubildern
-require_once dirname(__DIR__, 2) . '/inc/feed.php';
+require_once dirname(__DIR__, 2) . '/inc/modules/feed.php';
 $opts = ['' => '– alle Quellen –'];
 try {
     foreach (feed_db()->query('SELECT id, title, category FROM sources ORDER BY category, title')->fetchAll() as $s) $opts['s' . $s['id']] = $s['category'] . ' › ' . $s['title'];

@@ -1,6 +1,6 @@
 <?php
 // VRChat-Freunde, die gerade online sind (aus dem Zwischenspeicher von VRC Nexus – keine eigene Abfrage bei VRChat)
-require_once dirname(__DIR__, 2) . '/inc/vrchat.php';
+require_once dirname(__DIR__, 2) . '/inc/modules/vrchat.php';
 return [
     'name' => 'VRChat-Freunde',
     'icon' => '🥽',

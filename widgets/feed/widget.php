@@ -14,7 +14,7 @@ return [
         'desc' => ['label' => 'Kurzbeschreibung zeigen', 'type' => 'checkbox', 'default' => false],
     ],
     'render' => function (WidgetCtx $w): string {
-        $file = dirname(__DIR__, 2) . '/feed_cache.json';
+        $file = DATA_DIR . '/cache/feed_cache.json';
         $items = load_json($file, []);
         $f = mb_strtolower(trim((string)$w->cfg['filter']));
         if ($f !== '') $items = array_values(array_filter($items, function ($i) use ($f) { return mb_strpos(mb_strtolower(($i['title'] ?? '') . ' ' . ($i['source'] ?? '') . ' ' . ($i['category'] ?? '')), $f) !== false; }));

@@ -4,10 +4,10 @@
  * automatischer Abrechnung „wer schuldet wem“, Rechner (Zimmer, Auto, Sparplan …), Zeitplan, Packliste,
  * Wunschliste für den Dealers Den, Notizen, Vergleich aller Cons sowie Countdown- und Kalender-Anbindung.
  */
-require_once __DIR__ . '/inc/common.php';
-require_once __DIR__ . '/inc/auth.php';
-require_once __DIR__ . '/inc/con.php';
-require_once __DIR__ . '/inc/templates.php';
+require_once __DIR__ . '/inc/core/common.php';
+require_once __DIR__ . '/inc/core/auth.php';
+require_once __DIR__ . '/inc/modules/con.php';
+require_once __DIR__ . '/inc/core/templates.php';
 
 require_permission('con.access');
 guard_post('con.access');
@@ -306,7 +306,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'countdown':
                 if (!can('countdown.edit')) throw new InvalidArgumentException('Dafür fehlt dir das Recht „Countdowns bearbeiten“.');
                 if (!$con['start']) throw new InvalidArgumentException('Bitte zuerst ein Startdatum eintragen.');
-                require_once __DIR__ . '/inc/countdown.php';
+                require_once __DIR__ . '/inc/modules/countdown.php';
                 $cd = load_countdowns();
                 $ev = ['id' => 'con_' . $con['id'], 'title' => $con['name'], 'date' => $con['start'] . 'T10:00', 'icon' => $con['icon'], 'repeat' => 'none',
                        'note' => trim($con['city'] . ($con['venue'] ? ' – ' . $con['venue'] : '')), 'link' => $con['website'], 'featured' => false, 'created' => date('Y-m-d\TH:i')];
@@ -320,7 +320,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'calendar':
                 if (!can('calendar.edit')) throw new InvalidArgumentException('Dafür fehlt dir das Recht „Kalender-Termine bearbeiten“.');
                 if (!$con['start']) throw new InvalidArgumentException('Bitte zuerst ein Startdatum eintragen.');
-                require_once __DIR__ . '/inc/calendar.php';
+                require_once __DIR__ . '/inc/modules/calendar.php';
                 $ev = cal_event_from_post(['title' => $con['icon'] . ' ' . $con['name'], 'all_day' => 1, 'start_date' => $con['start'], 'end_date' => $con['end'] ?: $con['start'],
                                            'location' => trim($con['venue'] . ', ' . $con['city'], ', '), 'url' => $con['website'], 'private' => 1,
                                            'description' => 'Aus dem Con-Rechner' . ($con['hotel'] ? "\nHotel: " . $con['hotel'] : '')]);
@@ -372,9 +372,9 @@ function con_donut(array $parts, float $total): string {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Con-Rechner – <?php echo e($con['name']); ?></title>
     <?php echo emoji_favicon($con['icon'] ?: '🎪'); ?>
-    <link rel="stylesheet" href="assets/hud.css">
-    <link rel="stylesheet" href="assets/page.css">
-    <link rel="stylesheet" href="assets/con.css">
+    <link rel="stylesheet" href="assets/css/hud.css">
+    <link rel="stylesheet" href="assets/css/page.css">
+    <link rel="stylesheet" href="assets/css/con.css">
 </head>
 <body>
 <?php auth_corner(); ?>
@@ -939,8 +939,8 @@ tpl_modal_open('wishModal', 'Wunsch', 'wish_save'); ?>
     <label class="field">Notiz</label><input type="text" name="note" maxlength="300" data-format="inline">
 <?php tpl_modal_close(); ?>
 
-<script src="assets/page.js"></script>
-<script src="assets/editor.js"></script>
-<script src="assets/con.js"></script>
+<script src="assets/js/page.js"></script>
+<script src="assets/js/editor.js"></script>
+<script src="assets/js/con.js"></script>
 </body>
 </html>

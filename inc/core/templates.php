@@ -14,7 +14,7 @@ const TPL_COLORS = ['cyan' => '#38d5e6', 'gold' => '#f3c262', 'green' => '#50fa7
                     'pink' => '#ff79c6', 'orange' => '#ffb86c', 'grey' => '#8b98ad'];
 const TPL_COLOR_NAMES = ['cyan' => 'Cyan', 'gold' => 'Gold', 'green' => 'Grün', 'purple' => 'Lila', 'red' => 'Rot', 'pink' => 'Pink', 'orange' => 'Orange', 'grey' => 'Grau'];
 
-foreach (glob(__DIR__ . '/tpl/*.php') ?: [] as $tpl_file) require_once $tpl_file;
+foreach (glob(__DIR__ . '/../tpl/*.php') ?: [] as $tpl_file) require_once $tpl_file;
 
 function tpl_call(string $tpl, string $fn, ...$args) {
     $f = 'tpl_' . $tpl . '_' . $fn;

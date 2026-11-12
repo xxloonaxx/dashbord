@@ -1,6 +1,6 @@
 <?php
-require_once __DIR__ . '/inc/linkcheck.php';
-require_once __DIR__ . '/inc/auth.php';
+require_once __DIR__ . '/inc/modules/linkcheck.php';
+require_once __DIR__ . '/inc/core/auth.php';
 
 auth_require_setup();
 guard_post('linkcheck.run');   // Prüfung starten nur mit Recht
@@ -70,7 +70,7 @@ $problems = $counts['dead'] + $counts['broken'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LINK-CHECK NODE</title>
     <?php echo emoji_favicon('🩺'); ?>
-    <link rel="stylesheet" href="assets/hud.css">
+    <link rel="stylesheet" href="assets/css/hud.css">
     <style>
         .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
         .stat { background: var(--panel-bg); border: 1px solid var(--border-color); padding: 12px; clip-path: var(--cut-sm); cursor: pointer; text-align: left; font-family: inherit; color: inherit; }

@@ -4,16 +4,16 @@
  * Wird von linkcheck.php (Weboberfläche) genutzt; die Ergebnisse landen in linkcheck_cache.json
  * und werden von den Hub-Seiten als kleine Warnhinweise angezeigt.
  */
-require_once __DIR__ . '/common.php';
+require_once __DIR__ . '/../core/common.php';
 
-const LINKCHECK_CACHE = __DIR__ . '/../linkcheck_cache.json';
+const LINKCHECK_CACHE = DATA_DIR . '/cache/linkcheck_cache.json';
 
 /** Diese Zeile kennzeichnet eine Hub-Datei (steht direkt nach dem \$categories-Array). */
 const HUB_MARKER = "if (defined('LINKS_ONLY')) return \$categories;";
 
 /** Alle Hub-Dateien finden (erkennbar an der LINKS_ONLY-Zeile). */
 function find_hub_files(): array {
-    $dir = dirname(__DIR__);
+    $dir = APP_ROOT;
     $hubs = [];
     foreach (scandir($dir) as $file) {
         if (substr($file, -4) !== '.php' || $file[0] === '.') continue;
@@ -27,7 +27,7 @@ function find_hub_files(): array {
 /** Alle Links aller Hubs einsammeln: [url => ['title', 'hub', 'category']] */
 function collect_hub_links(): array {
     if (!defined('LINKS_ONLY')) define('LINKS_ONLY', true);
-    $dir = dirname(__DIR__);
+    $dir = APP_ROOT;
     $links = [];
     foreach (find_hub_files() as $file) {
         $cats = (function () use ($dir, $file) { return include "$dir/$file"; })();
@@ -44,7 +44,7 @@ function collect_hub_links(): array {
     }
     // Eigene Seiten mit der Vorlage "Link-Hub"
     try {
-        require_once __DIR__ . '/pages.php';
+        require_once __DIR__ . '/../core/pages.php';
         require_once __DIR__ . '/hub.php';
         foreach (site_db()->query("SELECT slug, title FROM pages WHERE kind = 'custom' AND template = 'links'") as $p) {
             foreach (hub_load('page_' . $p['slug'], []) as $category => $items) {
@@ -139,7 +139,7 @@ function moved_to_other_host(string $url, string $final): bool {
     return $final !== '' && $base($url) !== $base($final);
 }
 
-const LINKCHECK_JOB = __DIR__ . '/../linkcheck_job.json';
+const LINKCHECK_JOB = DATA_DIR . '/cache/linkcheck_job.json';
 const LINKCHECK_BATCH = 12;        // Links pro Anfrage (hält jede Anfrage deutlich unter üblichen 30-Sekunden-Limits)
 const LINKCHECK_RETRY_BATCH = 4;   // zweiter Versuch: weniger auf einmal, mehr Geduld
 

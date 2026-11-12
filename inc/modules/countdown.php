@@ -2,9 +2,9 @@
 /**
  * Countdown-Daten (gemeinsam genutzt von countdown.php, feed.php und index.php).
  */
-require_once __DIR__ . '/common.php';
+require_once __DIR__ . '/../core/common.php';
 
-const COUNTDOWN_FILE = __DIR__ . '/../countdown_data.json';
+const COUNTDOWN_FILE = DATA_DIR . '/json/countdown_data.json';
 
 function default_countdowns(): array {
     $now = date('Y-m-d\TH:i');

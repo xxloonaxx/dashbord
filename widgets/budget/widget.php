@@ -1,6 +1,6 @@
 <?php
 // Budget auf einen Blick (nur mit Recht „Budget & Bank-Sync“)
-require_once dirname(__DIR__, 2) . '/inc/budget.php';
+require_once dirname(__DIR__, 2) . '/inc/modules/budget.php';
 return [
     'name' => 'Budget',
     'icon' => '💶',
@@ -14,7 +14,7 @@ return [
         'cats' => ['label' => 'Größte Kategorien', 'type' => 'number', 'default' => 3, 'min' => 0, 'max' => 8],
     ],
     'render' => function (WidgetCtx $w): string {
-        $b = load_json(dirname(__DIR__, 2) . '/budget_data.json', null);
+        $b = load_json(DATA_DIR . '/json/budget_data.json', null);
         if (!$b) return '<div class="wg-empty">Noch kein Budget angelegt. <a href="budget.php">Öffnen →</a></div>';
         $s = budget_summary($b['entries'] ?? []);
         $bs = budget_settings();

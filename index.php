@@ -3,14 +3,14 @@
  * Startseite: alle Seiten nach Kategorien, Suche (Web + alle Links aller Hubs),
  * Bearbeiten-Modus (Seiten anlegen aus Vorlagen, sortieren, Kategorien, Zugriffsschutz).
  */
-require_once __DIR__ . '/inc/common.php';
-require_once __DIR__ . '/inc/pages.php';
-require_once __DIR__ . '/inc/countdown.php';
-require_once __DIR__ . '/inc/linkcheck.php';
-require_once __DIR__ . '/inc/calendar.php';
-require_once __DIR__ . '/inc/hub.php';
-require_once __DIR__ . '/inc/templates.php';
-require_once __DIR__ . '/inc/widgets.php';
+require_once __DIR__ . '/inc/core/common.php';
+require_once __DIR__ . '/inc/core/pages.php';
+require_once __DIR__ . '/inc/modules/countdown.php';
+require_once __DIR__ . '/inc/modules/linkcheck.php';
+require_once __DIR__ . '/inc/modules/calendar.php';
+require_once __DIR__ . '/inc/modules/hub.php';
+require_once __DIR__ . '/inc/core/templates.php';
+require_once __DIR__ . '/inc/core/widgets.php';
 
 auth_require_setup();
 pages_sync();
@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $p = page_get_by_id((int)($_POST['id'] ?? 0));
                 if ($p && $p['kind'] === 'custom') {
                     $db->prepare('DELETE FROM pages WHERE id = ?')->execute([$p['id']]);
-                    if ($p['template'] === 'links') @rename(hub_data_file('page_' . $p['slug']), __DIR__ . '/archive/' . basename(hub_data_file('page_' . $p['slug']), '.json') . '_geloescht_' . date('Ymd_His') . '.json');
+                    if ($p['template'] === 'links') @rename(hub_data_file('page_' . $p['slug']), data_path('archive/') . basename(hub_data_file('page_' . $p['slug']), '.json') . '_geloescht_' . date('Ymd_His') . '.json');
                     audit('Seite gelöscht', $p['title'], 'warn');
                     $msg = 'Seite „' . $p['title'] . '“ gelöscht.';
                 }
@@ -118,20 +118,20 @@ function live_info(array $p): string {
         switch ($p['slug']) {
             case 'con.php':
                 if (!can('con.access')) return '';
-                require_once __DIR__ . '/inc/con.php';
+                require_once __DIR__ . '/inc/modules/con.php';
                 con_load();   // übernimmt ggf. das alte Format
                 return con_live_info();
             case 'budget.php':
-                $b = load_json(__DIR__ . '/budget_data.json', null);
+                $b = load_json(DATA_DIR . '/json/budget_data.json', null);
                 if (!$b) return '';
-                require_once __DIR__ . '/inc/budget.php';
+                require_once __DIR__ . '/inc/modules/budget.php';
                 $sm = budget_summary($b['entries'] ?? []);
                 $over = 0;
                 foreach (budget_settings()['limits'] as $c => $l) if (($sm['cats'][$c] ?? 0) > $l) $over++;
                 return ($b['month_name'] ?? '') . ' · Netto ' . eur($sm['net']) . ' €' . ($sm['open'] > 0 ? ' · ' . eur($sm['open']) . ' € offen' : '') . ($over ? ' · ⚠ ' . $over . ' Limit' . ($over > 1 ? 's' : '') . ' überschritten' : '');
             case 'feed.php':
-                $items = load_json(__DIR__ . '/feed_cache.json', []);
-                return $items ? count($items) . ' Meldungen · Stand ' . date('H:i', filemtime(__DIR__ . '/feed_cache.json')) . ' Uhr' : '';
+                $items = load_json(DATA_DIR . '/cache/feed_cache.json', []);
+                return $items ? count($items) . ' Meldungen · Stand ' . date('H:i', filemtime(DATA_DIR . '/cache/feed_cache.json')) . ' Uhr' : '';
             case 'countdown.php':
                 [$up] = sorted_countdowns(load_countdowns()['events']);
                 return $up ? $up[0]['icon'] . ' ' . $up[0]['title'] . ' ' . relative_days($up[0]['ts']) : '';
@@ -146,13 +146,13 @@ function live_info(array $p): string {
                 return is_logged_in() ? 'Angemeldet als ' . user_label() : '';
             case 'discord.php':
                 if (!can('discord.manage')) return '';
-                require_once __DIR__ . '/inc/discord.php';
+                require_once __DIR__ . '/inc/modules/discord.php';
                 if (!discord_configured()) return 'Bot noch nicht eingerichtet';
                 $n = count(discord_scheduled());
                 return '🤖 Bot verbunden' . ($n ? ' · ' . $n . ' geplante Nachricht(en)' : '');
             case 'nexus.php':
                 if (!is_logged_in() || !can('vrcx.access')) return '';
-                require_once __DIR__ . '/inc/vrchat.php';
+                require_once __DIR__ . '/inc/modules/vrchat.php';
                 return vrc_live_info((int)current_user()['id']);
         }
         if ($p['kind'] === 'custom') {
@@ -243,10 +243,10 @@ foreach ($wg_layout as $w) if (isset($wg_avail[$w['type']])) $wg_assets[$w['type
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo e($settings['site_title']); ?> // GHOST NODE</title>
     <?php echo emoji_favicon('🛰️'); ?>
-    <link rel="stylesheet" href="assets/hud.css">
-    <link rel="stylesheet" href="assets/index.css">
-    <link rel="stylesheet" href="assets/format.css">
-    <link rel="stylesheet" href="assets/widgets.css">
+    <link rel="stylesheet" href="assets/css/hud.css">
+    <link rel="stylesheet" href="assets/css/index.css">
+    <link rel="stylesheet" href="assets/css/format.css">
+    <link rel="stylesheet" href="assets/css/widgets.css">
     <?php foreach ($wg_assets as $t => $m): if ($m['has_css']): ?><link rel="stylesheet" href="widgets/<?php echo e($t); ?>/widget.css?v=<?php echo (int)$m['mtime']; ?>">
     <?php endif; endforeach; ?>
 </head>
@@ -278,7 +278,7 @@ foreach ($wg_layout as $w) if (isset($wg_avail[$w['type']])) $wg_assets[$w['type
     <div class="user-bar <?php echo $user ? 'in' : ''; ?>">
         <?php if ($user): ?>
             <a href="admin.php" class="ub-user" title="<?php echo e($user['role_name']); ?>">
-                <?php require_once __DIR__ . '/inc/furhub.php'; $pfp = fh_avatar_img((int)$user['id'], 'ub-pfp'); ?>
+                <?php require_once __DIR__ . '/inc/modules/furhub.php'; $pfp = fh_avatar_img((int)$user['id'], 'ub-pfp'); ?>
                 <span class="ub-avatar<?php echo $pfp ? ' has-pfp' : ''; ?>" style="--rc: <?php echo e($user['role_color']); ?>;"><?php echo $pfp ?: e(mb_strtoupper(mb_substr(user_label($user), 0, 1))); ?></span>
                 <span><?php echo e(user_label($user)); ?><small><?php echo e($user['role_name']); ?></small></span>
             </a>
@@ -496,12 +496,12 @@ foreach ($wg_layout as $w) if (isset($wg_avail[$w['type']])) $wg_assets[$w['type
 <?php endif; ?>
 
 <script>window.IDX = { edit: <?php echo $edit ? 'true' : 'false'; ?>, wgEdit: <?php echo $wg_edit ? 'true' : 'false'; ?>, canManage: <?php echo $can_manage ? 'true' : 'false'; ?> };</script>
-<script src="assets/index.js"></script>
-<script src="assets/widgets.js"></script>
+<script src="assets/js/index.js"></script>
+<script src="assets/js/widgets.js"></script>
 <?php foreach ($wg_assets as $t => $m): if ($m['has_js']): ?><script src="widgets/<?php echo e($t); ?>/widget.js?v=<?php echo (int)$m['mtime']; ?>"></script>
 <?php endif; endforeach; ?>
-<script src="assets/gender.js"></script>
-<?php if (can('pages.manage') || can('pages.edit')): ?><script src="assets/editor.js"></script><?php endif; ?>
-<script src="assets/reminders.js" data-endpoint="calendar.php?reminders=1"></script>
+<script src="assets/js/gender.js"></script>
+<?php if (can('pages.manage') || can('pages.edit')): ?><script src="assets/js/editor.js"></script><?php endif; ?>
+<script src="assets/js/reminders.js" data-endpoint="calendar.php?reminders=1"></script>
 </body>
 </html>

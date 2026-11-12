@@ -15,9 +15,9 @@
  *
  * Alle Zugangsdaten liegen in .openbanking.php (geschützter Speicher, siehe inc/auth.php).
  */
-require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/../core/auth.php';
 
-const OB_FILE = __DIR__ . '/../.openbanking.php';
+const OB_FILE = DATA_DIR . '/keys/openbanking.php';
 const OB_AUTO_INTERVAL = 21600;   // automatischer Abgleich höchstens alle 6 Std. (Banken erlauben ohne Nutzer ca. 4 Abrufe/Tag)
 
 function ob_api_origin(): string {

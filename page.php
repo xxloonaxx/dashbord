@@ -4,10 +4,10 @@
  * Die Vorlagen selbst liegen in inc/tpl/*.php (Notizen, Checkliste, Kanban, Tabelle, Tagebuch, Galerie, Zähler, Einbettungen).
  * „links“ nutzt den Editor der mitgelieferten Link-Hubs, „external“ leitet weiter.
  */
-require_once __DIR__ . '/inc/pages.php';
-require_once __DIR__ . '/inc/hub.php';
-require_once __DIR__ . '/inc/linkcheck.php';
-require_once __DIR__ . '/inc/templates.php';
+require_once __DIR__ . '/inc/core/pages.php';
+require_once __DIR__ . '/inc/modules/hub.php';
+require_once __DIR__ . '/inc/modules/linkcheck.php';
+require_once __DIR__ . '/inc/core/templates.php';
 
 auth_require_setup();
 
@@ -67,8 +67,8 @@ $wide = in_array($tpl, ['kanban', 'table', 'gallery', 'notes'], true);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo e($page['title']); ?></title>
     <?php echo emoji_favicon($icon); ?>
-    <link rel="stylesheet" href="assets/hud.css">
-    <link rel="stylesheet" href="assets/page.css">
+    <link rel="stylesheet" href="assets/css/hud.css">
+    <link rel="stylesheet" href="assets/css/page.css">
 </head>
 <body class="tpl-<?php echo e($tpl); ?>">
 <?php if ($tpl !== 'links') auth_corner(); ?>
@@ -124,14 +124,14 @@ $wide = in_array($tpl, ['kanban', 'table', 'gallery', 'notes'], true);
         <?php endforeach; ?>
     </div>
     <?php hub_dialogs($categories); ?>
-    <script src="assets/hub-search.js"></script>
+    <script src="assets/js/hub-search.js"></script>
 <?php else:
     tpl_call($tpl, 'render', $content, $page, $can_edit);
 endif; ?>
 </div>
 <?php if ($tpl !== 'links'): ?>
-    <script src="assets/page.js"></script>
-    <?php if ($can_edit): ?><script src="assets/editor.js"></script><?php endif; ?>
+    <script src="assets/js/page.js"></script>
+    <?php if ($can_edit): ?><script src="assets/js/editor.js"></script><?php endif; ?>
 <?php endif; ?>
 </body>
 </html>

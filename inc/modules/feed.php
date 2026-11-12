@@ -5,10 +5,10 @@
  * und kennt Abkürzungen für YouTube, Reddit, Bluesky, Mastodon und GitHub.
  * Schreibt zusätzlich feed_cache.json (neueste Meldungen) für Startseite und Widgets.
  */
-require_once __DIR__ . '/common.php';
-require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/../core/common.php';
+require_once __DIR__ . '/../core/auth.php';
 
-const FEED_CACHE_FILE = __DIR__ . '/../feed_cache.json';
+const FEED_CACHE_FILE = DATA_DIR . '/cache/feed_cache.json';
 const FEED_REFRESH = 900;          // Quellen höchstens alle 15 Min. neu laden
 const FEED_KEEP_DAYS = 90;         // ältere, nicht gemerkte Artikel werden aufgeräumt
 const FEED_UA = 'Mozilla/5.0 (compatible; GhostNodeReader/2.0; +RSS)';
@@ -27,7 +27,7 @@ const FEED_DEFAULT_SOURCES = [
 function feed_db(): PDO {
     static $db = null;
     if ($db) return $db;
-    $dir = dirname(__DIR__) . '/data';
+    $dir = DATA_DIR . '/db';
     if (!is_dir($dir)) mkdir($dir, 0755, true);
     if (!is_file($dir . '/.htaccess')) file_put_contents($dir . '/.htaccess', "Require all denied\n");
     $found = glob($dir . '/feed_*.sqlite') ?: [];
@@ -49,7 +49,7 @@ function feed_db(): PDO {
                    read INTEGER NOT NULL DEFAULT 0, starred INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(user_id, item_id));
                    PRAGMA user_version = 1;");
         // Übernahme der alten Quellen (feed_sources.json) bzw. Standardquellen
-        $old = load_json(dirname(__DIR__) . '/feed_sources.json', null);
+        $old = load_json(DATA_DIR . '/json/feed_sources.json', null);
         $ins = $db->prepare('INSERT OR IGNORE INTO sources (title, url, category, icon, sort, created) VALUES (?, ?, ?, ?, ?, ?)');
         $n = 0;
         if (is_array($old)) { foreach ($old as $cat => $list) foreach ((array)$list as $s) if (!empty($s['url'])) $ins->execute([$s['name'] ?? $s['url'], $s['url'], (string)$cat, '', $n++, time()]); }

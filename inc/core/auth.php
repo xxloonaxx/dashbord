@@ -8,7 +8,7 @@
  * - Seiten haben eine Zugriffsstufe (öffentlich / angemeldet / bestimmte Rollen), die automatisch geprüft wird.
  * - Wartungsmodus: nur Benutzer mit Admin-Zugang sehen die Seite.
  */
-require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/site.php';
 require_once __DIR__ . '/security.php';
 
 const AUTH_MAX_FAILS = 5;          // Fehlversuche pro IP …
@@ -27,6 +27,7 @@ function secure_load(string $path, $default) {
 
 function secure_save(string $path, array $data): bool {
     $content = "<?php http_response_code(404); exit; ?>\n" . json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if (!is_dir(dirname($path))) @mkdir(dirname($path), 0755, true);
     $tmp = $path . '.tmp';
     if (file_put_contents($tmp, $content, LOCK_EX) === false) return false;
     @chmod($tmp, 0600);
@@ -295,7 +296,7 @@ function render_notice_page(int $code, string $icon, string $title, string $text
     http_response_code($code);
     $next = urlencode(basename($_SERVER['SCRIPT_NAME'] ?? 'index.php') . (($_SERVER['QUERY_STRING'] ?? '') !== '' ? '?' . $_SERVER['QUERY_STRING'] : ''));
     echo '<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>' . e($title) . '</title>'
-       . emoji_favicon($icon) . '<link rel="stylesheet" href="assets/hud.css"><style>.notice-box{max-width:520px;margin:12vh auto 0;text-align:center;padding:40px 30px;background:var(--panel-bg);border:1px solid var(--border-color);clip-path:var(--cut-md)}'
+       . emoji_favicon($icon) . '<link rel="stylesheet" href="assets/css/hud.css"><style>.notice-box{max-width:520px;margin:12vh auto 0;text-align:center;padding:40px 30px;background:var(--panel-bg);border:1px solid var(--border-color);clip-path:var(--cut-md)}'
        . '.notice-box .big{font-size:3rem;margin-bottom:10px}.notice-box p{color:var(--text-muted);line-height:1.6}.notice-box .btn{margin:6px}</style></head><body><div class="wrapper"><div class="notice-box">'
        . '<div class="big">' . e($icon) . '</div><div class="hud-tag" style="justify-content:center">System // ' . $code . '</div><h1 style="font-size:1.6rem">' . e($title) . '</h1><p>' . nl2br(e($text)) . '</p>'
        . ($login_link ? '<a class="btn btn-gold" href="admin.php?next=' . $next . '">Anmelden</a>' : '') . '<a class="btn" href="index.php">Zur Startseite</a></div></div></body></html>';
@@ -412,7 +413,7 @@ function auth_corner(): void {
     site_banners(); ?>
     <div class="auth-corner">
         <?php if ($u): ?>
-            <?php require_once __DIR__ . '/furhub.php'; $pfp = fh_avatar_img((int)$u['id'], 'ac-pfp'); ?>
+            <?php require_once __DIR__ . '/../modules/furhub.php'; $pfp = fh_avatar_img((int)$u['id'], 'ac-pfp'); ?>
             <a href="admin.php" title="<?php echo e($u['role_name']); ?>"><?php echo $pfp ?: '<span class="ac-dot" style="background: ' . e($u['role_color']) . ';"></span>'; ?><?php echo e(user_label($u)); ?></a>
         <?php else: ?>
             <a href="admin.php?next=<?php echo urlencode(basename($_SERVER['SCRIPT_NAME'])); ?>" title="Anmelden">🔒 Login</a>
@@ -427,5 +428,5 @@ function auth_corner(): void {
         .ac-pfp { width: 22px; height: 22px; border-radius: 50%; margin: -3px 0; object-fit: cover; box-shadow: 0 0 0 1px rgba(56, 213, 230, 0.6); }
         @media (max-width: 640px) { .auth-corner { top: auto; bottom: 12px; } }
     </style>
-    <script src="assets/gender.js" defer></script>
+    <script src="assets/js/gender.js" defer></script>
 <?php }

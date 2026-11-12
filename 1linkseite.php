@@ -239,14 +239,14 @@ $categories = [
 ];
 
 // Im Browser hinzugefügte/geänderte Links laden (gespeichert in links_<hub>.json, hat Vorrang vor der Liste oben)
-require_once __DIR__ . '/inc/hub.php';
+require_once __DIR__ . '/inc/modules/hub.php';
 $categories = hub_load(__FILE__, $categories);
 
 // Wird von index.php für die globale Suche eingebunden – dann nur die Daten liefern.
 if (defined('LINKS_ONLY')) return $categories;
 
 // Link-Check-Ergebnisse (⚠-Hinweise an kaputten Links) und Hilfsfunktionen
-require_once __DIR__ . '/inc/linkcheck.php';
+require_once __DIR__ . '/inc/modules/linkcheck.php';
 
 // Beim allerersten Aufruf zur Admin-Einrichtung; danach "+ Link" / "+ Kategorie" usw. verarbeiten (nur mit Login)
 auth_require_setup();
@@ -520,7 +520,7 @@ hub_handle_post(__FILE__, $categories);
     </div>
 
     <?php hub_dialogs($categories); ?>
-    <script src="assets/hub-search.js"></script>
+    <script src="assets/js/hub-search.js"></script>
 
 </body>
 </html>

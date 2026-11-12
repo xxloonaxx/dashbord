@@ -5,8 +5,8 @@
  * IMMER angewendet – in der Suche selbst (soweit die Seite es erlaubt) und zusätzlich beim Filtern der Ergebnisse.
  * Wird von nsfw.php (Galerie), discord.php (Slash-Befehle, Auto-Posts) genutzt.
  */
-require_once __DIR__ . '/auth.php';
-require_once __DIR__ . '/crypto.php';
+require_once __DIR__ . '/../core/auth.php';
+require_once __DIR__ . '/../core/crypto.php';
 
 final class NsfwError extends RuntimeException {}
 

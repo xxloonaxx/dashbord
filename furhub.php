@@ -5,9 +5,9 @@
  * Con-Bingo, Tier-Quiz, Soundboard, OwO-Übersetzer, Glossar, Pfotenabdrücke, Erfolge & Easter Eggs.
  * JSON-Schnittstelle: furhub.php?api=…
  */
-require_once __DIR__ . '/inc/furhub.php';
-require_once __DIR__ . '/inc/countdown.php';
-require_once __DIR__ . '/inc/linkcheck.php';
+require_once __DIR__ . '/inc/modules/furhub.php';
+require_once __DIR__ . '/inc/modules/countdown.php';
+require_once __DIR__ . '/inc/modules/linkcheck.php';
 
 auth_require_setup();
 $me = current_user();
@@ -171,8 +171,8 @@ $EMO = ['neutral' => ['😐', 'Normal'], 'happy' => ['😊', 'Fröhlich'], 'sad'
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Furry Hub</title>
     <?php echo emoji_favicon('🦊'); ?>
-    <link rel="stylesheet" href="assets/hud.css">
-    <link rel="stylesheet" href="assets/furhub.css?v=<?php echo filemtime(__DIR__ . '/assets/furhub.css'); ?>">
+    <link rel="stylesheet" href="assets/css/hud.css">
+    <link rel="stylesheet" href="assets/css/furhub.css?v=<?php echo filemtime(__DIR__ . '/assets/css/furhub.css'); ?>">
 </head>
 <body class="fh">
 <?php auth_corner(); ?>
@@ -503,7 +503,7 @@ $EMO = ['neutral' => ['😐', 'Normal'], 'happy' => ['😊', 'Fröhlich'], 'sad'
 <div class="fh-toast" id="fhToast" hidden></div>
 <div class="fh-lightbox" id="fhLightbox" hidden><button type="button" class="lb-x" data-lb="close" aria-label="Schließen">×</button><button type="button" class="lb-nav prev" data-lb="prev" aria-label="Zurück">‹</button><figure><img id="lbImg" alt=""><figcaption id="lbCap"></figcaption></figure><button type="button" class="lb-nav next" data-lb="next" aria-label="Weiter">›</button></div>
 <script>window.FH = <?php echo json_encode($boot, $json); ?>;</script>
-<?php foreach (array_merge(['furhub'], $me ? ['furhub-tama'] : [], ['furhub-cards', 'furhub-games', 'furhub-toys']) as $js): ?><script src="assets/<?php echo $js; ?>.js?v=<?php echo filemtime(__DIR__ . '/assets/' . $js . '.js'); ?>"></script>
+<?php foreach (array_merge(['furhub'], $me ? ['furhub-tama'] : [], ['furhub-cards', 'furhub-games', 'furhub-toys']) as $js): ?><script src="assets/js/<?php echo $js; ?>.js?v=<?php echo filemtime(__DIR__ . '/assets/js/' . $js . '.js'); ?>"></script>
 <?php endforeach; ?>
 </body>
 </html>

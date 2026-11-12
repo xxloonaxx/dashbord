@@ -2,10 +2,10 @@
 /**
  * Kalender (SQLite) – Monat, Woche, Agenda, Jahr; Feiertage; Countdowns als eigene Ebene (nur lesend).
  */
-require_once __DIR__ . '/inc/calendar.php';
-require_once __DIR__ . '/inc/calendar_ics.php';
-require_once __DIR__ . '/inc/auth.php';
-require_once __DIR__ . '/inc/format.php';
+require_once __DIR__ . '/inc/modules/calendar.php';
+require_once __DIR__ . '/inc/modules/calendar_ics.php';
+require_once __DIR__ . '/inc/core/auth.php';
+require_once __DIR__ . '/inc/core/format.php';
 
 // Abo-Link fürs Handy: muss ohne Login funktionieren, deshalb vor der Zugriffsprüfung
 if (isset($_GET['feed'])) {
@@ -332,8 +332,8 @@ $flash_err = $_GET['error'] ?? '';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KALENDER NODE</title>
     <?php echo emoji_favicon('📅'); ?>
-    <link rel="stylesheet" href="assets/hud.css">
-    <link rel="stylesheet" href="assets/calendar.css">
+    <link rel="stylesheet" href="assets/css/hud.css">
+    <link rel="stylesheet" href="assets/css/calendar.css">
 </head>
 <body>
 <?php auth_corner(); ?>
@@ -806,8 +806,8 @@ $flash_err = $_GET['error'] ?? '';
         anchor: <?php echo json_encode($anchor->format('Y-m-d')); ?>
     };
 </script>
-<script src="assets/calendar.js"></script>
-<?php if ($admin): ?><script src="assets/editor.js"></script><?php endif; ?>
-<script src="assets/reminders.js" data-endpoint="calendar.php?reminders=1"></script>
+<script src="assets/js/calendar.js"></script>
+<?php if ($admin): ?><script src="assets/js/editor.js"></script><?php endif; ?>
+<script src="assets/js/reminders.js" data-endpoint="calendar.php?reminders=1"></script>
 </body>
 </html>

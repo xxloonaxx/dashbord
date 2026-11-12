@@ -4,29 +4,29 @@
  * Caches (Feed, Link-Check) werden nicht mitgesichert – die entstehen automatisch neu.
  * <title>BACKUP NODE</title>
  */
-require_once __DIR__ . '/inc/common.php';
-require_once __DIR__ . '/inc/auth.php';
+require_once __DIR__ . '/inc/core/common.php';
+require_once __DIR__ . '/inc/core/auth.php';
 require_permission('backup.download');
 audit('Backup heruntergeladen');
 
 $skip = ['feed_cache.json', 'linkcheck_cache.json'];
 $files = [];
-foreach (array_merge(glob(__DIR__ . '/*.json') ?: [], glob(__DIR__ . '/archive/*.json') ?: [], glob(__DIR__ . '/archive_budget/*.json') ?: []) as $path) {
+foreach (array_merge(glob(DATA_DIR . '/json/*.json') ?: [], glob(DATA_DIR . '/archive/*.json') ?: [], glob(DATA_DIR . '/archive/budget/*.json') ?: []) as $path) {
     if (in_array(basename($path), $skip, true)) continue;
-    $files[substr($path, strlen(__DIR__) + 1)] = $path;
+    $files[substr($path, strlen(APP_ROOT) + 1)] = $path;
 }
 
 // Hochgeladene Bilder (Galerie-Vorlage)
 foreach (glob(__DIR__ . '/uploads/*.{jpg,png,gif,webp}', GLOB_BRACE) ?: [] as $path) $files['uploads/' . basename($path)] = $path;
 // Furry Hub: eigene Bilder (Fursona-Emotionen, Tamagotchi, Karten)
-foreach (glob(__DIR__ . '/data/furhub_img/*') ?: [] as $path) if (preg_match('/^[0-9a-f]{24}$/', basename($path))) $files['data/furhub_img/' . basename($path)] = $path;
+foreach (glob(DATA_DIR . '/uploads/furhub/*') ?: [] as $path) if (preg_match('/^[0-9a-f]{24}$/', basename($path))) $files['data/uploads/furhub/' . basename($path)] = $path;
 
 $stamp = date('Y-m-d_His');
 
 // Kalender-Datenbank (SQLite) – konsistente Kopie, auch wenn gerade geschrieben wird
 // SQLite-Datenbanken (Benutzer & Seiten, Kalender) – konsistente Kopie, auch wenn gerade geschrieben wird
 $db_copies = [];
-foreach (glob(__DIR__ . '/data/*.sqlite') ?: [] as $dbf) {
+foreach (glob(DATA_DIR . '/db/*.sqlite') ?: [] as $dbf) {
     $copy = sys_get_temp_dir() . '/db_backup_' . bin2hex(random_bytes(4)) . '.sqlite';
     try {
         $pdo = new PDO('sqlite:' . $dbf);
@@ -34,7 +34,7 @@ foreach (glob(__DIR__ . '/data/*.sqlite') ?: [] as $dbf) {
     } catch (Throwable $e) {
         @copy($dbf, $copy);
     }
-    if (is_file($copy)) { $files['data/' . basename($dbf)] = $copy; $db_copies[] = $copy; }
+    if (is_file($copy)) { $files['data/db/' . basename($dbf)] = $copy; $db_copies[] = $copy; }
 }
 
 if (class_exists('ZipArchive')) {
@@ -42,7 +42,7 @@ if (class_exists('ZipArchive')) {
     $zip = new ZipArchive();
     $zip->open($tmp, ZipArchive::OVERWRITE);
     foreach ($files as $name => $path) $zip->addFile($path, $name);
-    $zip->addFromString('LIESMICH.txt', "Backup vom " . date('d.m.Y H:i') . "\nZum Wiederherstellen die Dateien zurück in den Ordner der Webseite kopieren.\n");
+    $zip->addFromString('LIESMICH.txt', "Backup vom " . date('d.m.Y H:i') . "\nZum Wiederherstellen den Ordner data/ zurück in den Ordner der Webseite kopieren.\n");
     $zip->close();
 
     header('Content-Type: application/zip');
@@ -56,7 +56,7 @@ if (class_exists('ZipArchive')) {
 
 // Fallback ohne ZIP-Erweiterung: alles in einer JSON-Datei
 $bundle = [];
-foreach ($files as $name => $path) if (strpos($name, 'data/furhub_img/') !== 0) $bundle[$name] = substr($name, -7) === '.sqlite' ? base64_encode((string)file_get_contents($path)) : load_json($path, null);
+foreach ($files as $name => $path) if (strpos($name, 'data/uploads/') !== 0) $bundle[$name] = substr($name, -7) === '.sqlite' ? base64_encode((string)file_get_contents($path)) : load_json($path, null);
 foreach ($db_copies as $c) @unlink($c);
 header('Content-Type: application/json; charset=utf-8');
 header('Content-Disposition: attachment; filename="dashboard-backup_' . $stamp . '.json"');

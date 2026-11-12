@@ -1,6 +1,6 @@
 <?php
 // Aktuelle Con aus dem Con-Rechner: Countdown, Budget, offene Zahlungen
-require_once dirname(__DIR__, 2) . '/inc/con.php';
+require_once dirname(__DIR__, 2) . '/inc/modules/con.php';
 return [
     'name' => 'Nächste Con',
     'icon' => '🎪',

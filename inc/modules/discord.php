@@ -4,9 +4,9 @@
  * Der Bot-Token wird verschlüsselt in den Einstellungen gespeichert (crypto_encrypt) und nie wieder angezeigt.
  * Geplante Nachrichten werden beim Öffnen der Seite oder über einen Cron-Aufruf (discord.php?cron=…) verschickt.
  */
-require_once __DIR__ . '/auth.php';
-require_once __DIR__ . '/crypto.php';
-require_once __DIR__ . '/format.php';
+require_once __DIR__ . '/../core/auth.php';
+require_once __DIR__ . '/../core/crypto.php';
+require_once __DIR__ . '/../core/format.php';
 
 const DISCORD_API_DEFAULT = 'https://discord.com/api/v10';
 const DISCORD_CDN = 'https://cdn.discordapp.com';

@@ -1,6 +1,6 @@
 <?php
 // Boop! – Mini-Ausgabe des Furry Hubs: gemeinsamer Boop-Zähler + Tierfakt des Tages
-require_once dirname(__DIR__, 2) . '/inc/furhub.php';
+require_once dirname(__DIR__, 2) . '/inc/modules/furhub.php';
 return [
     'name' => 'Boop!',
     'icon' => '👃',

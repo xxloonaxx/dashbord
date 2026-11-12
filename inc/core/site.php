@@ -45,7 +45,7 @@ const PERMISSIONS = [
 ];
 
 function site_db_file(): string {
-    $dir = dirname(__DIR__) . '/data';
+    $dir = DATA_DIR . '/db';
     $found = glob($dir . '/site_*.sqlite') ?: [];
     return $found ? $found[0] : $dir . '/site_' . bin2hex(random_bytes(12)) . '.sqlite';
 }
@@ -57,7 +57,7 @@ function site_db(): PDO {
         http_response_code(500);
         exit('<p style="font-family:sans-serif;padding:30px">Auf dem Server fehlt die PHP-Erweiterung <b>pdo_sqlite</b> – sie wird für Benutzer und Seiten benötigt.</p>');
     }
-    $dir = dirname(__DIR__) . '/data';
+    $dir = DATA_DIR . '/db';
     if (!is_dir($dir)) mkdir($dir, 0755, true);
     if (!is_file($dir . '/.htaccess')) file_put_contents($dir . '/.htaccess', "Require all denied\n");
     if (!is_file($dir . '/index.html')) file_put_contents($dir . '/index.html', '');
@@ -210,7 +210,7 @@ function site_migrate(PDO $db): void {
  */
 function site_import_legacy(PDO $db): void {
     if ((int)$db->query('SELECT COUNT(*) FROM users')->fetchColumn() > 0) return;
-    $root = dirname(__DIR__);
+    $root = APP_ROOT;
     $read = function (string $file) {
         if (!is_file($file)) return null;
         $raw = (string)file_get_contents($file);

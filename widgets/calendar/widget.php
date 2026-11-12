@@ -1,6 +1,6 @@
 <?php
 // Mini-Monatskalender mit Termin-Punkten und Liste der nächsten Termine
-require_once dirname(__DIR__, 2) . '/inc/calendar.php';
+require_once dirname(__DIR__, 2) . '/inc/modules/calendar.php';
 return [
     'name' => 'Kalender',
     'icon' => '📅',

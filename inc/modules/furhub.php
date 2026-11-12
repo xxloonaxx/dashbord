@@ -4,15 +4,17 @@
  * Pfotenabdrücke (Gästebuch) und die Inhalte für Spielereien (Glossar, Fakten, Bingo, Quiz …).
  * Datei: data/furhub_<zufall>.sqlite
  */
-require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/../core/auth.php';
 
 const FH_REACTIONS = ['boop' => ['👃', 'Boops'], 'awoo' => ['🐺', 'Awoos'], 'pat' => ['🤚', 'Headpats'], 'hug' => ['🫂', 'Umarmungen']];
 const FH_RATE_PER_MIN = 900;    // Reaktionen je Adresse und Minute (gegen Skripte)
 
+function fh_db_present(): bool { return (bool)(glob(DATA_DIR . '/db/furhub_*.sqlite') ?: []); }
+
 function fh_db(): PDO {
     static $db = null;
     if ($db) return $db;
-    $dir = dirname(__DIR__) . '/data';
+    $dir = DATA_DIR . '/db';
     if (!is_dir($dir)) mkdir($dir, 0755, true);
     if (!is_file($dir . '/.htaccess')) file_put_contents($dir . '/.htaccess', "Require all denied\n");
     $found = glob($dir . '/furhub_*.sqlite') ?: [];
@@ -231,7 +233,7 @@ const FH_IMG_MAX_BYTES = 2500000;
 const FH_IMG_MAX_PER_USER = 120;
 
 function fh_img_dir(): string {
-    $d = dirname(__DIR__) . '/data/furhub_img';
+    $d = DATA_DIR . '/uploads/furhub';
     if (!is_dir($d)) mkdir($d, 0755, true);
     return $d;
 }
@@ -429,7 +431,7 @@ function fh_avatar_map(): array {
     static $map = null;
     if ($map !== null) return $map;
     $map = [];
-    if (!glob(dirname(__DIR__) . '/data/furhub_*.sqlite')) return $map;   // Furry Hub noch nie benutzt
+    if (!(fh_db_present())) return $map;   // Furry Hub noch nie benutzt
     try { foreach (fh_db()->query("SELECT user_id, updated FROM sonas WHERE avatar_svg <> ''") as $r) $map[(int)$r['user_id']] = (int)$r['updated']; } catch (Throwable $e) { /* egal */ }
     return $map;
 }

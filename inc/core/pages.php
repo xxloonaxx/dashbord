@@ -67,7 +67,7 @@ function page_category_id(string $name): int {
  */
 function pages_sync(): void {
     $db = site_db();
-    $root = dirname(__DIR__);
+    $root = APP_ROOT;
     $files = [];
     foreach (scandir($root) as $f) {
         if ($f[0] === '.' || in_array($f, PAGE_IGNORE, true) || !is_file("$root/$f")) continue;
@@ -152,7 +152,7 @@ function page_slugify(string $title): string {
     $s = $s !== '' ? mb_substr($s, 0, 48) : 'seite';
     $base = $s;
     $i = 2;
-    while (page_get($s) || is_file(dirname(__DIR__) . '/' . $s)) $s = $base . '-' . $i++;
+    while (page_get($s) || is_file(APP_ROOT . '/' . $s)) $s = $base . '-' . $i++;
     return $s;
 }
 

@@ -2,10 +2,10 @@
 /**
  * VRC Nexus – VRChat-Freunde, Verlauf, Statistik, Welten, Avatare, Moderation & Gruppen im Dashboard.
  * Anmeldung mit VRChat-Benutzername/Passwort + 2FA; jeder Dashboard-Benutzer verbindet sein eigenes Konto.
- * Alle Aktionen laufen als JSON-Anfragen (assets/nexus.js).
+ * Alle Aktionen laufen als JSON-Anfragen (assets/js/nexus.js).
  */
-require_once __DIR__ . '/inc/vrchat.php';
-require_once __DIR__ . '/inc/vrchat_favs.php';
+require_once __DIR__ . '/inc/modules/vrchat.php';
+require_once __DIR__ . '/inc/modules/vrchat_favs.php';
 
 // Handy-/Kalender-Abo der VRChat-Gruppen-Events: nexus.php?ics=<token> (ohne Anmeldung, nur mit geheimem Token)
 if (isset($_GET['ics'])) {
@@ -544,7 +544,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     break;
                 case 'group_share':
                     if (!can('discord.manage')) throw new RuntimeException('Dafür brauchst du Zugriff auf die Discord-Zentrale.');
-                    require_once __DIR__ . '/inc/discord.php';
+                    require_once __DIR__ . '/inc/modules/discord.php';
                     $g = vrc_call($acc, 'GET', '/groups/' . rawurlencode($valid($id, 'grp')));
                     $url = 'https://vrc.group/' . rawurlencode((string)($g['shortCode'] ?? '') . '.' . (string)($g['discriminator'] ?? ''));
                     discord_send_default(['content' => mb_substr(trim((string)($in['text'] ?? '')), 0, 500), 'embeds' => [array_filter([
@@ -557,7 +557,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     break;
                 case 'discord_share':
                     if (!can('discord.manage')) throw new RuntimeException('Dafür brauchst du Zugriff auf die Discord-Zentrale.');
-                    require_once __DIR__ . '/inc/discord.php';
+                    require_once __DIR__ . '/inc/modules/discord.php';
                     $loc = (string)($in['location'] ?? '');
                     if (!preg_match('/^(wrld_[0-9a-f\-]{36}):([\w~()\-.:]+)$/i', $loc, $m)) throw new RuntimeException('Ungültige Instanz.');
                     $l = vrc_location($loc);
@@ -812,8 +812,8 @@ session_write_close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VRC Nexus</title>
     <?php echo emoji_favicon('🥽'); ?>
-    <link rel="stylesheet" href="assets/hud.css">
-    <link rel="stylesheet" href="assets/nexus.css">
+    <link rel="stylesheet" href="assets/css/hud.css">
+    <link rel="stylesheet" href="assets/css/nexus.css">
 </head>
 <body>
 <?php auth_corner(); ?>
@@ -1114,8 +1114,8 @@ session_write_close();
 <?php endif; ?>
 </div>
 <script>
-    window.VRCX = { connected: <?php echo $acc ? 'true' : 'false'; ?>, status: <?php echo json_encode(array_map(function ($s) { return ['label' => $s[0], 'color' => $s[1]]; }, VRC_STATUS), JSON_UNESCAPED_UNICODE); ?>, syncMin: <?php echo VRC_SYNC_MIN; ?>, discord: <?php echo can('discord.manage') && (function () { require_once __DIR__ . '/inc/discord.php'; return discord_configured(); })() ? 'true' : 'false'; ?> };
+    window.VRCX = { connected: <?php echo $acc ? 'true' : 'false'; ?>, status: <?php echo json_encode(array_map(function ($s) { return ['label' => $s[0], 'color' => $s[1]]; }, VRC_STATUS), JSON_UNESCAPED_UNICODE); ?>, syncMin: <?php echo VRC_SYNC_MIN; ?>, discord: <?php echo can('discord.manage') && (function () { require_once __DIR__ . '/inc/modules/discord.php'; return discord_configured(); })() ? 'true' : 'false'; ?> };
 </script>
-<script src="assets/nexus.js"></script>
+<script src="assets/js/nexus.js"></script>
 </body>
 </html>

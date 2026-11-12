@@ -10,7 +10,7 @@
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/format.php';
 
-const WIDGETS_DIR = __DIR__ . '/../widgets';
+const WIDGETS_DIR = APP_ROOT . '/widgets';
 const WIDGET_SIZES = ['s' => 'klein', 'm' => 'mittel', 'l' => 'breit', 'xl' => 'ganze Zeile'];
 
 /** Kontext, den jedes Widget beim Rendern bekommt */

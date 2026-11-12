@@ -1,10 +1,10 @@
 <?php
 /**
- * Live-Vorschau für die Editor-Werkzeugleiste (assets/editor.js).
+ * Live-Vorschau für die Editor-Werkzeugleiste (assets/js/editor.js).
  * Nur für angemeldete Benutzer und nur von dieser Seite aus aufrufbar.
  */
-require_once __DIR__ . '/inc/auth.php';
-require_once __DIR__ . '/inc/format.php';
+require_once __DIR__ . '/inc/core/auth.php';
+require_once __DIR__ . '/inc/core/format.php';
 
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: no-store');

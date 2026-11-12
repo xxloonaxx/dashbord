@@ -18,6 +18,10 @@ feed_sources.json
 data/*.sqlite
 data/*.sqlite-*
 data/.*_key_*.php
+# neue Struktur (data/db, data/json, data/cache, data/archive, data/keys, data/uploads)
+data/*/
+data/.layout-v2
+data/config.php
 uploads/
 *.v1-backup
 budget_settings.json

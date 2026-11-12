@@ -1,7 +1,7 @@
 <?php
 /** Vorlage „Galerie“: Bilder per Adresse oder Upload, mit Titel, Bildunterschrift und Großansicht */
 
-const TPL_UPLOAD_DIR = __DIR__ . '/../../uploads';
+const TPL_UPLOAD_DIR = APP_ROOT . '/uploads';
 const TPL_UPLOAD_MAX = 10 * 1024 * 1024;
 
 function tpl_gallery_start(): array {

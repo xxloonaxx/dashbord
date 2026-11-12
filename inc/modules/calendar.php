@@ -11,7 +11,7 @@
  * Countdowns aus countdown.php werden nur GELESEN und als eigene Ebene angezeigt –
  * der Kalender verändert die Countdowns nie (Verbindung nur in Richtung Kalender).
  */
-require_once __DIR__ . '/common.php';
+require_once __DIR__ . '/../core/common.php';
 require_once __DIR__ . '/countdown.php';
 
 /**
@@ -19,7 +19,7 @@ require_once __DIR__ . '/countdown.php';
  * damit sie selbst dann nicht abrufbar ist, wenn der Server .htaccess ignoriert (nginx).
  */
 function cal_db_file(): string {
-    $dir = dirname(__DIR__) . '/data';
+    $dir = DATA_DIR . '/db';
     $found = glob($dir . '/calendar_*.sqlite') ?: [];
     if ($found) return $found[0];
     if (is_file($dir . '/calendar.sqlite')) {   // ältere Installation umbenennen
@@ -50,7 +50,7 @@ function cal_db(): PDO {
     if (!class_exists('PDO') || !in_array('sqlite', PDO::getAvailableDrivers(), true)) {
         throw new RuntimeException('Auf dem Server fehlt die PHP-Erweiterung pdo_sqlite.');
     }
-    $dir = dirname(__DIR__) . '/data';
+    $dir = DATA_DIR . '/db';
     if (!is_dir($dir)) mkdir($dir, 0755, true);
     if (!is_file($dir . '/.htaccess')) file_put_contents($dir . '/.htaccess', "Require all denied\n");
     if (!is_file($dir . '/index.html')) file_put_contents($dir . '/index.html', '');

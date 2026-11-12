@@ -1,6 +1,6 @@
 <?php
 // Discord-Server auf einen Blick (über den Bot der Discord-Zentrale, 5 Min. zwischengespeichert)
-require_once dirname(__DIR__, 2) . '/inc/discord.php';
+require_once dirname(__DIR__, 2) . '/inc/modules/discord.php';
 return [
     'name' => 'Discord-Server',
     'icon' => '🤖',

@@ -3,10 +3,12 @@
  * Budget: Einstellungen (Kategorie-Limits, Sparziele, Regeln), Fälligkeit von Fixkosten/Abos mit Rhythmus,
  * Kategorien mit Icons, Monatsstatistik aus dem Archiv und Erkennung wiederkehrender Zahlungen.
  */
-require_once __DIR__ . '/common.php';
+require_once __DIR__ . '/../core/common.php';
 
-const BUDGET_SETTINGS_FILE = __DIR__ . '/../budget_settings.json';
-const BUDGET_ARCHIVE_DIR = __DIR__ . '/../archive_budget/';
+const BUDGET_DATA_FILE = DATA_DIR . '/json/budget_data.json';
+const BUDGET_FIX_FILE = DATA_DIR . '/json/fix_subs_data.json';
+const BUDGET_SETTINGS_FILE = DATA_DIR . '/json/budget_settings.json';
+const BUDGET_ARCHIVE_DIR = DATA_DIR . '/archive/budget/';
 const BUDGET_SECTIONS = ['income' => ['Einnahmen', '💼', '#50fa7b'], 'fixed' => ['Fixkosten', '🏠', '#38d5e6'], 'subs' => ['Abos', '🔁', '#bd93f9'], 'other' => ['Sonstige Ausgaben', '🛍️', '#f3c262']];
 const BUDGET_INTERVALS = ['monthly' => ['monatlich', 1], 'quarterly' => ['vierteljährlich', 3], 'halfyear' => ['halbjährlich', 6], 'yearly' => ['jährlich', 12]];
 

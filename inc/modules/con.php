@@ -7,10 +7,10 @@
  * Eine Con enthält Stammdaten, Personen (Mitreisende), Ausgaben, Kategorie-Budgets,
  * Zeitplan, Packliste, Wunschliste (Dealers Den) und Notizen.
  */
-require_once __DIR__ . '/common.php';
+require_once __DIR__ . '/../core/common.php';
 
-const CON_FILE = __DIR__ . '/../con_data.json';
-const CON_ARCHIVE_DIR = __DIR__ . '/../archive/';
+const CON_FILE = DATA_DIR . '/json/con_data.json';
+const CON_ARCHIVE_DIR = DATA_DIR . '/archive/';
 
 /** Kategorien: Schlüssel => [Icon, Name, Farbe] */
 const CON_CATS = [

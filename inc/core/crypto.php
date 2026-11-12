@@ -9,7 +9,7 @@ require_once __DIR__ . '/auth.php';
 function crypto_key(string $name): string {
     static $cache = [];
     if (isset($cache[$name])) return $cache[$name];
-    $dir = dirname(__DIR__) . '/data';
+    $dir = DATA_DIR . '/keys';
     if (!is_dir($dir)) @mkdir($dir, 0755, true);
     $file = (glob($dir . '/.' . $name . '_key_*.php') ?: [])[0] ?? null;
     if ($file) {

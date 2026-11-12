@@ -1,7 +1,7 @@
 <?php
-require_once __DIR__ . '/inc/countdown.php';
-require_once __DIR__ . '/inc/auth.php';
-require_once __DIR__ . '/inc/format.php';
+require_once __DIR__ . '/inc/modules/countdown.php';
+require_once __DIR__ . '/inc/core/auth.php';
+require_once __DIR__ . '/inc/core/format.php';
 
 auth_require_setup();
 guard_post('countdown.edit');   // Anlegen/Bearbeiten/Löschen nur mit Recht
@@ -89,7 +89,7 @@ $icons = ['⏳', '🐾', '🎉', '🎂', '🎄', '🎆', '✈️', '🚆', '🏨
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>COUNTDOWN NODE</title>
     <?php echo emoji_favicon('⏳'); ?>
-    <link rel="stylesheet" href="assets/hud.css">
+    <link rel="stylesheet" href="assets/css/hud.css">
     <style>
         .hero {
             text-align: center;
@@ -344,6 +344,6 @@ $icons = ['⏳', '🐾', '🎉', '🎂', '🎄', '🎆', '✈️', '🚆', '🏨
     window.addEventListener('click', e => { if (e.target.id === 'editModal') closeEdit(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEdit(); });
 </script>
-<?php if ($admin): ?><script src="assets/editor.js"></script><?php endif; ?>
+<?php if ($admin): ?><script src="assets/js/editor.js"></script><?php endif; ?>
 </body>
 </html>

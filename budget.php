@@ -1,17 +1,17 @@
 <?php
-require_once __DIR__ . '/inc/common.php';
-require_once __DIR__ . '/inc/auth.php';
-require_once __DIR__ . '/inc/openbanking.php';
-require_once __DIR__ . '/inc/budget.php';
+require_once __DIR__ . '/inc/core/common.php';
+require_once __DIR__ . '/inc/core/auth.php';
+require_once __DIR__ . '/inc/modules/openbanking.php';
+require_once __DIR__ . '/inc/modules/budget.php';
 
 // Nur für angemeldete Admins sichtbar – alle anderen landen beim Login
 require_permission('budget.access');
 guard_post('budget.access');
 
 // Dateipfade
-$data_file = __DIR__ . '/budget_data.json';
-$fix_subs_file = __DIR__ . '/fix_subs_data.json';
-$archive_dir = __DIR__ . '/archive_budget/';
+$data_file = BUDGET_DATA_FILE;
+$fix_subs_file = BUDGET_FIX_FILE;
+$archive_dir = BUDGET_ARCHIVE_DIR;
 
 if (!is_dir($archive_dir)) {
     mkdir($archive_dir, 0755, true);
@@ -771,7 +771,7 @@ foreach (['fixed', 'subs'] as $sec) foreach ($fix_subs_data[$sec] as $t) {
 usort($upcoming, function ($a, $b) { return $a['ts'] <=> $b['ts']; });
 $recurring = budget_recurring($history, $fix_subs_data, $bs['dismissed']);
 
-// Diagramm-Daten (für assets/budget.js)
+// Diagramm-Daten (für assets/js/budget.js)
 $chart_months = [];
 foreach (array_slice($history, -12) as $h) {
     $hs = budget_summary($h['entries']);
@@ -787,7 +787,7 @@ foreach ($sum['cats'] as $c => $v) $chart_cats[] = ['name' => $c, 'value' => rou
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Budget – <?php echo e($data['month_name']); ?></title>
     <?php echo emoji_favicon('💶'); ?>
-    <link rel="stylesheet" href="assets/budget.css">
+    <link rel="stylesheet" href="assets/css/budget.css">
     <style>
         :root {
             --bg-color: #040609;
@@ -1799,6 +1799,6 @@ foreach ($sum['cats'] as $c => $v) $chart_cats[] = ['name' => $c, 'value' => rou
         <?php endif; ?>
     </div>
     <script>window.BUDGET = <?php echo json_encode(['cats' => $chart_cats, 'months' => $chart_months, 'view' => $view_mode], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP); ?>;</script>
-    <script src="assets/budget.js"></script>
+    <script src="assets/js/budget.js"></script>
 </body>
 </html>

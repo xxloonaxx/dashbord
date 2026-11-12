@@ -2,9 +2,9 @@
 /**
  * Discord-Zentrale: Server über einen eigenen Bot verwalten – Übersicht, Nachrichten mit Embed-Baukasten,
  * Mitglieder & Moderation, Rollen, Kanäle & Einladungen, Events (verbunden mit dem Kalender), geplante Nachrichten.
- * Alle Aktionen laufen als JSON-Anfragen (assets/discord.js).
+ * Alle Aktionen laufen als JSON-Anfragen (assets/js/discord.js).
  */
-require_once __DIR__ . '/inc/discord_bot.php';
+require_once __DIR__ . '/inc/modules/discord_bot.php';
 
 // Slash-Befehle & Knöpfe: Discord ruft discord.php?interactions auf (signiert mit Ed25519, ohne Anmeldung)
 if (isset($_GET['interactions'])) {
@@ -254,7 +254,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             'location' => $e['entity_metadata']['location'] ?? '', 'channel' => $e['channel_id'] ?? '', 'users' => (int)($e['user_count'] ?? 0), 'status' => (int)($e['status'] ?? 1)];
                 }, $list)];
                 if (can('calendar.edit') || can('calendar.private')) {
-                    require_once __DIR__ . '/inc/calendar.php';
+                    require_once __DIR__ . '/inc/modules/calendar.php';
                     $now = new DateTimeImmutable('today');
                     $items = array_values(array_filter(cal_items($now, $now->modify('+120 days'), can('calendar.private'), ['events', 'countdowns']), function ($it) { return empty($it['source']); }));
                     $out['calendar'] = array_slice(array_map(function ($it) {
@@ -282,7 +282,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
             case 'event_to_calendar':
                 if (!can('calendar.edit')) throw new DiscordError('Dafür fehlt dir das Recht „Kalender bearbeiten“.');
-                require_once __DIR__ . '/inc/calendar.php';
+                require_once __DIR__ . '/inc/modules/calendar.php';
                 $e = discord_api('GET', '/guilds/' . discord_valid_id($gid) . '/scheduled-events/' . $id('event'));
                 $s = strtotime($e['scheduled_start_time']);
                 $en = !empty($e['scheduled_end_time']) ? strtotime($e['scheduled_end_time']) : $s + 3600;
@@ -321,7 +321,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $out = ['msg' => ['schedule_delete' => 'Gelöscht.', 'schedule_toggle' => 'Geändert.', 'schedule_now' => 'Gesendet.'][$act]];
                 break;
             case 'countdowns':
-                require_once __DIR__ . '/inc/countdown.php';
+                require_once __DIR__ . '/inc/modules/countdown.php';
                 [$up] = sorted_countdowns(load_countdowns()['events']);
                 $out = ['items' => array_map(function ($e) { return ['id' => $e['id'], 'title' => $e['title'], 'icon' => $e['icon'], 'ts' => $e['ts'], 'days' => (int)ceil(($e['ts'] - time()) / 86400), 'link' => $e['link'] ?? '', 'note' => $e['note'] ?? '']; }, $up)];
                 break;
@@ -776,8 +776,8 @@ $configured = discord_configured();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Discord-Zentrale</title>
     <?php echo emoji_favicon('🤖'); ?>
-    <link rel="stylesheet" href="assets/hud.css">
-    <link rel="stylesheet" href="assets/discord.css">
+    <link rel="stylesheet" href="assets/css/hud.css">
+    <link rel="stylesheet" href="assets/css/discord.css">
 </head>
 <body>
 <?php auth_corner(); ?>
@@ -1075,6 +1075,6 @@ $configured = discord_configured();
 <?php endif; ?>
 </div>
 <script>window.DC = { configured: <?php echo $configured ? 'true' : 'false'; ?>, calendarEdit: <?php echo can('calendar.edit') ? 'true' : 'false'; ?> };</script>
-<script src="assets/discord.js"></script>
+<script src="assets/js/discord.js"></script>
 </body>
 </html>

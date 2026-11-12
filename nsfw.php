@@ -4,7 +4,7 @@
  * Favoriten, gespeicherte Suchen und Posten in NSFW-Kanäle über den Discord-Bot.
  * Nur für angemeldete Benutzer mit dem Recht „nsfw.browse“ und nach einmaliger Altersbestätigung (18+).
  */
-require_once __DIR__ . '/inc/nsfw.php';
+require_once __DIR__ . '/inc/modules/nsfw.php';
 
 auth_require_setup();
 require_permission('nsfw.browse');
@@ -106,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $out = ['msg' => 'Gespeichert.'];
                 break;
             case 'discord_channels':
-                require_once __DIR__ . '/inc/discord.php';
+                require_once __DIR__ . '/inc/modules/discord.php';
                 if (!can('discord.manage') || !discord_configured()) throw new NsfwError('Kein Discord-Bot eingerichtet (Discord-Zentrale).');
                 $gid = setting('discord_guild', '');
                 $chs = discord_api('GET', '/guilds/' . discord_valid_id($gid) . '/channels');
@@ -114,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         array_filter($chs, function ($c) { return in_array((int)$c['type'], [0, 5], true); })))];
                 break;
             case 'discord_post':
-                require_once __DIR__ . '/inc/discord.php';
+                require_once __DIR__ . '/inc/modules/discord.php';
                 if (!can('discord.manage') || !discord_configured()) throw new NsfwError('Kein Discord-Bot eingerichtet (Discord-Zentrale).');
                 $p = nsfw_post_from_input((string)($in['post'] ?? ''));
                 $ch = discord_api('GET', '/channels/' . discord_valid_id((string)($in['channel'] ?? '')));
@@ -144,7 +144,7 @@ foreach (NSFW_PROVIDERS as $id => $_) {
                        'needs_key' => in_array($id, ['gelbooru', 'rule34'], true) && $k['key'] === '', 'user' => $k['user'], 'has_key' => $k['key'] !== ''];
 }
 $discord = can('discord.manage');
-if ($discord) { require_once __DIR__ . '/inc/discord.php'; $discord = discord_configured(); }
+if ($discord) { require_once __DIR__ . '/inc/modules/discord.php'; $discord = discord_configured(); }
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -155,8 +155,8 @@ if ($discord) { require_once __DIR__ . '/inc/discord.php'; $discord = discord_co
     <meta name="referrer" content="no-referrer">
     <title>NSFW-Galerie</title>
     <?php echo emoji_favicon('🔞'); ?>
-    <link rel="stylesheet" href="assets/hud.css">
-    <link rel="stylesheet" href="assets/nsfw.css">
+    <link rel="stylesheet" href="assets/css/hud.css">
+    <link rel="stylesheet" href="assets/css/nsfw.css">
 </head>
 <body class="ns-body">
 <?php auth_corner(); ?>
@@ -269,6 +269,6 @@ if ($discord) { require_once __DIR__ . '/inc/discord.php'; $discord = discord_co
 <?php endif; ?>
 </div>
 <script>window.NS = <?php echo json_encode(['age' => $age_ok, 'providers' => $providers, 'default' => $cfg['default'], 'blur' => (bool)$cfg['blur'], 'discord' => $discord], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG); ?>;</script>
-<script src="assets/nsfw.js"></script>
+<script src="assets/js/nsfw.js"></script>
 </body>
 </html>

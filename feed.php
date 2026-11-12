@@ -4,7 +4,7 @@
  * Gelesen/Gemerkt pro Benutzer, Suche, Tastenkürzel, Quellenverwaltung (hinzufügen mit Autodiscovery,
  * bearbeiten, pausieren, entfernen), OPML-Import/-Export und Cron-Aktualisierung.
  */
-require_once __DIR__ . '/inc/feed.php';
+require_once __DIR__ . '/inc/modules/feed.php';
 
 // Cron: feed.php?cron=<schlüssel> lädt alle fälligen Quellen
 if (isset($_GET['cron'])) {
@@ -141,8 +141,8 @@ $cron = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'ht
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Live-Feed</title>
     <?php echo emoji_favicon('📡'); ?>
-    <link rel="stylesheet" href="assets/hud.css">
-    <link rel="stylesheet" href="assets/feed.css">
+    <link rel="stylesheet" href="assets/css/hud.css">
+    <link rel="stylesheet" href="assets/css/feed.css">
 </head>
 <body class="fd-body">
 <?php auth_corner(); ?>
@@ -198,6 +198,6 @@ $cron = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'ht
 <div class="modal-overlay" id="fdModal" role="dialog" aria-modal="true"><div class="modal-box fd-modal"><button type="button" class="modal-close" data-close aria-label="Schließen">&times;</button><div id="fdModalBody"></div></div></div>
 
 <script>window.FEED = <?php echo json_encode(['sources' => $sources, 'canEdit' => $can_edit, 'user' => (bool)$uid, 'stale' => $stale, 'cron' => $can_edit ? $cron : ''], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP); ?>;</script>
-<script src="assets/feed.js"></script>
+<script src="assets/js/feed.js"></script>
 </body>
 </html>

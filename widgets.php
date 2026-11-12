@@ -5,8 +5,8 @@
  *   action  – Aktion eines Widgets ausführen (z. B. Aufgabe abhaken), danach neu zeichnen
  *   add / remove / size / settings / reorder – Anordnung ändern (Recht „widgets.manage“)
  */
-require_once __DIR__ . '/inc/common.php';
-require_once __DIR__ . '/inc/widgets.php';
+require_once __DIR__ . '/inc/core/common.php';
+require_once __DIR__ . '/inc/core/widgets.php';
 
 auth_require_setup();
 header('Content-Type: application/json; charset=utf-8');

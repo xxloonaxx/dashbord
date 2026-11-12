@@ -13,8 +13,8 @@ return [
         $root = dirname(__DIR__, 2);
         $size = function (float $b) { foreach (['B', 'KB', 'MB', 'GB', 'TB'] as $u) { if ($b < 1024) return round($b, $b < 10 ? 1 : 0) . ' ' . $u; $b /= 1024; } return round($b) . ' PB'; };
         $free = @disk_free_space($root); $total = @disk_total_space($root);
-        $db = 0; foreach (glob($root . '/data/*.sqlite') ?: [] as $f) $db += filesize($f);
-        $json = 0; foreach (glob($root . '/*.json') ?: [] as $f) $json += filesize($f);
+        $db = 0; foreach (glob(DATA_DIR . '/db/*.sqlite') ?: [] as $f) $db += filesize($f);
+        $json = 0; foreach (glob(DATA_DIR . '/json/*.json') ?: [] as $f) $json += filesize($f);
         $up = 0; foreach (glob($root . '/uploads/*') ?: [] as $f) $up += filesize($f);
         $users = (int)site_db()->query('SELECT COUNT(*) FROM users')->fetchColumn();
         $last = site_db()->query("SELECT username, ts FROM audit_log WHERE action = 'Login' ORDER BY id DESC LIMIT 1")->fetch() ?: null;

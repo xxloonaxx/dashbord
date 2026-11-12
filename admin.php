@@ -2,10 +2,10 @@
 /**
  * Admin-Zentrale: Ersteinrichtung, Login, Übersicht, Benutzer, Rollen & Rechte, Seiten, Protokoll, System, Mein Konto.
  */
-require_once __DIR__ . '/inc/pages.php';
-require_once __DIR__ . '/inc/linkcheck.php';
-require_once __DIR__ . '/inc/countdown.php';
-require_once __DIR__ . '/inc/hub.php';
+require_once __DIR__ . '/inc/core/pages.php';
+require_once __DIR__ . '/inc/modules/linkcheck.php';
+require_once __DIR__ . '/inc/modules/countdown.php';
+require_once __DIR__ . '/inc/modules/hub.php';
 
 /** Nur lokale Ziele für die Weiterleitung nach dem Login zulassen */
 function safe_next(?string $next): string {
@@ -569,7 +569,7 @@ if ($mode === 'panel' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
 
             case 'clear_feed_cache':
-                require_once __DIR__ . '/inc/feed.php';
+                require_once __DIR__ . '/inc/modules/feed.php';
                 $r = feed_refresh(null, true);
                 audit('Feeds neu geladen');
                 $msg = 'Alle Feeds wurden neu abgerufen' . (is_array($r) && isset($r['new']) ? ' – ' . (int)$r['new'] . ' neue Einträge.' : '.');
@@ -590,10 +590,10 @@ if ($mode === 'panel' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (in_array($hub, find_hub_files(), true)) {
                     $file = hub_data_file($hub);
                     if (is_file($file)) {
-                        if (!is_dir(__DIR__ . '/archive')) mkdir(__DIR__ . '/archive', 0755, true);
-                        rename($file, __DIR__ . '/archive/' . pathinfo($file, PATHINFO_FILENAME) . '_backup_' . date('Y-m-d_His') . '.json');
+                        if (!is_dir(DATA_DIR . '/archive')) mkdir(DATA_DIR . '/archive', 0755, true);
+                        rename($file, data_path('archive/') . pathinfo($file, PATHINFO_FILENAME) . '_backup_' . date('Y-m-d_His') . '.json');
                         audit('Hub zurückgesetzt', $hub, 'warn');
-                        $msg = '„' . $hub . '“ wurde auf den Startbestand zurückgesetzt (Kopie im Ordner archive/).';
+                        $msg = '„' . $hub . '“ wurde auf den Startbestand zurückgesetzt (Kopie im Ordner data/archive/).';
                     } else {
                         $msg = '„' . $hub . '“ nutzt bereits den Startbestand.';
                     }
@@ -699,7 +699,7 @@ if ($mode === 'panel') {
         $lc = load_linkcheck();
         $lc_bad = count(array_filter($lc['results'], function ($r) { return in_array($r['status'], ['dead', 'broken'], true); }));
         try {
-            require_once __DIR__ . '/inc/calendar.php';
+            require_once __DIR__ . '/inc/modules/calendar.php';
             $cal_events = (int)cal_db()->query('SELECT COUNT(*) FROM events')->fetchColumn();
             $cal_subs = (int)cal_db()->query('SELECT COUNT(*) FROM subscriptions')->fetchColumn();
         } catch (Throwable $e) { $cal_events = $cal_subs = 0; }
@@ -785,13 +785,14 @@ if ($mode === 'panel') {
             ['SQLite (Benutzer, Seiten, Kalender)', $sqlite, $sqlite ? 'aktiv · Version ' . $db->query('SELECT sqlite_version()')->fetchColumn() : 'fehlt'],
             ['cURL (Feed, Link-Check, Abos, Bank)', function_exists('curl_multi_init'), function_exists('curl_multi_init') ? 'aktiv' : 'fehlt'],
             ['ZIP (Backup)', class_exists('ZipArchive'), class_exists('ZipArchive') ? 'aktiv' : 'fehlt – Backup als JSON'],
-            ['Ordner beschreibbar', is_writable(__DIR__) && is_writable(__DIR__ . '/data'), is_writable(__DIR__) ? 'ja' : 'nein – Daten können nicht gespeichert werden'],
+            ['Ordner beschreibbar', is_writable(DATA_DIR), is_writable(DATA_DIR) ? 'ja' : 'nein – Daten können nicht gespeichert werden'],
             ['.htaccess (Datenschutz)', is_file(__DIR__ . '/.htaccess'), stripos($server_soft, 'nginx') !== false ? 'nginx erkannt – .htaccess wirkt dort nicht!' : (is_file(__DIR__ . '/.htaccess') ? 'vorhanden' : 'fehlt')],
             ['Zeitzone', true, date_default_timezone_get() . ' · ' . date('d.m.Y H:i')],
         ];
         $storage = [];
-        foreach (array_merge(glob(__DIR__ . '/data/*.sqlite') ?: [], glob(__DIR__ . '/*.json') ?: []) as $f) $storage[str_replace(__DIR__ . '/', '', preg_replace('/_[0-9a-f]{24}\.sqlite$/', '_….sqlite', $f))] = filesize($f);
-        $storage['archive/ (' . count(glob(__DIR__ . '/archive*/*.json') ?: []) . ' Dateien)'] = array_sum(array_map('filesize', glob(__DIR__ . '/archive*/*.json') ?: []));
+        foreach (array_merge(glob(DATA_DIR . '/db/*.sqlite') ?: [], glob(DATA_DIR . '/json/*.json') ?: [], glob(DATA_DIR . '/cache/*.json') ?: []) as $f) $storage[str_replace(APP_ROOT . '/', '', preg_replace('/_[0-9a-f]{24}\.sqlite$/', '_….sqlite', $f))] = filesize($f);
+        $arch = array_merge(glob(DATA_DIR . '/archive/*.json') ?: [], glob(DATA_DIR . '/archive/budget/*.json') ?: []);
+        $storage['data/archive/ (' . count($arch) . ' Dateien)'] = array_sum(array_map('filesize', $arch));
         arsort($storage);
         $hubs = find_hub_files();
     }
@@ -836,7 +837,7 @@ function ago(?string $ts): string {
 function avatar(array $u, string $cls = ''): string {
     $name = $u['display_name'] ?: $u['username'];
     // Furry-Hub-Avatar als Profilbild (Sitzungs-Zeilen haben user_id, Benutzer-Zeilen id)
-    require_once __DIR__ . '/inc/furhub.php';
+    require_once __DIR__ . '/inc/modules/furhub.php';
     $uid = (int)($u['user_id'] ?? (is_numeric($u['id'] ?? null) ? $u['id'] : 0));
     $img = $uid ? fh_avatar_img($uid, 'av-img', $name) : '';
     return '<span class="av ' . $cls . ($img ? ' has-img' : '') . '" style="--rc: ' . e($u['role_color']) . ';">' . ($img ?: e(mb_strtoupper(mb_substr($name, 0, 1)))) . '</span>';
@@ -853,8 +854,8 @@ function bytes(int $b): string {
     <meta name="robots" content="noindex, nofollow">
     <title>ADMIN CORE</title>
     <?php echo emoji_favicon('⚙️'); ?>
-    <link rel="stylesheet" href="assets/hud.css">
-    <link rel="stylesheet" href="assets/admin.css">
+    <link rel="stylesheet" href="assets/css/hud.css">
+    <link rel="stylesheet" href="assets/css/admin.css">
 </head>
 <body class="<?php echo $mode === 'panel' ? 'panel-mode' : 'gate-mode'; ?>">
 
@@ -1508,7 +1509,7 @@ function bytes(int $b): string {
                     <form method="POST" onsubmit="return confirm('Protokolleinträge löschen?');"><input type="hidden" name="tab" value="system"><input type="hidden" name="action" value="audit_prune"><select name="days" style="width: auto; padding: 4px 8px;"><option value="30">älter als 30 Tage</option><option value="90" selected>älter als 90 Tage</option><option value="365">älter als 1 Jahr</option></select><button class="btn btn-sm">🧹 Protokoll aufräumen</button></form>
                     <?php if (can('backup.download')): ?><a href="backup.php" class="btn btn-sm">💾 Backup herunterladen</a><?php endif; ?>
                 </div>
-                <form method="POST" class="tools" style="margin-top: 14px;" onsubmit="return confirm('Alle im Browser gemachten Änderungen an diesem Hub verwerfen? (Eine Kopie landet im Ordner archive/)');">
+                <form method="POST" class="tools" style="margin-top: 14px;" onsubmit="return confirm('Alle im Browser gemachten Änderungen an diesem Hub verwerfen? (Eine Kopie landet im Ordner data/archive/)');">
                     <input type="hidden" name="tab" value="system"><input type="hidden" name="action" value="reset_hub">
                     <select name="hub" style="width: auto;"><?php foreach ($hubs as $h): ?><option value="<?php echo e($h); ?>"><?php echo e($h); ?><?php echo is_file(hub_data_file($h)) ? ' (bearbeitet)' : ''; ?></option><?php endforeach; ?></select>
                     <button class="btn btn-sm btn-danger">Hub zurücksetzen</button>
@@ -1589,8 +1590,8 @@ function bytes(int $b): string {
 <script>window.PALETTE = <?php echo json_encode($palette, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
 <?php endif; ?>
 
-<script src="assets/qr.js"></script>
-<script src="assets/admin.js"></script>
-<script src="assets/gender.js"></script>
+<script src="assets/js/qr.js"></script>
+<script src="assets/js/admin.js"></script>
+<script src="assets/js/gender.js"></script>
 </body>
 </html>

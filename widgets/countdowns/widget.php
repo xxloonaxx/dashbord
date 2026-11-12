@@ -1,6 +1,6 @@
 <?php
 // Die nächsten Countdowns mit laufender Restzeit
-require_once dirname(__DIR__, 2) . '/inc/countdown.php';
+require_once dirname(__DIR__, 2) . '/inc/modules/countdown.php';
 return [
     'name' => 'Countdowns',
     'icon' => '⏳',

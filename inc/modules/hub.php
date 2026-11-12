@@ -7,13 +7,13 @@
  * links_<hubname>.json – diese Datei hat danach Vorrang. Beim Hochladen einer neuen
  * Version der Webseite bleiben die eigenen Links dadurch erhalten.
  */
-require_once __DIR__ . '/format.php';
-require_once __DIR__ . '/common.php';
-require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/../core/format.php';
+require_once __DIR__ . '/../core/common.php';
+require_once __DIR__ . '/../core/auth.php';
 
 function hub_data_file(string $hub_file): string {
     $slug = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '_', pathinfo($hub_file, PATHINFO_FILENAME)));
-    return dirname(__DIR__) . '/links_' . $slug . '.json';
+    return DATA_DIR . '/json/links_' . $slug . '.json';
 }
 
 /** Gespeicherten Stand laden, sonst den Startbestand aus der Hub-Datei verwenden. */
@@ -205,8 +205,8 @@ function hub_link_actions(string $category, int $index, array $link): void {
 /** Dialoge (Link / Kategorie) + Styles + Skript */
 function hub_dialogs(array $categories): void {
     auth_corner();
-    echo '<link rel="stylesheet" href="assets/hub-admin.css">';
-    echo '<link rel="stylesheet" href="assets/format.css">';
+    echo '<link rel="stylesheet" href="assets/css/hub-admin.css">';
+    echo '<link rel="stylesheet" href="assets/css/format.css">';
     echo '<style>.nsfw-badge{display:inline-block;font-size:.6rem;font-weight:800;letter-spacing:1px;color:#ff5555;border:1px solid rgba(255,85,85,.6);padding:0 4px;margin-left:4px;vertical-align:middle}.nsfw-badge.hidden-for-guests{border-style:dashed;opacity:.75}</style>';
     if (!can('links.edit')) return;
     $icons = ['🔗', '⭐', '🛠️', '📚', '🎮', '🎥', '🎵', '🛒', '🐾', '🦊', '💻', '🐧', '🌐', '📰', '🔒', '🎨', '🥽', '🛡️', '💬', '📦'];
@@ -257,6 +257,6 @@ function hub_dialogs(array $categories): void {
         </form>
     </div>
 
-    <script src="assets/hub-admin.js"></script>
-    <script src="assets/editor.js"></script>
+    <script src="assets/js/hub-admin.js"></script>
+    <script src="assets/js/editor.js"></script>
 <?php }
