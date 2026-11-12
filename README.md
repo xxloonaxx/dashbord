@@ -298,11 +298,21 @@ Spielwiese für die Community – öffentlich, vieles geht auch ohne Konto:
   - **Anpassbar**: Name, Persönlichkeit (verspielt, verfressen, verschlafen, kuschelig, frech – beeinflusst die Werte), Lieblingsessen und Stimme.
   - Aussehen wahlweise wie deine Fursona, als Zufallstier oder mit **eigenen Bildern für 6 Emotionen**; dazu Hintergrund und Gehäusefarbe.
   - Wer angemeldet ist, bekommt den Stand auf dem Server gespeichert (geräteübergreifend). Die Hardware-Knöpfe A/B/C funktionieren auch.
-- **🎨 Fursona-Baukasten** mit zwei Modi:
-  - **Gezeichnet**: SVG-Avatar mit 19 Tierarten, 9 Farben, Ohren, Schnauze, Zeichnung, Extras und Accessoires.
-  - **Eigene Bilder**: Je ein Bild für die 6 Emotionen Normal, Fröhlich, Traurig, Wütend, Überrascht und Müde (oder eins für alle). Per Klick oder Drag & Drop.
-  - Die Bilder werden überall benutzt: Community, Karten, Tamagotchi und Minispiele.
-  - Download als PNG (je Emotion) oder SVG.
+- **🎨 Fursona**: deine eigene Sona mit **deinen eigenen Bildern**.
+  - Name, Art, **Geschlecht**, Pronomen (Vorschlag passend zum Geschlecht), Persönlichkeit, Bio und Ref-Link.
+  - **⭐ Hauptbild / Ref-Sheet** (bis 1600 px).
+  - **6 Emotionsbilder**: Normal, Fröhlich, Traurig, Wütend, Überrascht, Müde – oder eins für alle.
+  - **Galerie mit bis zu 12 Bildern**: Art (Ref-Sheet, Ganzkörper, Headshot, Artwork …), Beschreibung bzw. Credits, Reihenfolge, als Hauptbild setzen; Upload mehrerer Bilder oder per Drag & Drop.
+  - Bildbetrachter mit Pfeiltasten.
+  - Umschalter „So wird deine Sona gezeigt“: 🖼️ Meine Bilder oder 🧑‍🎨 Mein Avatar.
+  - Deine Bilder erscheinen in Community, Karten, Tamagotchi und Minispielen.
+- **🧑‍🎨 Avatar**: der gezeichnete Baukasten, jetzt dein **Profilbild**.
+  - Zu sehen in der Community-Ecke und bei Pfotenabdrücken; er springt überall ein, wo kein eigenes Bild da ist.
+  - 19 Tierarten, 10 Farben, Ohren, Schnauze, Zeichnung, Extras und Accessoires.
+  - **Geschlecht**: Weiblich (Wimpern, schmalere Schultern), Männlich (kräftige Brauen, breite Schultern), Nicht-binär (dezente Wimpern) oder keine Angabe.
+  - **Frisuren**: Pony, lange Haare, Stachelig, Dutt, Locken, Irokese – mit eigener Haarfarbe.
+  - **Pride-Anstecker**: Regenbogen, Trans, Nicht-binär, Bi, Pan, Lesbisch, Ace, Gay.
+  - 6 Emotionen, PNG/SVG-Download.
 - **🃏 Karten-Editor**: **Sammelkarte** (Flausch-Punkte, 2 Fähigkeiten, Werte), **Con-Badge** oder **Steckbrief**.
   - 9 Farbthemen, Seltenheit, ✨ Holo-Glanz (folgt der Maus) und Typ-Symbol.
   - Bild aus der Fursona (mit Emotion) oder hochgeladen. Verschieben mit der Maus, zoomen mit dem Mausrad.

@@ -46,6 +46,9 @@ function fh_db(): PDO {
             PRAGMA user_version = 2;
         ");
     }
+    if ((int)$db->query('PRAGMA user_version')->fetchColumn() < 3) {
+        $db->exec("ALTER TABLE sonas ADD COLUMN gallery TEXT NOT NULL DEFAULT '[]'; PRAGMA user_version = 3;");
+    }
     return $db;
 }
 
@@ -113,8 +116,11 @@ const FH_LOOK_ENUMS = [
     'extra' => ['none', 'horns', 'antlers', 'mane', 'fins', 'tuft', 'visor'],
     'acc' => ['none', 'glasses', 'bandana', 'bow', 'collar', 'headphones', 'flower', 'earring', 'scarf'],
     'eyeShape' => ['round', 'happy', 'sleepy', 'sharp'],
+    'gender' => ['neutral', 'female', 'male', 'nonbinary'],
+    'hair' => ['none', 'bangs', 'long', 'spiky', 'bun', 'curly', 'mohawk'],
+    'pin' => ['none', 'rainbow', 'trans', 'nonbinary', 'bi', 'pan', 'lesbian', 'ace', 'gay'],
 ];
-const FH_LOOK_COLORS = ['bg', 'main', 'second', 'muzzleC', 'inner', 'eye', 'nose', 'markC', 'accC'];
+const FH_LOOK_COLORS = ['bg', 'main', 'second', 'muzzleC', 'inner', 'eye', 'nose', 'markC', 'accC', 'hairC'];
 
 const FH_EMOTIONS = ['neutral', 'happy', 'sad', 'angry', 'surprised', 'sleepy'];
 const FH_IMG_RE = '/^furhub\.php\?img=([0-9a-f]{24})$/';
@@ -129,11 +135,26 @@ function fh_clean_look($look, ?int $uid = null): array {
         $u = $look['images'][$e] ?? '';
         if (is_string($u) && preg_match(FH_IMG_RE, $u, $m) && $uid && fh_img_owner($m[1]) === $uid) $out['images'][$e] = $u;
     }
-    if (!$out['images']) { $out['mode'] = 'svg'; $out['images'] = new stdClass(); }
+    $main = (string)($look['mainImg'] ?? '');   // Hauptbild (nicht verwechseln mit 'main' = Fellfarbe)
+    $out['mainImg'] = (preg_match(FH_IMG_RE, $main, $m) && $uid && fh_img_owner($m[1]) === $uid) ? $main : '';
+    if (!$out['images'] && $out['mainImg'] === '') $out['mode'] = 'svg';
+    if (!$out['images']) $out['images'] = new stdClass();
     foreach (FH_LOOK_ENUMS as $k => $allowed) $out[$k] = in_array($look[$k] ?? '', $allowed, true) ? $look[$k] : $allowed[0];
     foreach (FH_LOOK_COLORS as $k) $out[$k] = preg_match('/^#[0-9a-f]{6}$/i', $look[$k] ?? '') ? strtolower($look[$k]) : '#888888';
     $out['blush'] = !empty($look['blush']);
     $out['fluff'] = !empty($look['fluff']);
+    return $out;
+}
+
+/** Galerie: bis zu 12 eigene Bilder mit Beschriftung */
+function fh_clean_gallery($g, int $uid): array {
+    $out = [];
+    foreach (array_slice(is_array($g) ? $g : [], 0, 12) as $it) {
+        $u = (string)($it['url'] ?? '');
+        if (!preg_match(FH_IMG_RE, $u, $m) || fh_img_owner($m[1]) !== $uid) continue;
+        $out[] = ['url' => $u, 'caption' => mb_substr(trim((string)($it['caption'] ?? '')), 0, 80),
+                  'kind' => in_array($it['kind'] ?? '', ['ref', 'full', 'head', 'art', 'other'], true) ? $it['kind'] : 'other'];
+    }
     return $out;
 }
 
@@ -143,11 +164,12 @@ function fh_sona_save(int $uid, array $in): array {
     $traits = array_slice(array_values(array_filter(array_map(function ($t) { return mb_substr(trim((string)$t), 0, 40); }, (array)($in['traits'] ?? [])))), 0, 6);
     $ref = trim((string)($in['ref_url'] ?? ''));
     if ($ref !== '' && safe_url($ref) === '#') throw new InvalidArgumentException('Der Ref-Link muss mit https:// beginnen.');
-    fh_db()->prepare('INSERT INTO sonas (user_id, name, species, pronouns, bio, ref_url, look, traits, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    fh_db()->prepare('INSERT INTO sonas (user_id, name, species, pronouns, bio, ref_url, look, traits, updated, gallery) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                       ON CONFLICT(user_id) DO UPDATE SET name = excluded.name, species = excluded.species, pronouns = excluded.pronouns, bio = excluded.bio,
-                      ref_url = excluded.ref_url, look = excluded.look, traits = excluded.traits, updated = excluded.updated')
+                      ref_url = excluded.ref_url, look = excluded.look, traits = excluded.traits, updated = excluded.updated, gallery = excluded.gallery')
         ->execute([$uid, $name, mb_substr(trim((string)($in['species'] ?? '')), 0, 40), mb_substr(trim((string)($in['pronouns'] ?? '')), 0, 30),
-                   mb_substr(trim((string)($in['bio'] ?? '')), 0, 500), $ref, json_encode(fh_clean_look($in['look'] ?? [], $uid)), json_encode($traits, JSON_UNESCAPED_UNICODE), time()]);
+                   mb_substr(trim((string)($in['bio'] ?? '')), 0, 500), $ref, json_encode(fh_clean_look($in['look'] ?? [], $uid)), json_encode($traits, JSON_UNESCAPED_UNICODE), time(),
+                   json_encode(fh_clean_gallery($in['gallery'] ?? [], $uid), JSON_UNESCAPED_UNICODE)]);
     return fh_sona((int)$uid) ?? [];
 }
 
@@ -157,6 +179,7 @@ function fh_sona_row(array $r, ?int $me = null, array $liked = []): ?array {
     return ['user_id' => (int)$r['user_id'], 'owner' => $names[(int)$r['user_id']]['name'], 'owner_color' => $names[(int)$r['user_id']]['color'],
             'name' => $r['name'], 'species' => $r['species'], 'pronouns' => $r['pronouns'], 'bio' => $r['bio'], 'ref_url' => $r['ref_url'],
             'look' => json_decode($r['look'], true) ?: [], 'traits' => json_decode($r['traits'], true) ?: [], 'likes' => (int)$r['likes'],
+            'gallery' => json_decode($r['gallery'] ?? '[]', true) ?: [],
             'liked' => in_array((int)$r['user_id'], $liked, true), 'mine' => $me === (int)$r['user_id'], 'updated' => (int)$r['updated']];
 }
 
@@ -195,7 +218,7 @@ function fh_sona_like(int $sona_user, int $liker): array {
 
 // ---------- Eigene Bilder ----------
 
-const FH_IMG_KINDS = ['sona', 'pet', 'card'];
+const FH_IMG_KINDS = ['sona', 'pet', 'card', 'gallery'];
 const FH_IMG_MAX_BYTES = 2500000;
 const FH_IMG_MAX_PER_USER = 120;
 
@@ -234,7 +257,7 @@ function fh_img_store(int $uid, array $file, string $kind): array {
     if (function_exists('imagecreatefromstring') && $mime !== 'image/gif') {
         $im = @imagecreatefromstring((string)file_get_contents($file['tmp_name']));
         if ($im) {
-            $max = 768;
+            $max = $kind === 'gallery' ? 1600 : 768;
             if ($w > $max || $h > $max) {
                 $f = $max / max($w, $h);
                 $nw = max(1, (int)round($w * $f)); $nh = max(1, (int)round($h * $f));
@@ -263,7 +286,7 @@ function fh_img_gc(int $uid): void {
     $old = $st->fetchAll(PDO::FETCH_COLUMN);
     if (!$old) return;
     $blob = '';
-    foreach ([['SELECT look FROM sonas WHERE user_id = ?'], ['SELECT state FROM pets WHERE user_id = ?'], ['SELECT data FROM cards WHERE user_id = ?']] as [$sql]) {
+    foreach ([['SELECT look || gallery FROM sonas WHERE user_id = ?'], ['SELECT state FROM pets WHERE user_id = ?'], ['SELECT data FROM cards WHERE user_id = ?']] as [$sql]) {
         $q = $db->prepare($sql);
         $q->execute([$uid]);
         $blob .= implode("\n", $q->fetchAll(PDO::FETCH_COLUMN));
@@ -379,9 +402,11 @@ function fh_guestbook(): array {
     $me = current_user();
     $mod = can('furhub.moderate');
     $out = [];
+    $av = [];
+    foreach (fh_db()->query('SELECT user_id, look FROM sonas') as $r) $av[(int)$r['user_id']] = json_decode($r['look'], true);
     foreach (fh_db()->query('SELECT * FROM guestbook ORDER BY id DESC LIMIT 80') as $r) {
         $out[] = ['id' => (int)$r['id'], 'name' => $names[(int)$r['user_id']]['name'] ?? 'Ehemaliges Mitglied', 'msg' => $r['msg'], 'paw' => $r['paw'], 'ts' => (int)$r['ts'],
-                  'can_delete' => $mod || ($me && (int)$me['id'] === (int)$r['user_id'])];
+                  'can_delete' => $mod || ($me && (int)$me['id'] === (int)$r['user_id']), 'avatar' => $av[(int)$r['user_id']] ?? null];
     }
     return $out;
 }

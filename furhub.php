@@ -139,8 +139,9 @@ $boot = fh_client_data() + [
     'canModerate' => can('furhub.moderate'),
 ];
 $json = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE;
-$TABS = ['start' => ['🏠', 'Start'], 'tama' => ['🥚', 'Tamagotchi'], 'sona' => ['🎨', 'Fursona'], 'cards' => ['🃏', 'Karten'], 'community' => ['🐾', 'Community'],
+$TABS = ['start' => ['🏠', 'Start'], 'tama' => ['🥚', 'Tamagotchi'], 'sona' => ['🎨', 'Fursona'], 'avatar' => ['🧑‍🎨', 'Avatar'], 'cards' => ['🃏', 'Karten'], 'community' => ['🐾', 'Community'],
          'games' => ['🕹️', 'Minispiele'], 'bingo' => ['🎲', 'Con-Bingo'], 'quiz' => ['❓', 'Quiz'], 'sounds' => ['🔊', 'Sounds'], 'owo' => ['💬', 'OwO'], 'glossary' => ['📖', 'Glossar'], 'paws' => ['✍️', 'Pfotenabdrücke']];
+$GENDERS = ['neutral' => '⚪ Keine Angabe', 'female' => '♀ Weiblich', 'male' => '♂ Männlich', 'nonbinary' => '⚧ Nicht-binär'];
 $EMO = ['neutral' => ['😐', 'Normal'], 'happy' => ['😊', 'Fröhlich'], 'sad' => ['🥺', 'Traurig'], 'angry' => ['😠', 'Wütend'], 'surprised' => ['😳', 'Überrascht'], 'sleepy' => ['😴', 'Müde']];
 ?>
 <!DOCTYPE html>
@@ -242,55 +243,84 @@ $EMO = ['neutral' => ['😐', 'Normal'], 'happy' => ['😊', 'Fröhlich'], 'sad'
         </div>
     </section>
 
-    <!-- Fursona-Baukasten -->
+    <!-- Fursona: deine eigene Sona mit eigenen Bildern -->
     <section class="fh-panel" data-panel="sona" hidden>
         <div class="sona-layout">
             <div class="fh-card sona-preview">
-                <div id="sonaSvg" class="sona-svg"></div>
+                <div class="sona-hero" id="sonaHero"></div>
                 <div class="sona-name" id="sonaTitle"></div>
                 <div class="sona-traits" id="sonaTraitsView"></div>
+                <div class="emo-strip" id="emoStrip"></div>
                 <div class="sona-tools">
-                    <button type="button" class="fh-btn" id="sonaRandom">🎲 Alles zufällig</button>
-                    <button type="button" class="fh-btn" id="sonaColors">🎨 Nur Farben</button>
-                    <button type="button" class="fh-btn sm" id="sonaPng">⬇ PNG</button>
-                    <button type="button" class="fh-btn sm" id="sonaSvgDl">⬇ SVG</button>
+                    <button type="button" class="fh-btn sm" id="sonaPng">⬇ Bild speichern</button>
+                    <button type="button" class="fh-btn sm" id="sonaGalleryView">🖼️ Galerie ansehen</button>
+                    <button type="button" class="fh-btn sm" data-goto="avatar">🧑‍🎨 Avatar bearbeiten</button>
                 </div>
-                <div class="expr-row">Emotion: <?php foreach ($EMO as $k => [$ic, $l]): ?><button type="button" data-expr="<?php echo $k; ?>" title="<?php echo e($l); ?>"><?php echo $ic; ?></button><?php endforeach; ?></div>
             </div>
             <form class="fh-card sona-form" id="sonaForm" autocomplete="off">
-                <div class="fh-ct">🎨 Fursona-Baukasten</div>
+                <div class="fh-ct">🎨 Meine Fursona</div>
                 <div class="f2">
                     <label>Name <span class="inl"><input type="text" name="name" maxlength="40" required><button type="button" class="fh-btn sm" id="nameGen" title="Namen würfeln">🎲</button></span></label>
-                    <label>Tierart <select name="preset" id="speciesSel"></select></label>
+                    <label>Art <input type="text" name="species" maxlength="40" placeholder="z. B. Fuchs-Wolf-Hybrid"></label>
                 </div>
                 <div class="f2">
-                    <label>Art (frei) <input type="text" name="species" maxlength="40" placeholder="z. B. Fuchs-Wolf-Hybrid"></label>
+                    <label>Geschlecht <select name="gender"><?php foreach ($GENDERS as $k => $l): ?><option value="<?php echo $k; ?>"><?php echo $l; ?></option><?php endforeach; ?></select></label>
                     <label>Pronomen <input type="text" name="pronouns" maxlength="30" placeholder="z. B. sie/ihr, er/ihm, they/them"></label>
                 </div>
-                <div class="mode-switch"><button type="button" data-mode-s="svg">🖌️ Gezeichnet</button><button type="button" data-mode-s="custom">🖼️ Eigene Bilder</button></div>
-                <div id="sonaSvgOpts">
-                    <div class="sub">Farben</div>
-                    <div class="colors" id="sonaColorsIn"></div>
-                    <div class="sub">Form</div>
-                    <div class="shapes" id="sonaShapes"></div>
-                    <div class="checks"><label><input type="checkbox" name="blush"> Rosige Wangen</label><label><input type="checkbox" name="fluff"> Wangen-Fluff</label></div>
-                </div>
-                <div id="sonaCustomOpts" hidden>
-                    <div class="sub">Deine Bilder – je Emotion eins</div>
-                    <p class="muted small" style="margin-top: 0;">PNG, JPG, WebP oder GIF (max. 2,5 MB). Am besten quadratisch, gern mit transparentem Hintergrund. Fehlt eine Emotion, wird „Normal“ benutzt.<?php echo $me ? '' : ' Ohne Anmeldung bleiben die Bilder nur in diesem Browser.'; ?></p>
-                    <div class="emo-slots" data-emo-slots="sona"></div>
-                </div>
+                <div class="sub">So wird deine Sona gezeigt</div>
+                <div class="mode-switch"><button type="button" data-mode-s="custom">🖼️ Meine Bilder</button><button type="button" data-mode-s="svg">🧑‍🎨 Mein Avatar</button></div>
+                <p class="muted small" style="margin-top: 0;">Mit „Meine Bilder“ erscheinen deine Bilder in Community, Karten, Tamagotchi &amp; Spielen. Dein Avatar bleibt dein kleines Profilbild und springt ein, wo ein Bild fehlt.</p>
+                <div class="sub">⭐ Hauptbild / Ref-Sheet</div>
+                <div class="main-slot" id="mainSlot"></div>
+                <div class="sub">😊 Emotionen <small class="muted">(optional – je ein Bild)</small></div>
+                <div class="emo-slots" data-emo-slots="sona"></div>
+                <div class="sub">🖼️ Galerie <small class="muted" id="galCount"></small></div>
+                <div class="gallery-edit" id="galEdit"></div>
+                <p class="muted small" style="margin-top: 0;">PNG, JPG, WebP oder GIF. Große Bilder werden automatisch verkleinert (Galerie bis 1600 px). Mehrere Bilder auf einmal oder per Drag &amp; Drop.<?php echo $me ? '' : ' Ohne Anmeldung bleiben die Bilder nur in diesem Browser.'; ?></p>
                 <div class="sub">Persönlichkeit <button type="button" class="fh-btn sm" id="traitGen">🎲 neu würfeln</button></div>
                 <div class="traits" id="sonaTraits"></div>
                 <label>Über meine Sona <textarea name="bio" rows="3" maxlength="500" placeholder="Lieblingsessen, Macken, Hintergrundgeschichte …"></textarea></label>
                 <label>Ref-Sheet-Link (optional) <input type="url" name="ref_url" maxlength="300" placeholder="https://…"></label>
                 <div class="sona-save">
                     <?php if ($me): ?>
-                        <button type="submit" class="fh-btn gold">💾 Als meine Sona speichern</button>
-                        <button type="button" class="fh-btn sm danger" id="sonaDelete" hidden>Entfernen</button>
+                        <button type="submit" class="fh-btn gold">💾 Speichern</button>
+                        <button type="button" class="fh-btn sm danger" id="sonaDelete" hidden>Aus der Community entfernen</button>
                     <?php else: ?>
                         <p class="muted small">Dein Entwurf wird in diesem Browser gemerkt. <a href="admin.php?next=furhub.php">Melde dich an</a>, um deine Sona in der Community zu zeigen.</p>
                     <?php endif; ?>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <!-- Avatar: gezeichnet, mit Geschlecht, Frisur & Anstecker -->
+    <section class="fh-panel" data-panel="avatar" hidden>
+        <div class="sona-layout">
+            <div class="fh-card sona-preview">
+                <div id="sonaSvg" class="sona-svg"></div>
+                <div class="sona-tools">
+                    <button type="button" class="fh-btn" id="sonaRandom">🎲 Alles zufällig</button>
+                    <button type="button" class="fh-btn" id="sonaColors">🎨 Nur Farben</button>
+                    <button type="button" class="fh-btn sm" id="avPng">⬇ PNG</button>
+                    <button type="button" class="fh-btn sm" id="sonaSvgDl">⬇ SVG</button>
+                </div>
+                <div class="expr-row">Emotion: <?php foreach ($EMO as $k => [$ic, $l]): ?><button type="button" data-expr="<?php echo $k; ?>" title="<?php echo e($l); ?>"><?php echo $ic; ?></button><?php endforeach; ?></div>
+                <p class="muted small">Dein Avatar ist dein Profilbild im Furry Hub – in der Community, bei Pfotenabdrücken und überall, wo kein eigenes Bild da ist.</p>
+            </div>
+            <form class="fh-card sona-form" id="avatarForm" autocomplete="off">
+                <div class="fh-ct">🧑‍🎨 Avatar-Baukasten</div>
+                <div class="f2">
+                    <label>Tierart <select name="preset" id="speciesSel"></select></label>
+                    <label>Geschlecht <select name="gender"><?php foreach ($GENDERS as $k => $l): ?><option value="<?php echo $k; ?>"><?php echo $l; ?></option><?php endforeach; ?></select></label>
+                </div>
+                <p class="muted small gender-hint" id="genderHint"></p>
+                <div class="sub">Farben</div>
+                <div class="colors" id="sonaColorsIn"></div>
+                <div class="sub">Form, Frisur &amp; Extras</div>
+                <div class="shapes" id="sonaShapes"></div>
+                <div class="checks"><label><input type="checkbox" name="blush"> Rosige Wangen</label><label><input type="checkbox" name="fluff"> Wangen-Fluff</label></div>
+                <div class="sona-save">
+                    <?php if ($me): ?><button type="submit" class="fh-btn gold">💾 Speichern</button><?php else: ?><p class="muted small">Wird in diesem Browser gemerkt.</p><?php endif; ?>
                 </div>
             </form>
         </div>
@@ -440,6 +470,7 @@ $EMO = ['neutral' => ['😐', 'Normal'], 'happy' => ['😊', 'Fröhlich'], 'sad'
 </div>
 
 <div class="fh-toast" id="fhToast" hidden></div>
+<div class="fh-lightbox" id="fhLightbox" hidden><button type="button" class="lb-x" data-lb="close" aria-label="Schließen">×</button><button type="button" class="lb-nav prev" data-lb="prev" aria-label="Zurück">‹</button><figure><img id="lbImg" alt=""><figcaption id="lbCap"></figcaption></figure><button type="button" class="lb-nav next" data-lb="next" aria-label="Weiter">›</button></div>
 <script>window.FH = <?php echo json_encode($boot, $json); ?>;</script>
 <?php foreach (['furhub', 'furhub-tama', 'furhub-cards', 'furhub-games'] as $js): ?><script src="assets/<?php echo $js; ?>.js?v=<?php echo filemtime(__DIR__ . '/assets/' . $js . '.js'); ?>"></script>
 <?php endforeach; ?>
