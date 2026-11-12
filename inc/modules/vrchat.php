@@ -26,15 +26,9 @@ final class VrcAuthError extends RuntimeException {}
 
 // ---------- Datenbank ----------
 
-function vrc_db(): PDO {
-    static $db = null;
-    if ($db) return $db;
-    site_db();   // legt data/ samt .htaccess an
-    $dir = DATA_DIR . '/db';
-    $file = (glob($dir . '/vrcx_*.sqlite') ?: [])[0] ?? $dir . '/vrcx_' . bin2hex(random_bytes(12)) . '.sqlite';
-    $db = new PDO('sqlite:' . $file, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
-    $db->exec('PRAGMA journal_mode = WAL');
-    $db->exec('PRAGMA busy_timeout = 5000');
+function vrc_db(): PDO { return db_get('vrchat'); }
+
+function vrc_migrate(PDO $db): void {
     if ((int)$db->query('PRAGMA user_version')->fetchColumn() < 1) {
         $db->exec("
             CREATE TABLE accounts (
@@ -152,7 +146,26 @@ function vrc_db(): PDO {
             PRAGMA user_version = 5;
         ");
     }
-    return $db;
+    if ((int)$db->query('PRAGMA user_version')->fetchColumn() < 6) {
+        // Desktop-Client: Geräte, Spiel-Log aus den VRChat-Logdateien, Live-Zustand, OSC-Warteschlange & Schnellknöpfe
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS client_tokens (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, name TEXT NOT NULL DEFAULT '', token_hash TEXT NOT NULL UNIQUE,
+                                        created INTEGER NOT NULL, last_seen INTEGER NOT NULL DEFAULT 0, last_ip TEXT NOT NULL DEFAULT '', version TEXT NOT NULL DEFAULT '', platform TEXT NOT NULL DEFAULT '');
+            CREATE INDEX IF NOT EXISTS idx_ct_user ON client_tokens(user_id);
+            CREATE TABLE IF NOT EXISTS game_log (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, ts INTEGER NOT NULL, kind TEXT NOT NULL,
+                                   world_id TEXT NOT NULL DEFAULT '', instance TEXT NOT NULL DEFAULT '', world_name TEXT NOT NULL DEFAULT '',
+                                   player_id TEXT NOT NULL DEFAULT '', player_name TEXT NOT NULL DEFAULT '', detail TEXT NOT NULL DEFAULT '',
+                                   hash TEXT NOT NULL, client_id INTEGER NOT NULL DEFAULT 0, UNIQUE (user_id, hash));
+            CREATE INDEX IF NOT EXISTS idx_gl_user_ts ON game_log(user_id, ts);
+            CREATE INDEX IF NOT EXISTS idx_gl_kind ON game_log(user_id, kind, ts);
+            CREATE TABLE IF NOT EXISTS client_state (user_id INTEGER PRIMARY KEY, client_id INTEGER NOT NULL DEFAULT 0, updated INTEGER NOT NULL, state TEXT NOT NULL DEFAULT '{}');
+            CREATE TABLE IF NOT EXISTS osc_queue (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, created INTEGER NOT NULL, kind TEXT NOT NULL, payload TEXT NOT NULL,
+                                    status TEXT NOT NULL DEFAULT 'pending', client_id INTEGER NOT NULL DEFAULT 0, done INTEGER NOT NULL DEFAULT 0, result TEXT NOT NULL DEFAULT '');
+            CREATE INDEX IF NOT EXISTS idx_osc_user ON osc_queue(user_id, status);
+            CREATE TABLE IF NOT EXISTS osc_presets (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, label TEXT NOT NULL, kind TEXT NOT NULL, payload TEXT NOT NULL, sort INTEGER NOT NULL DEFAULT 0);
+            PRAGMA user_version = 6;
+        ");
+    }
 }
 
 // ---------- Verschlüsselung der Sitzungs-Cookies ----------

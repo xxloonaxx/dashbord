@@ -45,7 +45,7 @@ const PAGE_DEFAULTS = [
 const PAGE_REQUIRED_PERMISSION = ['budget.php' => 'budget.access', 'con.php' => 'con.access', 'backup.php' => 'backup.download', 'nexus.php' => 'vrcx.access', 'discord.php' => 'discord.manage', 'nsfw.php' => 'nsfw.browse'];
 
 /** Seiten, die nie im Register auftauchen (Hilfsdateien) */
-const PAGE_IGNORE = ['index.php', 'page.php', 'preview.php', 'vrcx.php', 'widgets.php'];
+const PAGE_IGNORE = ['index.php', 'page.php', 'preview.php', 'vrcx.php', 'widgets.php', 'client.php'];
 
 /** Umbenannte Dateien: alter Name => neuer Name (Einstellungen der Kachel bleiben erhalten) */
 const PAGE_RENAMES = ['vrcx.php' => 'nexus.php'];
@@ -57,7 +57,7 @@ function page_category_id(string $name): int {
     $id = $st->fetchColumn();
     if ($id) return (int)$id;
     $icons = ['Link-Hubs' => '🔗', 'Planung' => '🗓️', 'Finanzen' => '💶', 'System' => '⚙️', 'Eigene Seiten' => '✨', 'Weitere Seiten' => '📁', 'Community' => '🥽'];
-    $db->prepare('INSERT INTO page_categories (name, icon, sort) VALUES (?, ?, (SELECT COALESCE(MAX(sort), 0) + 1 FROM page_categories))')->execute([$name, $icons[$name] ?? '📁']);
+    $db->prepare('INSERT INTO page_categories (name, icon, sort) VALUES (?, ?, ?)')->execute([$name, $icons[$name] ?? '📁', (int)$db->query('SELECT COALESCE(MAX(sort), 0) + 1 FROM page_categories')->fetchColumn()]);
     return (int)$db->lastInsertId();
 }
 
@@ -76,7 +76,9 @@ function pages_sync(): void {
     }
     foreach (PAGE_RENAMES as $old => $new) {
         if (!is_file("$root/$new")) continue;
-        $db->prepare("UPDATE pages SET slug = ? WHERE slug = ? AND kind = 'file' AND NOT EXISTS (SELECT 1 FROM pages WHERE slug = ?)")->execute([$new, $old, $new]);
+        $exists = $db->prepare('SELECT 1 FROM pages WHERE slug = ?');
+        $exists->execute([$new]);
+        if (!$exists->fetchColumn()) $db->prepare("UPDATE pages SET slug = ? WHERE slug = ? AND kind = 'file'")->execute([$new, $old]);
         if (isset(PAGE_DEFAULTS[$new])) {
             $db->prepare("UPDATE pages SET title = ?, description = ? WHERE slug = ? AND title IN ('VRCX', 'VRCX Lite')")->execute([PAGE_DEFAULTS[$new][0], PAGE_DEFAULTS[$new][2], $new]);
         }

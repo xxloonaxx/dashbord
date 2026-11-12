@@ -48,9 +48,17 @@ function storage_upgrade(): void {
     @file_put_contents(DATA_DIR . '/.layout-v2', date('c'));
 }
 storage_upgrade();
+require_once __DIR__ . '/database.php';
 
 /** JSON-Datei laden; bei fehlender oder kaputter Datei den Standardwert liefern. */
 function load_json(string $path, $default) {
+    $key = doc_key($path);   // MySQL-Modus: Dokument aus der Datenbank
+    if ($key !== null) {
+        $raw = doc_read($key);
+        if ($raw === null) return $default;
+        $decoded = json_decode($raw, true);
+        return is_array($decoded) ? $decoded : $default;
+    }
     if (!is_file($path)) return $default;
     $decoded = json_decode((string)@file_get_contents($path), true);
     return is_array($decoded) ? $decoded : $default;
@@ -63,6 +71,8 @@ function load_json(string $path, $default) {
 function save_json(string $path, $data): bool {
     $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     if ($json === false) return false;
+    $key = doc_key($path);
+    if ($key !== null) return doc_write($key, $json);
     if (!is_dir(dirname($path))) @mkdir(dirname($path), 0755, true);
     $tmp = $path . '.tmp';
     if (file_put_contents($tmp, $json, LOCK_EX) === false) return false;

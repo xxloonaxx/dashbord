@@ -324,3 +324,7 @@ a.ucell:hover b { color: var(--accent-cyan); }
 .rc-actions { flex-wrap: wrap; } .roles > * { min-width: 0; }
 .av.has-img { background: #1d3557; overflow: hidden; padding: 0; }
 .av-img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+
+/* Datenbank */
+.dblog { background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(56, 213, 230, 0.12); border-radius: 8px; padding: 10px 12px; font-size: 0.75rem; max-height: 280px; overflow: auto; white-space: pre-wrap; margin: 0; }
+.panel .tbl td.mono.small { word-break: break-all; }

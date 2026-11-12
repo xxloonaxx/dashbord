@@ -1,0 +1,47 @@
+name: Nexus Desktop-Client
+
+on:
+  push:
+    paths:
+      - 'clients/nexus-desktop/**'
+      - '.github/workflows/nexus-desktop.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Tests
+        working-directory: clients/nexus-desktop
+        run: python -m unittest discover -s tests -v
+
+  build-windows:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: PyInstaller installieren
+        run: python -m pip install -r clients/nexus-desktop/requirements-build.txt
+      - name: Tests (Windows)
+        working-directory: clients/nexus-desktop
+        run: python -m unittest discover -s tests -v
+      - name: EXE bauen
+        working-directory: clients/nexus-desktop
+        run: python -m PyInstaller --noconfirm --onefile --windowed --name GhostNodeNexus --icon icon.ico ghostnode_nexus.py
+      - name: Artefakt hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: GhostNodeNexus-windows
+          path: |
+            clients/nexus-desktop/dist/GhostNodeNexus.exe
+            clients/nexus-desktop/README.md

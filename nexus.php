@@ -6,6 +6,7 @@
  */
 require_once __DIR__ . '/inc/modules/vrchat.php';
 require_once __DIR__ . '/inc/modules/vrchat_favs.php';
+require_once __DIR__ . '/inc/modules/nexus_client.php';
 
 // Handy-/Kalender-Abo der VRChat-Gruppen-Events: nexus.php?ics=<token> (ohne Anmeldung, nur mit geheimem Token)
 if (isset($_GET['ics'])) {
@@ -25,6 +26,28 @@ $me = current_user();
 $uid = (int)$me['id'];
 
 if (isset($_GET['export']) && vrc_account($uid)) { vrc_export($uid, (string)$_GET['export']); exit; }
+if (isset($_GET['client_export'])) { nc_export_csv($uid); exit; }
+// Desktop-Client als ZIP (Quellcode + Start-/Build-Skripte; die fertige EXE baut build.bat bzw. GitHub Actions)
+if (isset($_GET['client_download'])) {
+    $dir = __DIR__ . '/clients/nexus-desktop';
+    if (!class_exists('ZipArchive') || !is_dir($dir)) { http_response_code(404); exit('Client nicht gefunden.'); }
+    $tmp = tempnam(sys_get_temp_dir(), 'ncz');
+    $zip = new ZipArchive();
+    $zip->open($tmp, ZipArchive::OVERWRITE);
+    $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS));
+    foreach ($it as $file) {
+        $rel = str_replace('\\', '/', substr($file->getPathname(), strlen($dir) + 1));
+        if (preg_match('#(^|/)(__pycache__|build|dist)/|\.pyc$|\.spec$#', $rel)) continue;
+        $zip->addFile($file->getPathname(), 'GhostNodeNexus/' . $rel);
+    }
+    $zip->close();
+    header('Content-Type: application/zip');
+    header('Content-Disposition: attachment; filename="GhostNodeNexus-Client.zip"');
+    header('Content-Length: ' . filesize($tmp));
+    readfile($tmp);
+    unlink($tmp);
+    exit;
+}
 // Bilder aus der VRChat-Galerie (brauchen die VRChat-Anmeldung) durchreichen
 if (isset($_GET['img'])) {
     session_write_close();
@@ -72,6 +95,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($act === 'cancel_login') {
             @session_start();
             unset($_SESSION['vrc_pending']);
+        } elseif (strpos($act, 'client_') === 0) {
+            // Desktop-Client – funktioniert auch ohne verbundenes VRChat-Web-Konto
+            session_write_close();
+            switch ($act) {
+                case 'client_overview':
+                    $out = ['tokens' => nc_tokens($uid), 'state' => nc_state($uid), 'stats' => nc_stats($uid), 'osc' => nc_osc_recent($uid), 'presets' => nc_presets($uid),
+                            'kinds' => NC_KINDS, 'api' => rtrim(dirname((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . ($_SERVER['SCRIPT_NAME'] ?? '/nexus.php')), '/') . '/'];
+                    break;
+                case 'client_token_create':
+                    $out = ['token' => nc_token_create($uid, (string)($in['name'] ?? '')), 'tokens' => nc_tokens($uid)];
+                    audit('Nexus-Client: Gerät hinzugefügt', mb_substr((string)($in['name'] ?? ''), 0, 40), 'security');
+                    break;
+                case 'client_token_revoke':
+                    nc_token_revoke($uid, (int)($in['token'] ?? 0));
+                    audit('Nexus-Client: Gerät entfernt', '#' . (int)($in['token'] ?? 0), 'security');
+                    $out = ['tokens' => nc_tokens($uid)];
+                    break;
+                case 'client_log':
+                    $out = ['events' => nc_log_list($uid, ['kind' => (string)($in['kind'] ?? ''), 'q' => (string)($in['q'] ?? ''), 'before' => (int)($in['before'] ?? 0),
+                                                           'player' => (string)($in['player'] ?? ''), 'day' => (string)($in['day'] ?? ''), 'limit' => 100])];
+                    break;
+                case 'client_players':
+                    $out = ['players' => nc_players($uid, max(1, min(3650, (int)($in['days'] ?? 30))), trim((string)($in['q'] ?? '')))];
+                    break;
+                case 'client_visits':
+                    $out = ['visits' => array_slice(nc_visits($uid, max(1, min(365, (int)($in['days'] ?? 7)))), 0, 200)];
+                    break;
+                case 'client_osc':
+                    $nid = nc_osc_enqueue($uid, (string)($in['kind'] ?? ''), $in);
+                    $out = ['id' => $nid, 'osc' => nc_osc_recent($uid)];
+                    break;
+                case 'client_osc_status':
+                    $out = ['osc' => nc_osc_recent($uid), 'state' => nc_state($uid)];
+                    break;
+                case 'client_preset_save':
+                    nc_preset_save($uid, (string)($in['label'] ?? ''), (string)($in['kind'] ?? ''), $in);
+                    $out = ['presets' => nc_presets($uid)];
+                    break;
+                case 'client_preset_delete':
+                    nc_preset_delete($uid, (int)($in['preset'] ?? 0));
+                    $out = ['presets' => nc_presets($uid)];
+                    break;
+                case 'client_log_clear':
+                    $n = nc_log_clear($uid);
+                    audit('Nexus-Client: Spiel-Log gelöscht', $n . ' Einträge', 'warn');
+                    $out = ['deleted' => $n];
+                    break;
+                default:
+                    throw new RuntimeException('Unbekannte Aktion.');
+            }
         } else {
             session_write_close();   // lange VRChat-Abfragen sollen andere Tabs nicht blockieren
             $acc = vrc_account($uid);
@@ -485,8 +558,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $op = (string)($in['op'] ?? 'create');
                     $db = vrc_db();
                     if ($op !== 'delete' && $name === '') throw new RuntimeException('Bitte einen Namen eingeben.');
-                    if ($op === 'create') $db->prepare('INSERT OR IGNORE INTO local_fav_groups (user_id, kind, name, sort) VALUES (?, ?, ?, (SELECT COALESCE(MAX(sort), 0) + 1 FROM local_fav_groups WHERE user_id = ? AND kind = ?))')->execute([$uid, $kind, $name, $uid, $kind]);
-                    if ($op === 'rename') { $db->prepare('UPDATE local_fav_groups SET name = ? WHERE user_id = ? AND kind = ? AND name = ?')->execute([$name, $uid, $kind, $old]); $db->prepare('UPDATE OR REPLACE local_favs SET grp = ? WHERE user_id = ? AND kind = ? AND grp = ?')->execute([$name, $uid, $kind, $old]); }
+                    if ($op === 'create') vrc_local_group_add($uid, $kind, $name);
+                    if ($op === 'rename') { $db->prepare('UPDATE local_fav_groups SET name = ? WHERE user_id = ? AND kind = ? AND name = ?')->execute([$name, $uid, $kind, $old]); $db->prepare('UPDATE OR IGNORE local_favs SET grp = ? WHERE user_id = ? AND kind = ? AND grp = ?')->execute([$name, $uid, $kind, $old]); $db->prepare('DELETE FROM local_favs WHERE user_id = ? AND kind = ? AND grp = ?')->execute([$uid, $kind, $old]); }
                     if ($op === 'delete') { $db->prepare('DELETE FROM local_fav_groups WHERE user_id = ? AND kind = ? AND name = ?')->execute([$uid, $kind, $old]); $db->prepare('DELETE FROM local_favs WHERE user_id = ? AND kind = ? AND grp = ?')->execute([$uid, $kind, $old]); }
                     $out = ['msg' => ['create' => 'Gruppe angelegt.', 'rename' => 'Umbenannt.', 'delete' => 'Gruppe gelöscht.'][$op] ?? 'OK'];
                     break;
@@ -855,6 +928,10 @@ session_write_close();
             <li>⚠ Die VRChat-API ist inoffiziell. VRC Nexus fragt bewusst sparsam ab (höchstens alle 45 s) und führt nichts automatisch aus.</li>
         </ul>
     </div>
+    <details class="panel nc-standalone" id="clientStandalone">
+        <summary class="panel-title" style="cursor: pointer;">🖥️ Desktop-Client &amp; OSC – funktioniert auch ohne VRChat-Web-Anmeldung</summary>
+        <div id="clientPane" class="nc"></div>
+    </details>
 <?php else: ?>
     <nav class="vx-tabs" id="tabs" role="tablist">
         <button type="button" class="vx-tabbtn active" data-tab="friends" role="tab"><span>👥</span>Freunde</button>
@@ -870,6 +947,7 @@ session_write_close();
         <button type="button" class="vx-tabbtn" data-tab="moderation" role="tab"><span>🚫</span>Moderation</button>
         <button type="button" class="vx-tabbtn" data-tab="news" role="tab"><span>📰</span>Info-Push</button>
         <button type="button" class="vx-tabbtn" data-tab="search" role="tab"><span>🔍</span>Suche</button>
+        <button type="button" class="vx-tabbtn" data-tab="client" role="tab"><span>🖥️</span>Client</button>
         <button type="button" class="vx-tabbtn" data-tab="account" role="tab"><span>⚙</span>Konto</button>
     </nav>
     <div class="vx-bar" id="syncBar">
@@ -1031,6 +1109,7 @@ session_write_close();
         <div class="vx-results" id="searchBox"></div>
     </section>
 
+    <section class="vx-tab" data-pane="client" hidden><div id="clientPane" class="nc"></div></section>
     <section class="vx-tab" data-pane="account" hidden>
         <div class="vx-cols">
             <div class="panel">
@@ -1117,5 +1196,6 @@ session_write_close();
     window.VRCX = { connected: <?php echo $acc ? 'true' : 'false'; ?>, status: <?php echo json_encode(array_map(function ($s) { return ['label' => $s[0], 'color' => $s[1]]; }, VRC_STATUS), JSON_UNESCAPED_UNICODE); ?>, syncMin: <?php echo VRC_SYNC_MIN; ?>, discord: <?php echo can('discord.manage') && (function () { require_once __DIR__ . '/inc/modules/discord.php'; return discord_configured(); })() ? 'true' : 'false'; ?> };
 </script>
 <script src="assets/js/nexus.js"></script>
+<script src="assets/js/nexus-client.js"></script>
 </body>
 </html>

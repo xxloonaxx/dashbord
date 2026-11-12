@@ -9,19 +9,12 @@ require_once __DIR__ . '/../core/auth.php';
 const FH_REACTIONS = ['boop' => ['👃', 'Boops'], 'awoo' => ['🐺', 'Awoos'], 'pat' => ['🤚', 'Headpats'], 'hug' => ['🫂', 'Umarmungen']];
 const FH_RATE_PER_MIN = 900;    // Reaktionen je Adresse und Minute (gegen Skripte)
 
-function fh_db_present(): bool { return (bool)(glob(DATA_DIR . '/db/furhub_*.sqlite') ?: []); }
+/** Wurde der Furry Hub schon benutzt? (sonst keine Datenbank anlegen) */
+function fh_db_present(): bool { return db_is_mysql() || (bool)(glob(DATA_DIR . '/db/furhub_*.sqlite') ?: []); }
 
-function fh_db(): PDO {
-    static $db = null;
-    if ($db) return $db;
-    $dir = DATA_DIR . '/db';
-    if (!is_dir($dir)) mkdir($dir, 0755, true);
-    if (!is_file($dir . '/.htaccess')) file_put_contents($dir . '/.htaccess', "Require all denied\n");
-    $found = glob($dir . '/furhub_*.sqlite') ?: [];
-    $file = $found ? $found[0] : $dir . '/furhub_' . bin2hex(random_bytes(12)) . '.sqlite';
-    $db = new PDO('sqlite:' . $file, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
-    $db->exec('PRAGMA journal_mode = WAL');
-    $db->exec('PRAGMA busy_timeout = 5000');
+function fh_db(): PDO { return db_get('furhub'); }
+
+function fh_migrate(PDO $db): void {
     if ((int)$db->query('PRAGMA user_version')->fetchColumn() < 1) {
         $db->exec("
             CREATE TABLE IF NOT EXISTS counters (key TEXT PRIMARY KEY, n INTEGER NOT NULL DEFAULT 0);
@@ -57,7 +50,6 @@ function fh_db(): PDO {
                    CREATE TABLE IF NOT EXISTS userdata (user_id INTEGER NOT NULL, k TEXT NOT NULL, v TEXT NOT NULL, updated INTEGER NOT NULL, PRIMARY KEY (user_id, k));
                    PRAGMA user_version = 4;");
     }
-    return $db;
 }
 
 /** Namen & Farben der Benutzer (aus der Site-DB) */

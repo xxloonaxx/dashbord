@@ -29,3 +29,10 @@ data/index.html
 
 # Auslieferungs-ZIPs (enthalten persönliche Daten)
 webseite-verbessert-*.zip
+
+# Python
+__pycache__/
+*.pyc
+clients/nexus-desktop/build/
+clients/nexus-desktop/dist/
+*.spec

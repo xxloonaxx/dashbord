@@ -90,9 +90,16 @@ function vrc_local_items(int $uid, string $kind): array {
     return array_map(function ($r) { return ['id' => $r['vrc_id'], 'group' => $r['grp'], 'name' => $r['name'], 'image' => $r['image'], 'sub' => $r['sub'], 'added' => (int)$r['added']]; }, $st->fetchAll());
 }
 
+/** Lokale Favoriten-Gruppe anlegen (hinten anhängen) */
+function vrc_local_group_add(int $uid, string $kind, string $name): void {
+    $st = vrc_db()->prepare('SELECT COALESCE(MAX(sort), 0) + 1 FROM local_fav_groups WHERE user_id = ? AND kind = ?');
+    $st->execute([$uid, $kind]);
+    vrc_db()->prepare('INSERT OR IGNORE INTO local_fav_groups (user_id, kind, name, sort) VALUES (?, ?, ?, ?)')->execute([$uid, $kind, $name, (int)$st->fetchColumn()]);
+}
+
 function vrc_local_add(int $uid, string $kind, string $grp, array $item): void {
     $grp = mb_substr(trim($grp), 0, 40) ?: 'Favoriten';
-    vrc_db()->prepare('INSERT OR IGNORE INTO local_fav_groups (user_id, kind, name, sort) VALUES (?, ?, ?, (SELECT COALESCE(MAX(sort), 0) + 1 FROM local_fav_groups WHERE user_id = ? AND kind = ?))')->execute([$uid, $kind, $grp, $uid, $kind]);
+    vrc_local_group_add($uid, $kind, $grp);
     vrc_db()->prepare('INSERT OR REPLACE INTO local_favs (user_id, kind, grp, vrc_id, name, image, sub, added) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
             ->execute([$uid, $kind, $grp, $item['id'], mb_substr((string)($item['name'] ?? ''), 0, 120), mb_substr((string)($item['image'] ?? ''), 0, 500), mb_substr((string)($item['sub'] ?? ''), 0, 120), time()]);
 }
@@ -113,7 +120,10 @@ function vrc_local_of(int $uid, string $kind, string $id): array {
 function vrc_history_add(int $uid, string $kind, string $id, string $name, string $image, string $sub): void {
     $db = vrc_db();
     $db->prepare('INSERT OR REPLACE INTO vrc_history (user_id, kind, vrc_id, name, image, sub, ts) VALUES (?, ?, ?, ?, ?, ?, ?)')->execute([$uid, $kind, $id, mb_substr($name, 0, 120), mb_substr($image, 0, 500), mb_substr($sub, 0, 120), time()]);
-    $db->prepare('DELETE FROM vrc_history WHERE user_id = ? AND kind = ? AND vrc_id NOT IN (SELECT vrc_id FROM vrc_history WHERE user_id = ? AND kind = ? ORDER BY ts DESC LIMIT 100)')->execute([$uid, $kind, $uid, $kind]);
+    // nur die neuesten 100 behalten (ohne LIMIT in Unterabfrage – das kann MySQL nicht)
+    $cut = $db->prepare('SELECT ts FROM vrc_history WHERE user_id = ? AND kind = ? ORDER BY ts DESC LIMIT 1 OFFSET 99');
+    $cut->execute([$uid, $kind]);
+    if (($ts = $cut->fetchColumn()) !== false) $db->prepare('DELETE FROM vrc_history WHERE user_id = ? AND kind = ? AND ts < ?')->execute([$uid, $kind, (int)$ts]);
 }
 
 function vrc_history(int $uid, string $kind): array {

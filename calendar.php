@@ -150,7 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($name === '') throw new InvalidArgumentException('Bitte einen Kategorie-Namen eingeben.');
                 $cid = (int)($_POST['id'] ?? 0);
                 if ($cid) cal_db()->prepare('UPDATE categories SET name = ?, color = ? WHERE id = ?')->execute([$name, $color, $cid]);
-                else cal_db()->prepare('INSERT INTO categories (name, color, sort) VALUES (?, ?, (SELECT COALESCE(MAX(sort), 0) + 1 FROM categories))')->execute([$name, $color]);
+                else cal_db()->prepare('INSERT INTO categories (name, color, sort) VALUES (?, ?, ?)')->execute([$name, $color, (int)cal_db()->query('SELECT COALESCE(MAX(sort), 0) + 1 FROM categories')->fetchColumn()]);
                 $msg = 'Kategorie „' . $name . '“ gespeichert.';
                 break;
 

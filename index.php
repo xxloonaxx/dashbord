@@ -83,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $icon = mb_substr(trim($_POST['icon'] ?? ''), 0, 4);
                 $cid = (int)($_POST['id'] ?? 0);
                 if ($cid) $db->prepare('UPDATE page_categories SET name = ?, icon = ? WHERE id = ?')->execute([$name, $icon, $cid]);
-                else $db->prepare('INSERT INTO page_categories (name, icon, sort) VALUES (?, ?, (SELECT COALESCE(MAX(sort), 0) + 1 FROM page_categories))')->execute([$name, $icon]);
+                else $db->prepare('INSERT INTO page_categories (name, icon, sort) VALUES (?, ?, ?)')->execute([$name, $icon, (int)$db->query('SELECT COALESCE(MAX(sort), 0) + 1 FROM page_categories')->fetchColumn()]);
                 audit($cid ? 'Kategorie umbenannt' : 'Kategorie angelegt', $name);
                 $msg = 'Kategorie „' . $name . '“ gespeichert.';
                 break;

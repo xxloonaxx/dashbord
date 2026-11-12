@@ -129,6 +129,8 @@
         if (name === 'calendar') loadCalendar(false);
         if (name === 'gallery' && !loaded.gallery) loadGallery(false);
         if (name === 'news' && !loaded.news) loadNews();
+        if (name === 'client' && window.NexusClient) window.NexusClient.open();
+        if (name !== 'client' && window.NexusClient) window.NexusClient.close();
     }
     $('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) tab(b.dataset.tab); });
     document.addEventListener('keydown', e => {

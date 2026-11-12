@@ -18,17 +18,7 @@ require_once __DIR__ . '/countdown.php';
  * Pfad der Datenbank. Der Dateiname enthält einen zufälligen Teil (z. B. calendar_3f9a….sqlite),
  * damit sie selbst dann nicht abrufbar ist, wenn der Server .htaccess ignoriert (nginx).
  */
-function cal_db_file(): string {
-    $dir = DATA_DIR . '/db';
-    $found = glob($dir . '/calendar_*.sqlite') ?: [];
-    if ($found) return $found[0];
-    if (is_file($dir . '/calendar.sqlite')) {   // ältere Installation umbenennen
-        $new = $dir . '/calendar_' . bin2hex(random_bytes(12)) . '.sqlite';
-        rename($dir . '/calendar.sqlite', $new);
-        return $new;
-    }
-    return $dir . '/calendar_' . bin2hex(random_bytes(12)) . '.sqlite';
-}
+function cal_db_file(): string { return db_sqlite_file('calendar'); }
 const CAL_SCHEMA_VERSION = 2;
 
 const CAL_STATES = [
@@ -44,27 +34,7 @@ const CAL_WEEKDAY_NAMES = [1 => 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 
 const CAL_REMINDERS = [0 => 'keine', 5 => '5 Min. vorher', 15 => '15 Min. vorher', 30 => '30 Min. vorher', 60 => '1 Std. vorher',
                        120 => '2 Std. vorher', 1440 => '1 Tag vorher', 2880 => '2 Tage vorher', 10080 => '1 Woche vorher'];
 
-function cal_db(): PDO {
-    static $db = null;
-    if ($db) return $db;
-    if (!class_exists('PDO') || !in_array('sqlite', PDO::getAvailableDrivers(), true)) {
-        throw new RuntimeException('Auf dem Server fehlt die PHP-Erweiterung pdo_sqlite.');
-    }
-    $dir = DATA_DIR . '/db';
-    if (!is_dir($dir)) mkdir($dir, 0755, true);
-    if (!is_file($dir . '/.htaccess')) file_put_contents($dir . '/.htaccess', "Require all denied\n");
-    if (!is_file($dir . '/index.html')) file_put_contents($dir . '/index.html', '');
-
-    $db = new PDO('sqlite:' . cal_db_file(), null, null, [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    ]);
-    $db->exec('PRAGMA foreign_keys = ON');
-    $db->exec('PRAGMA journal_mode = WAL');
-    $db->exec('PRAGMA busy_timeout = 4000');
-    cal_migrate($db);
-    return $db;
-}
+function cal_db(): PDO { return db_get('calendar'); }
 
 /** Tabellen anlegen bzw. aktualisieren (Version in PRAGMA user_version). */
 function cal_migrate(PDO $db): void {

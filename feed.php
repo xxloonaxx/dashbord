@@ -75,9 +75,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $st = $db->prepare('SELECT id FROM sources WHERE url = ?');
                 $st->execute([$url]);
                 if ($st->fetchColumn()) throw new RuntimeException('Diese Quelle ist schon eingetragen.');
-                $db->prepare('INSERT INTO sources (title, url, site_url, category, icon, sort, created) VALUES (?, ?, ?, ?, ?, (SELECT COALESCE(MAX(sort), 0) + 1 FROM sources), ?)')
+                $next_sort = (int)$db->query('SELECT COALESCE(MAX(sort), 0) + 1 FROM sources')->fetchColumn();
+                $db->prepare('INSERT INTO sources (title, url, site_url, category, icon, sort, created) VALUES (?, ?, ?, ?, ?, ?, ?)')
                    ->execute([mb_substr(trim((string)($in['title'] ?? '')) ?: (parse_url($url, PHP_URL_HOST) ?: 'Feed'), 0, 150), $url, safe_url((string)($in['site'] ?? '')) === '#' ? '' : $in['site'],
-                              mb_substr(trim((string)($in['category'] ?? '')) ?: 'Allgemein', 0, 60), mb_substr(trim((string)($in['icon'] ?? '')), 0, 4), time()]);
+                              mb_substr(trim((string)($in['category'] ?? '')) ?: 'Allgemein', 0, 60), mb_substr(trim((string)($in['icon'] ?? '')), 0, 4), $next_sort, time()]);
                 $new = (int)$db->lastInsertId();
                 audit('Feed-Quelle hinzugefügt', $url);
                 session_write_close();

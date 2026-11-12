@@ -137,6 +137,8 @@ if ($mode === 'panel' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         'security_save' => 'security.manage', 'ip_add' => 'security.manage', 'ip_remove' => 'security.manage', 'ip_unlock' => 'security.manage', 'user_2fa_reset' => 'security.manage',
         'sessions_user_revoke' => 'sessions.manage', 'sessions_prune' => 'sessions.manage',
         'invite_create' => 'invites.manage', 'invite_delete' => 'invites.manage', 'announce_save' => 'announce.manage',
+        'db_config' => 'database.manage', 'db_test' => 'database.manage', 'db_transfer' => 'database.manage', 'db_switch' => 'database.manage',
+        'db_check' => 'database.manage', 'db_dump' => 'database.manage',
     ];
     // Während „Ansicht als Rolle“ zählt für diese Aktionen die echte Rolle nicht – nur die Vorschau beenden geht immer.
     guard_post($perm_for[$act] ?? null);
@@ -576,14 +578,83 @@ if ($mode === 'panel' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
 
             case 'db_optimize':
-                $before = filesize(site_db_file());
-                $db->exec('PRAGMA wal_checkpoint(TRUNCATE)');
-                $db->exec('VACUUM');
-                $db->exec('PRAGMA optimize');
-                clearstatcache();
+                db_load_modules();
+                $before = 0; $after = 0;
+                foreach (array_keys(DB_MODULES) as $m) { $before += db_size(db_get($m)); db_optimize(db_get($m)); clearstatcache(); $after += db_size(db_get($m)); }
                 audit('Datenbank optimiert');
-                $msg = 'Datenbank optimiert (' . round($before / 1024) . ' → ' . round(filesize(site_db_file()) / 1024) . ' KB).';
+                $msg = 'Datenbank optimiert (' . round($before / 1024) . ' → ' . round($after / 1024) . ' KB).';
                 break;
+
+            // ---------- Datenbank (SQLite / MySQL) ----------
+            case 'db_config':
+            case 'db_test':
+                $new = ['host' => trim($_POST['db_host'] ?? ''), 'port' => (int)($_POST['db_port'] ?? 3306), 'name' => trim($_POST['db_name'] ?? ''),
+                        'user' => trim($_POST['db_user'] ?? ''), 'prefix' => trim($_POST['db_prefix'] ?? ''), 'socket' => trim($_POST['db_socket'] ?? '')];
+                if (($_POST['db_pass'] ?? '') !== '') $new['pass'] = (string)$_POST['db_pass'];
+                if (!preg_match('/^[A-Za-z0-9_$-]{1,64}$/', $new['name'])) throw new InvalidArgumentException('Bitte einen gültigen Datenbanknamen angeben.');
+                if (!preg_match('/^[a-z0-9_]{0,16}$/i', $new['prefix'])) throw new InvalidArgumentException('Präfix: nur Buchstaben, Ziffern und _ (max. 16).');
+                if ($act === 'db_test') {
+                    if (!in_array('mysql', PDO::getAvailableDrivers(), true)) throw new InvalidArgumentException('Auf dem Server fehlt die PHP-Erweiterung pdo_mysql.');
+                    try { $t = db_mysql_connect(array_merge(db_config(), $new)); }
+                    catch (PDOException $e) { throw new InvalidArgumentException('Verbindung fehlgeschlagen: ' . preg_replace('/^SQLSTATE\[\w+\] \[\d+\] /', '', $e->getMessage())); }
+                    $msg = '✔ Verbindung klappt – ' . $t->getAttribute(PDO::ATTR_SERVER_VERSION) . '. (Noch nicht gespeichert.)';
+                    break;
+                }
+                if (db_is_mysql() && ($new['name'] !== db_config()['name'] || $new['prefix'] !== db_config()['prefix'] || $new['host'] !== db_config()['host']))
+                    throw new InvalidArgumentException('MySQL ist gerade aktiv – Zugangsdaten bitte erst nach dem Zurückschalten auf SQLite ändern (oder Passwort allein).');
+                db_config_save($new);
+                audit('Datenbank-Zugang gespeichert', $new['user'] . '@' . ($new['socket'] ?: $new['host']) . '/' . $new['name'], 'security');
+                $msg = 'MySQL-Zugang gespeichert.';
+                break;
+
+            case 'db_transfer':
+                $to = ($_POST['to'] ?? '') === 'mysql' ? 'mysql' : 'sqlite';
+                if (empty($_POST['overwrite_ok'])) throw new InvalidArgumentException('Bitte bestätigen, dass die Tabellen im Ziel überschrieben werden dürfen.');
+                if ($to === db_driver()) throw new InvalidArgumentException('Das ist bereits die aktive Datenbank.');
+                if ($to === 'mysql') {
+                    if (db_config()['name'] === '') throw new InvalidArgumentException('Bitte zuerst den MySQL-Zugang speichern.');
+                    try { db_mysql_connect(db_config()); } catch (PDOException $e) { throw new InvalidArgumentException('MySQL nicht erreichbar: ' . $e->getMessage()); }
+                }
+                $lines = [];
+                try {
+                    $sum = db_transfer(db_driver(), $to, function ($l) use (&$lines) { $lines[] = $l; });
+                } catch (Throwable $e) {
+                    $_SESSION['db_log'] = $lines;
+                    throw new InvalidArgumentException('Umzug abgebrochen (die bisherige Datenbank ist unverändert aktiv): ' . $e->getMessage());
+                }
+                db_config_save(['driver' => $to]);
+                $_SESSION['db_log'] = $lines;
+                audit('Datenbank umgezogen', 'nach ' . ($to === 'mysql' ? 'MySQL' : 'SQLite') . ": {$sum['tables']} Tabellen, {$sum['rows']} Zeilen, {$sum['docs']} Dokumente", 'security');
+                $msg = '✔ Umzug fertig – ' . $sum['tables'] . ' Tabellen, ' . $sum['rows'] . ' Zeilen und ' . $sum['docs'] . ' JSON-Dokumente. Aktiv ist jetzt ' . ($to === 'mysql' ? 'MySQL' : 'SQLite') . '.';
+                break;
+
+            case 'db_switch':
+                $to = ($_POST['to'] ?? '') === 'mysql' ? 'mysql' : 'sqlite';
+                if ($to === 'mysql') { try { db_mysql_connect(db_config()); } catch (PDOException $e) { throw new InvalidArgumentException('MySQL nicht erreichbar: ' . $e->getMessage()); } }
+                db_config_save(['driver' => $to]);
+                audit('Datenbank umgeschaltet (ohne Kopie)', $to, 'security');
+                $msg = 'Aktiv ist jetzt ' . ($to === 'mysql' ? 'MySQL' : 'SQLite') . ' (ohne Daten zu kopieren).';
+                break;
+
+            case 'db_check':
+                db_load_modules();
+                $problems = [];
+                foreach (array_keys(DB_MODULES) as $m) foreach (db_check(db_get($m)) as $p) $problems[] = $m . ': ' . $p;
+                $_SESSION['db_log'] = $problems ?: ['✔ Keine Probleme gefunden.'];
+                $msg = $problems ? count($problems) . ' Auffälligkeit(en) gefunden – siehe Liste.' : 'Alle Datenbanken sind in Ordnung.';
+                break;
+
+            case 'db_dump':
+                if (!db_is_mysql()) throw new InvalidArgumentException('Die SQL-Sicherung gibt es nur im MySQL-Modus (SQLite: Backup herunterladen).');
+                $tmp = tempnam(sys_get_temp_dir(), 'sql');
+                db_mysql_dump($tmp);
+                audit('SQL-Sicherung heruntergeladen', '', 'security');
+                header('Content-Type: application/sql; charset=utf-8');
+                header('Content-Disposition: attachment; filename="dashboard_' . date('Y-m-d_His') . '.sql"');
+                header('Content-Length: ' . filesize($tmp));
+                readfile($tmp);
+                unlink($tmp);
+                exit;
 
             case 'reset_hub':
                 $hub = basename($_POST['hub'] ?? '');
@@ -642,6 +713,7 @@ if ($mode === 'panel') {
         'security' => ['🔐', 'Sicherheit', 'security.manage'],
         'pages'    => ['🗂️', 'Seiten', 'pages.manage'],
         'audit'    => ['📜', 'Protokoll', 'audit.view'],
+        'database' => ['🗄️', 'Datenbank', 'database.manage'],
         'system'   => ['🛰️', 'System', 'system.manage'],
         'account'  => ['👤', 'Mein Konto', null],
     ];
@@ -775,6 +847,25 @@ if ($mode === 'panel') {
         $st->execute($args);
         $audit = $st->fetchAll();
     }
+    if ($tab === 'database') {
+        db_load_modules();
+        $dbc = db_config();
+        $db_mods = [];
+        foreach (DB_MODULES as $m => $info) {
+            $mdb = db_get($m);
+            $tables = db_tables($mdb);
+            $rows = 0;
+            foreach ($tables as $t) { try { $rows += (int)$mdb->query('SELECT COUNT(*) FROM ' . $t)->fetchColumn(); } catch (Throwable $e) { /* egal */ } }
+            $db_mods[$m] = ['label' => $info['label'], 'where' => $mdb->mysql ? ($dbc['prefix'] . $info['prefix'] . '*') : 'data/db/' . $info['file'] . '_….sqlite',
+                            'tables' => count($tables), 'rows' => $rows, 'size' => db_size($mdb), 'version' => (int)$mdb->query('PRAGMA user_version')->fetchColumn()];
+        }
+        $db_docs = count(json_glob(DATA_DIR . '/json/*.json')) + count(json_glob(DATA_DIR . '/archive/*.json')) + count(json_glob(DATA_DIR . '/archive/budget/*.json'));
+        $db_server = db_server_info(site_db());
+        $db_has_mysql = in_array('mysql', PDO::getAvailableDrivers(), true);
+        $db_has_sqlite = in_array('sqlite', PDO::getAvailableDrivers(), true);
+        $db_log = $_SESSION['db_log'] ?? null;
+        unset($_SESSION['db_log']);
+    }
     if ($tab === 'system') {
         $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
         $server_soft = (string)($_SERVER['SERVER_SOFTWARE'] ?? '');
@@ -782,7 +873,8 @@ if ($mode === 'panel') {
         $checks = [
             ['HTTPS-Verbindung', $https, $https ? 'verschlüsselt' : 'Passwörter werden unverschlüsselt übertragen – HTTPS beim Hoster aktivieren!'],
             ['PHP-Version', version_compare(PHP_VERSION, '7.4', '>='), PHP_VERSION],
-            ['SQLite (Benutzer, Seiten, Kalender)', $sqlite, $sqlite ? 'aktiv · Version ' . $db->query('SELECT sqlite_version()')->fetchColumn() : 'fehlt'],
+            ['Datenbank', true, db_server_info(site_db()) . (db_is_mysql() ? ' (MySQL-Modus)' : ' (Dateien in data/db)')],
+            ['SQLite-Erweiterung', $sqlite || db_is_mysql(), $sqlite ? 'vorhanden' : (db_is_mysql() ? 'fehlt – nicht nötig im MySQL-Modus' : 'fehlt')],
             ['cURL (Feed, Link-Check, Abos, Bank)', function_exists('curl_multi_init'), function_exists('curl_multi_init') ? 'aktiv' : 'fehlt'],
             ['ZIP (Backup)', class_exists('ZipArchive'), class_exists('ZipArchive') ? 'aktiv' : 'fehlt – Backup als JSON'],
             ['Ordner beschreibbar', is_writable(DATA_DIR), is_writable(DATA_DIR) ? 'ja' : 'nein – Daten können nicht gespeichert werden'],
@@ -790,9 +882,11 @@ if ($mode === 'panel') {
             ['Zeitzone', true, date_default_timezone_get() . ' · ' . date('d.m.Y H:i')],
         ];
         $storage = [];
-        foreach (array_merge(glob(DATA_DIR . '/db/*.sqlite') ?: [], glob(DATA_DIR . '/json/*.json') ?: [], glob(DATA_DIR . '/cache/*.json') ?: []) as $f) $storage[str_replace(APP_ROOT . '/', '', preg_replace('/_[0-9a-f]{24}\.sqlite$/', '_….sqlite', $f))] = filesize($f);
-        $arch = array_merge(glob(DATA_DIR . '/archive/*.json') ?: [], glob(DATA_DIR . '/archive/budget/*.json') ?: []);
-        $storage['data/archive/ (' . count($arch) . ' Dateien)'] = array_sum(array_map('filesize', $arch));
+        db_load_modules();
+        foreach (DB_MODULES as $m => $info) $storage['🗄️ ' . $info['label']] = db_size(db_get($m));
+        foreach (array_merge(json_glob(DATA_DIR . '/json/*.json'), glob(DATA_DIR . '/cache/*.json') ?: []) as $f) $storage[str_replace(APP_ROOT . '/', '', $f) . (doc_key($f) !== null ? ' (DB)' : '')] = json_size($f);
+        $arch = array_merge(json_glob(DATA_DIR . '/archive/*.json'), json_glob(DATA_DIR . '/archive/budget/*.json'));
+        $storage['data/archive/ (' . count($arch) . ' Dateien)'] = array_sum(array_map('json_size', $arch));
         arsort($storage);
         $hubs = find_hub_files();
     }
@@ -1462,6 +1556,70 @@ function bytes(int $b): string {
                 <?php $qs = function ($p) { return 'admin.php?' . http_build_query(['tab' => 'audit', 'q' => $_GET['q'] ?? '', 'level' => $_GET['level'] ?? '', 'user' => $_GET['user'] ?? '', 'from' => $_GET['from'] ?? '', 'to' => $_GET['to'] ?? '', 'page' => $p]); }; ?>
                 <?php if ($page_no > 1): ?><a class="btn btn-sm" href="<?php echo e($qs($page_no - 1)); ?>">‹ Neuer</a><?php endif; ?>
                 <?php if ($page_no * 50 < $audit_total): ?><a class="btn btn-sm" href="<?php echo e($qs($page_no + 1)); ?>">Älter ›</a><?php endif; ?>
+            </div>
+        </div>
+
+<?php elseif ($tab === 'database'): ?>
+        <div class="panel">
+            <div class="panel-title"><span>// Aktive Datenbank: <?php echo db_is_mysql() ? 'MySQL / MariaDB' : 'SQLite'; ?></span><span class="muted small"><?php echo e($db_server); ?></span></div>
+            <table class="tbl">
+                <tr><th>Bereich</th><th>Speicherort</th><th>Tabellen</th><th>Einträge</th><th>Größe</th><th>Schema</th></tr>
+                <?php foreach ($db_mods as $m => $d): ?>
+                    <tr><td><b><?php echo e($d['label']); ?></b></td><td class="mono small"><?php echo e($d['where']); ?></td><td><?php echo $d['tables']; ?></td>
+                        <td><?php echo number_format($d['rows'], 0, ',', '.'); ?></td><td class="mono"><?php echo bytes($d['size']); ?></td><td class="muted">v<?php echo $d['version']; ?></td></tr>
+                <?php endforeach; ?>
+                <tr><td><b>JSON-Daten</b> <span class="muted small">(Budget, Con, Countdowns, Link-Hubs, Archive)</span></td><td class="mono small"><?php echo db_is_mysql() ? e($dbc['prefix']) . 'documents' : 'data/json, data/archive'; ?></td><td>–</td><td><?php echo $db_docs; ?></td><td>–</td><td></td></tr>
+            </table>
+            <p class="muted small" style="margin-top: 10px;">Bleiben immer Dateien (mit Absicht): <b>Zwischenspeicher</b> (data/cache – entsteht neu), <b>Schlüssel</b> (data/keys – getrennt von der Datenbank, damit ein Datenbank-Leck allein keine Geheimnisse preisgibt), <b>Bilder</b> (data/uploads, uploads/).</p>
+        </div>
+        <?php if ($db_log): ?><div class="panel"><div class="panel-title"><span>// Ergebnis</span></div><pre class="dblog"><?php echo e(implode("\n", $db_log)); ?></pre></div><?php endif; ?>
+        <div class="grid2">
+            <form method="POST" class="panel" autocomplete="off">
+                <input type="hidden" name="tab" value="database">
+                <div class="panel-title"><span>// MySQL / MariaDB-Zugang</span><span class="muted small"><?php echo $db_has_mysql ? 'pdo_mysql vorhanden' : '<b class="red">pdo_mysql fehlt</b>'; ?></span></div>
+                <div class="f2">
+                    <div><label class="field">Server</label><input type="text" name="db_host" value="<?php echo e($dbc['host']); ?>" placeholder="localhost"></div>
+                    <div><label class="field">Port</label><input type="number" name="db_port" value="<?php echo (int)$dbc['port']; ?>" min="1" max="65535"></div>
+                </div>
+                <div class="f2">
+                    <div><label class="field">Datenbank</label><input type="text" name="db_name" value="<?php echo e($dbc['name']); ?>" required></div>
+                    <div><label class="field">Tabellen-Präfix <span class="muted">(optional)</span></label><input type="text" name="db_prefix" value="<?php echo e($dbc['prefix']); ?>" placeholder="z. B. gn_" maxlength="16"></div>
+                </div>
+                <div class="f2">
+                    <div><label class="field">Benutzer</label><input type="text" name="db_user" value="<?php echo e($dbc['user']); ?>" autocomplete="off"></div>
+                    <div><label class="field">Passwort</label><input type="password" name="db_pass" value="" placeholder="<?php echo $dbc['pass'] !== '' ? '•••••• (unverändert)' : ''; ?>" autocomplete="new-password"></div>
+                </div>
+                <label class="field">Socket <span class="muted">(optional, statt Server/Port)</span></label><input type="text" name="db_socket" value="<?php echo e($dbc['socket']); ?>" placeholder="/run/mysqld/mysqld.sock">
+                <div class="tools" style="margin-top: 12px;">
+                    <button class="btn btn-sm" name="action" value="db_test">🔌 Verbindung testen</button>
+                    <button class="btn btn-sm btn-gold" name="action" value="db_config">💾 Speichern</button>
+                </div>
+                <p class="muted small">Gespeichert in <code>data/config.php</code> (gesperrt, nur Server lesbar). Das Passwort wird nie wieder angezeigt.</p>
+            </form>
+            <div class="panel">
+                <div class="panel-title"><span>// Umzug</span></div>
+                <?php $to = db_is_mysql() ? 'sqlite' : 'mysql'; ?>
+                <form method="POST" onsubmit="return confirm('Jetzt alle Daten kopieren? Das dauert je nach Menge ein paar Sekunden.');">
+                    <input type="hidden" name="tab" value="database"><input type="hidden" name="action" value="db_transfer"><input type="hidden" name="to" value="<?php echo $to; ?>">
+                    <p><?php if ($to === 'mysql'): ?>Kopiert <b>alle</b> SQLite-Datenbanken und JSON-Dateien nach MySQL und schaltet danach um. Die SQLite-Dateien bleiben als Sicherung liegen.
+                       <?php else: ?>Kopiert alle Daten aus MySQL zurück in SQLite-Dateien (data/db, data/json) und schaltet danach um. MySQL bleibt unverändert.<?php endif; ?></p>
+                    <label class="check"><input type="checkbox" name="overwrite_ok" value="1"> Tabellen im Ziel dürfen überschrieben werden</label>
+                    <button class="btn btn-gold" style="margin-top: 10px;" <?php echo ($to === 'mysql' && (!$db_has_mysql || $dbc['name'] === '')) || ($to === 'sqlite' && !$db_has_sqlite) ? 'disabled' : ''; ?>>
+                        <?php echo $to === 'mysql' ? '🚚 Nach MySQL umziehen' : '🚚 Zurück zu SQLite'; ?></button>
+                </form>
+                <details style="margin-top: 14px;"><summary class="muted small">Nur umschalten (ohne Kopieren)</summary>
+                    <form method="POST" onsubmit="return confirm('Ohne Kopie umschalten? Danach sind die Daten der anderen Datenbank aktiv.');" style="margin-top: 8px;">
+                        <input type="hidden" name="tab" value="database"><input type="hidden" name="action" value="db_switch"><input type="hidden" name="to" value="<?php echo $to; ?>">
+                        <button class="btn btn-sm btn-danger" <?php echo $to === 'mysql' && $dbc['name'] === '' ? 'disabled' : ''; ?>>⇄ Auf <?php echo $to === 'mysql' ? 'MySQL' : 'SQLite'; ?> umschalten</button>
+                    </form>
+                </details>
+                <div class="panel-title" style="margin-top: 18px;"><span>// Werkzeuge</span></div>
+                <div class="tools">
+                    <form method="POST"><input type="hidden" name="tab" value="database"><input type="hidden" name="action" value="db_check"><button class="btn btn-sm">🩺 Prüfen</button></form>
+                    <?php if (can('system.manage')): ?><form method="POST"><input type="hidden" name="tab" value="database"><input type="hidden" name="action" value="db_optimize"><button class="btn btn-sm">🗜️ Optimieren</button></form><?php endif; ?>
+                    <?php if (db_is_mysql()): ?><form method="POST"><input type="hidden" name="tab" value="database"><input type="hidden" name="action" value="db_dump"><button class="btn btn-sm">💾 SQL-Sicherung</button></form><?php endif; ?>
+                </div>
+                <p class="muted small">Kommandozeile: <code>php tools/db.php status</code> · <code>to-mysql</code> · <code>to-sqlite</code> · <code>dump</code> · <code>check</code></p>
             </div>
         </div>
 

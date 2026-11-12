@@ -1,9 +1,9 @@
 <?php
 /**
- * Zentrale Datenbank der Webseite (SQLite): Benutzer, Rollen & Rechte, Seiten & Kategorien,
+ * Zentrale Datenbank der Webseite (SQLite oder MySQL, siehe database.php): Benutzer, Rollen & Rechte, Seiten & Kategorien,
  * Protokoll, Login-Sperren und Einstellungen.
  *
- * Datei: data/site_<zufall>.sqlite – Ordner per .htaccess gesperrt, Dateiname nicht erratbar.
+ * SQLite: data/db/site_<zufall>.sqlite – Ordner per .htaccess gesperrt, Dateiname nicht erratbar.
  * Passwörter werden ausschließlich als Hash (password_hash / bcrypt) gespeichert.
  */
 require_once __DIR__ . '/common.php';
@@ -23,6 +23,7 @@ const PERMISSIONS = [
     'audit.export'           => ['Protokoll als CSV exportieren', 'Verwaltung'],
     'announce.manage'        => ['Ankündigungs-Banner für alle setzen', 'Verwaltung'],
     'backup.download'        => ['Backup herunterladen', 'Verwaltung'],
+    'database.manage'        => ['Datenbank: MySQL einrichten, Daten umziehen, prüfen & SQL-Sicherung', 'Verwaltung'],
     'security.manage'        => ['Sicherheit: Passwort-Richtlinie, IP-Sperren, 2FA zurücksetzen', 'Sicherheit'],
     'sessions.manage'        => ['Sitzungen & Geräte aller Benutzer sehen und beenden', 'Sicherheit'],
     'settings.nsfw'          => ['NSFW-Schalter für Besucher bedienen', 'Inhalte'],
@@ -44,31 +45,10 @@ const PERMISSIONS = [
     'furhub.moderate'        => ['Furry Hub: Pfotenabdrücke & Community-Sonas moderieren', 'Community'],
 ];
 
-function site_db_file(): string {
-    $dir = DATA_DIR . '/db';
-    $found = glob($dir . '/site_*.sqlite') ?: [];
-    return $found ? $found[0] : $dir . '/site_' . bin2hex(random_bytes(12)) . '.sqlite';
-}
+function site_db_file(): string { return db_sqlite_file('site'); }
 
-function site_db(): PDO {
-    static $db = null;
-    if ($db) return $db;
-    if (!class_exists('PDO') || !in_array('sqlite', PDO::getAvailableDrivers(), true)) {
-        http_response_code(500);
-        exit('<p style="font-family:sans-serif;padding:30px">Auf dem Server fehlt die PHP-Erweiterung <b>pdo_sqlite</b> – sie wird für Benutzer und Seiten benötigt.</p>');
-    }
-    $dir = DATA_DIR . '/db';
-    if (!is_dir($dir)) mkdir($dir, 0755, true);
-    if (!is_file($dir . '/.htaccess')) file_put_contents($dir . '/.htaccess', "Require all denied\n");
-    if (!is_file($dir . '/index.html')) file_put_contents($dir . '/index.html', '');
-
-    $db = new PDO('sqlite:' . site_db_file(), null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
-    $db->exec('PRAGMA foreign_keys = ON');
-    $db->exec('PRAGMA journal_mode = WAL');
-    $db->exec('PRAGMA busy_timeout = 4000');
-    site_migrate($db);
-    return $db;
-}
+/** Datenbank für Benutzer, Rollen, Seiten, Protokoll & Einstellungen (SQLite oder MySQL, siehe database.php) */
+function site_db(): PDO { return db_get('site'); }
 
 function site_migrate(PDO $db): void {
     $version = (int)$db->query('PRAGMA user_version')->fetchColumn();

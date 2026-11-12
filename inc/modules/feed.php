@@ -24,18 +24,9 @@ const FEED_DEFAULT_SOURCES = [
     ['Modrinth News', 'https://modrinth.com/feed', 'Gaming & Modding', '🧱'],
 ];
 
-function feed_db(): PDO {
-    static $db = null;
-    if ($db) return $db;
-    $dir = DATA_DIR . '/db';
-    if (!is_dir($dir)) mkdir($dir, 0755, true);
-    if (!is_file($dir . '/.htaccess')) file_put_contents($dir . '/.htaccess', "Require all denied\n");
-    $found = glob($dir . '/feed_*.sqlite') ?: [];
-    $file = $found ? $found[0] : $dir . '/feed_' . bin2hex(random_bytes(12)) . '.sqlite';
-    $db = new PDO('sqlite:' . $file, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
-    $db->exec('PRAGMA foreign_keys = ON');
-    $db->exec('PRAGMA journal_mode = WAL');
-    $db->exec('PRAGMA busy_timeout = 5000');
+function feed_db(): PDO { return db_get('feed'); }
+
+function feed_migrate(PDO $db): void {
     if ((int)$db->query('PRAGMA user_version')->fetchColumn() < 1) {
         $db->exec("CREATE TABLE IF NOT EXISTS sources (id INTEGER PRIMARY KEY, title TEXT NOT NULL, url TEXT NOT NULL UNIQUE, site_url TEXT NOT NULL DEFAULT '',
                    category TEXT NOT NULL DEFAULT 'Allgemein', icon TEXT NOT NULL DEFAULT '', enabled INTEGER NOT NULL DEFAULT 1, sort INTEGER NOT NULL DEFAULT 0,
@@ -55,7 +46,6 @@ function feed_db(): PDO {
         if (is_array($old)) { foreach ($old as $cat => $list) foreach ((array)$list as $s) if (!empty($s['url'])) $ins->execute([$s['name'] ?? $s['url'], $s['url'], (string)$cat, '', $n++, time()]); }
         else foreach (FEED_DEFAULT_SOURCES as [$t, $u, $c, $i]) $ins->execute([$t, $u, $c, $i, $n++, time()]);
     }
-    return $db;
 }
 
 // ---------- Netz ----------
@@ -316,7 +306,7 @@ function feed_refresh(?array $ids = null, bool $force = false): array {
     }
     // Aufräumen: alte, nicht gemerkte Artikel; je Quelle max. 600
     $db->prepare('DELETE FROM items WHERE published < ? AND id NOT IN (SELECT item_id FROM item_state WHERE starred = 1)')->execute([time() - FEED_KEEP_DAYS * 86400]);
-    try { $db->exec('DELETE FROM items WHERE id IN (SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY source_id ORDER BY published DESC) AS rn FROM items) WHERE rn > 600) AND id NOT IN (SELECT item_id FROM item_state WHERE starred = 1)'); } catch (PDOException $e) { /* ältere SQLite ohne Fensterfunktionen */ }
+    try { $db->exec('DELETE FROM items WHERE id IN (SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY source_id ORDER BY published DESC) AS rn FROM items) AS ranked WHERE rn > 600) AND id NOT IN (SELECT item_id FROM item_state WHERE starred = 1)'); } catch (PDOException $e) { /* ältere SQLite ohne Fensterfunktionen */ }
     $db->commit();
     feed_write_cache();
     return $res;
