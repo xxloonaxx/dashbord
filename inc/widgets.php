@@ -110,7 +110,7 @@ function widgets_layout(): array {
         $order = ['clock', 'weather', 'countdowns', 'calendar', 'todo', 'notes', 'budget', 'vrchat', 'feed', 'quicklinks'];
         $avail = widgets_available();
         $layout = [];
-        foreach (array_merge($order, array_keys($avail)) as $t) {
+        foreach ($order as $t) {   // weitere Widgets nur über „＋ Widget“
             if (!isset($avail[$t]) || !empty($avail[$t]['error']) || in_array($t, array_column($layout, 'type'), true)) continue;
             $layout[] = ['uid' => substr(md5($t . random_bytes(4)), 0, 10), 'type' => $t, 'size' => $avail[$t]['size'], 'cfg' => []];
         }

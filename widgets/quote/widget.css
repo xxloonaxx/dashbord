@@ -1,0 +1,4 @@
+.wg-type-quote .qt { margin: 0; position: relative; padding: 4px 4px 4px 34px; }
+.wg-type-quote .qt::before { content: "“"; position: absolute; left: 0; top: -14px; font-size: 3.6rem; color: var(--accent-gold); opacity: 0.6; font-family: Georgia, serif; }
+.wg-type-quote blockquote { margin: 0; font-size: 1.05rem; line-height: 1.55; color: #fff; font-style: italic; }
+.wg-type-quote figcaption { margin-top: 8px; font-size: 0.8rem; color: var(--accent-cyan); }

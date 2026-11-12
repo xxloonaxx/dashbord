@@ -1,0 +1,8 @@
+.wg-type-photo .ph { position: relative; overflow: hidden; background: #000; border: 1px solid rgba(56, 213, 230, 0.15); }
+.wg-type-photo .ph img { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 1s ease; }
+.wg-type-photo .ph img.on { opacity: 1; }
+.wg-type-photo .ph-n { position: absolute; bottom: 6px; right: 8px; font-size: 0.68rem; color: #fff; background: rgba(0, 0, 0, 0.6); padding: 1px 6px; }
+.wg-type-photo .ph-prev, .wg-type-photo .ph-next { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0, 0, 0, 0.5); border: 0; color: #fff; font-size: 1.6rem; width: 32px; height: 48px; cursor: pointer; opacity: 0; transition: opacity 0.2s; }
+.wg-type-photo .ph:hover .ph-prev, .wg-type-photo .ph:hover .ph-next { opacity: 1; }
+.wg-type-photo .ph-prev { left: 0; }
+.wg-type-photo .ph-next { right: 0; }

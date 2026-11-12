@@ -1,0 +1,10 @@
+.wg-type-discord .dw { display: block; color: inherit; text-decoration: none; }
+.wg-type-discord .dw-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.wg-type-discord .dw-top img, .wg-type-discord .dw-noic { width: 38px; height: 38px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: rgba(88, 101, 242, 0.25); }
+.wg-type-discord .dw-top b { color: #aab3ff; }
+.wg-type-discord .dw-kpi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; text-align: center; }
+.wg-type-discord .dw-kpi b { display: block; font-size: 1.2rem; color: #fff; }
+.wg-type-discord .dw-kpi b.on { color: var(--accent-green); }
+.wg-type-discord .dw-kpi small { font-size: 0.65rem; color: var(--text-muted); }
+.wg-type-discord .dw-ev { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border-color); font-size: 0.82rem; }
+.wg-type-discord .dw-ev small { display: block; color: var(--text-muted); font-size: 0.72rem; }

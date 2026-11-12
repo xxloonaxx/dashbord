@@ -1,0 +1,6 @@
+.wg-type-currency .cx-in { display: grid; grid-template-columns: 1fr 110px; gap: 6px; align-items: center; }
+.wg-type-currency .cx-in input, .wg-type-currency .cx-in select { padding: 7px 8px; font-size: 0.9rem; }
+.wg-type-currency .cx-out { display: block; font-size: 1.3rem; font-weight: 700; color: var(--accent-gold); overflow: hidden; text-overflow: ellipsis; }
+.wg-type-currency .cx-swap { display: block; margin: 4px auto; background: none; border: 1px solid var(--border-color); color: var(--accent-cyan); cursor: pointer; width: 30px; height: 26px; }
+.wg-type-currency .cx-list { display: flex; flex-direction: column; gap: 2px; margin: 10px 0 6px; font-size: 0.78rem; color: var(--text-muted); }
+.wg-type-currency .cx-list b { color: #fff; }

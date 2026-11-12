@@ -1,0 +1,13 @@
+.wg-type-con .cw { display: block; color: inherit; text-decoration: none; }
+.wg-type-con .cw-top { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
+.wg-type-con .cw-ic { font-size: 2.4rem; }
+.wg-type-con .cw-big { display: block; font-size: 1.8rem; color: var(--accent-gold); line-height: 1.1; }
+.wg-type-con .cw-big small { font-size: 0.85rem; color: var(--text-muted); }
+.wg-type-con .cw-top small { font-size: 0.75rem; color: var(--text-muted); }
+.wg-type-con .cw-row { display: flex; justify-content: space-between; font-size: 0.8rem; padding: 3px 0; color: var(--text-main); }
+.wg-type-con .cw-row span { color: var(--text-muted); }
+.wg-type-con .cw-row.warn { color: var(--accent-gold); }
+.wg-type-con .cw-bar { height: 6px; background: rgba(56, 213, 230, 0.1); margin: 2px 0 6px; }
+.wg-type-con .cw-bar i { display: block; height: 100%; background: var(--accent-green); }
+.wg-type-con .cw-bar i.warn { background: var(--accent-gold); }
+.wg-type-con .cw-bar i.over { background: var(--accent-red); }

@@ -81,6 +81,11 @@ per FTP die Datei `data/site_….sqlite` umbenennen → beim nächsten Aufruf er
 
 - **Anordnen** im ✎ Bearbeiten-Modus der Startseite: „＋ Widget“, per Drag & Drop sortieren, ⇔ Größe (klein/mittel/breit/ganze Zeile),
   ⚙ Einstellungen (pro Widget eigene, plus eigener Titel), ✕ entfernen. Dasselbe Widget kann mehrfach vorkommen (z. B. zwei Uhren).
+- **Weitere 10 Widgets** liegen bereit und können über „＋ Widget“ hinzugefügt werden (sind nicht automatisch auf der Startseite):
+  💬 Zitat des Tages, 🎲 Zufall (Würfel W4–W100, Münze, Zahl, eigene Auswahlliste), 🍅 Fokus-Timer (Pomodoro mit Ton, Benachrichtigung, Tageszähler),
+  🖥️ Systemstatus (Recht `system.manage`), 📰 RSS-Quelle (eine Quelle/Kategorie aus dem Reader mit Bildern), 📊 Zeit-Fortschritt (Tag/Arbeitstag,
+  Woche, Monat, Jahr, eigene Zeitspanne), 💱 Währungsrechner (EZB-Kurse), 🎪 Nächste Con (Recht `con.access`), 🤖 Discord-Server (Recht `discord.manage`)
+  und 🖼️ Bilderrahmen (Diashow aus eigenen Bild-Adressen und `uploads/`).
 - Besucher sehen nur Widgets, für die sie das Recht haben; jeder kann Widgets für sich **einklappen** oder den ganzen Bereich ausblenden.
 - **Eigene Widgets:** Jedes Widget ist ein Ordner unter `widgets/` (`widget.php` + optional `widget.css`/`widget.js`). `widgets/_vorlage`
   kopieren, umbenennen, anpassen – es erscheint automatisch unter „＋ Widget“. Alle Möglichkeiten (Einstellungen, gespeicherter Zustand,
@@ -108,6 +113,22 @@ Kalender-Notizen und Countdown-Notizen verstehen **gleichzeitig**:
 Alles wird serverseitig bereinigt: `<script>`, `on…`-Attribute, `javascript:`-Links, gefährliches CSS und
 fremde iframes werden entfernt, offene Tags automatisch geschlossen. Jedes Textfeld bekommt eine **Werkzeugleiste**
 (Fett, Farbe, Liste, Link, Tabelle …), eine **👁 Live-Vorschau** und eine **?**-Kurzhilfe; `Strg+B/I/U/K` funktionieren.
+
+## Live-Feed / RSS-Reader (`feed.php`)
+
+Ein vollwertiger Feed-Reader mit drei Spalten (Quellen · Artikel · Lesebereich), am Handy mit ausklappbarer Seitenleiste.
+
+- **Quellen nach Kategorien** mit Favicon bzw. eigenem Icon, Ungelesen-Zählern, Fehleranzeige (⚠) und einklappbaren Kategorien;
+  Ansichten **Alle · Ungelesen · Heute · ⭐ Gemerkt**.
+- **Quelle hinzufügen** (Recht `feed.edit`): einfach die Adresse einer Webseite eingeben – der Feed wird automatisch gefunden (auch mehrere zur Auswahl).
+  Abkürzungen: YouTube-Kanäle/-Playlists, Subreddits, Bluesky- und Mastodon-Profile, GitHub-Projekte (Releases). RSS 2.0, RSS 1.0, Atom und JSON Feed.
+- **Quellen verwalten**: bearbeiten (Name, Icon, Adresse, Kategorie), pausieren, einzeln neu laden, entfernen, Kategorien umbenennen,
+  Status je Quelle (letzter Abruf, Fehler), **OPML-Import/-Export** (z. B. von Feedly, Inoreader, Thunderbird).
+- **Lesen**: Artikel mit Bild, Autor, Lesezeit und bereinigtem Inhalt (Skripte, Tracking und gefährliche Links werden entfernt), Schriftgröße,
+  Link kopieren, Original öffnen. **Gelesen/Gemerkt pro Benutzer**, „alle als gelesen“, nur Ungelesene, Suche, Sortierung.
+- **Vier Ansichten**: Liste, Kacheln, Magazin, Kompakt. **Tastenkürzel**: J/K, O, S, M, R, V, U, Shift+A, /, G, Esc, ? (Übersicht).
+- Aktualisiert sich selbst (höchstens alle 15 Min., mit ETag/If-Modified-Since); per Cron pünktlich über `feed.php?cron=…` (Adresse unter „⚙ Quellen“).
+  Artikel älter als 90 Tage werden aufgeräumt, gemerkte bleiben. Daten in `data/feed_….sqlite`; bisherige Quellen werden übernommen.
 
 ## VRC Nexus (`nexus.php`)
 

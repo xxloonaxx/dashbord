@@ -1,0 +1,9 @@
+.wg-type-random .rn { text-align: center; }
+.wg-type-random .rn-out { font-size: 2.4rem; font-weight: 800; color: var(--accent-gold); min-height: 3rem; word-break: break-word; }
+.wg-type-random .rn-out.pop { animation: rnpop 0.35s ease; }
+@keyframes rnpop { 0% { transform: scale(0.6) rotate(-8deg); opacity: 0.2; } 70% { transform: scale(1.15); } 100% { transform: none; opacity: 1; } }
+.wg-type-random .rn-sub { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 10px; }
+.wg-type-random .rn-btns { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
+.wg-type-random .rn-btns .btn { padding: 4px 8px; letter-spacing: 0; }
+.wg-type-random .rn-range { display: flex; gap: 6px; align-items: center; justify-content: center; margin-top: 8px; font-size: 0.75rem; color: var(--text-muted); }
+.wg-type-random .rn-range input { width: 70px; padding: 4px 6px; font-size: 0.8rem; }

@@ -1,0 +1,9 @@
+.wg-type-system .sy-row { display: flex; justify-content: space-between; gap: 10px; font-size: 0.8rem; padding: 4px 0; border-bottom: 1px solid rgba(56, 213, 230, 0.06); }
+.wg-type-system .sy-row span { color: var(--text-muted); }
+.wg-type-system .sy-row b { color: #fff; font-weight: 600; text-align: right; }
+.wg-type-system .sy-bar { height: 5px; background: rgba(56, 213, 230, 0.1); margin: 2px 0 6px; }
+.wg-type-system .sy-bar i { display: block; height: 100%; background: var(--accent-green); }
+.wg-type-system .sy-bar i.warn { background: var(--accent-gold); }
+.wg-type-system .sy-bar i.bad { background: var(--accent-red); }
+.wg-type-system .sy-warn { color: var(--accent-gold); font-size: 0.75rem; margin-top: 8px; }
+.wg-type-system .sy-ok { color: var(--accent-green); font-size: 0.75rem; margin-top: 8px; }

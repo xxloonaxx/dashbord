@@ -1,0 +1,11 @@
+.wg-type-pomodoro .pd { position: relative; text-align: center; }
+.wg-type-pomodoro .pd-ring { width: 150px; height: 150px; transform: rotate(-90deg); display: block; margin: 0 auto; }
+.wg-type-pomodoro .pd-ring circle { fill: none; stroke-width: 6; }
+.wg-type-pomodoro .pd-ring .bg { stroke: rgba(56, 213, 230, 0.12); }
+.wg-type-pomodoro .pd-ring .fg { stroke: #ff6b6b; stroke-linecap: round; transition: stroke-dashoffset 1s linear; filter: drop-shadow(0 0 4px rgba(255, 107, 107, 0.6)); }
+.wg-type-pomodoro .brk .pd-ring .fg { stroke: var(--accent-green); filter: drop-shadow(0 0 4px rgba(80, 250, 123, 0.6)); }
+.wg-type-pomodoro .pd-mid { position: absolute; top: 0; left: 0; right: 0; height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.wg-type-pomodoro .pd-time { font-size: 2rem; color: #fff; font-variant-numeric: tabular-nums; }
+.wg-type-pomodoro .pd-phase { font-size: 0.72rem; color: var(--text-muted); }
+.wg-type-pomodoro .pd-btns { display: flex; gap: 6px; justify-content: center; margin-top: 8px; }
+.wg-type-pomodoro .pd-count { font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; }

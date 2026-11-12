@@ -1,0 +1,5 @@
+.wg-type-progress .pg-r { display: flex; justify-content: space-between; font-size: 0.8rem; margin-top: 8px; }
+.wg-type-progress .pg-r span { color: var(--text-muted); }
+.wg-type-progress .pg-r b { color: #fff; font-variant-numeric: tabular-nums; }
+.wg-type-progress .pg-b { height: 7px; background: rgba(56, 213, 230, 0.1); margin-top: 3px; }
+.wg-type-progress .pg-b i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple)); box-shadow: 0 0 8px var(--accent-glow); }
