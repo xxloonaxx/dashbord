@@ -26,7 +26,12 @@ jobs:
     needs: test
     runs-on: windows-latest
     steps:
+      # Nur den Client auschecken: Windows verbietet Dateinamen wie „con.php“ (reservierter Gerätename)
       - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            clients/nexus-desktop/
+          sparse-checkout-cone-mode: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
