@@ -160,6 +160,15 @@ function db_size(Db $db): int {
     return (int)$st->fetchColumn();
 }
 
+/** Größe aller Datenbanken zusammen (ohne Module zu öffnen) */
+function db_size_all(): int {
+    if (!db_is_mysql()) { $n = 0; foreach (glob(DATA_DIR . '/db/*.sqlite*') ?: [] as $f) $n += (int)filesize($f); return $n; }
+    $db = db_get('site');
+    $st = $db->rawPrepare('SELECT COALESCE(SUM(DATA_LENGTH + INDEX_LENGTH), 0) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE ?');
+    $st->execute([$db->globalPrefix . '%']);
+    return (int)$st->fetchColumn();
+}
+
 /** Server-Version als Text */
 function db_server_info(Db $db): string {
     if (!$db->mysql) return 'SQLite ' . $db->query('SELECT sqlite_version()')->fetchColumn();

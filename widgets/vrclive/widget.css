@@ -1,0 +1,10 @@
+.wg-type-vrclive .vl { display: flex; flex-direction: column; gap: 8px; }
+.wg-type-vrclive .vl-off { color: var(--text-muted); font-size: 0.85rem; }
+.wg-type-vrclive .vl-world b { color: var(--accent-gold); }
+.wg-type-vrclive .vl-world small { display: block; color: var(--text-muted); font-size: 0.75rem; margin-top: 2px; }
+.wg-type-vrclive .vl-pl { display: flex; flex-wrap: wrap; gap: 4px; }
+.wg-type-vrclive .vl-pl span { font-size: 0.72rem; padding: 2px 7px; border: 1px solid rgba(56, 213, 230, 0.25); background: rgba(56, 213, 230, 0.05); }
+.wg-type-vrclive .vl-pl .vl-more { color: var(--text-muted); border-style: dashed; }
+.wg-type-vrclive .vl-chat { display: flex; gap: 6px; }
+.wg-type-vrclive .vl-chat input { flex: 1; min-width: 0; width: auto; margin: 0; }
+.wg-type-vrclive .vl-pre { display: flex; flex-wrap: wrap; gap: 5px; }

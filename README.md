@@ -1,6 +1,6 @@
 # GHOST NODE – persönliches Dashboard
 
-PHP-Dashboard: Daten als JSON-Dateien neben den Seiten, Benutzer/Seiten/Kalender/VRChat in SQLite (`data/`).
+PHP-Dashboard ohne Framework. Datenbank wahlweise **SQLite** (ohne Einrichtung) oder **MySQL/MariaDB** – alle privaten Daten liegen im gesperrten Ordner `data/`.
 
 | Datei | Inhalt |
 |---|---|
@@ -17,27 +17,86 @@ PHP-Dashboard: Daten als JSON-Dateien neben den Seiten, Benutzer/Seiten/Kalender
 | `furhub.php` | **Furry Hub**: Tamagotchi mit Shop & eigenen Bildern, Fursona-Baukasten (gezeichnet oder eigene Bilder mit 6 Emotionen), Karten-Editor, Minispiele, Community, Con-Bingo, Quiz, Soundboard, OwO-Übersetzer, Glossar, Pfotenabdrücke, Erfolge |
 | `nsfw.php` | **NSFW-Galerie** (18+): Bilder-APIs e621/e926, Danbooru, Gelbooru, Rule34, Yande.re, Konachan, waifu.im, waifu.pics – Suche, Favoriten, Posten in NSFW-Kanäle |
 | `page.php` | Eigene Seiten aus Vorlagen (Logik in `inc/tpl/*.php`) |
-| `inc/format.php`, `assets/editor.js`, `preview.php` | Gemeinsame Formatierung (Markdown + BBCode + HTML), Werkzeugleiste & Live-Vorschau |
-| `inc/common.php` | Gemeinsame Hilfsfunktionen (JSON laden/speichern, Beträge, Escaping, Zeitzone) |
-| `inc/countdown.php`, `inc/linkcheck.php` | Logik für Countdowns und Link-Check |
-| `assets/hub-search.js` | Gemeinsame Suche für die Link-Hubs |
-| `assets/hud.css` | Gemeinsamer HUD-Look für die neuen Seiten |
+| `client.php` | Schnittstelle für den **Nexus-Desktop-Client** (Geräte-Token, JSON) |
+| `cron.php` | Aufgabenplaner von außen anstoßen (Kommandozeile oder `cron.php?key=…`) |
+| `preview.php`, `widgets.php` | Live-Vorschau der Formatierung, Widget-Schnittstelle |
+
+## Ordnerstruktur
+
+```
+/                    Seiten (index.php, budget.php, nexus.php …) – die Adressen bleiben stabil
+├── inc/
+│   ├── core/        Grundlagen: common (Pfade, JSON), database (SQLite/MySQL), site (Benutzer, Rechte, Einstellungen),
+│   │                auth, security (2FA, Sitzungen, IP-Regeln), crypto, format, pages, templates, widgets, tasks, backup
+│   ├── modules/     Fach-Module: budget, calendar(+_ics), con, countdown, discord(+_bot), feed, furhub, hub, linkcheck,
+│   │                nsfw, openbanking, vrchat(+_favs), nexus_client
+│   └── tpl/         Vorlagen für eigene Seiten
+├── assets/css/      Stylesheets          assets/js/   Skripte
+├── widgets/         Startseiten-Widgets (Plug & Play, je ein Ordner)
+├── clients/
+│   └── nexus-desktop/  Windows-Client für VRC Nexus (Python, OSC & Logs) – siehe eigenes README
+├── tools/           Kommandozeilen-Werkzeuge (db.php) – per .htaccess gesperrt
+├── uploads/         öffentliche Bilder der Galerie-Vorlage
+└── data/            ALLES Private – per .htaccess gesperrt, nicht im Repository
+    ├── config.php   Datenbank-Zugang (MySQL), sonst SQLite
+    ├── db/          SQLite-Datenbanken (zufällige Dateinamen)
+    ├── json/        Budget, Fixkosten, Con, Countdowns, Link-Hubs, Feed-Quellen (im MySQL-Modus in der Datenbank)
+    ├── archive/     Archive (Budget-Monate, Cons, Hub-Sicherungen) (im MySQL-Modus in der Datenbank)
+    ├── cache/       Zwischenspeicher (Feed, Link-Check, Sperren) – entsteht neu
+    ├── keys/        Schlüssel für verschlüsselte Geheimnisse (VRChat-Cookie, Discord-Token, 2FA, Bank)
+    ├── uploads/     private Bilder (Furry Hub)
+    └── backups/     automatische Backups
+```
+
+Beim ersten Aufruf nach dem Update werden Dateien der alten Struktur (z. B. `budget_data.json` im Hauptordner,
+`archive/`, `data/*.sqlite`, `data/furhub_img/`) **automatisch** an den neuen Platz verschoben.
+
+## Datenbank: SQLite oder MySQL / MariaDB
+
+- **Standard: SQLite** – nichts einzurichten, jede Funktion hat eine eigene Datei in `data/db/`.
+- **MySQL/MariaDB** (ab MySQL 5.7.7 / MariaDB 10.2, PHP-Erweiterung `pdo_mysql`): **Admin → 🗄️ Datenbank**
+  1. Zugang eintragen (Server, Port oder Socket, Datenbank, Benutzer, Passwort, optional Tabellen-Präfix) → **Verbindung testen** → **Speichern**.
+  2. **🚚 Nach MySQL umziehen**: kopiert *alle* SQLite-Datenbanken **und** die JSON-Daten (Budget, Con, Countdowns,
+     Link-Hubs, Archive) in die MySQL-Datenbank und schaltet um. Die SQLite-Dateien bleiben als Sicherung liegen.
+  3. Zurück geht genauso (**🚚 Zurück zu SQLite**), MySQL bleibt dabei unverändert.
+- Alle Tabellen liegen in **einer** Datenbank, je Bereich mit Präfix: Benutzer & Seiten ohne, `cal_` Kalender, `feed_` Feed,
+  `nx_` VRC Nexus, `fh_` Furry Hub, dazu `documents` (JSON-Daten) und `schema_versions`.
+- Werkzeuge: **🩺 Prüfen** (Integrität), **🗜️ Optimieren**, **💾 SQL-Sicherung** (Download). Das normale Backup enthält im MySQL-Modus einen SQL-Dump.
+- Bewusst **keine** Datenbank: Zwischenspeicher (entsteht neu), Schlüssel in `data/keys` (getrennt von der Datenbank – ein
+  Datenbank-Leck allein verrät so keine Geheimnisse) und Bilder.
+- Kommandozeile: `php tools/db.php status | config --host=… --name=… --user=… --pass=… | test | to-mysql | to-sqlite | dump datei.sql | check | optimize`
+- Technik: Die Module schreiben SQLite-SQL; `inc/core/database.php` übersetzt es für MySQL automatisch
+  (Upserts, Datumsfunktionen, `PRAGMA user_version`, Tabellen-/Spaltentypen, Fremdschlüssel, reservierte Namen).
+
+## Aufgabenplaner & automatische Backups (Admin → System)
+
+| Aufgabe | Standard |
+|---|---|
+| 📡 Feeds abrufen | alle 30 min |
+| 📅 Kalender-Abos abgleichen | stündlich |
+| 🧹 Aufräumen (alte Sitzungen, Login-Sperren, OSC-Befehle, Zähler, Protokoll älter als *n* Tage) | täglich |
+| 💾 Automatisches Backup nach `data/backups` (Datenbank + JSON, die neuesten *n* bleiben) | aus |
+| 🔗 Link-Check | aus (wöchentlich) |
+
+Auslöser: **beim Seitenaufruf** (ohne Einrichtung, höchstens einmal pro Minute nach dem Ausliefern),
+**echter Cron** (`*/5 * * * * php /pfad/cron.php` oder `https://…/cron.php?key=…`, Schlüssel in der Admin-Zentrale) oder **aus**.
+Jede Aufgabe lässt sich mit ▶ sofort starten; automatische Backups können heruntergeladen oder gelöscht werden.
 
 ## Installation
 
-Alle Dateien und Ordner (inkl. `inc/`, `assets/` und `.htaccess`) auf einen Webserver mit PHP ≥ 7.4 kopieren.
+Alle Dateien und Ordner (inkl. `inc/`, `assets/`, `widgets/` und `.htaccess`) auf einen Webserver mit PHP ≥ 7.4 kopieren
+(Erweiterung `pdo_sqlite` **oder** `pdo_mysql`, siehe „Datenbank“).
 Für Feed und Link-Check wird die PHP-Erweiterung cURL benötigt (bei fast allen Hostern aktiv). Ohne cURL weicht der Link-Check auf `allow_url_fopen` aus. Meldet er „kein einziger Link erreichbar“, blockiert der Hoster vermutlich ausgehende Verbindungen.
-Der Webserver braucht Schreibrechte im Ordner, damit die JSON-Dateien und Archive angelegt werden können.
+Der Webserver braucht Schreibrechte im Ordner `data/` (wird beim ersten Aufruf angelegt).
 
-Die Datendateien (`*_data.json`, `links_*.json`, `feed_sources.json`, `feed_cache.json`, `linkcheck_cache.json`, `archive*/`) sind per `.gitignore` vom Repository ausgeschlossen
-und werden beim ersten Aufruf automatisch erzeugt.
+Der Ordner `data/` ist per `.gitignore` vom Repository ausgeschlossen; alles darin wird beim ersten Aufruf automatisch erzeugt.
 
 ## Benutzer, Rollen & Rechte
 
 Beim **allerersten Aufruf** legt man das erste Konto an – es wird Administrator. Wer von einer Vorversion
 aktualisiert, wird automatisch übernommen (gleicher Benutzername, gleiches Passwort, Protokoll und NSFW-Einstellung).
 
-Alles liegt in der SQLite-Datenbank `data/site_<zufall>.sqlite`; Passwörter nur als bcrypt-Hash.
+Alles liegt in der Datenbank (SQLite `data/db/site_<zufall>.sqlite` oder MySQL); Passwörter nur als bcrypt-Hash.
 
 - **Benutzer** (Admin-Zentrale → Benutzer): anlegen, Rolle zuweisen, deaktivieren, Passwort neu setzen
   (mit Generator), **Ablaufdatum**, **Passwortwechsel beim nächsten Login erzwingen**, Sitzungen beenden, löschen.
@@ -68,7 +127,7 @@ Alles liegt in der SQLite-Datenbank `data/site_<zufall>.sqlite`; Passwörter nur
 - Jeder Benutzer hat unter „Mein Konto“ Profil, Passwort, 2FA, Geräte, seine Rechte (gruppiert) und seine letzten Aktivitäten.
 
 **Passwort vergessen?** Ein anderer Administrator setzt es unter „Benutzer“ neu. Gibt es keinen:
-per FTP die Datei `data/site_….sqlite` umbenennen → beim nächsten Aufruf erscheint die Einrichtung
+per FTP die Datei `data/db/site_….sqlite` umbenennen → beim nächsten Aufruf erscheint die Einrichtung
 (Seiten-Einstellungen, Benutzer und Protokoll beginnen dann neu; alle anderen Daten bleiben).
 
 ## Startseite: Kategorien, Sortierung & eigene Seiten
@@ -148,7 +207,7 @@ Ein vollwertiger Feed-Reader mit drei Spalten (Quellen · Artikel · Lesebereich
   Link kopieren, Original öffnen. **Gelesen/Gemerkt pro Benutzer**, „alle als gelesen“, nur Ungelesene, Suche, Sortierung.
 - **Vier Ansichten**: Liste, Kacheln, Magazin, Kompakt. **Tastenkürzel**: J/K, O, S, M, R, V, U, Shift+A, /, G, Esc, ? (Übersicht).
 - Aktualisiert sich selbst (höchstens alle 15 Min., mit ETag/If-Modified-Since); per Cron pünktlich über `feed.php?cron=…` (Adresse unter „⚙ Quellen“).
-  Artikel älter als 90 Tage werden aufgeräumt, gemerkte bleiben. Daten in `data/feed_….sqlite`; bisherige Quellen werden übernommen.
+  Artikel älter als 90 Tage werden aufgeräumt, gemerkte bleiben. Daten in `data/db/feed_….sqlite` bzw. MySQL `feed_*`; bisherige Quellen werden übernommen.
 
 ## VRC Nexus (`nexus.php`)
 
@@ -156,8 +215,8 @@ Die VRChat-Zentrale des Dashboards (früher „VRCX“ – umbenannt, weil VRCX 
 anderen Rollen in der Admin-Zentrale geben). Jeder Dashboard-Benutzer verbindet **sein eigenes** VRChat-Konto.
 
 - **Anmeldung** mit VRChat-Benutzername/E-Mail + Passwort, danach **2FA**: Authenticator-App, E-Mail-Code oder Wiederherstellungscode.
-  Das Passwort wird **nicht gespeichert** – nur das VRChat-Sitzungs-Cookie, AES-256-GCM-verschlüsselt (`data/vrcx_….sqlite`,
-  Schlüssel in `data/.vrc_key_….php`). Nach einem Backup-Wiederherstellen muss man sich deshalb neu anmelden.
+  Das Passwort wird **nicht gespeichert** – nur das VRChat-Sitzungs-Cookie, AES-256-GCM-verschlüsselt (`data/db/vrcx_….sqlite` bzw. MySQL `nx_*`,
+  Schlüssel in `data/keys/.vrc_key_….php`). Nach einem Backup-Wiederherstellen muss man sich deshalb neu anmelden.
 - **Freunde**: Im Spiel / Website & App / Offline mit Welt, Instanz-Typ, Region und „seit“-Zeit; Filter nach Plattform,
   Vertrauensstufe, VRChat-Favoritengruppen, „nur mit Notiz“; Sortierung nach Status, Name, Welt, Vertrauen, neueste Freunde;
   Kompaktansicht; „Zusammen unterwegs“; ▶ direkt beitreten; CSV-Export. Oben: wo du selbst gerade bist und mit wem.
@@ -235,12 +294,31 @@ das lässt sich in VRC Nexus → Konto einstellen (Recht `system.manage`). Vorau
   - „👯 oft gleichzeitig online mit …“
 - **🎲 Zufalls-Avatar** (Avatare): würfelt aus der gefilterten Liste und zieht den Avatar nach Rückfrage an.
 
+### Nexus: 🖥️ Desktop-Client (Windows) mit Spiel-Log & OSC
+
+Der Windows-Client (`clients/nexus-desktop`, Download direkt im Reiter **🖥️ Client**) liest die **VRChat-Logdateien** und
+spricht **OSC** mit VRChat. Er braucht kein VRChat-Passwort – nur ein **Geräte-Token** (im Reiter erzeugt, nur einmal
+sichtbar, als SHA-256 gespeichert, jederzeit entfernbar). Der Reiter funktioniert auch ohne verbundenes VRChat-Web-Konto.
+
+- **📡 Live**: aktuelle Welt (Instanz-Typ, seit wann, „beitreten“), Spieler in der Instanz, eigener Avatar, Avatar-Parameter (Klick → Parameter-Formular).
+- **🎛️ OSC-Fernbedienung** (auch vom Handy): Chatbox-Text (144 Zeichen, mit/ohne Ton), Tipp-Anzeige, Avatar-Parameter
+  (An/Aus, Ganzzahl 0–255, Regler −1…1), Eingaben (Springen, Mikro, Drehen, Schnellmenü), **⭐ Schnellknöpfe** zum Speichern.
+  Befehle verfallen nach 2 Minuten, Status je Befehl (wartet / abgeholt / ausgeführt / fehlgeschlagen).
+- **📜 Spiel-Log**: Welten, wer kam/ging (auch Nicht-Freunde), Avatarwechsel, Videos, Screenshots, Einladungen, Start/Ende –
+  Filter nach Art, Text, Tag und Spieler; CSV-Export; „Log leeren“.
+- **🧑‍🤝‍🧑 Getroffen**: alle Leute aus dem Log mit Anzahl Begegnungen, gemeinsamer Zeit, Welten, zuletzt – Freunde markiert.
+- **🌐 Besuche**: Weltbesuche mit Dauer und Begegnungen. **Kennzahlen** für heute (Welten, Begegnungen, Spielzeit, Screenshots).
+- Im Client selbst: Status mit Spielerliste, Live-Log, Chatbox, **Chatbox-Rotator** (`{zeit} {welt} {spieler} {avatar} {dauer}`),
+  Parameter-Liste mit Doppelklick-Umschalten, Offline-Warteschlange, Autostart mit Windows.
+- Startseiten-Widget **🖥️ VRChat live**: Welt, Spieler, Chatbox-Feld und Schnellknöpfe.
+- EXE: `build.bat` (PyInstaller) oder GitHub Actions („Nexus Desktop-Client“ → Artefakt); ohne EXE `start.bat` mit Python 3.9+.
+
 ## Discord-Zentrale (`discord.php`)
 
 Den eigenen Discord-Server über einen **eigenen Bot** verwalten. Recht: `discord.manage` (Administratoren automatisch).
 
 1. Auf discord.com/developers/applications eine Application anlegen → **Bot** → **Reset Token** → Token in der Zentrale eintragen
-   (wird AES-256-GCM-verschlüsselt gespeichert, nie wieder angezeigt; Schlüssel in `data/.discord_key_….php`).
+   (wird AES-256-GCM-verschlüsselt gespeichert, nie wieder angezeigt; Schlüssel in `data/keys/.discord_key_….php`).
 2. Im Developer-Portal **Server Members Intent** und **Message Content Intent** einschalten.
 3. Mit dem angezeigten **Einladungslink** den Bot auf den Server holen und seine Rolle über die zu verwaltenden Rollen schieben.
 
@@ -397,7 +475,7 @@ Die Bereiche im Einzelnen:
 - Nicht mehr benutzte Bilder werden nach einem Tag automatisch gelöscht. Pro Konto sind max. 120 Bilder erlaubt.
 - Ohne Anmeldung bleiben Bilder als verkleinerte Kopie nur im Browser.
 
-Daten: `data/furhub_<zufall>.sqlite` (Zähler, Sonas, Likes, Tamagotchi, Karten, Pfotenabdrücke) und `data/furhub_img/` (Bilder, im Backup enthalten).
+Daten: `data/db/furhub_<zufall>.sqlite` bzw. MySQL-Tabellen `fh_*` (Zähler, Sonas, Likes, Tamagotchi, Karten, Pfotenabdrücke) und `data/uploads/furhub/` (Bilder, im Backup enthalten).
 
 ## NSFW-Galerie (`nsfw.php`, 18+)
 
@@ -446,12 +524,13 @@ wird pro Benutzer im Protokoll vermerkt. Suchmaschinen werden per `noindex` ausg
 **📢 Ankündigungs-Banner** für alle / nur Angemeldete / nur Besucher mit Stil, Ablaufzeit und „wegklickbar“),
 Benutzer, Rollen & Rechte (Matrix), Einladungen, Sitzungen, Sicherheit, Seiten, Protokoll (Suche, Stufe, **Benutzer,
 Zeitraum**, CSV-Export des gefilterten Ergebnisses, IP direkt sperren), System (Seitentitel, **Wartungsmodus – auch
-geplant mit Start/Ende**, Systemstatus, Speicherbelegung, Werkzeuge inkl. Feeds neu laden und Datenbank optimieren), Mein Konto.
+geplant mit Start/Ende**, Systemstatus, Speicherbelegung, **⏱️ Aufgabenplaner**, **💾 automatische Backups**, Werkzeuge inkl. Feeds neu laden und Datenbank optimieren),
+**🗄️ Datenbank** (SQLite ⇄ MySQL, Prüfen, SQL-Sicherung), Mein Konto.
 Wer nur das Recht `widgets.manage` hat, bekommt auf der Startseite den Knopf „🧩 Widgets“ zum Anordnen. **Befehlspalette** mit `Strg+K`. Auf dem Handy wird die Seitenleiste zur Reiterleiste.
 
 **HTTPS** beim Hoster aktivieren, sonst werden Passwörter unverschlüsselt übertragen (die Admin-Zentrale warnt dann).
 
-## Kalender (`calendar.php`, SQLite)
+## Kalender (`calendar.php`)
 
 - Ansichten **Monat** (mit Kalenderwochen), **Woche** (Zeitleiste mit Jetzt-Linie, überlappende Termine nebeneinander),
   **Agenda** (45 Tage) und **Jahr** (12 Mini-Monate mit Punkten) sowie **Suche**
@@ -473,8 +552,8 @@ Wer nur das Recht `widgets.manage` hat, bekommt auf der Startseite den Knopf „
   „Nächste 24 Std.“-Leiste auf der Startseite
 - **Kalender aufs Handy**: geheimer Abo-Link (nur öffentliche oder alle Termine) für Google/Apple/Outlook, jederzeit erneuerbar
 - **Jahrestage/Alter** bei jährlichen Terminen („Luna (30)“), **Überschneidungs-Warnung**, einzelne Termine als `.ics`
-- Datenbank: `data/calendar_<zufall>.sqlite` (Ordner per `.htaccess` gesperrt, Dateiname nicht erratbar),
-  wird beim ersten Aufruf automatisch angelegt und ist im Backup enthalten. Benötigt die PHP-Erweiterung `pdo_sqlite`.
+- Datenbank: `data/db/calendar_<zufall>.sqlite` (Ordner per `.htaccess` gesperrt, Dateiname nicht erratbar) bzw. MySQL `cal_*`,
+  wird beim ersten Aufruf automatisch angelegt und ist im Backup enthalten.
 
 ## Budget (`budget.php`)
 
@@ -536,5 +615,5 @@ Die Zahl am Dateianfang bestimmt die Reihenfolge auf der Startseite.
 
 ## Hinweis zur Sicherheit
 
-Auf **nginx**-Servern wirkt die `.htaccess` nicht – dann sind die JSON-Datendateien (z. B. `budget_data.json`) direkt abrufbar.
-In dem Fall in der nginx-Konfiguration `location ~ \.json$ { deny all; }` und `location /data/ { deny all; }` ergänzen.
+Auf **nginx**-Servern wirkt die `.htaccess` nicht – dann wäre der Ordner `data/` direkt abrufbar.
+In dem Fall in der nginx-Konfiguration `location /data/ { deny all; }` und `location /tools/ { deny all; }` ergänzen.

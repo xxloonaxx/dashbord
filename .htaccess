@@ -10,5 +10,7 @@
 
 # Interne PHP-Bausteine nicht direkt aufrufbar
 RedirectMatch 404 ^.*/inc/.*$
+# Private Daten, Werkzeuge und Client-Quelltext (Download nur angemeldet über nexus.php)
+RedirectMatch 404 ^.*/(data|tools|clients)/.*$
 
 Options -Indexes

@@ -18,7 +18,8 @@ widgets/
 ├── budget/          ← Budget-Kurzübersicht (Recht budget.access)
 ├── vrchat/          ← VRChat-Freunde online (Recht vrcx.access)
 ├── feed/            ← Neueste Feed-Meldungen
-└── quicklinks/      ← Schnellzugriff / Lesezeichen
+├── quicklinks/      ← Schnellzugriff / Lesezeichen
+└── vrclive/         ← VRChat live über den Nexus-Desktop-Client (Welt, Spieler, Chatbox, OSC-Schnellknöpfe)
 ```
 
 **Eigenes Widget:** `_vorlage` kopieren, Ordner umbenennen (z. B. `mein-widget`), `widget.php` anpassen.

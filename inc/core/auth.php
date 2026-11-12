@@ -410,6 +410,8 @@ function nsfw_visible(array $link, string $category = ''): bool {
 /** Kleine Leiste "Angemeldet als … / Login" für die Seiten */
 function auth_corner(): void {
     $u = current_user();
+    require_once __DIR__ . '/tasks.php';
+    tasks_pseudo_cron();   // fällige Hintergrund-Aufgaben nach dem Ausliefern
     site_banners(); ?>
     <div class="auth-corner">
         <?php if ($u): ?>

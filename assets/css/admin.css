@@ -328,3 +328,8 @@ a.ucell:hover b { color: var(--accent-cyan); }
 /* Datenbank */
 .dblog { background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(56, 213, 230, 0.12); border-radius: 8px; padding: 10px 12px; font-size: 0.75rem; max-height: 280px; overflow: auto; white-space: pre-wrap; margin: 0; }
 .panel .tbl td.mono.small { word-break: break-all; }
+
+.tbl.tasks td { vertical-align: middle; }
+code.wrap { word-break: break-all; display: inline-block; }
+.stor .tools { display: flex; gap: 6px; }
+.stor .tools form { margin: 0; }

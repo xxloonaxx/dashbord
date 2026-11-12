@@ -139,6 +139,7 @@ if ($mode === 'panel' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         'invite_create' => 'invites.manage', 'invite_delete' => 'invites.manage', 'announce_save' => 'announce.manage',
         'db_config' => 'database.manage', 'db_test' => 'database.manage', 'db_transfer' => 'database.manage', 'db_switch' => 'database.manage',
         'db_check' => 'database.manage', 'db_dump' => 'database.manage',
+        'tasks_save' => 'system.manage', 'task_run' => 'system.manage', 'tasks_newkey' => 'system.manage', 'backup_delete' => 'backup.download', 'backup_now' => 'backup.download',
     ];
     // Während „Ansicht als Rolle“ zählt für diese Aktionen die echte Rolle nicht – nur die Vorschau beenden geht immer.
     guard_post($perm_for[$act] ?? null);
@@ -585,6 +586,51 @@ if ($mode === 'panel' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 $msg = 'Datenbank optimiert (' . round($before / 1024) . ' → ' . round($after / 1024) . ' KB).';
                 break;
 
+            // ---------- Aufgabenplaner & automatische Backups ----------
+            case 'tasks_save':
+                require_once __DIR__ . '/inc/core/tasks.php';
+                set_setting('tasks_mode', in_array($_POST['tasks_mode'] ?? '', ['pseudo', 'cron', 'off'], true) ? $_POST['tasks_mode'] : 'pseudo');
+                foreach (array_keys(TASKS) as $tid) {
+                    set_setting("task_{$tid}_on", !empty($_POST['task_on'][$tid]) ? '1' : '0');
+                    $ev = (int)($_POST['task_every'][$tid] ?? 0);
+                    if (isset(TASK_INTERVALS[$ev])) set_setting("task_{$tid}_every", (string)$ev);
+                }
+                set_setting('backup_keep', (string)max(1, min(60, (int)($_POST['backup_keep'] ?? 7))));
+                set_setting('audit_keep_days', (string)max(30, min(3650, (int)($_POST['audit_keep_days'] ?? 365))));
+                audit('Aufgabenplaner gespeichert');
+                $msg = 'Aufgaben gespeichert.';
+                break;
+            case 'task_run':
+                require_once __DIR__ . '/inc/core/tasks.php';
+                $tid = (string)($_POST['task'] ?? '');
+                if (!isset(TASKS[$tid])) throw new InvalidArgumentException('Unbekannte Aufgabe.');
+                $res = tasks_run([$tid], true);
+                if (!$res) throw new InvalidArgumentException('Es läuft gerade schon eine Aufgabe – bitte gleich noch einmal.');
+                audit('Aufgabe von Hand gestartet', TASKS[$tid][1] . ': ' . $res[$tid]['text']);
+                if (!$res[$tid]['ok']) throw new InvalidArgumentException(TASKS[$tid][1] . ': ' . $res[$tid]['text']);
+                $msg = TASKS[$tid][0] . ' ' . TASKS[$tid][1] . ': ' . $res[$tid]['text'] . ' (' . $res[$tid]['seconds'] . ' s)';
+                break;
+            case 'tasks_newkey':
+                set_setting('tasks_key', bin2hex(random_bytes(16)));
+                audit('Cron-Schlüssel erneuert', '', 'security');
+                $msg = 'Neuer Cron-Schlüssel erstellt – die alte Adresse funktioniert nicht mehr.';
+                break;
+            case 'backup_now':
+                require_once __DIR__ . '/inc/core/backup.php';
+                $r = backup_auto(max(1, (int)setting('backup_keep', '7')));
+                if (!$r['ok']) throw new InvalidArgumentException('Backup fehlgeschlagen (fehlt die ZIP-Erweiterung?).');
+                audit('Backup erstellt', $r['name']);
+                $msg = 'Backup ' . $r['name'] . ' erstellt (' . round($r['size'] / 1024) . ' KB).';
+                break;
+            case 'backup_delete':
+                require_once __DIR__ . '/inc/core/backup.php';
+                $bf = backup_file((string)($_POST['name'] ?? ''));
+                if (!$bf) throw new InvalidArgumentException('Backup nicht gefunden.');
+                unlink($bf);
+                audit('Backup gelöscht', basename($bf), 'warn');
+                $msg = 'Backup gelöscht.';
+                break;
+
             // ---------- Datenbank (SQLite / MySQL) ----------
             case 'db_config':
             case 'db_test':
@@ -889,6 +935,12 @@ if ($mode === 'panel') {
         $storage['data/archive/ (' . count($arch) . ' Dateien)'] = array_sum(array_map('json_size', $arch));
         arsort($storage);
         $hubs = find_hub_files();
+        require_once __DIR__ . '/inc/core/tasks.php';
+        require_once __DIR__ . '/inc/core/backup.php';
+        $task_list = [];
+        foreach (TASKS as $tid => $t) $task_list[$tid] = $t + ['c' => task_conf($tid)];
+        $tasks_url = rtrim(dirname((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . ($_SERVER['SCRIPT_NAME'] ?? '/admin.php')), '/') . '/cron.php?key=' . tasks_key();
+        $auto_backups = backup_list();
     }
     if ($tab === 'account') {
         $my_log = $db->prepare('SELECT * FROM audit_log WHERE user_id = ? ORDER BY id DESC LIMIT 12');
@@ -1672,6 +1724,48 @@ function bytes(int $b): string {
                     <select name="hub" style="width: auto;"><?php foreach ($hubs as $h): ?><option value="<?php echo e($h); ?>"><?php echo e($h); ?><?php echo is_file(hub_data_file($h)) ? ' (bearbeitet)' : ''; ?></option><?php endforeach; ?></select>
                     <button class="btn btn-sm btn-danger">Hub zurücksetzen</button>
                 </form>
+            </div>
+        </div>
+
+        <div class="grid2">
+            <form method="POST" class="panel">
+                <input type="hidden" name="tab" value="system"><input type="hidden" name="action" value="tasks_save">
+                <div class="panel-title"><span>// ⏱️ Aufgabenplaner</span><span class="muted small"><?php $lr = (int)setting('tasks_last_run', '0'); echo $lr ? 'zuletzt ' . e(date('d.m. H:i', $lr)) : 'noch nie gelaufen'; ?></span></div>
+                <label class="field">Auslöser</label>
+                <select name="tasks_mode">
+                    <?php foreach (['pseudo' => 'Beim Seitenaufruf (ohne Einrichtung)', 'cron' => 'Echter Cron (Server ruft cron.php auf)', 'off' => 'Aus'] as $k => $l): ?><option value="<?php echo $k; ?>" <?php echo tasks_mode() === $k ? 'selected' : ''; ?>><?php echo $l; ?></option><?php endforeach; ?>
+                </select>
+                <table class="tbl tasks" style="margin-top: 12px;">
+                    <tr><th></th><th>Aufgabe</th><th>Abstand</th><th>Zuletzt</th><th></th></tr>
+                    <?php foreach ($task_list as $tid => $t): $c = $t['c']; ?>
+                        <tr><td><input type="checkbox" name="task_on[<?php echo $tid; ?>]" value="1" <?php echo $c['on'] ? 'checked' : ''; ?> aria-label="<?php echo e($t[1]); ?> aktiv"></td>
+                            <td><b><?php echo $t[0] . ' ' . e($t[1]); ?></b><br><small class="muted"><?php echo e($t[2]); ?></small></td>
+                            <td><select name="task_every[<?php echo $tid; ?>]" style="width: auto; padding: 4px 6px;"><?php foreach (TASK_INTERVALS as $mins => $l): ?><option value="<?php echo $mins; ?>" <?php echo $c['every'] === $mins ? 'selected' : ''; ?>><?php echo $l; ?></option><?php endforeach; ?></select></td>
+                            <td class="small"><?php if ($c['last']): ?><span class="<?php echo $c['ok'] ? '' : 'red'; ?>"><?php echo $c['ok'] ? '✔' : '✖'; ?> <?php echo e(date('d.m. H:i', $c['last'])); ?></span><br><small class="muted"><?php echo e(mb_substr($c['result'], 0, 70)); ?></small><?php else: ?><span class="muted">–</span><?php endif; ?></td>
+                            <td><button class="btn btn-sm" name="task" value="<?php echo $tid; ?>" title="Jetzt ausführen" onclick="this.form.elements.action.value='task_run'">▶</button></td></tr>
+                    <?php endforeach; ?>
+                </table>
+                <div class="f2" style="margin-top: 10px;">
+                    <div><label class="field">Automatische Backups behalten</label><input type="number" name="backup_keep" min="1" max="60" value="<?php echo (int)setting('backup_keep', '7'); ?>"></div>
+                    <div><label class="field">Protokoll aufbewahren (Tage)</label><input type="number" name="audit_keep_days" min="30" max="3650" value="<?php echo (int)setting('audit_keep_days', '365'); ?>"></div>
+                </div>
+                <button class="btn btn-gold" style="margin-top: 12px;">Speichern</button>
+                <details style="margin-top: 12px;"><summary class="muted small">Echten Cron einrichten</summary>
+                    <p class="small">Kommandozeile (alle 5 Minuten): <code>*/5 * * * * php <?php echo e(APP_ROOT); ?>/cron.php</code></p>
+                    <p class="small">Oder als Web-Adresse (z. B. cron-job.org):<br><code class="wrap"><?php echo e($tasks_url); ?></code></p>
+                    <button class="btn btn-sm btn-danger" onclick="if (!confirm('Neuen Schlüssel erzeugen? Die alte Adresse funktioniert dann nicht mehr.')) return false; this.form.elements.action.value='tasks_newkey';">↻ Neuer Schlüssel</button>
+                </details>
+            </form>
+            <div class="panel">
+                <div class="panel-title"><span>// 💾 Automatische Backups</span><span class="muted small">data/backups · <?php echo count($auto_backups); ?></span></div>
+                <?php if (!$auto_backups): ?><p class="muted small">Noch keine. Aufgabe „Automatisches Backup“ einschalten oder jetzt eines erstellen.</p><?php endif; ?>
+                <?php foreach (array_slice($auto_backups, 0, 15) as $b): ?>
+                    <div class="stor"><span>📦 <?php echo e(date('d.m.Y H:i', $b['time'])); ?></span><span class="mono small"><?php echo bytes($b['size']); ?></span>
+                        <span class="tools"><?php if (can('backup.download')): ?><a class="btn btn-sm" href="backup.php?auto=<?php echo urlencode($b['name']); ?>">⇩</a>
+                        <form method="POST" onsubmit="return confirm('Backup löschen?');"><input type="hidden" name="tab" value="system"><input type="hidden" name="action" value="backup_delete"><input type="hidden" name="name" value="<?php echo e($b['name']); ?>"><button class="btn btn-sm btn-danger">×</button></form><?php endif; ?></span></div>
+                <?php endforeach; ?>
+                <?php if (can('backup.download')): ?><form method="POST" style="margin-top: 12px;"><input type="hidden" name="tab" value="system"><input type="hidden" name="action" value="backup_now"><button class="btn btn-sm">💾 Jetzt Backup erstellen</button></form><?php endif; ?>
+                <p class="muted small" style="margin-top: 10px;">Enthält Datenbank(en) und JSON-Daten, keine Bilder und keine Schlüssel (data/keys – bitte getrennt sichern). Ein vollständiges Backup mit Bildern gibt es über „Backup herunterladen“.</p>
             </div>
         </div>
 
