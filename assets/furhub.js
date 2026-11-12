@@ -87,7 +87,9 @@
 
     let svgId = 0;
     /** Kopf einer Figur als SVG. expr: normal | happy | boop | sleep | sad */
+    const EXMAP = { neutral: 'normal', surprised: 'boop', sleepy: 'sleep' };
     function sonaSVG(L, expr = 'normal') {
+        expr = EXMAP[expr] || expr;
         L = Object.assign(defaultLook(), L || {});
         const id = 'fh' + (++svgId);
         const M = (d, fill, extra = '') => `<path d="${d}" fill="${fill}" ${extra}/>`;
@@ -147,11 +149,12 @@
             if (expr === 'boop') o.push(`<ellipse cx="100" cy="${my + 3}" rx="6" ry="7" fill="${ink}"/><ellipse cx="100" cy="${my + 6}" rx="4" ry="3" fill="#ff7a9c"/>`);
             else if (expr === 'happy') o.push(`<path d="M 86 ${my - 2} Q 100 ${my + 16} 114 ${my - 2} Z" fill="${ink}"/><path d="M 93 ${my + 6} Q 100 ${my + 12} 107 ${my + 6} Q 100 ${my + 2} 93 ${my + 6} Z" fill="#ff7a9c"/>`);
             else if (expr === 'sad') o.push(`<path d="M 90 ${my + 6} Q 100 ${my - 3} 110 ${my + 6}" stroke="${ink}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`);
+            else if (expr === 'angry') o.push(`<path d="M 86 ${my + 7} Q 100 ${my - 4} 114 ${my + 7}" stroke="${ink}" stroke-width="3.4" fill="none" stroke-linecap="round"/><path d="M 93 ${my + 3} L 95 ${my + 7} L 97 ${my + 3}" fill="#fff"/>`);
             else o.push(`<path d="M 88 ${my} Q 94 ${my + 7} 100 ${my} Q 106 ${my + 7} 112 ${my}" stroke="${ink}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`);
         }
         // Augen
         const eye = x => {
-            const shape = expr === 'normal' || expr === 'sad' ? L.eyeShape : expr;
+            const shape = expr === 'normal' || expr === 'sad' || expr === 'angry' ? L.eyeShape : expr;
             if (L.extra === 'visor') return '';
             if (shape === 'happy') return `<path d="M ${x - 12} ${eyeY + 4} Q ${x} ${eyeY - 10} ${x + 12} ${eyeY + 4}" stroke="${ink}" stroke-width="4" fill="none" stroke-linecap="round"/>`;
             if (shape === 'sleep') return `<path d="M ${x - 12} ${eyeY} Q ${x} ${eyeY + 8} ${x + 12} ${eyeY}" stroke="${ink}" stroke-width="4" fill="none" stroke-linecap="round"/>`;
@@ -166,6 +169,7 @@
             s += `<circle cx="${x + 3.5}" cy="${eyeY - 4}" r="3.2" fill="#fff"/><circle cx="${x - 3}" cy="${eyeY + 5}" r="1.4" fill="#fff" opacity=".8"/>`;
             if (shape === 'sleepy') s += `<path d="M ${x - 15} ${eyeY - 16} L ${x + 15} ${eyeY - 16} L ${x + 15} ${eyeY + 1} Q ${x} ${eyeY - 4} ${x - 15} ${eyeY + 1} Z" fill="${L.main}"/>`;
             if (expr === 'sad') s += `<path d="M ${x - 12} ${eyeY - 18 + (x < 100 ? 4 : -2)} L ${x + 10} ${eyeY - 18 + (x < 100 ? -2 : 4)}" stroke="${ink}" stroke-width="3" stroke-linecap="round"/>`;
+            if (expr === 'angry') s += x < 100 ? `<path d="M ${x - 14} ${eyeY - 22} L ${x + 11} ${eyeY - 12}" stroke="${ink}" stroke-width="4.5" stroke-linecap="round"/>` : `<path d="M ${x - 11} ${eyeY - 12} L ${x + 14} ${eyeY - 22}" stroke="${ink}" stroke-width="4.5" stroke-linecap="round"/>`;
             return s;
         };
         o.push(eye(74) + eye(126));
@@ -176,6 +180,7 @@
             const glyph = expr === 'happy' || expr === 'boop' ? (x => `<path d="M ${x - 12} 112 L ${x} 100 L ${x + 12} 112" stroke="${g}" ${sw}/>`)
                 : expr === 'sleep' ? (x => `<path d="M ${x - 12} 106 L ${x + 12} 106" stroke="${g}" ${sw}/>`)
                 : expr === 'sad' ? (x => `<path d="M ${x - 12} 100 L ${x} 112 L ${x + 12} 100" stroke="${g}" ${sw}/>`)
+                : expr === 'angry' ? (x => `<path d="M ${x - 12} ${x < 100 ? 98 : 112} L ${x + 12} ${x < 100 ? 112 : 98}" stroke="${g}" ${sw}/>`)
                 : (x => `<rect x="${x - 9}" y="96" width="18" height="18" rx="4" fill="${g}"/>`);
             o.push(`<g filter="drop-shadow(0 0 4px ${g})">${glyph(74)}${glyph(126)}${expr === 'boop' ? `<path d="M 92 122 L 100 117 L 108 122" stroke="${g}" stroke-width="3" fill="none"/>` : ''}</g>`);
         }
@@ -201,6 +206,86 @@
         return o.join('');
     }
 
+    // Eigene Bilder je Emotion
+    const EMO = { neutral: ['😐', 'Normal'], happy: ['😊', 'Fröhlich'], sad: ['🥺', 'Traurig'], angry: ['😠', 'Wütend'], surprised: ['😳', 'Überrascht'], sleepy: ['😴', 'Müde'] };
+    const safeImg = (u, allowData = true) => (typeof u === 'string' && (/^furhub\.php\?img=[0-9a-f]{24}$/.test(u) || (allowData && /^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(u)))) ? u : '';
+    function imgFor(look, emo) {
+        if (!look || look.mode !== 'custom' || !look.images) return '';
+        const im = look.images;
+        return safeImg(im[emo]) || safeImg(im.neutral) || Object.values(im).map(u => safeImg(u)).find(Boolean) || '';
+    }
+    /** Gesicht einer Figur: eigenes Bild der Emotion oder gezeichneter Avatar */
+    function face(look, emo = 'neutral') {
+        const u = imgFor(look, emo);
+        return u ? `<img class="fh-face-img" src="${esc(u)}" alt="" draggable="false">` : sonaSVG(look, emo);
+    }
+    const blobToData = b => new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(b); });
+    async function prepImage(file, max) {
+        if (!/^image\/(png|jpeg|webp|gif)$/.test(file.type)) throw new Error('Nur PNG, JPG, WebP oder GIF.');
+        if (file.size > 2.5e6) throw new Error('Das Bild ist zu groß (max. 2,5 MB).');
+        if (file.type === 'image/gif') { if (!FH.me && file.size > 1.2e6) throw new Error('GIFs ohne Anmeldung bitte unter 1,2 MB.'); return file; }   // Animation behalten
+        const url = URL.createObjectURL(file);
+        try {
+            const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('Bild nicht lesbar.')); i.src = url; });
+            const f = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+            const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * f); c.height = Math.round(img.naturalHeight * f);
+            c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+            return await new Promise(res => c.toBlob(b => res(b), 'image/webp', 0.88));
+        } finally { URL.revokeObjectURL(url); }
+    }
+    async function uploadBlob(blob, kind) {
+        const fd = new FormData(); fd.append('file', blob, 'bild'); fd.append('kind', kind);
+        const r = await fetch('furhub.php?api=img_upload', { method: 'POST', body: fd });
+        const j = await r.json().catch(() => ({ error: 'Upload fehlgeschlagen.' }));
+        if (!r.ok || j.error) throw new Error(j.error || 'Upload fehlgeschlagen.');
+        return j.url;
+    }
+    /** Bild hochladen (angemeldet → Server, sonst als Daten-URL im Browser) */
+    async function uploadImage(file, kind) {
+        const blob = await prepImage(file, FH.me ? 768 : 320);
+        return FH.me ? uploadBlob(blob, kind) : blobToData(blob);
+    }
+    /** Daten-URLs (aus der Zeit vor dem Anmelden) auf den Server bringen */
+    async function ensureServerImages(images, kind) {
+        if (!FH.me || !images) return images;
+        for (const k of Object.keys(images)) if (String(images[k]).startsWith('data:')) images[k] = await uploadBlob(await (await fetch(images[k])).blob(), kind);
+        return images;
+    }
+    /** Sechs Felder (je Emotion) zum Hochladen – für Fursona und Tamagotchi */
+    function emoSlots(box, getImages, kind, onChange) {
+        const input = document.createElement('input');
+        input.type = 'file'; input.accept = 'image/png,image/jpeg,image/webp,image/gif'; input.hidden = true;
+        box.after(input);
+        const render = () => {
+            const im = getImages();
+            box.innerHTML = Object.entries(EMO).map(([e, [ic, l]]) => `<div class="emo-slot ${safeImg(im[e]) ? 'has' : ''}" data-e="${e}"><button type="button" class="emo-pic" title="${l}: Bild wählen">${safeImg(im[e]) ? `<img src="${esc(im[e])}" alt="">` : `<span>${ic}</span>`}</button><small>${ic} ${l}</small>${safeImg(im[e]) ? `<button type="button" class="emo-x" data-x="${e}" title="Entfernen">×</button>` : ''}</div>`).join('')
+                + `<div class="emo-slot all"><button type="button" class="emo-pic" data-all title="Ein Bild für alle Emotionen"><span>⬆</span></button><small>Eins für alle</small></div>`;
+        };
+        const take = async (file, targets) => {
+            box.classList.add('busy');
+            try {
+                const url = await uploadImage(file, kind);
+                const im = getImages(); targets.forEach(e => { im[e] = url; });
+                onChange(); render(); unlock('custom');
+            } catch (err) { toast(err.message, true); } finally { box.classList.remove('busy'); }
+        };
+        box.addEventListener('click', e => {
+            const x = e.target.closest('[data-x]');
+            if (x) { delete getImages()[x.dataset.x]; onChange(); render(); return; }
+            const all = e.target.closest('[data-all]'), slot = e.target.closest('.emo-slot:not(.all)');
+            if (all || slot) { input.dataset.slotTarget = all ? 'all' : slot.dataset.e; input.value = ''; input.click(); }
+        });
+        input.addEventListener('change', () => { if (input.files[0]) take(input.files[0], input.dataset.slotTarget === 'all' ? Object.keys(EMO) : [input.dataset.slotTarget]); });
+        box.addEventListener('dragover', e => { e.preventDefault(); });
+        box.addEventListener('drop', e => {
+            e.preventDefault();
+            const slot = e.target.closest('.emo-slot'), f = e.dataTransfer.files[0];
+            if (slot && f) take(f, slot.classList.contains('all') ? Object.keys(EMO) : [slot.dataset.e]);
+        });
+        render();
+        return { render };
+    }
+
     // =====================================================================
     // Erfolge
     // =====================================================================
@@ -209,7 +294,11 @@
         combo: ['⚡', 'Combo!', '25 Boops ohne Pause'], awoo: ['🐺', 'Awoo!', 'Einmal kräftig geheult'], sounds: ['🎼', 'Orchester', 'Alle Tierlaute gespielt'],
         sona: ['🎨', 'Schöpfer*in', 'Eine Fursona gespeichert oder heruntergeladen'], like: ['💖', 'Fan', 'Eine Community-Sona geliked'],
         bingo: ['🎪', 'BINGO!', 'Eine Bingo-Reihe vollständig'], quiz: ['❓', 'Selbsterkenntnis', 'Das Tier-Quiz gemacht'],
-        pet: ['🍖', 'Fürsorglich', 'Den Begleiter gefüttert'], pet5: ['🐣', 'Großgezogen', 'Begleiter auf Stufe 5'],
+        pet: ['🍖', 'Fürsorglich', 'Das Tamagotchi gefüttert'], pet5: ['⭐', 'Großgezogen', 'Tamagotchi auf Stufe 5'],
+        hatch: ['🐣', 'Geschlüpft', 'Ein Ei ausgebrütet'], adult: ['🦊', 'Erwachsen', 'Tamagotchi ist ausgewachsen'], tidy: ['🧹', 'Putzteufel', '10 Häufchen weggeräumt'],
+        shop: ['🛒', 'Shopping-Tour', 'Etwas im Shop gekauft'], hat: ['🎩', 'Modisch', 'Ein Accessoire aufgesetzt'], custom: ['🖼️', 'Eigene Bilder', 'Ein eigenes Bild hochgeladen'],
+        card: ['🃏', 'Kartenkünstler*in', 'Eine Karte gespeichert oder exportiert'], catch: ['🍖', 'Fangkünstler*in', '50 Punkte beim Leckerli fangen'],
+        memory: ['🧠', 'Gutes Gedächtnis', 'Memory gelöst'], whack: ['👃', 'Nasen-Ninja', '30 Nasen gebooped'], ear: ['👂', 'Gutes Gehör', '8 von 10 Tierlauten erkannt'], wheel: ['🎡', 'Dreh am Rad', 'Das Glücksrad gedreht'],
         owo: ['💬', 'OwO, was ist das?', 'Den Übersetzer benutzt'], paw: ['✍️', 'Pfotenabdruck', 'Im Gästebuch unterschrieben'],
         konami: ['🎮', 'Retro-Fluff', 'Den Konami-Code eingegeben'], secret: ['🦊', 'Neugierfuchs', 'Den Fuchs 10× angeklickt'], night: ['🌙', 'Nachteule', 'Zwischen 0 und 4 Uhr vorbeigeschaut'],
     };
@@ -260,7 +349,7 @@
         $$('#fhTabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
         if (location.hash.slice(1) !== t) history.replaceState(null, '', '#' + t);
         if (!loaded[t]) { loaded[t] = true; (INIT[t] || (() => {}))(); }
-        if (t === 'pet') pet.render();
+        if (SHOW[t]) SHOW[t]();
         if (t === 'start' && loaded.start && sonas === null) renderSotd();
     }
     $$('#fhTabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
@@ -288,14 +377,17 @@
         const box = $('#sotd');
         if (!list.length) { box.innerHTML = '<span class="muted">Noch keine Community-Sonas. <a href="#sona" data-goto="sona">Sei die erste!</a></span>'; return; }
         const s = list[hash(new Date().toDateString()) % list.length];
-        box.innerHTML = `<div class="sotd-face">${sonaSVG(s.look, 'happy')}</div><div><b>${esc(s.name)}</b><small>${esc(s.species)}${s.pronouns ? ' · ' + esc(s.pronouns) : ''}</small><small>von ${esc(s.owner)}</small><button type="button" class="fh-btn sm" data-boop-sona="${s.user_id}">👃 Boopen</button></div>`;
+        box.innerHTML = `<div class="sotd-face" data-face="${s.user_id}">${face(s.look, 'happy')}</div><div><b>${esc(s.name)}</b><small>${esc(s.species)}${s.pronouns ? ' · ' + esc(s.pronouns) : ''}</small><small>von ${esc(s.owner)}</small><button type="button" class="fh-btn sm" data-boop-sona="${s.user_id}">👃 Boopen</button></div>`;
     }
+    // Fremde Sonas boopen (Community, Sona des Tages)
     document.addEventListener('click', e => {
         const b = e.target.closest('[data-boop-sona]');
-        if (!b) return;
-        boopWho = 'u' + b.dataset.boopSona;
-        showTab('boop');
-        boopRender();
+        if (!b || !sonas) return;
+        const s = sonas.find(x => x.user_id === +b.dataset.boopSona); if (!s) return;
+        const holder = (b.closest('.com-card, .sotd-body') || document).querySelector('.com-face, .sotd-face');
+        if (holder) { holder.innerHTML = face(s.look, 'surprised'); holder.classList.remove('booped'); void holder.offsetWidth; holder.classList.add('booped'); clearTimeout(holder._t); holder._t = setTimeout(() => { holder.innerHTML = face(s.look, holder.classList.contains('sotd-face') ? 'happy' : 'neutral'); }, 600); }
+        react('boop'); boopCount(); sfx.boop();
+        floatText(e.pageX - 10, e.pageY - 30, rnd(['boop!', '*boop*', 'eep!', '>w<']));
     });
 
     // Zufallslink aus dem Furry-Link-Hub
@@ -307,16 +399,10 @@
     }
 
     // =====================================================================
-    // Boop
+    // Gemeinsame Reaktionen (Boop, Awoo, Headpat, Umarmung)
     // =====================================================================
-    let boopWho = 'random', boopLook = null, pending = {}, flushT = null, combo = 0, comboT = null;
+    let pending = {}, flushT = null;
     let myLocal = store.get('boops', 0);
-    function lookForBoop() {
-        if (boopWho === 'mine') return currentLook();
-        if (boopWho.startsWith('u') && sonas) { const s = sonas.find(x => 'u' + x.user_id === boopWho); if (s) return s.look; }
-        return boopLook || (boopLook = randomLook());
-    }
-    function boopRender(expr = 'normal') { $('#boopFace').innerHTML = sonaSVG(lookForBoop(), expr); }
     function react(key, n = 1) {
         pending[key] = (pending[key] || 0) + n;
         stats.total[key] = (stats.total[key] || 0) + n;
@@ -332,27 +418,15 @@
         renderCounters(); renderMine(); renderTop();
     }
     window.addEventListener('beforeunload', () => {
-        for (const [k, n] of Object.entries(pending)) if (n) navigator.sendBeacon && navigator.sendBeacon('furhub.php?api=react', (() => { const f = new FormData(); f.append('key', k); f.append('n', n); return f; })());
+        for (const [k, n] of Object.entries(pending)) if (n && navigator.sendBeacon) { const f = new FormData(); f.append('key', k); f.append('n', n); navigator.sendBeacon('furhub.php?api=react', f); }
     });
-    let exprT;
-    function doBoop(ev) {
-        react('boop');
+    /** Eigene Boops zählen (für Erfolge) */
+    function boopCount() {
         myLocal++; store.set('boops', myLocal);
-        combo++; clearTimeout(comboT); comboT = setTimeout(() => { combo = 0; $('#boopCombo').textContent = ''; }, 1400);
-        if (combo > 2) $('#boopCombo').textContent = combo + '× Combo!';
-        const face = $('#boopFace');
-        boopRender('boop');
-        face.classList.remove('booped'); void face.offsetWidth; face.classList.add('booped');
-        clearTimeout(exprT); exprT = setTimeout(() => boopRender(combo > 10 ? 'happy' : 'normal'), 450);
-        const r = face.getBoundingClientRect();
-        const x = ev && ev.clientX ? ev.clientX : r.left + r.width / 2, y = ev && ev.clientY ? ev.clientY : r.top + r.height * 0.65;
-        floatText(x + window.scrollX - 20, y + window.scrollY - 30, rnd(['boop!', 'Boop!', '*boop*', 'bweh!', 'mlem', '>w<', 'nya!', 'eep!']));
-        if (Math.random() < 0.3) floatText(x + window.scrollX + (Math.random() * 80 - 40), y + window.scrollY - 10, rnd(['💖', '✨', '💕', '⭐']), 'heart');
-        sfx.boop();
         if (myLocal >= 1) unlock('boop1');
         if (myLocal >= 100) unlock('boop100');
         if (myLocal >= 1000) unlock('boop1000');
-        if (combo >= 25) unlock('combo');
+        return myLocal;
     }
     function renderMine() {
         const box = $('#myBoops'); if (!box) return;
@@ -363,22 +437,6 @@
     function renderTop() {
         const box = $('#boopTop'); if (!box) return;
         box.innerHTML = (stats.top || []).map((t, i) => `<li><span class="medal">${['🥇', '🥈', '🥉'][i] || (i + 1) + '.'}</span><b style="color:${esc(t.color)}">${esc(t.name)}</b><span>${t.n.toLocaleString('de-DE')}</span></li>`).join('') || '<li class="muted">Noch niemand – sei die erste Nase!</li>';
-    }
-    async function initBoop() {
-        const sel = $('#boopWho');
-        if (currentLook()) sel.insertAdjacentHTML('beforeend', '<option value="mine">🎨 Meine Fursona (Baukasten)</option>');
-        const list = await loadSonas();
-        list.forEach(s => sel.insertAdjacentHTML('beforeend', `<option value="u${s.user_id}">${esc(s.name)} (${esc(s.owner)})</option>`));
-        sel.value = $$('option', sel).some(o => o.value === boopWho) ? boopWho : 'random';
-        sel.addEventListener('change', () => { boopWho = sel.value; boopLook = null; boopRender(); });
-        $('#boopFace').addEventListener('click', doBoop);
-        $$('[data-react]').forEach(b => b.addEventListener('click', ev => {
-            const k = b.dataset.react; react(k);
-            const r = b.getBoundingClientRect(); floatText(r.left + window.scrollX + r.width / 2, r.top + window.scrollY - 10, FH.reactions[k][0]);
-            if (k === 'awoo') { sfx.awoo(); unlock('awoo'); }
-            if (k === 'pat' || k === 'hug') { boopRender('happy'); clearTimeout(exprT); exprT = setTimeout(() => boopRender(), 900); sfx.purr(); }
-        }));
-        boopRender(); renderMine(); renderTop();
     }
 
     // =====================================================================
@@ -407,7 +465,7 @@
         return L;
     }
 
-    let sona = null, sonaExpr = 'normal';
+    let sona = null, sonaExpr = 'neutral';
     function currentLook() { return sona ? sona.look : (store.get('draft', null) || {}).look || null; }
     function sonaDraft() {
         const d = store.get('draft', null);
@@ -428,10 +486,19 @@
             $$('[data-s]', f).forEach(s => { s.value = sona.look[s.dataset.s] || s.options[0].value; });
             f.elements.blush.checked = !!sona.look.blush; f.elements.fluff.checked = !!sona.look.fluff;
             $('#speciesSel').value = sona.look.species && SPECIES[sona.look.species] ? sona.look.species : '';
+            setMode(sona.look.mode === 'custom' ? 'custom' : 'svg');
             renderTraits(); draw();
         };
+        const setMode = m => {
+            sona.look.mode = m; if (!sona.look.images || Array.isArray(sona.look.images)) sona.look.images = {};
+            $$('[data-mode-s]').forEach(b => b.classList.toggle('on', b.dataset.modeS === m));
+            $('#sonaSvgOpts').hidden = m === 'custom'; $('#sonaCustomOpts').hidden = m !== 'custom';
+            $('#sonaSvgDl').hidden = m === 'custom'; $('#sonaColors').hidden = m === 'custom';
+        };
+        $$('[data-mode-s]').forEach(b => b.addEventListener('click', () => { setMode(b.dataset.modeS); draw(); }));
+        emoSlots($('[data-emo-slots="sona"]'), () => (sona.look.images = (sona.look.images && !Array.isArray(sona.look.images)) ? sona.look.images : {}), 'sona', () => draw());
         const draw = () => {
-            $('#sonaSvg').innerHTML = sonaSVG(sona.look, sonaExpr);
+            $('#sonaSvg').innerHTML = face(sona.look, sonaExpr);
             $('#sonaTitle').innerHTML = `<b>${esc(sona.name || 'Namenlos')}</b><small>${esc(sona.species || '')}${sona.pronouns ? ' · ' + esc(sona.pronouns) : ''}</small>`;
             $('#sonaTraitsView').innerHTML = (sona.traits || []).map(t => `<span>${esc(t)}</span>`).join('');
             store.set('draft', sona);
@@ -447,8 +514,8 @@
             else if (t.name === 'blush' || t.name === 'fluff') sona.look[t.name] = t.checked;
             else if (t.name === 'preset') {
                 if (!t.value) return;
-                const keepBg = sona.look.bg, keepAcc = [sona.look.acc, sona.look.accC];
-                sona.look = Object.assign(defaultLook(t.value), { bg: keepBg, acc: keepAcc[0], accC: keepAcc[1] });
+                const keepBg = sona.look.bg, keepAcc = [sona.look.acc, sona.look.accC], keep = [sona.look.mode, sona.look.images];
+                sona.look = Object.assign(defaultLook(t.value), { bg: keepBg, acc: keepAcc[0], accC: keepAcc[1], mode: keep[0], images: keep[1] });
                 sona.species = SPECIES[t.value][0].replace(/^\S+\s/, '');
                 fill(); return;
             } else if (t.name) sona[t.name] = t.value;
@@ -460,20 +527,28 @@
         });
         $('#nameGen').addEventListener('click', () => { sona.name = genName(); f.elements.name.value = sona.name; draw(); });
         $('#traitGen').addEventListener('click', () => { sona.traits = genTraits(); renderTraits(); draw(); });
-        $('#sonaRandom').addEventListener('click', () => { const L = randomLook(); sona = Object.assign(sona, { look: L, name: genName(), species: SPECIES[L.species][0].replace(/^\S+\s/, ''), traits: genTraits() }); fill(); });
+        $('#sonaRandom').addEventListener('click', () => { const L = Object.assign(randomLook(), { mode: 'svg', images: sona.look.images || {} }); sona = Object.assign(sona, { look: L, name: genName(), species: SPECIES[L.species][0].replace(/^\S+\s/, ''), traits: genTraits() }); fill(); });
         $('#sonaColors').addEventListener('click', () => { const r = randomLook(sona.look.species && SPECIES[sona.look.species] ? sona.look.species : undefined); ['main', 'second', 'muzzleC', 'inner', 'eye', 'nose', 'markC', 'accC', 'bg'].forEach(k => { sona.look[k] = r[k]; }); fill(); });
         $$('[data-expr]').forEach(b => b.addEventListener('click', () => { sonaExpr = b.dataset.expr; $$('[data-expr]').forEach(x => x.classList.toggle('on', x === b)); draw(); }));
         const fname = () => (sona.name || 'fursona').replace(/[äöüÄÖÜß]/g, c => ({ ä: 'ae', ö: 'oe', ü: 'ue', Ä: 'Ae', Ö: 'Oe', Ü: 'Ue', ß: 'ss' }[c])).replace(/[^\w-]+/g, '_');
         $('#sonaSvgDl').addEventListener('click', () => { download(new Blob([sonaSVG(sona.look, sonaExpr)], { type: 'image/svg+xml' }), fname() + '.svg'); unlock('sona'); });
         $('#sonaPng').addEventListener('click', () => {
-            const img = new Image();
-            img.onload = () => { const c = document.createElement('canvas'); c.width = c.height = 1024; c.getContext('2d').drawImage(img, 0, 0, 1024, 1024); c.toBlob(b => { download(b, fname() + '.png'); unlock('sona'); }); };
-            img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(sonaSVG(sona.look, sonaExpr));
+            const img = new Image(), custom = imgFor(sona.look, sonaExpr);
+            img.onload = () => {
+                const c = document.createElement('canvas'); c.width = c.height = 1024;
+                const g = c.getContext('2d'), f = Math.min(1024 / img.naturalWidth, 1024 / img.naturalHeight);
+                if (custom) g.drawImage(img, (1024 - img.naturalWidth * f) / 2, (1024 - img.naturalHeight * f) / 2, img.naturalWidth * f, img.naturalHeight * f);
+                else g.drawImage(img, 0, 0, 1024, 1024);
+                c.toBlob(b => { download(b, fname() + '_' + sonaExpr + '.png'); unlock('sona'); });
+            };
+            img.src = custom || 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(sonaSVG(sona.look, sonaExpr));
         });
         f.addEventListener('submit', async e => {
             e.preventDefault();
             try {
+                await ensureServerImages(sona.look.images, 'sona');
                 const r = await api('sona_save', { data: JSON.stringify(Object.assign({}, sona, { traits: (sona.traits || []).filter(Boolean) })) });
+                if (sona.look.mode === 'custom' && r.sona.look.mode !== 'custom') toast('Die Bilder konnten nicht übernommen werden.', true);
                 FH.mySona = r.sona; sonas = null; toast('💾 Gespeichert! Deine Sona ist jetzt in der Community zu sehen.'); unlock('sona');
                 $('#sonaDelete').hidden = false; loaded.community = false;
             } catch (err) { toast(err.message, true); }
@@ -506,7 +581,7 @@
             l = l.slice().sort(sort === 'likes' ? (a, b) => b.likes - a.likes : sort === 'name' ? (a, b) => a.name.localeCompare(b.name, 'de') : (a, b) => b.updated - a.updated);
             $('#comCount').textContent = l.length + ' Sonas';
             grid.innerHTML = l.map(s => `<article class="com-card" data-u="${s.user_id}">
-                <div class="com-face">${sonaSVG(s.look)}</div>
+                <div class="com-face">${face(s.look)}</div>
                 <div class="com-body"><b>${esc(s.name)}</b><small>${esc(s.species)}${s.pronouns ? ' · ' + esc(s.pronouns) : ''}</small>
                 <div class="com-traits">${(s.traits || []).map(t => `<span>${esc(t)}</span>`).join('')}</div>
                 ${s.bio ? `<p>${esc(s.bio)}</p>` : ''}
@@ -517,82 +592,35 @@
                 ${FH.canModerate && !s.mine ? `<button type="button" class="fh-btn sm danger" data-mod-del="${s.user_id}" title="Entfernen (Moderation)">✕</button>` : ''}</div></div></article>`).join('')
                 || `<div class="fh-card empty">Noch keine Sonas hier. ${FH.me ? '<a href="#sona" data-goto="sona">Bau deine und speichere sie!</a>' : 'Melde dich an und zeig deine Fursona!'}</div>`;
         };
-        $('#comSearch').oninput = render; $('#comSort').onchange = render;
+        let view = 'sonas', shared = null;
+        const renderCards = async () => {
+            if (!shared) { grid.innerHTML = '<div class="muted">Lädt …</div>'; try { shared = (await api('cards_shared')).cards; } catch (e) { shared = []; } }
+            const q = $('#comSearch').value.toLowerCase().trim();
+            const l = shared.filter(c => !q || [c.data.name, c.data.subtitle, c.owner, c.data.flavor].join(' ').toLowerCase().includes(q));
+            $('#comCount').textContent = l.length + ' Karten';
+            grid.innerHTML = l.map(c => `<article class="com-card cardc" data-cid="${c.id}"><div class="com-face card-mini ${c.data.holo ? 'holo' : ''}">${K.cardSVG ? K.cardSVG(c.data, (list.find(x => x.user_id === c.user_id) || {}).look) : ''}</div>
+                <div class="com-body"><b>${esc(c.data.name || 'Karte')}</b><small>${esc(c.data.subtitle || '')}</small><div class="com-foot"><span class="owner">von ${esc(c.owner)}</span>
+                <button type="button" class="fh-btn sm" data-card-png="${c.id}">⬇ PNG</button>${FH.canModerate ? `<button type="button" class="fh-btn sm danger" data-card-mod="${c.id}">✕</button>` : ''}</div></div></article>`).join('')
+                || '<div class="fh-card empty">Noch keine geteilten Karten. Im Karten-Editor „in der Community zeigen“ anhaken!</div>';
+        };
+        const rerender = () => (view === 'cards' ? renderCards() : render());
+        $$('[data-com]').forEach(b => b.onclick = () => { view = b.dataset.com; $$('[data-com]').forEach(x => x.classList.toggle('on', x === b)); $('#comSort').hidden = view === 'cards'; rerender(); });
+        $('#comSearch').oninput = rerender; $('#comSort').onchange = rerender;
         grid.onclick = async e => {
             const lb = e.target.closest('[data-like]');
             if (lb && !lb.disabled) {
                 try { const r = await api('sona_like', { user_id: lb.dataset.like }); const s = list.find(x => x.user_id === +lb.dataset.like); s.liked = r.liked; s.likes = r.likes; lb.classList.toggle('on', r.liked); lb.querySelector('i').textContent = r.likes; if (r.liked) { unlock('like'); floatText(e.pageX, e.pageY - 20, '💖', 'heart'); } } catch (err) { toast(err.message, true); }
             }
+            const cp = e.target.closest('[data-card-png]');
+            if (cp && K.cardPNG) { const c = shared.find(x => x.id === +cp.dataset.cardPng); K.cardPNG(c.data, (list.find(x => x.user_id === c.user_id) || {}).look); }
+            const cm = e.target.closest('[data-card-mod]');
+            if (cm && confirm('Diese Karte entfernen?')) { try { await api('card_delete', { id: cm.dataset.cardMod, mod: 1 }); shared = shared.filter(x => x.id !== +cm.dataset.cardMod); renderCards(); } catch (err) { toast(err.message, true); } }
             const md = e.target.closest('[data-mod-del]');
             if (md && confirm('Diese Sona aus der Community entfernen?')) {
                 try { await api('sona_delete', { user_id: md.dataset.modDel }); list.splice(list.findIndex(x => x.user_id === +md.dataset.modDel), 1); render(); } catch (err) { toast(err.message, true); }
             }
         };
         render();
-    }
-
-    // =====================================================================
-    // Begleiter (virtuelles Haustier)
-    // =====================================================================
-    const pet = {
-        s: null,
-        load() {
-            const now = Date.now();
-            this.s = store.get('pet', null) || { name: genName().split(' ')[0], born: now, last: now, food: 80, fun: 80, energy: 80, clean: 80, xp: 0, level: 1, sleeping: false, log: [] };
-            this.decay();
-        },
-        decay() {
-            const now = Date.now(), h = Math.min(72, (now - this.s.last) / 3600000);
-            this.s.last = now;
-            this.s.food = clamp(this.s.food - 6 * h, 0, 100);
-            this.s.fun = clamp(this.s.fun - 5 * h, 0, 100);
-            this.s.clean = clamp(this.s.clean - 3 * h, 0, 100);
-            this.s.energy = clamp(this.s.energy + (this.s.sleeping ? 22 : -4) * h, 0, 100);
-            if (this.s.sleeping && this.s.energy >= 100) { this.s.sleeping = false; this.say('*streckt sich* Ausgeschlafen! ☀️', true); }
-            this.save();
-        },
-        save() { store.set('pet', this.s); },
-        say(t, log) {
-            const b = $('#petSay'); if (b) { b.textContent = t; b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
-            if (log) { this.s.log.unshift([Date.now(), t]); this.s.log = this.s.log.slice(0, 12); this.save(); }
-        },
-        xp(n) {
-            this.s.xp += n;
-            const need = this.s.level * 50;
-            if (this.s.xp >= need) { this.s.xp -= need; this.s.level++; this.say(`🎉 ${this.s.name} ist jetzt Stufe ${this.s.level}!`, true); confetti(30); if (this.s.level >= 5) unlock('pet5'); }
-        },
-        mood() { const s = this.s; return (s.food + s.fun + s.energy + s.clean) / 4; },
-        act(a) {
-            const s = this.s; this.decay();
-            if (s.sleeping && a !== 'sleep') { this.say('Pssst … ' + s.name + ' schläft. 💤'); return; }
-            if (a === 'feed') { if (s.food > 92) { this.say(s.name + ' ist pappsatt. *bäuerchen*'); return; } s.food = clamp(s.food + 28, 0, 100); s.clean = clamp(s.clean - 4, 0, 100); this.xp(5); this.say(rnd(['Mampf! 🍖', 'Nom nom nom!', 'Lecker! *leckt sich die Schnauze*', 'Mehr? Bitte? 🥺']), Math.random() < 0.3); unlock('pet'); sfx.chirp(); }
-            if (a === 'play') { if (s.energy < 15) { this.say(s.name + ' ist zu müde zum Spielen. 😴'); return; } s.fun = clamp(s.fun + 24, 0, 100); s.energy = clamp(s.energy - 12, 0, 100); s.food = clamp(s.food - 6, 0, 100); s.clean = clamp(s.clean - 6, 0, 100); this.xp(8); this.say(rnd(['🎾 *jagt den Ball*', 'Nochmal! Nochmal!', '*zoomies* 💨', 'Hab ihn! 🎾']), Math.random() < 0.3); $('#petFace').classList.add('bounce'); setTimeout(() => $('#petFace').classList.remove('bounce'), 700); sfx.yip(); }
-            if (a === 'brush') { s.clean = clamp(s.clean + 32, 0, 100); s.fun = clamp(s.fun + 4, 0, 100); this.xp(4); this.say(rnd(['So flauschig! ✨', '*schnurrt beim Bürsten*', 'Glänzend wie neu!']), Math.random() < 0.2); sfx.purr(); }
-            if (a === 'pat') { const now = Date.now(); if (now - (this._pat || 0) < 1500) return; this._pat = now; s.fun = clamp(s.fun + 6, 0, 100); this.xp(2); this.say(rnd(['*lehnt sich in die Hand*', '💖', 'Mehr Headpats!', '*wedelt*'])); react('pat'); }
-            if (a === 'sleep') { s.sleeping = !s.sleeping; this.say(s.sleeping ? s.name + ' kuschelt sich ein. Gute Nacht! 🌙' : s.name + ' wurde geweckt. *gähn*', true); }
-            this.save(); this.render();
-        },
-        render() {
-            if (!this.s) this.load();
-            const s = this.s, m = this.mood();
-            const expr = s.sleeping ? 'sleep' : m > 70 ? 'happy' : m < 30 ? 'sad' : 'normal';
-            if (!currentLook() && !s.look) { s.look = randomLook('fox'); this.save(); }
-            $('#petFace').innerHTML = sonaSVG(currentLook() || s.look, expr) + (s.sleeping ? '<span class="zzz">💤</span>' : '');
-            $('#petName').textContent = s.name;
-            $('#petLvl').textContent = 'Stufe ' + s.level + ' · ' + s.xp + '/' + s.level * 50 + ' XP';
-            $('#petSleep').textContent = s.sleeping ? '☀️ Aufwecken' : '😴 Schlafen';
-            const bar = (ic, l, v) => `<div class="pbar"><span>${ic} ${l}</span><div><i style="width:${v}%;background:${v < 25 ? 'var(--accent-red)' : v < 55 ? 'var(--accent-gold)' : 'var(--accent-green)'}"></i></div><b>${Math.round(v)}</b></div>`;
-            $('#petBars').innerHTML = bar('🍖', 'Satt', s.food) + bar('🎾', 'Spaß', s.fun) + bar('⚡', 'Energie', s.energy) + bar('🛁', 'Sauber', s.clean);
-            $('#petLog').innerHTML = s.log.map(([t, txt]) => `<li><small>${new Date(t).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</small> ${esc(txt)}</li>`).join('') || '<li class="muted">Noch nichts erlebt.</li>';
-            if (!$('#petSay').textContent) this.say(s.sleeping ? 'Zzz …' : s.food < 25 ? s.name + ' hat Hunger! 🍖' : s.fun < 25 ? s.name + ' langweilt sich …' : s.clean < 25 ? s.name + ' braucht eine Bürste. 🪮' : 'Hallo! ' + rnd(['🐾', '💖', '✨']));
-        },
-    };
-    function initPet() {
-        pet.load();
-        $$('[data-pet]').forEach(b => b.addEventListener('click', () => pet.act(b.dataset.pet)));
-        $('#petFace').addEventListener('click', () => pet.act('pat'));
-        $('#petRename').addEventListener('click', () => { const n = prompt('Wie soll dein Begleiter heißen?', pet.s.name); if (n && n.trim()) { pet.s.name = n.trim().slice(0, 24); pet.save(); pet.render(); } });
-        setInterval(() => { if (!$('[data-panel="pet"]').hidden) { pet.decay(); pet.render(); } }, 20000);
     }
 
     // =====================================================================
@@ -812,11 +840,11 @@
         kpos = e.key === KONAMI[kpos] || e.key.toLowerCase() === KONAMI[kpos] ? kpos + 1 : (e.key === KONAMI[0] ? 1 : 0);
         if (kpos === KONAMI.length) { kpos = 0; confetti(120, ['🐾', '🐾', '🦊', '🐺', '🐱', '🦦', '🐉', '✨']); toast('🎮 Pfotenregen! ↑↑↓↓←→←→BA'); unlock('konami'); sfx.roar(); }
         if (e.target.closest('input, textarea, select')) return;
-        if (e.key === ' ' && !$('[data-panel="boop"]').hidden) { e.preventDefault(); doBoop(); }
+        if (e.key === ' ' && !$('[data-panel="tama"]').hidden && K.tamaBoop) { e.preventDefault(); K.tamaBoop(); }
         if (e.key.length === 1) {
             typed = (typed + e.key.toLowerCase()).slice(-8);
             if (typed.endsWith('awoo')) { typed = ''; sfx.awoo(); react('awoo'); unlock('awoo'); toast('🐺 AWOOOOO!'); }
-            if (typed.endsWith('boop')) { typed = ''; showTab('boop'); doBoop(); }
+            if (typed.endsWith('boop')) { typed = ''; showTab('tama'); if (K.tamaBoop) K.tamaBoop(); }
             if (typed.endsWith('uwu') || typed.endsWith('owo')) { typed = ''; floatText(innerWidth / 2 + scrollX - 30, scrollY + innerHeight / 2, rnd(['OwO', 'UwU', '>w<']), 'big'); }
         }
     });
@@ -845,11 +873,20 @@
     // =====================================================================
     // Start
     // =====================================================================
-    const INIT = { start: () => { renderSotd(); randLink(); renderAch(); }, boop: initBoop, sona: initSona, community: initCommunity, pet: initPet, bingo: initBingo, quiz: initQuiz, sounds: initSounds, owo: initOwo, glossary: initGlossary, paws: initPaws };
+    const INIT = { start: () => { renderSotd(); randLink(); renderAch(); }, sona: initSona, community: initCommunity, bingo: initBingo, quiz: initQuiz, sounds: initSounds, owo: initOwo, glossary: initGlossary, paws: initPaws };
+    const SHOW = {};
+    // Werkzeugkasten für die Module (Tamagotchi, Karten, Minispiele)
+    const K = window.FHK = {
+        FH, $, $$, esc, rnd, clamp, store, hash, api, toast, confetti, floatText, download, unlock, react, boopCount, sfx, SOUNDS,
+        sonaSVG, face, imgFor, safeImg, EMO, emoSlots, uploadImage, ensureServerImages, randomLook, defaultLook, SPECIES, genName, jitter, shade,
+        currentLook: () => currentLook(), loadSonas, showTab: t => showTab(t), INIT, SHOW, renderMine, renderTop,
+    };
     $('#randLinkBtn').addEventListener('click', randLink);
     renderCounters();
-    showTab(location.hash.slice(1) || 'start');
-    window.addEventListener('hashchange', () => showTab(location.hash.slice(1)));
+    document.addEventListener('DOMContentLoaded', () => {
+        showTab(location.hash.slice(1) || 'start');
+        window.addEventListener('hashchange', () => showTab(location.hash.slice(1)));
+    });
     // Zähler alle 30 s auffrischen (sieht man andere boopen)
     setInterval(async () => { if (document.hidden) return; try { const r = await api('stats'); stats = r.stats; renderCounters(); renderTop(); renderMine(); } catch (e) { /* egal */ } }, 30000);
 })();

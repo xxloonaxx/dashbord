@@ -14,7 +14,7 @@ PHP-Dashboard: Daten als JSON-Dateien neben den Seiten, Benutzer/Seiten/Kalender
 | `backup.php` | Lädt alle persönlichen Daten (Budget, Con, Countdowns, Archive, Datenbanken, hochgeladene Bilder) als ZIP herunter |
 | `nexus.php` | **VRC Nexus**: VRChat-Freunde, Verlauf, Statistik, Welten & Instanzen, Avatare, Moderation, Gruppen, Direkt-Zugriff – Login mit 2FA (`vrcx.php` leitet weiter) |
 | `discord.php` | **Discord-Zentrale**: Server über den eigenen Bot – Slash-Befehle, Rollen-Knöpfe, Umfragen, Begrüßung, Auto-Posts, Nachrichten & Embeds, Mitglieder, Rollen, Kanäle, Emojis, AutoMod, Events, geplante Nachrichten |
-| `furhub.php` | **Furry Hub**: Boop-Zähler, Fursona-Baukasten mit gezeichnetem Avatar, Community-Sonas, virtueller Begleiter, Con-Bingo, Tier-Quiz, Soundboard, OwO-Übersetzer, Glossar, Pfotenabdrücke, Erfolge & Easter Eggs |
+| `furhub.php` | **Furry Hub**: Tamagotchi mit Shop & eigenen Bildern, Fursona-Baukasten (gezeichnet oder eigene Bilder mit 6 Emotionen), Karten-Editor, Minispiele, Community, Con-Bingo, Quiz, Soundboard, OwO-Übersetzer, Glossar, Pfotenabdrücke, Erfolge |
 | `nsfw.php` | **NSFW-Galerie** (18+): Bilder-APIs e621/e926, Danbooru, Gelbooru, Rule34, Yande.re, Konachan, waifu.im, waifu.pics – Suche, Favoriten, Posten in NSFW-Kanäle |
 | `page.php` | Eigene Seiten aus Vorlagen (Logik in `inc/tpl/*.php`) |
 | `inc/format.php`, `assets/editor.js`, `preview.php` | Gemeinsame Formatierung (Markdown + BBCode + HTML), Werkzeugleiste & Live-Vorschau |
@@ -288,27 +288,55 @@ eintragen und „Adresse selbst eingetragen“ klicken. Bots, die vor diesem Upd
 
 Spielwiese für die Community – öffentlich, vieles geht auch ohne Konto:
 
-- **👃 Boop**: Eine Nase zum Boopen (Klick oder Leertaste) mit Combo-Zähler, Gesichtsreaktion und Effekten.
-  Dazu gibt es Awoo, Headpat und Umarmen. Alle Klicks laufen in **gemeinsame Zähler** für alle; angemeldete Benutzer
-  sehen ihre eigenen Zahlen (heute/gesamt) und landen in der **Bestenliste**. Ein Schutz pro Adresse bremst Skripte.
-- **🎨 Fursona-Baukasten**: Avatar wird live als SVG gezeichnet – 19 Tierarten als Vorlage (Fuchs, Wolf, Husky, Hund,
-  Katze, Löwe, Tiger, Hase, Roter Panda, Waschbär, Otter, Hirsch, Drache, Fledermaus, Hyäne, Vogel, Protogen, Maus,
-  Stinktier), 9 Farben, Ohren, Schnauze, Zeichnung, Extras (Hörner, Geweih, Mähne, Visier …), Accessoires, Augen,
-  5 Gesichtsausdrücke. Namens- und Persönlichkeits-Würfel, Download als **PNG (1024 px)** oder **SVG**.
-  Angemeldet lässt sich die Sona speichern und erscheint in der Community.
-- **🐾 Community**: Alle gespeicherten Sonas mit Suche, Sortierung, Likes, Ref-Link und „Boopen“; „Sona des Tages“ auf der Startseite.
-- **🐣 Begleiter**: Virtuelles Haustier im Look deiner Fursona – füttern, spielen, bürsten, kraulen, schlafen lassen.
-  Werte sinken auch, während du weg bist; Stufen & Tagebuch. Lebt im Browser.
-- **🎲 Con-Bingo**: Zufällige 5×5-Karte mit Con-Momenten, Bingo-Erkennung mit Konfetti, druckbar.
-- **❓ Quiz** „Welches Tier steckt in dir?“ – Ergebnis direkt als Vorlage im Baukasten übernehmen.
-- **🔊 Soundboard**: 12 Tierlaute (Awoo, Wuff, Miau, Schnurren, Mrrp, Fuchs-Yip …), komplett im Browser synthetisiert, Tasten 1–0.
-- **💬 OwO-Übersetzer**: UwU, Hundisch, Katzisch, Drachisch, Otterisch, Pfötchen – mit Kopieren.
-- **📖 Glossar** mit 30 Fandom-Begriffen, **✍️ Pfotenabdrücke** (Gästebuch für Angemeldete, Moderation mit
-  dem Recht `furhub.moderate`), Tierfakt und Zeichen-Idee des Tages, nächste Countdowns, Zufallslink aus dem Furry-Link-Hub.
-- **🏆 17 Erfolge** und Easter Eggs (Konami-Code, „awoo“ tippen, Fuchs-Logo …), optional eine 🐾-Spur am Mauszeiger.
+- **🥚 Tamagotchi** (früher Boop + Begleiter): Ein eigenes Haustier in einem Tamagotchi-Gehäuse.
+  - Es schlüpft aus einem **Ei** (Boops wärmen es) und wächst über Baby, Kind und Teenie zu Erwachsen.
+  - Die Werte Satt, Spaß, Energie, Sauber, Gesundheit und Zuneigung sinken auch, während du weg bist.
+  - Es macht **Häufchen** 💩, kann **krank** werden (Medizin hilft), schläft bei Licht aus und zeigt seine Stimmung über **6 Emotionen**.
+  - Interaktionen: Boop, Kraulen, Umarmen und Awoo (alles zählt in die gemeinsamen Zähler und die Bestenliste), Füttern mit Futter-Menü, Spielen, Waschen, Aufräumen.
+  - **Münzen 🪙** gibt es für Stufen, jeden 25. Boop, den täglichen Besuch und die Minispiele.
+  - **Shop**: Essen, Medizin, Schaumbad, dauerhafte Extras (Ball, Kuscheltier, Kuschelbett) und **Accessoires** (Schleife, Krone, Sonnenbrille …).
+  - **Anpassbar**: Name, Persönlichkeit (verspielt, verfressen, verschlafen, kuschelig, frech – beeinflusst die Werte), Lieblingsessen und Stimme.
+  - Aussehen wahlweise wie deine Fursona, als Zufallstier oder mit **eigenen Bildern für 6 Emotionen**; dazu Hintergrund und Gehäusefarbe.
+  - Wer angemeldet ist, bekommt den Stand auf dem Server gespeichert (geräteübergreifend). Die Hardware-Knöpfe A/B/C funktionieren auch.
+- **🎨 Fursona-Baukasten** mit zwei Modi:
+  - **Gezeichnet**: SVG-Avatar mit 19 Tierarten, 9 Farben, Ohren, Schnauze, Zeichnung, Extras und Accessoires.
+  - **Eigene Bilder**: Je ein Bild für die 6 Emotionen Normal, Fröhlich, Traurig, Wütend, Überrascht und Müde (oder eins für alle). Per Klick oder Drag & Drop.
+  - Die Bilder werden überall benutzt: Community, Karten, Tamagotchi und Minispiele.
+  - Download als PNG (je Emotion) oder SVG.
+- **🃏 Karten-Editor**: **Sammelkarte** (Flausch-Punkte, 2 Fähigkeiten, Werte), **Con-Badge** oder **Steckbrief**.
+  - 9 Farbthemen, Seltenheit, ✨ Holo-Glanz (folgt der Maus) und Typ-Symbol.
+  - Bild aus der Fursona (mit Emotion) oder hochgeladen. Verschieben mit der Maus, zoomen mit dem Mausrad.
+  - Würfel für Fähigkeiten und Werte, **PNG-Export in 900×1260**.
+  - Bis zu 40 Karten speichern und optional **in der Community teilen**.
+- **🕹️ Minispiele** (mit Münzen und Rekorden):
+  - Leckerli fangen: Fang Futter, meide Zwiebeln & Schoki; dein Tamagotchi ist der Fänger.
+  - Nasen-Boopen (Whack-a-Mole mit den Community-Sonas).
+  - Pfoten-Memory.
+  - Tierlaute raten.
+  - Glücksrad mit eigenen Einträgen.
+- **🐾 Community**: gespeicherte Sonas (Suche, Likes, Ref-Link, direkt boopen) und geteilte Karten (mit PNG-Download).
+- Außerdem:
+  - Con-Bingo
+  - Tier-Quiz
+  - Soundboard (12 Tierlaute aus dem Browser)
+  - OwO-Übersetzer
+  - Glossar
+  - Pfotenabdrücke (Gästebuch)
+  - Tierfakt und Zeichen-Idee des Tages
+  - **31 Erfolge**
+  - Easter Eggs
+  - 🐾-Spur am Mauszeiger
 - Widget **„Boop!“** für die Startseite (unter „＋ Widget“).
+- Moderation mit dem Recht `furhub.moderate`: Pfotenabdrücke, Sonas und geteilte Karten entfernen.
 
-Daten: `data/furhub_<zufall>.sqlite` (Zähler, Sonas, Likes, Pfotenabdrücke).
+**Bilder-Upload**: PNG, JPG, WebP oder GIF bis 2,5 MB.
+- Der Browser verkleinert die Bilder vor dem Hochladen.
+- Der Server prüft, ob es wirklich ein Bild ist, und kodiert es (wenn GD vorhanden ist) neu. Dabei werden Metadaten entfernt. Animierte GIFs bleiben unverändert.
+- Ausgeliefert werden die Bilder über `furhub.php?img=…`, mit `nosniff` und strenger CSP.
+- Nicht mehr benutzte Bilder werden nach einem Tag automatisch gelöscht. Pro Konto sind max. 120 Bilder erlaubt.
+- Ohne Anmeldung bleiben Bilder als verkleinerte Kopie nur im Browser.
+
+Daten: `data/furhub_<zufall>.sqlite` (Zähler, Sonas, Likes, Tamagotchi, Karten, Pfotenabdrücke) und `data/furhub_img/` (Bilder, im Backup enthalten).
 
 ## NSFW-Galerie (`nsfw.php`, 18+)
 

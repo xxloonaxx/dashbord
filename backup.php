@@ -18,6 +18,8 @@ foreach (array_merge(glob(__DIR__ . '/*.json') ?: [], glob(__DIR__ . '/archive/*
 
 // Hochgeladene Bilder (Galerie-Vorlage)
 foreach (glob(__DIR__ . '/uploads/*.{jpg,png,gif,webp}', GLOB_BRACE) ?: [] as $path) $files['uploads/' . basename($path)] = $path;
+// Furry Hub: eigene Bilder (Fursona-Emotionen, Tamagotchi, Karten)
+foreach (glob(__DIR__ . '/data/furhub_img/*') ?: [] as $path) if (preg_match('/^[0-9a-f]{24}$/', basename($path))) $files['data/furhub_img/' . basename($path)] = $path;
 
 $stamp = date('Y-m-d_His');
 
@@ -54,7 +56,7 @@ if (class_exists('ZipArchive')) {
 
 // Fallback ohne ZIP-Erweiterung: alles in einer JSON-Datei
 $bundle = [];
-foreach ($files as $name => $path) $bundle[$name] = substr($name, -7) === '.sqlite' ? base64_encode((string)file_get_contents($path)) : load_json($path, null);
+foreach ($files as $name => $path) if (strpos($name, 'data/furhub_img/') !== 0) $bundle[$name] = substr($name, -7) === '.sqlite' ? base64_encode((string)file_get_contents($path)) : load_json($path, null);
 foreach ($db_copies as $c) @unlink($c);
 header('Content-Type: application/json; charset=utf-8');
 header('Content-Disposition: attachment; filename="dashboard-backup_' . $stamp . '.json"');

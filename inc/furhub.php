@@ -35,6 +35,17 @@ function fh_db(): PDO {
         ");
         foreach (array_keys(FH_REACTIONS) as $k) $db->prepare('INSERT OR IGNORE INTO counters (key, n) VALUES (?, 0)')->execute([$k]);
     }
+    if ((int)$db->query('PRAGMA user_version')->fetchColumn() < 2) {
+        // Eigene Bilder (Fursona-Emotionen, Haustier, Karten), Tamagotchi-Stand, Karten
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS images (id TEXT PRIMARY KEY, user_id INTEGER NOT NULL, kind TEXT NOT NULL, mime TEXT NOT NULL, w INTEGER NOT NULL, h INTEGER NOT NULL, size INTEGER NOT NULL, created INTEGER NOT NULL);
+            CREATE INDEX IF NOT EXISTS idx_images_user ON images(user_id);
+            CREATE TABLE IF NOT EXISTS pets (user_id INTEGER PRIMARY KEY, state TEXT NOT NULL, updated INTEGER NOT NULL);
+            CREATE TABLE IF NOT EXISTS cards (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, data TEXT NOT NULL, shared INTEGER NOT NULL DEFAULT 0, updated INTEGER NOT NULL);
+            CREATE INDEX IF NOT EXISTS idx_cards_user ON cards(user_id);
+            PRAGMA user_version = 2;
+        ");
+    }
     return $db;
 }
 
@@ -105,9 +116,20 @@ const FH_LOOK_ENUMS = [
 ];
 const FH_LOOK_COLORS = ['bg', 'main', 'second', 'muzzleC', 'inner', 'eye', 'nose', 'markC', 'accC'];
 
-function fh_clean_look($look): array {
+const FH_EMOTIONS = ['neutral', 'happy', 'sad', 'angry', 'surprised', 'sleepy'];
+const FH_IMG_RE = '/^furhub\.php\?img=([0-9a-f]{24})$/';
+
+function fh_clean_look($look, ?int $uid = null): array {
     $look = is_array($look) ? $look : [];
     $out = [];
+    $out['mode'] = ($look['mode'] ?? '') === 'custom' ? 'custom' : 'svg';
+    $out['species'] = preg_match('/^[a-z]{2,12}$/', (string)($look['species'] ?? '')) ? $look['species'] : '';
+    $out['images'] = [];
+    foreach (FH_EMOTIONS as $e) {
+        $u = $look['images'][$e] ?? '';
+        if (is_string($u) && preg_match(FH_IMG_RE, $u, $m) && $uid && fh_img_owner($m[1]) === $uid) $out['images'][$e] = $u;
+    }
+    if (!$out['images']) { $out['mode'] = 'svg'; $out['images'] = new stdClass(); }
     foreach (FH_LOOK_ENUMS as $k => $allowed) $out[$k] = in_array($look[$k] ?? '', $allowed, true) ? $look[$k] : $allowed[0];
     foreach (FH_LOOK_COLORS as $k) $out[$k] = preg_match('/^#[0-9a-f]{6}$/i', $look[$k] ?? '') ? strtolower($look[$k]) : '#888888';
     $out['blush'] = !empty($look['blush']);
@@ -125,7 +147,7 @@ function fh_sona_save(int $uid, array $in): array {
                       ON CONFLICT(user_id) DO UPDATE SET name = excluded.name, species = excluded.species, pronouns = excluded.pronouns, bio = excluded.bio,
                       ref_url = excluded.ref_url, look = excluded.look, traits = excluded.traits, updated = excluded.updated')
         ->execute([$uid, $name, mb_substr(trim((string)($in['species'] ?? '')), 0, 40), mb_substr(trim((string)($in['pronouns'] ?? '')), 0, 30),
-                   mb_substr(trim((string)($in['bio'] ?? '')), 0, 500), $ref, json_encode(fh_clean_look($in['look'] ?? [])), json_encode($traits, JSON_UNESCAPED_UNICODE), time()]);
+                   mb_substr(trim((string)($in['bio'] ?? '')), 0, 500), $ref, json_encode(fh_clean_look($in['look'] ?? [], $uid)), json_encode($traits, JSON_UNESCAPED_UNICODE), time()]);
     return fh_sona((int)$uid) ?? [];
 }
 
@@ -169,6 +191,185 @@ function fh_sona_like(int $sona_user, int $liker): array {
     $n = $db->prepare('SELECT likes FROM sonas WHERE user_id = ?');
     $n->execute([$sona_user]);
     return ['liked' => $liked, 'likes' => (int)$n->fetchColumn()];
+}
+
+// ---------- Eigene Bilder ----------
+
+const FH_IMG_KINDS = ['sona', 'pet', 'card'];
+const FH_IMG_MAX_BYTES = 2500000;
+const FH_IMG_MAX_PER_USER = 120;
+
+function fh_img_dir(): string {
+    $d = dirname(__DIR__) . '/data/furhub_img';
+    if (!is_dir($d)) mkdir($d, 0755, true);
+    return $d;
+}
+
+function fh_img_owner(string $id): ?int {
+    $st = fh_db()->prepare('SELECT user_id FROM images WHERE id = ?');
+    $st->execute([$id]);
+    $u = $st->fetchColumn();
+    return $u === false ? null : (int)$u;
+}
+
+/** Hochgeladenes Bild prüfen, (wenn möglich) neu kodieren, speichern. Liefert ['id', 'url']. */
+function fh_img_store(int $uid, array $file, string $kind): array {
+    if (!in_array($kind, FH_IMG_KINDS, true)) throw new InvalidArgumentException('Unbekannte Bildart.');
+    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name'])) throw new InvalidArgumentException('Upload fehlgeschlagen.');
+    if ($file['size'] > FH_IMG_MAX_BYTES) throw new InvalidArgumentException('Das Bild ist zu groß (max. 2,5 MB).');
+    $info = @getimagesize($file['tmp_name']);
+    $types = [IMAGETYPE_PNG => 'image/png', IMAGETYPE_JPEG => 'image/jpeg', IMAGETYPE_GIF => 'image/gif', IMAGETYPE_WEBP => 'image/webp'];
+    if (!$info || !isset($types[$info[2]])) throw new InvalidArgumentException('Nur PNG, JPG, WebP oder GIF.');
+    if ($info[0] > 4096 || $info[1] > 4096 || $info[0] < 8 || $info[1] < 8) throw new InvalidArgumentException('Ungültige Bildgröße.');
+    fh_img_gc($uid);
+    $n = fh_db()->prepare('SELECT COUNT(*) FROM images WHERE user_id = ?');
+    $n->execute([$uid]);
+    if ((int)$n->fetchColumn() >= FH_IMG_MAX_PER_USER) throw new InvalidArgumentException('Du hast zu viele Bilder – lösche alte Karten oder Bilder.');
+    $id = bin2hex(random_bytes(12));
+    $mime = $types[$info[2]];
+    $w = $info[0]; $h = $info[1];
+    $dest = fh_img_dir() . '/' . $id;
+    $done = false;
+    // Neu kodieren (entfernt Metadaten & versteckten Inhalt), wenn GD vorhanden – animierte GIFs bleiben unverändert
+    if (function_exists('imagecreatefromstring') && $mime !== 'image/gif') {
+        $im = @imagecreatefromstring((string)file_get_contents($file['tmp_name']));
+        if ($im) {
+            $max = 768;
+            if ($w > $max || $h > $max) {
+                $f = $max / max($w, $h);
+                $nw = max(1, (int)round($w * $f)); $nh = max(1, (int)round($h * $f));
+                $dst = imagecreatetruecolor($nw, $nh);
+                imagealphablending($dst, false); imagesavealpha($dst, true);
+                imagefill($dst, 0, 0, imagecolorallocatealpha($dst, 0, 0, 0, 127));
+                imagecopyresampled($dst, $im, 0, 0, 0, 0, $nw, $nh, $w, $h);
+                imagedestroy($im); $im = $dst; $w = $nw; $h = $nh;
+            } else { imagealphablending($im, false); imagesavealpha($im, true); }
+            if (function_exists('imagewebp') && @imagewebp($im, $dest, 88)) { $mime = 'image/webp'; $done = true; }
+            elseif (@imagepng($im, $dest, 7)) { $mime = 'image/png'; $done = true; }
+            imagedestroy($im);
+        }
+    }
+    if (!$done && !move_uploaded_file($file['tmp_name'], $dest)) throw new InvalidArgumentException('Bild konnte nicht gespeichert werden.');
+    fh_db()->prepare('INSERT INTO images (id, user_id, kind, mime, w, h, size, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+           ->execute([$id, $uid, $kind, $mime, $w, $h, filesize($dest), time()]);
+    return ['id' => $id, 'url' => 'furhub.php?img=' . $id, 'w' => $w, 'h' => $h];
+}
+
+/** Bilder eines Benutzers löschen, die nirgends mehr verwendet werden (älter als 1 Tag) */
+function fh_img_gc(int $uid): void {
+    $db = fh_db();
+    $st = $db->prepare('SELECT id FROM images WHERE user_id = ? AND created < ?');
+    $st->execute([$uid, time() - 86400]);
+    $old = $st->fetchAll(PDO::FETCH_COLUMN);
+    if (!$old) return;
+    $blob = '';
+    foreach ([['SELECT look FROM sonas WHERE user_id = ?'], ['SELECT state FROM pets WHERE user_id = ?'], ['SELECT data FROM cards WHERE user_id = ?']] as [$sql]) {
+        $q = $db->prepare($sql);
+        $q->execute([$uid]);
+        $blob .= implode("\n", $q->fetchAll(PDO::FETCH_COLUMN));
+    }
+    foreach ($old as $id) {
+        if (strpos($blob, $id) !== false) continue;
+        @unlink(fh_img_dir() . '/' . $id);
+        $db->prepare('DELETE FROM images WHERE id = ?')->execute([$id]);
+    }
+}
+
+function fh_img_serve(string $id): void {
+    if (!preg_match('/^[0-9a-f]{24}$/', $id)) { http_response_code(404); exit; }
+    $st = fh_db()->prepare('SELECT mime FROM images WHERE id = ?');
+    $st->execute([$id]);
+    $mime = $st->fetchColumn();
+    $file = fh_img_dir() . '/' . $id;
+    if (!$mime || !is_file($file)) { http_response_code(404); exit; }
+    header('Content-Type: ' . $mime);
+    header('Content-Length: ' . filesize($file));
+    header('X-Content-Type-Options: nosniff');
+    header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'");
+    header('Cache-Control: public, max-age=31536000, immutable');
+    readfile($file);
+    exit;
+}
+
+// ---------- Tamagotchi (Stand je Benutzer) ----------
+
+function fh_pet_get(int $uid): ?array {
+    $st = fh_db()->prepare('SELECT state, updated FROM pets WHERE user_id = ?');
+    $st->execute([$uid]);
+    $r = $st->fetch();
+    return $r ? ['state' => json_decode($r['state'], true), 'updated' => (int)$r['updated']] : null;
+}
+
+function fh_pet_save(int $uid, string $json): void {
+    if (strlen($json) > 60000) throw new InvalidArgumentException('Zu viele Daten.');
+    $state = json_decode($json, true);
+    if (!is_array($state)) throw new InvalidArgumentException('Ungültige Daten.');
+    // Bilder: nur eigene, gespeicherte Bilder
+    foreach ((array)($state['images'] ?? []) as $k => $u) {
+        if (!is_string($u) || !preg_match(FH_IMG_RE, $u, $m) || fh_img_owner($m[1]) !== $uid) unset($state['images'][$k]);
+    }
+    foreach (['images', 'inv', 'stat', 'randomLook'] as $k) if (isset($state[$k])) $state[$k] = (object)$state[$k];   // leere Objekte bleiben Objekte
+    fh_db()->prepare('INSERT INTO pets (user_id, state, updated) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET state = excluded.state, updated = excluded.updated')
+           ->execute([$uid, json_encode($state, JSON_UNESCAPED_UNICODE), time()]);
+}
+
+// ---------- Karten ----------
+
+const FH_CARD_MAX = 40;
+
+/** Karteninhalt säubern: nur bekannte Felder, Längen begrenzt, Bilder nur eigene */
+function fh_card_clean(array $d, int $uid): array {
+    $str = function ($v, int $n) { return mb_substr(trim((string)$v), 0, $n); };
+    $num = function ($v, int $min, int $max) { return max($min, min($max, (int)$v)); };
+    $img = $d['img'] ?? [];
+    $url = (string)($img['url'] ?? '');
+    if (!(preg_match(FH_IMG_RE, $url, $m) && fh_img_owner($m[1]) === $uid)) $url = '';
+    $out = [
+        'tpl' => in_array($d['tpl'] ?? '', ['trading', 'badge', 'profile'], true) ? $d['tpl'] : 'trading',
+        'theme' => preg_match('/^[a-z]{2,12}$/', (string)($d['theme'] ?? '')) ? $d['theme'] : 'fire',
+        'name' => $str($d['name'] ?? '', 40), 'subtitle' => $str($d['subtitle'] ?? '', 60), 'type' => $str($d['type'] ?? '', 4),
+        'hp' => $num($d['hp'] ?? 100, 0, 999), 'flavor' => $str($d['flavor'] ?? '', 200), 'footer' => $str($d['footer'] ?? '', 60),
+        'rarity' => $num($d['rarity'] ?? 1, 1, 5), 'holo' => !empty($d['holo']),
+        'img' => ['src' => in_array($img['src'] ?? '', ['sona', 'upload', 'none'], true) ? $img['src'] : 'sona', 'url' => $url,
+                  'emo' => in_array($img['emo'] ?? '', FH_EMOTIONS, true) ? $img['emo'] : 'happy', 'zoom' => $num($img['zoom'] ?? 100, 50, 250),
+                  'x' => $num($img['x'] ?? 0, -100, 100), 'y' => $num($img['y'] ?? 0, -100, 100)],
+        'abilities' => [], 'stats' => [], 'fields' => [],
+    ];
+    foreach (array_slice((array)($d['abilities'] ?? []), 0, 2) as $a) $out['abilities'][] = ['name' => $str($a['name'] ?? '', 30), 'cost' => $str($a['cost'] ?? '', 8), 'text' => $str($a['text'] ?? '', 120), 'dmg' => $str($a['dmg'] ?? '', 6)];
+    foreach (array_slice((array)($d['stats'] ?? []), 0, 4) as $a) $out['stats'][] = ['label' => $str($a['label'] ?? '', 20), 'value' => $num($a['value'] ?? 5, 0, 10)];
+    foreach (array_slice((array)($d['fields'] ?? []), 0, 6) as $a) $out['fields'][] = ['k' => $str($a['k'] ?? '', 20), 'v' => $str($a['v'] ?? '', 50)];
+    return $out;
+}
+
+function fh_cards(int $uid): array {
+    $st = fh_db()->prepare('SELECT * FROM cards WHERE user_id = ? ORDER BY updated DESC');
+    $st->execute([$uid]);
+    return array_map(function ($r) { return ['id' => (int)$r['id'], 'data' => json_decode($r['data'], true), 'shared' => (bool)$r['shared'], 'updated' => (int)$r['updated']]; }, $st->fetchAll());
+}
+
+function fh_card_save(int $uid, ?int $id, array $data, bool $shared): int {
+    $json = json_encode(fh_card_clean($data, $uid), JSON_UNESCAPED_UNICODE);
+    $db = fh_db();
+    if ($id) {
+        $st = $db->prepare('UPDATE cards SET data = ?, shared = ?, updated = ? WHERE id = ? AND user_id = ?');
+        $st->execute([$json, $shared ? 1 : 0, time(), $id, $uid]);
+        if ($st->rowCount()) return $id;
+    }
+    $n = $db->prepare('SELECT COUNT(*) FROM cards WHERE user_id = ?');
+    $n->execute([$uid]);
+    if ((int)$n->fetchColumn() >= FH_CARD_MAX) throw new InvalidArgumentException('Maximal ' . FH_CARD_MAX . ' Karten – lösche eine alte.');
+    $db->prepare('INSERT INTO cards (user_id, data, shared, updated) VALUES (?, ?, ?, ?)')->execute([$uid, $json, $shared ? 1 : 0, time()]);
+    return (int)$db->lastInsertId();
+}
+
+function fh_cards_shared(): array {
+    $names = fh_user_names();
+    $out = [];
+    foreach (fh_db()->query('SELECT * FROM cards WHERE shared = 1 ORDER BY updated DESC LIMIT 200') as $r) {
+        if (!isset($names[(int)$r['user_id']])) continue;
+        $out[] = ['id' => (int)$r['id'], 'user_id' => (int)$r['user_id'], 'owner' => $names[(int)$r['user_id']]['name'], 'data' => json_decode($r['data'], true), 'updated' => (int)$r['updated']];
+    }
+    return $out;
 }
 
 // ---------- Pfotenabdrücke ----------
@@ -314,7 +515,7 @@ const FH_QUIZ_RESULTS = [
 /** Daten für die Seite (Spielereien, die im Browser laufen) */
 function fh_client_data(): array {
     return [
-        'reactions' => FH_REACTIONS, 'glossary' => FH_GLOSSARY, 'bingo' => FH_BINGO,
+        'reactions' => FH_REACTIONS, 'glossary' => FH_GLOSSARY, 'bingo' => FH_BINGO, 'emotions' => FH_EMOTIONS,
         'quiz' => FH_QUIZ, 'quizResults' => FH_QUIZ_RESULTS, 'enums' => FH_LOOK_ENUMS,
     ];
 }

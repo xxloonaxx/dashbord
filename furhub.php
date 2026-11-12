@@ -11,6 +11,7 @@ require_once __DIR__ . '/inc/linkcheck.php';
 
 auth_require_setup();
 $me = current_user();
+if (isset($_GET['img'])) fh_img_serve((string)$_GET['img']);
 
 // ---------- JSON-Schnittstelle ----------
 if (isset($_GET['api'])) {
@@ -52,6 +53,38 @@ if (isset($_GET['api'])) {
                 if ($uid === (int)$me['id']) throw new InvalidArgumentException('Die eigene Sona kannst du nicht liken – aber wir finden sie auch toll. 💖');
                 if (!fh_sona($uid)) throw new InvalidArgumentException('Diese Sona gibt es nicht mehr.');
                 $out += fh_sona_like($uid, (int)$me['id']);
+                break;
+            case 'img_upload':
+                $need_post(); $need_login();
+                $out += fh_img_store((int)$me['id'], $_FILES['file'] ?? [], (string)($_POST['kind'] ?? 'sona'));
+                break;
+            case 'pet':
+                $need_login();
+                $out['pet'] = fh_pet_get((int)$me['id']);
+                break;
+            case 'pet_save':
+                $need_post(); $need_login();
+                fh_pet_save((int)$me['id'], (string)($_POST['state'] ?? ''));
+                break;
+            case 'cards':
+                $out['cards'] = $me ? fh_cards((int)$me['id']) : [];
+                break;
+            case 'cards_shared':
+                $out['cards'] = fh_cards_shared();
+                break;
+            case 'card_save':
+                $need_post(); $need_login();
+                $out['id'] = fh_card_save((int)$me['id'], (int)($_POST['id'] ?? 0) ?: null, (array)json_decode((string)($_POST['data'] ?? '{}'), true), !empty($_POST['shared']));
+                $out['cards'] = fh_cards((int)$me['id']);
+                break;
+            case 'card_delete':
+                $need_post(); $need_login();
+                $cid = (int)($_POST['id'] ?? 0);
+                if (can('furhub.moderate') && !empty($_POST['mod'])) {
+                    fh_db()->prepare('DELETE FROM cards WHERE id = ?')->execute([$cid]);
+                    audit('Furry Hub: Karte entfernt', '#' . $cid, 'warn');
+                } else fh_db()->prepare('DELETE FROM cards WHERE id = ? AND user_id = ?')->execute([$cid, (int)$me['id']]);
+                $out['cards'] = fh_cards((int)$me['id']);
                 break;
             case 'gb':
                 $out['entries'] = fh_guestbook();
@@ -106,8 +139,9 @@ $boot = fh_client_data() + [
     'canModerate' => can('furhub.moderate'),
 ];
 $json = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE;
-$TABS = ['start' => ['🏠', 'Start'], 'boop' => ['👃', 'Boop'], 'sona' => ['🎨', 'Fursona'], 'community' => ['🐾', 'Community'], 'pet' => ['🐣', 'Begleiter'],
-         'bingo' => ['🎲', 'Con-Bingo'], 'quiz' => ['❓', 'Quiz'], 'sounds' => ['🔊', 'Sounds'], 'owo' => ['💬', 'OwO'], 'glossary' => ['📖', 'Glossar'], 'paws' => ['✍️', 'Pfotenabdrücke']];
+$TABS = ['start' => ['🏠', 'Start'], 'tama' => ['🥚', 'Tamagotchi'], 'sona' => ['🎨', 'Fursona'], 'cards' => ['🃏', 'Karten'], 'community' => ['🐾', 'Community'],
+         'games' => ['🕹️', 'Minispiele'], 'bingo' => ['🎲', 'Con-Bingo'], 'quiz' => ['❓', 'Quiz'], 'sounds' => ['🔊', 'Sounds'], 'owo' => ['💬', 'OwO'], 'glossary' => ['📖', 'Glossar'], 'paws' => ['✍️', 'Pfotenabdrücke']];
+$EMO = ['neutral' => ['😐', 'Normal'], 'happy' => ['😊', 'Fröhlich'], 'sad' => ['🥺', 'Traurig'], 'angry' => ['😠', 'Wütend'], 'surprised' => ['😳', 'Überrascht'], 'sleepy' => ['😴', 'Müde']];
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -165,23 +199,45 @@ $TABS = ['start' => ['🏠', 'Start'], 'boop' => ['👃', 'Boop'], 'sona' => ['�
         </div>
     </section>
 
-    <!-- Boop -->
-    <section class="fh-panel" data-panel="boop" hidden>
-        <div class="boop-layout">
-            <div class="fh-card boop-stage">
-                <div class="boop-pick"><label>Wessen Nase? <select id="boopWho"><option value="random">🎲 Zufällige Fluffbälle</option></select></label></div>
-                <div class="boop-face" id="boopFace" title="Boop!"></div>
-                <div class="boop-combo" id="boopCombo"></div>
-                <div class="boop-actions">
-                    <button type="button" class="fh-btn" data-react="awoo">🐺 Awoo</button>
-                    <button type="button" class="fh-btn" data-react="pat">🤚 Headpat</button>
-                    <button type="button" class="fh-btn" data-react="hug">🫂 Umarmen</button>
+    <!-- Tamagotchi -->
+    <section class="fh-panel" data-panel="tama" hidden>
+        <div class="tama-layout">
+            <div class="tama-col">
+                <div class="tama-device" id="tamaDevice">
+                    <div class="tama-brand" id="tamaBrand">FLUFFOGOTCHI</div>
+                    <div class="tama-screen" id="tamaScreen">
+                        <div class="tama-icons" id="tamaIcons"></div>
+                        <div class="tama-pet" id="tamaPet" title="Boop!"></div>
+                        <div class="tama-poops" id="tamaPoops"></div>
+                        <div class="tama-say" id="tamaSay"></div>
+                    </div>
+                    <div class="tama-hw">
+                        <button type="button" data-hw="a" title="A: Boop">A</button>
+                        <button type="button" data-hw="b" title="B: Füttern (Trockenfutter)">B</button>
+                        <button type="button" data-hw="c" title="C: Ball spielen">C</button>
+                    </div>
                 </div>
-                <p class="muted small">Klick (oder Leertaste) auf die Nase. Jeder Boop zählt für alle!</p>
+                <div class="tama-quick" id="tamaQuick">
+                    <button type="button" class="fh-btn" data-t="boop">👃 Boop</button>
+                    <button type="button" class="fh-btn" data-t="pat">🤚 Kraulen</button>
+                    <button type="button" class="fh-btn" data-t="hug">🫂 Umarmen</button>
+                    <button type="button" class="fh-btn" data-t="awoo">🐺 Awoo</button>
+                    <button type="button" class="fh-btn" data-t="feed">🍽️ Füttern</button>
+                    <button type="button" class="fh-btn" data-t="play">🎾 Spielen</button>
+                    <button type="button" class="fh-btn" data-t="wash">🛁 Waschen</button>
+                    <button type="button" class="fh-btn" data-t="clean">🧹 Aufräumen</button>
+                    <button type="button" class="fh-btn" data-t="medicine">💊 Medizin</button>
+                    <button type="button" class="fh-btn" data-t="sleep" id="tamaSleep">💡 Licht aus</button>
+                </div>
+                <div class="tama-menu" id="tamaMenu" hidden></div>
             </div>
-            <div class="boop-side">
-                <div class="fh-card"><div class="fh-ct">📊 Deine Boops</div><div id="myBoops" class="my-boops"></div></div>
-                <div class="fh-card"><div class="fh-ct">👑 Bestenliste</div><ol id="boopTop" class="boop-top"></ol></div>
+            <div class="tama-side">
+                <div class="fh-card"><div class="fh-ct"><span id="tamaTitle">💗 Zustand</span><span class="coins" id="tamaCoins"></span></div><div id="tamaBars"></div><div class="tama-meta" id="tamaMeta"></div></div>
+                <div class="fh-card">
+                    <div class="tama-tabs"><button type="button" data-tt="shop" class="on">🛒 Shop</button><button type="button" data-tt="bag">🎒 Inventar</button><button type="button" data-tt="custom">⚙️ Anpassen</button><button type="button" data-tt="log">📜 Tagebuch</button></div>
+                    <div id="tamaTab"></div>
+                </div>
+                <div class="fh-card"><div class="fh-ct">📊 Gemeinsame Boops</div><div id="myBoops" class="my-boops"></div><div class="fh-ct" style="margin-top: 12px;">👑 Bestenliste</div><ol id="boopTop" class="boop-top"></ol></div>
             </div>
         </div>
     </section>
@@ -199,7 +255,7 @@ $TABS = ['start' => ['🏠', 'Start'], 'boop' => ['👃', 'Boop'], 'sona' => ['�
                     <button type="button" class="fh-btn sm" id="sonaPng">⬇ PNG</button>
                     <button type="button" class="fh-btn sm" id="sonaSvgDl">⬇ SVG</button>
                 </div>
-                <div class="expr-row">Ausdruck: <?php foreach (['normal' => '🙂', 'happy' => '😊', 'boop' => '😳', 'sleep' => '😴', 'sad' => '🥺'] as $k => $ic): ?><button type="button" data-expr="<?php echo $k; ?>"><?php echo $ic; ?></button><?php endforeach; ?></div>
+                <div class="expr-row">Emotion: <?php foreach ($EMO as $k => [$ic, $l]): ?><button type="button" data-expr="<?php echo $k; ?>" title="<?php echo e($l); ?>"><?php echo $ic; ?></button><?php endforeach; ?></div>
             </div>
             <form class="fh-card sona-form" id="sonaForm" autocomplete="off">
                 <div class="fh-ct">🎨 Fursona-Baukasten</div>
@@ -211,11 +267,19 @@ $TABS = ['start' => ['🏠', 'Start'], 'boop' => ['👃', 'Boop'], 'sona' => ['�
                     <label>Art (frei) <input type="text" name="species" maxlength="40" placeholder="z. B. Fuchs-Wolf-Hybrid"></label>
                     <label>Pronomen <input type="text" name="pronouns" maxlength="30" placeholder="z. B. sie/ihr, er/ihm, they/them"></label>
                 </div>
-                <div class="sub">Farben</div>
-                <div class="colors" id="sonaColorsIn"></div>
-                <div class="sub">Form</div>
-                <div class="shapes" id="sonaShapes"></div>
-                <div class="checks"><label><input type="checkbox" name="blush"> Rosige Wangen</label><label><input type="checkbox" name="fluff"> Wangen-Fluff</label></div>
+                <div class="mode-switch"><button type="button" data-mode-s="svg">🖌️ Gezeichnet</button><button type="button" data-mode-s="custom">🖼️ Eigene Bilder</button></div>
+                <div id="sonaSvgOpts">
+                    <div class="sub">Farben</div>
+                    <div class="colors" id="sonaColorsIn"></div>
+                    <div class="sub">Form</div>
+                    <div class="shapes" id="sonaShapes"></div>
+                    <div class="checks"><label><input type="checkbox" name="blush"> Rosige Wangen</label><label><input type="checkbox" name="fluff"> Wangen-Fluff</label></div>
+                </div>
+                <div id="sonaCustomOpts" hidden>
+                    <div class="sub">Deine Bilder – je Emotion eins</div>
+                    <p class="muted small" style="margin-top: 0;">PNG, JPG, WebP oder GIF (max. 2,5 MB). Am besten quadratisch, gern mit transparentem Hintergrund. Fehlt eine Emotion, wird „Normal“ benutzt.<?php echo $me ? '' : ' Ohne Anmeldung bleiben die Bilder nur in diesem Browser.'; ?></p>
+                    <div class="emo-slots" data-emo-slots="sona"></div>
+                </div>
                 <div class="sub">Persönlichkeit <button type="button" class="fh-btn sm" id="traitGen">🎲 neu würfeln</button></div>
                 <div class="traits" id="sonaTraits"></div>
                 <label>Über meine Sona <textarea name="bio" rows="3" maxlength="500" placeholder="Lieblingsessen, Macken, Hintergrundgeschichte …"></textarea></label>
@@ -232,9 +296,71 @@ $TABS = ['start' => ['🏠', 'Start'], 'boop' => ['👃', 'Boop'], 'sona' => ['�
         </div>
     </section>
 
+    <!-- Karten-Editor -->
+    <section class="fh-panel" data-panel="cards" hidden>
+        <div class="cards-layout">
+            <form class="fh-card card-form" id="cardForm" autocomplete="off">
+                <div class="fh-ct">🃏 Karten-Editor <button type="button" class="fh-btn sm" id="cardNew">＋ Neue Karte</button></div>
+                <div class="tpl-pick" id="cardTpl"></div>
+                <div class="sub">Thema</div>
+                <div class="theme-pick" id="cardTheme"></div>
+                <div class="f2">
+                    <label>Name <input name="name" maxlength="40"></label>
+                    <label>Untertitel / Con <input name="subtitle" maxlength="60"></label>
+                </div>
+                <div class="f3">
+                    <label>Typ-Symbol <input name="type" maxlength="4" placeholder="🔥"></label>
+                    <label>Flausch-Punkte <input name="hp" type="number" min="0" max="999"></label>
+                    <label>Seltenheit <select name="rarity"><option value="1">★</option><option value="2">★★</option><option value="3">★★★</option><option value="4">★★★★</option><option value="5">★★★★★</option></select></label>
+                </div>
+                <label class="chk"><input type="checkbox" name="holo"> ✨ Holo-Glanz</label>
+                <div class="sub">Bild</div>
+                <div class="img-pick">
+                    <select name="imgsrc"><option value="sona">Meine Fursona</option><option value="upload">Eigenes Bild hochladen</option><option value="none">Kein Bild</option></select>
+                    <select name="imgemo"><?php foreach ($EMO as $k => [$ic, $l]): ?><option value="<?php echo $k; ?>"><?php echo $ic . ' ' . e($l); ?></option><?php endforeach; ?></select>
+                    <button type="button" class="fh-btn sm" id="cardUpload">⬆ Bild wählen</button>
+                    <input type="file" id="cardFile" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+                </div>
+                <div class="f3">
+                    <label>Zoom <input type="range" name="zoom" min="50" max="250"></label>
+                    <label>← → <input type="range" name="ix" min="-100" max="100"></label>
+                    <label>↑ ↓ <input type="range" name="iy" min="-100" max="100"></label>
+                </div>
+                <div id="cardAbilities"></div>
+                <div id="cardStats"></div>
+                <div id="cardFields"></div>
+                <label>Text unten (Flavor) <textarea name="flavor" rows="2" maxlength="200"></textarea></label>
+                <label>Fußzeile <input name="footer" maxlength="60" placeholder="z. B. Art by … · Eurofurence 2027"></label>
+            </form>
+            <div class="card-side">
+                <div class="card-stage"><div class="card-prev" id="cardPrev"></div></div>
+                <div class="card-tools">
+                    <button type="button" class="fh-btn" id="cardRandom">🎲 Zufallswerte</button>
+                    <button type="button" class="fh-btn" id="cardPng">⬇ PNG</button>
+                    <?php if ($me): ?><button type="button" class="fh-btn gold" id="cardSave">💾 Speichern</button><label class="chk sm"><input type="checkbox" id="cardShared"> in der Community zeigen</label>
+                    <?php else: ?><button type="button" class="fh-btn gold" id="cardSave">💾 Im Browser merken</button><?php endif; ?>
+                </div>
+                <div class="fh-card"><div class="fh-ct">🗂️ Meine Karten <small id="cardCount"></small></div><div class="card-list" id="cardList"></div></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Minispiele -->
+    <section class="fh-panel" data-panel="games" hidden>
+        <div class="games-pick" id="gamesPick">
+            <button type="button" data-game="catch"><b>🍖</b>Leckerli fangen<small>Fange Futter, meide Zwiebeln & Schoki</small></button>
+            <button type="button" data-game="whack"><b>👃</b>Nasen-Boopen<small>Boope alle Nasen, die auftauchen</small></button>
+            <button type="button" data-game="memory"><b>🃏</b>Pfoten-Memory<small>Finde alle Paare</small></button>
+            <button type="button" data-game="sound"><b>🔊</b>Tierlaute raten<small>Wer macht dieses Geräusch?</small></button>
+            <button type="button" data-game="wheel"><b>🎡</b>Glücksrad<small>Was machen wir auf der Con?</small></button>
+        </div>
+        <div class="fh-card game-box" id="gameBox"><p class="muted">Wähle ein Spiel. Gewonnene 🪙 Münzen landen im Tamagotchi-Shop!</p></div>
+    </section>
+
     <!-- Community -->
     <section class="fh-panel" data-panel="community" hidden>
         <div class="fh-toolbar">
+            <span class="seg"><button type="button" data-com="sonas" class="on">🐾 Sonas</button><button type="button" data-com="cards">🃏 Karten</button></span>
             <input type="search" id="comSearch" placeholder="Suchen: Name, Art, Merkmal …">
             <select id="comSort"><option value="new">Neueste</option><option value="likes">Beliebteste</option><option value="name">Name A–Z</option></select>
             <span class="muted small" id="comCount"></span>
@@ -315,6 +441,7 @@ $TABS = ['start' => ['🏠', 'Start'], 'boop' => ['👃', 'Boop'], 'sona' => ['�
 
 <div class="fh-toast" id="fhToast" hidden></div>
 <script>window.FH = <?php echo json_encode($boot, $json); ?>;</script>
-<script src="assets/furhub.js?v=<?php echo filemtime(__DIR__ . '/assets/furhub.js'); ?>"></script>
+<?php foreach (['furhub', 'furhub-tama', 'furhub-cards', 'furhub-games'] as $js): ?><script src="assets/<?php echo $js; ?>.js?v=<?php echo filemtime(__DIR__ . '/assets/' . $js . '.js'); ?>"></script>
+<?php endforeach; ?>
 </body>
 </html>
