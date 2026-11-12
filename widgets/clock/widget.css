@@ -1,0 +1,6 @@
+.wg-type-clock .ck { text-align: center; padding: 4px 0; }
+.wg-type-clock .ck-time { font-size: 2.6rem; font-weight: 800; letter-spacing: 3px; color: var(--accent-cyan); text-shadow: 0 0 14px var(--accent-glow); font-variant-numeric: tabular-nums; }
+.wg-type-clock .ck-date { font-size: 0.9rem; color: #fff; margin-top: 2px; }
+.wg-type-clock .ck-meta { font-size: 0.7rem; color: var(--text-muted); margin-top: 6px; letter-spacing: 0.5px; }
+.wg-type-clock .ck-zone { display: flex; justify-content: space-between; margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border-color); font-size: 0.8rem; color: var(--text-muted); }
+.wg-type-clock .ck-zone b { color: var(--accent-gold); font-variant-numeric: tabular-nums; }

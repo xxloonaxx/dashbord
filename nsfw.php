@@ -216,7 +216,7 @@ if ($discord) { require_once __DIR__ . '/inc/discord.php'; $discord = discord_co
     </section>
 
     <section data-pane="favs" hidden>
-        <div class="ns-tools"><input type="search" id="favFilter" placeholder="Favoriten nach Tag filtern …"><select id="favProv"><option value="">alle Quellen</option></select><span class="ns-small" id="favCount"></span></div>
+        <div class="ns-tools"><input type="search" id="favFilter" placeholder="Favoriten nach Tag filtern …"><select id="favProv"><option value="">alle Quellen</option></select><span class="ns-small" id="favCount"></span><button type="button" class="btn btn-sm" id="favSlide">▶ Diashow</button><button type="button" class="btn btn-sm" id="favExport">⬇ Export</button></div>
         <div id="favBox" class="ns-grid"></div>
     </section>
 

@@ -172,7 +172,22 @@
     const lb = $('#lb');
     let lbList = [], lbIdx = 0;
     function openLb(list, i) { lbList = list; lbIdx = i; renderLb(); lb.hidden = false; document.body.style.overflow = 'hidden'; }
-    function closeLb() { lb.hidden = true; document.body.style.overflow = ''; $('#lbMedia').innerHTML = ''; }
+    // Diashow: blättert automatisch weiter (Taste S), bei Videos erst nach dem Ende
+    let slide = null;
+    const slideSec = () => +(localStorage.getItem('ns-slide') || 6);
+    function stopSlide() { clearTimeout(slide); slide = null; const b = $('[data-a=slide]'); if (b) b.textContent = '▶ Diashow'; }
+    function nextSlide() {
+        clearTimeout(slide);
+        slide = setTimeout(() => { if (lb.hidden) return stopSlide(); lbIdx = (lbIdx + 1) % lbList.length; renderLb(); armSlide(); }, slideSec() * 1000);
+    }
+    function armSlide() {
+        const b = $('[data-a=slide]'); if (b) b.textContent = '⏸ Diashow (' + slideSec() + ' s)';
+        const v = $('#lbMedia video');
+        if (v) { clearTimeout(slide); slide = 1; v.loop = false; v.addEventListener('ended', () => { if (slide) { lbIdx = (lbIdx + 1) % lbList.length; renderLb(); armSlide(); } }, { once: true }); }
+        else nextSlide();
+    }
+    function toggleSlide() { if (slide) stopSlide(); else armSlide(); }
+    function closeLb() { stopSlide(); lb.hidden = true; document.body.style.overflow = ''; $('#lbMedia').innerHTML = ''; }
     function renderLb() {
         const p = lbList[lbIdx];
         if (!p) return;
@@ -184,7 +199,7 @@
             + '<div class="ns-meta"><span class="ns-rt r-' + esc(p.rating) + '">' + RT[p.rating][1] + '</span>' + (p.w ? '<span>' + p.w + '×' + p.h + '</span>' : '') + (p.ext ? '<span>' + esc(p.ext.toUpperCase()) + '</span>' : '') + (p.score ? '<span>⬆ ' + p.score + '</span>' : '') + (p.favs ? '<span>♥ ' + p.favs + '</span>' : '') + '</div>'
             + '<div class="ns-acts"><button type="button" class="btn btn-sm' + (p.fav ? ' btn-gold' : '') + '" data-a="fav">' + (p.fav ? '⭐ Favorit' : '☆ Favorit') + '</button>'
             + '<a class="btn btn-sm" href="' + esc(p.page) + '" target="_blank" rel="noopener noreferrer">🔗 Seite</a><a class="btn btn-sm" href="' + esc(p.url) + '" target="_blank" rel="noopener noreferrer">⬇ Original</a>'
-            + '<button type="button" class="btn btn-sm" data-a="copy">⧉ Link</button>' + (NS.discord ? '<button type="button" class="btn btn-sm" data-a="discord">📨 Discord</button>' : '') + '</div>'
+            + '<button type="button" class="btn btn-sm" data-a="copy">⧉ Link</button><button type="button" class="btn btn-sm" data-a="slide" title="Taste S · Rechtsklick = Tempo">' + (slide ? '⏸ Diashow (' + slideSec() + ' s)' : '▶ Diashow') + '</button>' + (NS.discord ? '<button type="button" class="btn btn-sm" data-a="discord">📨 Discord</button>' : '') + '</div>'
             + '<div id="dcBox"></div>'
             + (p.artists.length ? '<h4>🎨 Künstler</h4><div class="ns-tags">' + p.artists.map(a => '<button type="button" class="art" data-t="' + esc(a) + '">' + esc(a) + '</button>').join('') + '</div>' : '')
             + (p.sources.length ? '<h4>Quellen</h4><div class="ns-srcs">' + p.sources.slice(0, 5).map(s => '<a href="' + esc(s) + '" target="_blank" rel="noopener noreferrer">' + esc(s.replace(/^https?:\/\/(www\.)?/, '').slice(0, 50)) + '</a>').join('') + '</div>' : '')
@@ -214,10 +229,12 @@
         if (a.dataset.a === 'fav') toggleFav(p).then(renderLb);
         if (a.dataset.a === 'copy') (navigator.clipboard ? navigator.clipboard.writeText(p.page) : Promise.reject()).then(() => toast('Link kopiert.')).catch(() => prompt('Link:', p.page));
         if (a.dataset.a === 'discord') discordBox(p);
+        if (a.dataset.a === 'slide') toggleSlide();
     });
     document.addEventListener('keydown', e => {
         if (lb.hidden) return;
         if (e.key === 'Escape') closeLb();
+        if ((e.key === 's' || e.key === 'S') && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) toggleSlide();
         if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { lbIdx = (lbIdx + (e.key === 'ArrowRight' ? 1 : -1) + lbList.length) % lbList.length; renderLb(); }
         if ((e.key === 'f' || e.key === 'F') && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) toggleFav(lbList[lbIdx]).then(renderLb);
     });
@@ -266,6 +283,24 @@
         renderGrid($('#favBox'), list);
     }
     $('#favFilter').addEventListener('input', renderFavs);
+    lb.addEventListener('contextmenu', e => {
+        if (!e.target.closest('[data-a=slide]')) return;
+        e.preventDefault();
+        const v = prompt('Sekunden pro Bild:', slideSec());
+        if (v && +v >= 2) { try { localStorage.setItem('ns-slide', String(Math.min(120, +v))); } catch (x) {} if (slide) armSlide(); }
+    });
+    // Favoriten exportieren (Links als Text oder alles als JSON)
+    $('#favExport').addEventListener('click', () => {
+        if (!favs.length) return toast('Keine Favoriten.', true);
+        const asJson = confirm('OK = vollständige Liste als JSON (zum Sichern)\nAbbrechen = nur die Links als Textdatei');
+        const data = asJson ? JSON.stringify(favs.map(p => ({ provider: p.provider, id: p.id, page: p.page, url: p.url, rating: p.rating, artists: p.artists, tags: p.tags })), null, 1)
+                            : favs.map(p => p.page + '  ' + (p.artists.length ? '(' + p.artists.join(', ') + ')' : '')).join('\n');
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([data], { type: asJson ? 'application/json' : 'text/plain' }));
+        a.download = 'nsfw-favoriten.' + (asJson ? 'json' : 'txt');
+        a.click();
+    });
+    $('#favSlide').addEventListener('click', () => { const l = $('#favBox')._list || []; if (!l.length) return; openLb(l, 0); armSlide(); });
     $('#favProv').addEventListener('change', renderFavs);
 
     // =============== Gespeicherte Suchen ===============

@@ -1,0 +1,17 @@
+.wg-type-budget .bw { display: block; color: inherit; text-decoration: none; }
+.wg-type-budget .bw-month { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px; }
+.wg-type-budget .bw-net { margin: 4px 0 8px; }
+.wg-type-budget .bw-net > span { font-size: 1.7rem; font-weight: 800; }
+.wg-type-budget .bw-net.pos > span { color: var(--accent-purple); }
+.wg-type-budget .bw-net.neg > span { color: var(--accent-red); }
+.wg-type-budget .bw-net small { display: block; font-size: 0.72rem; color: var(--text-muted); }
+.wg-type-budget .bw-bar { height: 6px; background: rgba(56, 213, 230, 0.08); margin-bottom: 8px; }
+.wg-type-budget .bw-bar i { display: block; height: 100%; background: var(--accent-green); }
+.wg-type-budget .bw-bar i.warn { background: var(--accent-gold); }
+.wg-type-budget .bw-bar i.over { background: var(--accent-red); }
+.wg-type-budget .bw-row, .wg-type-budget .bw-cat { display: flex; justify-content: space-between; font-size: 0.8rem; padding: 2px 0; }
+.wg-type-budget .bw-cat { color: var(--text-muted); }
+.wg-type-budget .bw-open { font-size: 0.8rem; color: var(--accent-gold); margin: 4px 0; }
+.wg-type-budget .bw-warn { font-size: 0.75rem; color: var(--accent-red); }
+.wg-type-budget .bw-blur .bw-m { filter: blur(6px); transition: filter 0.2s; }
+.wg-type-budget .bw-blur:hover .bw-m { filter: none; }

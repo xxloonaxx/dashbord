@@ -1,0 +1,3 @@
+/* Optionale Styles – am besten alles unter .wg-type-<ordnername> schreiben, damit nichts anderes beeinflusst wird */
+.wg-type-mein-widget .vorlage-gold { color: var(--accent-gold); }
+.wg-type-mein-widget .vorlage-cyan { color: var(--accent-cyan); }

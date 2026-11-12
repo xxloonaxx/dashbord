@@ -21,3 +21,4 @@ data/.*_key_*.php
 uploads/
 *.v1-backup
 budget_settings.json
+data/index.html

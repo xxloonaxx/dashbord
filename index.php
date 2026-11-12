@@ -10,6 +10,7 @@ require_once __DIR__ . '/inc/linkcheck.php';
 require_once __DIR__ . '/inc/calendar.php';
 require_once __DIR__ . '/inc/hub.php';
 require_once __DIR__ . '/inc/templates.php';
+require_once __DIR__ . '/inc/widgets.php';
 
 auth_require_setup();
 pages_sync();
@@ -223,6 +224,15 @@ $cal_page = page_get('calendar.php');
 $soon = ($cal_page && page_access_ok($cal_page)) ? soon_items() : [];
 
 $access_icon = ['public' => '', 'users' => '🔑', 'roles' => '🛡️'];
+
+// ---------- Widgets ----------
+$wg_avail = widgets_available();
+$wg_layout = array_values(array_filter(widgets_layout(), function ($w) use ($wg_avail, $edit) {
+    $m = $wg_avail[$w['type']] ?? null;
+    return $m ? widget_allowed($m) : $edit;
+}));
+$wg_assets = [];
+foreach ($wg_layout as $w) if (isset($wg_avail[$w['type']])) $wg_assets[$w['type']] = $wg_avail[$w['type']];
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -233,6 +243,10 @@ $access_icon = ['public' => '', 'users' => '🔑', 'roles' => '🛡️'];
     <?php echo emoji_favicon('🛰️'); ?>
     <link rel="stylesheet" href="assets/hud.css">
     <link rel="stylesheet" href="assets/index.css">
+    <link rel="stylesheet" href="assets/format.css">
+    <link rel="stylesheet" href="assets/widgets.css">
+    <?php foreach ($wg_assets as $t => $m): if ($m['has_css']): ?><link rel="stylesheet" href="widgets/<?php echo e($t); ?>/widget.css?v=<?php echo (int)$m['mtime']; ?>">
+    <?php endif; endforeach; ?>
 </head>
 <body class="<?php echo $edit ? 'editing' : ''; ?>">
 <div class="wrapper idx">
@@ -318,6 +332,24 @@ $access_icon = ['public' => '', 'users' => '🔑', 'roles' => '🛡️'];
             </span>
         </div>
     <?php endif; ?>
+
+    <?php if ($wg_layout || $edit): ?>
+        <section class="wg-area" id="wgArea">
+            <div class="wg-area-head">
+                <h2>🧩 Widgets</h2>
+                <span>
+                    <?php if ($edit): ?><button type="button" class="btn btn-sm btn-gold" id="wgAdd">＋ Widget</button>
+                    <?php else: ?><button type="button" class="wg-link" id="wgToggle">▾ ausblenden</button><?php endif; ?>
+                </span>
+            </div>
+            <div class="wg-grid" id="wgGrid">
+                <?php foreach ($wg_layout as $w) echo widget_card($w, $edit); ?>
+                <?php if (!$wg_layout): ?><div class="wg-empty-grid">Noch keine Widgets – „＋ Widget“ klicken.</div><?php endif; ?>
+            </div>
+        </section>
+    <?php endif; ?>
+
+    <div class="idx-quick" id="idxQuick" hidden></div>
 
     <div id="noResults" class="empty-msg" hidden>Keine lokalen Treffer – <kbd>Enter</kbd> sucht im Web.</div>
 
@@ -436,6 +468,11 @@ $access_icon = ['public' => '', 'users' => '🔑', 'roles' => '🛡️'];
     </form>
 </div>
 
+<!-- Widgets -->
+<div class="modal-overlay" id="wgModal" role="dialog" aria-modal="true">
+    <div class="modal-box"><button type="button" class="modal-close" data-close aria-label="Schließen">&times;</button><div id="wgModalBody"></div></div>
+</div>
+
 <!-- Kategorie -->
 <div class="modal-overlay" id="catModal" role="dialog" aria-modal="true">
     <form method="POST" class="modal-box" id="catForm" style="max-width: 420px;">
@@ -453,8 +490,11 @@ $access_icon = ['public' => '', 'users' => '🔑', 'roles' => '🛡️'];
 
 <script>window.IDX = { edit: <?php echo $edit ? 'true' : 'false'; ?>, canManage: <?php echo $can_manage ? 'true' : 'false'; ?> };</script>
 <script src="assets/index.js"></script>
+<script src="assets/widgets.js"></script>
+<?php foreach ($wg_assets as $t => $m): if ($m['has_js']): ?><script src="widgets/<?php echo e($t); ?>/widget.js?v=<?php echo (int)$m['mtime']; ?>"></script>
+<?php endif; endforeach; ?>
 <script src="assets/gender.js"></script>
-<?php if (can('pages.manage')): ?><script src="assets/editor.js"></script><?php endif; ?>
+<?php if (can('pages.manage') || can('pages.edit')): ?><script src="assets/editor.js"></script><?php endif; ?>
 <script src="assets/reminders.js" data-endpoint="calendar.php?reminders=1"></script>
 </body>
 </html>

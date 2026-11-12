@@ -665,25 +665,51 @@
 
     // ---------- Gruppen ----------
     const can = (g, p) => g.owner || g.perms.includes('*') || g.perms.includes(p);
+    // Gruppenliste: gestapelte, kompakte Zeilen (Moderiert oben), Details öffnen sich im Popup
+    const gPrefs = Object.assign({ q: '', sort: 'name', closed: {} }, store.get('groupPrefs', {}));
     function loadGroups() {
         $('#groupsBox').innerHTML = '<div class="vx-loading">Lade Gruppen …</div>';
         api('groups').then(d => {
             loaded.groups = true;
             loaded.groupList = d.groups;
-            const card = g => '<button type="button" class="vx-group' + (g.mod ? ' mod' : '') + '" data-group="' + esc(g.id) + '">' + img(g.icon, 'vx-g-icon', '') + '<span><b>' + esc(g.name) + '</b><small>' + esc(g.short) + ' · ' + g.members + ' Mitglieder</small>'
-                + '<span>' + (g.owner ? '<span class="vx-pill" style="--pc:#f3c262">Besitzer</span>' : g.mod ? '<span class="vx-pill" style="--pc:#50fa7b" title="' + esc(g.perms.join(', ')) + '">🛡️ Moderation</span>' : '')
-                + (g.rep ? '<span class="vx-pill rep">★ repräsentiert</span>' : '') + '</span></span></button>';
-            const mod = d.groups.filter(g => g.mod).sort((a, b) => (b.owner - a.owner) || a.name.localeCompare(b.name, 'de'));
-            const rest = d.groups.filter(g => !g.mod).sort((a, b) => (b.rep - a.rep) || a.name.localeCompare(b.name, 'de'));
-            $('#groupsBox').innerHTML = d.groups.length ? (mod.length ? '<div class="vx-sec vx-gsec"><h3>🛡️ Gruppen, die du moderierst <small>' + mod.length + '</small></h3><div class="vx-groups">' + mod.map(card).join('') + '</div></div>' : '')
-                + (rest.length ? '<div class="vx-sec vx-gsec"><h3>👥 Weitere Gruppen <small>' + rest.length + '</small></h3><div class="vx-groups">' + rest.map(card).join('') + '</div></div>' : '')
-                : '<div class="vx-empty">Du bist in keiner Gruppe.</div>';
+            renderGroups();
         }).catch(x => { $('#groupsBox').innerHTML = '<div class="vx-error">⚠ ' + esc(x.message) + '</div>'; });
     }
-    $('#groupsBox').addEventListener('click', e => { const b = e.target.closest('[data-group]'); if (b) { $$('.vx-group').forEach(x => x.classList.toggle('on', x === b)); openGroup(b.dataset.group); } });
+    function renderGroups() {
+        const all = loaded.groupList || [];
+        const q = gPrefs.q.toLowerCase();
+        const sorter = (a, b) => gPrefs.sort === 'members' ? b.members - a.members : gPrefs.sort === 'short' ? String(a.short).localeCompare(String(b.short), 'de') : a.name.localeCompare(b.name, 'de');
+        const list = all.filter(g => !q || (g.name + ' ' + g.short).toLowerCase().includes(q));
+        const row = g => '<button type="button" class="vx-grow' + (g.mod ? ' mod' : '') + '" data-group="' + esc(g.id) + '">' + img(g.icon, 'vx-g-icon', '')
+            + '<span class="vx-grow-n"><b>' + esc(g.name) + '</b><small>' + esc(g.short) + '</small></span>'
+            + '<span class="vx-grow-b">' + (g.owner ? '<span class="vx-pill" style="--pc:#f3c262">👑 Besitzer</span>' : g.mod ? '<span class="vx-pill" style="--pc:#50fa7b" title="' + esc(g.perms.join(', ')) + '">🛡️ Mod</span>' : '')
+            + (g.rep ? '<span class="vx-pill rep">★</span>' : '') + '</span><span class="vx-grow-m">👥 ' + Number(g.members).toLocaleString('de-DE') + '</span><span class="vx-grow-c">›</span></button>';
+        const sec = (key, title, items) => items.length ? '<div class="vx-gstack' + (gPrefs.closed[key] ? ' closed' : '') + '" data-gsec="' + key + '"><button type="button" class="vx-gstack-h">' + title + ' <small>' + items.length + '</small></button><div class="vx-gstack-b">' + items.map(row).join('') + '</div></div>' : '';
+        const owned = list.filter(g => g.owner).sort(sorter), mod = list.filter(g => g.mod && !g.owner).sort(sorter), rest = list.filter(g => !g.mod).sort(sorter);
+        $('#groupsBox').innerHTML = '<div class="vx-tools vx-gtools"><input type="search" id="gFilter" placeholder="Gruppen filtern …" value="' + esc(gPrefs.q) + '" aria-label="Gruppen filtern">'
+            + '<select id="gSort" aria-label="Sortierung"><option value="name">Name A–Z</option><option value="members">Meiste Mitglieder</option><option value="short">Kürzel</option></select>'
+            + '<span class="vx-small">' + all.length + ' Gruppen · ' + all.filter(g => g.mod).length + ' mit Moderationsrechten</span></div>'
+            + (all.length ? sec('own', '👑 Eigene Gruppen', owned) + sec('mod', '🛡️ Gruppen, die du moderierst', mod) + sec('rest', '👥 Weitere Gruppen', rest) || '<div class="vx-empty">Keine Treffer.</div>' : '<div class="vx-empty">Du bist in keiner Gruppe.</div>');
+        $('#gSort').value = gPrefs.sort;
+        const f = $('#gFilter');
+        f.addEventListener('input', () => { gPrefs.q = f.value; store.set('groupPrefs', gPrefs); const pos = f.selectionStart; renderGroups(); const nf = $('#gFilter'); nf.focus(); nf.setSelectionRange(pos, pos); });
+        $('#gSort').addEventListener('change', e => { gPrefs.sort = e.target.value; store.set('groupPrefs', gPrefs); renderGroups(); });
+    }
+    $('#groupsBox').addEventListener('click', e => {
+        const h = e.target.closest('.vx-gstack-h');
+        if (h) { const sx = h.parentElement; sx.classList.toggle('closed'); gPrefs.closed[sx.dataset.gsec] = sx.classList.contains('closed'); store.set('groupPrefs', gPrefs); return; }
+        const b = e.target.closest('[data-group]');
+        if (b) { $$('.vx-grow').forEach(x => x.classList.toggle('on', x === b)); openGroup(b.dataset.group); }
+    });
+    const gModal = $('#groupModal');
+    const closeGroup = () => { gModal.hidden = true; if ($('#userModal').hidden) document.body.style.overflow = ''; };
+    gModal.addEventListener('click', e => { if (e.target === gModal || e.target.closest('[data-gclose]')) closeGroup(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !gModal.hidden && $('#userModal').hidden) closeGroup(); });
     let group = null;
     function openGroup(id) {
         const box = $('#groupDetail');
+        gModal.hidden = false;
+        document.body.style.overflow = 'hidden';
         box.innerHTML = '<div class="vx-loading">Lade Gruppe …</div>';
         api('group', { id }).then(d => {
             group = d.group;
@@ -696,15 +722,39 @@
             box.innerHTML = '<div class="panel vx-gd">' + (/^https:/.test(g.banner) ? '<div class="vx-gd-banner" style="background-image:url(\'' + esc(g.banner.replace(/['"()\\\s]/g, encodeURIComponent)) + '\')"></div>' : '')
                 + '<div class="vx-gd-head">' + img(g.icon, 'vx-g-icon lg', '') + '<div><h2>' + esc(g.name) + '</h2><small>' + esc(g.short) + ' · ' + g.members + ' Mitglieder' + (g.online ? ' · ' + g.online + ' online' : '') + ' · ' + esc(g.privacy) + ' · Beitritt: ' + esc(g.join_state || '–') + '</small></div>'
                 + '<span class="vx-u-btns">' + (g.member ? '<button type="button" class="btn btn-sm" id="gRep">' + (g.rep ? '★ Repräsentation entfernen' : '☆ Repräsentieren') + '</button>' + (g.owner ? '' : '<button type="button" class="btn btn-sm btn-danger" id="gLeave">Verlassen</button>')
-                    : '<button type="button" class="btn btn-sm btn-gold" id="gJoin">＋ Beitreten</button>') + '<a class="btn btn-sm" href="https://vrchat.com/home/group/' + encodeURIComponent(g.id) + '" target="_blank" rel="noopener noreferrer">↗</a></span></div>'
+                    : '<button type="button" class="btn btn-sm btn-gold" id="gJoin">＋ Beitreten</button>') + '<button type="button" class="btn btn-sm" id="gCopy" title="Link kopieren">⧉</button>' + (window.VRCX.discord ? '<button type="button" class="btn btn-sm" id="gShare" title="In Discord teilen">📣</button>' : '')
+                    + (g.member ? '<button type="button" class="btn btn-sm" id="gCsv" title="Mitgliederliste als CSV">⬇ CSV</button>' : '')
+                    + '<a class="btn btn-sm" href="https://vrchat.com/home/group/' + encodeURIComponent(g.id) + '" target="_blank" rel="noopener noreferrer" title="Auf vrchat.com öffnen">↗</a></span></div>'
                 + '<div class="vx-gd-tabs">' + tabs.map((t, i) => '<button type="button" class="chip' + (i ? '' : ' on') + '" data-gt="' + t[0] + '">' + t[1] + '</button>').join('') + '</div><div id="gPane"></div></div>';
             const act = (b, a, data, reload) => b && b.addEventListener('click', () => { if (a === 'group_leave' && !confirm('Gruppe „' + g.name + '“ wirklich verlassen?')) return; api(a, Object.assign({ id: g.id }, data)).then(r => { toast(r.msg); openGroup(g.id); if (reload) loadGroups(); }).catch(x => toast(x.message, true)); });
             act($('#gRep'), 'group_represent', { on: g.rep ? '' : 1 }, true);
             act($('#gLeave'), 'group_leave', {}, true);
             act($('#gJoin'), 'group_join', {}, true);
+            $('#gCopy').addEventListener('click', () => { const u = 'https://vrchat.com/home/group/' + g.id; (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(() => toast('Link kopiert.')).catch(() => prompt('Link:', u)); });
+            if ($('#gShare')) $('#gShare').addEventListener('click', () => { const t = prompt('Text zur Gruppe (optional):', ''); if (t === null) return; api('group_share', { id: g.id, text: t }).then(r => toast(r.msg)).catch(x => toast(x.message, true)); });
+            if ($('#gCsv')) $('#gCsv').addEventListener('click', async e => {
+                const b = e.currentTarget; b.disabled = true;
+                const rows = [];
+                try {
+                    for (let off = 0; off < 2000; off += 50) {
+                        b.textContent = '⏳ ' + rows.length;
+                        const d = await api('group_members', { id: g.id, offset: off });
+                        rows.push(...d.items);
+                        if (d.items.length < 50) break;
+                    }
+                    const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+                    const csv = '\ufeffName;ID;Beigetreten;Rollen\n' + rows.map(m => [m.name, m.id, isoDate(m.joined), (m.roles || []).map(roleName).filter(Boolean).join(', ')].map(q).join(';')).join('\n');
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+                    a.download = 'mitglieder_' + (g.short || 'gruppe').replace(/\W+/g, '_') + '.csv';
+                    a.click();
+                    toast(rows.length + ' Mitglieder exportiert.');
+                } catch (x) { toast(x.message, true); }
+                b.disabled = false; b.textContent = '⬇ CSV';
+            });
             box.querySelector('.vx-gd-tabs').addEventListener('click', e => { const b = e.target.closest('[data-gt]'); if (!b) return; $$('.vx-gd-tabs .chip').forEach(x => x.classList.toggle('on', x === b)); groupPane(b.dataset.gt); });
             groupPane('info');
-            box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            gModal.scrollTop = 0;
         }).catch(x => { box.innerHTML = '<div class="vx-error">⚠ ' + esc(x.message) + '</div>'; });
     }
     const roleName = id => ((group.roles || []).find(r => r.id === id) || {}).name || '';

@@ -1,0 +1,13 @@
+.wg-type-quicklinks .ql { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; }
+.wg-type-quicklinks .ql-i { position: relative; }
+.wg-type-quicklinks .ql-i a { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 4px; border: 1px solid rgba(56, 213, 230, 0.15); text-decoration: none; color: var(--text-main); font-size: 0.72rem; text-align: center; transition: all 0.15s; }
+.wg-type-quicklinks .ql-i a:hover { border-color: var(--accent-cyan); background: rgba(56, 213, 230, 0.08); color: #fff; }
+.wg-type-quicklinks .ql-i i { font-style: normal; font-size: 1.5rem; }
+.wg-type-quicklinks .ql-i span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.wg-type-quicklinks .ql-x { position: absolute; top: 0; right: 2px; background: none; border: 0; color: var(--accent-red); cursor: pointer; opacity: 0; }
+.wg-type-quicklinks .ql-i:hover .ql-x { opacity: 1; }
+.wg-type-quicklinks .ql-add { margin-top: 8px; font-size: 0.75rem; color: var(--text-muted); }
+.wg-type-quicklinks .ql-add summary { cursor: pointer; }
+.wg-type-quicklinks .ql-add form { display: grid; grid-template-columns: 50px 1fr; gap: 6px; margin-top: 6px; }
+.wg-type-quicklinks .ql-add input { padding: 6px 8px; font-size: 0.8rem; }
+.wg-type-quicklinks .ql-add input[type=url], .wg-type-quicklinks .ql-add button { grid-column: 1 / -1; }

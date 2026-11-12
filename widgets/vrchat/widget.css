@@ -1,0 +1,6 @@
+.wg-type-vrchat .vw-sum { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 6px; }
+.wg-type-vrchat .vw-f { display: grid; grid-template-columns: 10px 1fr; gap: 10px; align-items: center; padding: 5px 0; border-bottom: 1px solid rgba(56, 213, 230, 0.07); text-decoration: none; color: inherit; }
+.wg-type-vrchat .vw-f:hover .vw-n { color: var(--accent-cyan); }
+.wg-type-vrchat .vw-dot { width: 9px; height: 9px; border-radius: 50%; }
+.wg-type-vrchat .vw-n { font-size: 0.85rem; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wg-type-vrchat .vw-n small { display: block; font-size: 0.7rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; }

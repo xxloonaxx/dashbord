@@ -74,6 +74,39 @@
     if (saved && select.querySelector('option[value="' + saved + '"]')) select.value = saved;
     setEngine(select.value);
 
+    // ---------- Favoriten (★) & zuletzt besucht (pro Browser) ----------
+    const J = (k, d) => { try { return JSON.parse(store(k) || '') || d; } catch (e) { return d; } };
+    const tileInfo = t => ({ href: t.getAttribute('href'), title: (t.querySelector('.tile-title') || t).childNodes[0].textContent.trim(), icon: (t.querySelector('.tile-icon') || {}).textContent || '📄', ext: t.target === '_blank' });
+    const escq = x => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    function renderQuick() {
+        const box = $('#idxQuick');
+        if (!box) return;
+        const favs = J('idxFavs', []), recent = J('idxRecent', []).filter(r => !favs.some(f => f.href === r.href)).slice(0, 6);
+        const chip = (x, cls) => '<a class="idx-chip ' + cls + '" href="' + escq(x.href) + '"' + (x.ext ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' + escq(x.icon) + ' ' + escq(x.title) + '</a>';
+        box.innerHTML = (favs.length ? '<span>★ Favoriten</span>' + favs.map(f => chip(f, 'fav')).join('') : '') + (recent.length ? '<span>🕘 Zuletzt</span>' + recent.map(r => chip(r, '')).join('') : '');
+        box.hidden = !favs.length && !recent.length;
+        $$('.tile-star').forEach(b => b.classList.toggle('on', favs.some(f => f.href === b.dataset.href)));
+    }
+    if (!window.IDX.edit) {
+        $$('.tile-wrap .tile:not(.locked)').forEach(t => {
+            const b = document.createElement('button');
+            b.type = 'button'; b.className = 'tile-star'; b.title = 'Als Favorit oben anheften'; b.textContent = '★'; b.dataset.href = t.getAttribute('href');
+            b.addEventListener('click', e => {
+                e.preventDefault(); e.stopPropagation();
+                let favs = J('idxFavs', []);
+                favs = favs.some(f => f.href === b.dataset.href) ? favs.filter(f => f.href !== b.dataset.href) : favs.concat([tileInfo(t)]).slice(-12);
+                store('idxFavs', JSON.stringify(favs)); renderQuick();
+            });
+            t.parentElement.append(b);
+            t.addEventListener('click', () => {
+                const r = J('idxRecent', []).filter(x => x.href !== t.getAttribute('href'));
+                r.unshift(tileInfo(t));
+                store('idxRecent', JSON.stringify(r.slice(0, 10)));
+            });
+        });
+        renderQuick();
+    }
+
     if (!window.IDX.edit) return;
 
     // ---------- Bearbeiten-Modus ----------

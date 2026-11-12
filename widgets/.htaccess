@@ -1,0 +1,4 @@
+# Widget-Dateien (widget.php) nicht direkt aufrufbar – nur widget.css / widget.js / Bilder werden ausgeliefert
+<FilesMatch "\.php$">
+    Require all denied
+</FilesMatch>

@@ -1,0 +1,15 @@
+.wg-type-calendar .mc-wrap { display: grid; grid-template-columns: minmax(200px, 1fr) minmax(0, 1fr); gap: 16px; }
+.wg-s.wg-type-calendar .mc-wrap { grid-template-columns: 1fr; }
+.wg-type-calendar .mc-title { text-align: center; margin-bottom: 6px; }
+.wg-type-calendar .mc-title a { color: var(--accent-cyan); text-decoration: none; font-weight: 700; letter-spacing: 1px; font-size: 0.85rem; text-transform: uppercase; }
+.wg-type-calendar .mc-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+.wg-type-calendar .mc-wd { font-size: 0.62rem; color: var(--text-muted); padding: 2px 0; }
+.wg-type-calendar .mc-d { position: relative; font-size: 0.78rem; padding: 5px 0 8px; color: var(--text-main); text-decoration: none; border: 1px solid transparent; }
+.wg-type-calendar .mc-d:hover { border-color: var(--border-color); }
+.wg-type-calendar .mc-d.today { background: rgba(56, 213, 230, 0.2); border-color: var(--accent-cyan); color: #fff; font-weight: 700; }
+.wg-type-calendar .mc-d i { position: absolute; bottom: 2px; left: 0; right: 0; display: flex; gap: 2px; justify-content: center; }
+.wg-type-calendar .mc-d i b { width: 4px; height: 4px; border-radius: 50%; }
+.wg-type-calendar .mc-ev { display: grid; grid-template-columns: 54px 1fr; gap: 8px; padding: 5px 0 5px 8px; border-left: 3px solid var(--c); margin-bottom: 4px; font-size: 0.82rem; }
+.wg-type-calendar .mc-ev span { color: var(--text-muted); font-size: 0.72rem; display: flex; flex-direction: column; }
+.wg-type-calendar .mc-ev b { font-weight: 400; color: #fff; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 600px) { .wg-type-calendar .mc-wrap { grid-template-columns: 1fr; } }

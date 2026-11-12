@@ -467,6 +467,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     vrc_note_save($uid, $id, (string)$n['note'], (bool)$n['favorite'], null, !empty($in['on']));
                     $out = ['msg' => !empty($in['on']) ? 'Du bekommst eine Benachrichtigung, sobald die Person online kommt.' : 'Beobachtung beendet.'];
                     break;
+                case 'group_share':
+                    if (!can('discord.manage')) throw new RuntimeException('Dafür brauchst du Zugriff auf die Discord-Zentrale.');
+                    require_once __DIR__ . '/inc/discord.php';
+                    $g = vrc_call($acc, 'GET', '/groups/' . rawurlencode($valid($id, 'grp')));
+                    $url = 'https://vrc.group/' . rawurlencode((string)($g['shortCode'] ?? '') . '.' . (string)($g['discriminator'] ?? ''));
+                    discord_send_default(['content' => mb_substr(trim((string)($in['text'] ?? '')), 0, 500), 'embeds' => [array_filter([
+                        'title' => '👥 ' . ($g['name'] ?? 'Gruppe'), 'url' => !empty($g['shortCode']) ? $url : 'https://vrchat.com/home/group/' . rawurlencode($g['id']),
+                        'description' => mb_substr((string)($g['description'] ?? ''), 0, 600), 'color' => 0xf3c262,
+                        'thumbnail' => !empty($g['iconUrl']) ? ['url' => $g['iconUrl']] : null, 'image' => !empty($g['bannerUrl']) ? ['url' => $g['bannerUrl']] : null,
+                        'fields' => [['name' => 'Mitglieder', 'value' => (string)(int)($g['memberCount'] ?? 0), 'inline' => true], ['name' => 'Beitritt', 'value' => (string)($g['joinState'] ?? '–'), 'inline' => true]],
+                        'footer' => ['text' => 'geteilt von ' . $acc['display_name'] . ' über VRC Nexus']])]]);
+                    $out = ['msg' => 'Gruppe in Discord geteilt.'];
+                    break;
                 case 'discord_share':
                     if (!can('discord.manage')) throw new RuntimeException('Dafür brauchst du Zugriff auf die Discord-Zentrale.');
                     require_once __DIR__ . '/inc/discord.php';
@@ -909,8 +922,7 @@ session_write_close();
     </section>
 
     <section class="vx-tab" data-pane="groups" hidden>
-        <div class="vx-groups" id="groupsBox"></div>
-        <div id="groupDetail"></div>
+        <div id="groupsBox"></div>
     </section>
 
     <section class="vx-tab" data-pane="notifs" hidden>
@@ -1004,6 +1016,9 @@ session_write_close();
             Instanzen <code>wrld_…:12345~region(eu)</code> sowie Links von vrchat.com (Profile, Welten, Avatare, Gruppen, Einladungslinks) und <code>vrchat://launch</code>-Links.</p></div>
     </section>
 
+    <div class="pm" id="groupModal" hidden role="dialog" aria-modal="true" aria-label="Gruppe">
+        <div class="pm-box vx-gbox"><button type="button" class="pm-x" data-gclose aria-label="Schließen">&times;</button><div id="groupDetail"></div></div>
+    </div>
     <div class="pm" id="userModal" hidden role="dialog" aria-modal="true" aria-label="Details">
         <div class="pm-box vx-user"><button type="button" class="pm-x" data-close aria-label="Schließen">&times;</button><div id="userBody">Lade …</div></div>
     </div>

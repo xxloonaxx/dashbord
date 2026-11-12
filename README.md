@@ -73,6 +73,21 @@ per FTP die Datei `data/site_….sqlite` umbenennen → beim nächsten Aufruf er
 - **Zugriff pro Seite**: 🌍 öffentlich · 🔑 nur angemeldet · 🛡️ nur bestimmte Rollen.
   Gäste sehen geschützte Seiten mit Schloss und werden zur Anmeldung geleitet.
 
+## Widgets auf der Startseite (Plug & Play)
+
+Über den Kacheln liegt ein **Widget-Bereich**. Mitgeliefert werden 10 Widgets: 🕒 Uhr & Datum (mit zweiter Zeitzone, KW),
+🌦️ Wetter (Open-Meteo, ohne Schlüssel), ⏳ Countdowns (live), 📅 Mini-Kalender, ✅ Aufgaben, 📝 Schnellnotiz (Markdown/BBCode),
+💶 Budget (Recht `budget.access`), 🥽 VRChat-Freunde online (Recht `vrcx.access`), 📡 Neuigkeiten aus dem Feed und ⚡ Schnellzugriff.
+
+- **Anordnen** im ✎ Bearbeiten-Modus der Startseite: „＋ Widget“, per Drag & Drop sortieren, ⇔ Größe (klein/mittel/breit/ganze Zeile),
+  ⚙ Einstellungen (pro Widget eigene, plus eigener Titel), ✕ entfernen. Dasselbe Widget kann mehrfach vorkommen (z. B. zwei Uhren).
+- Besucher sehen nur Widgets, für die sie das Recht haben; jeder kann Widgets für sich **einklappen** oder den ganzen Bereich ausblenden.
+- **Eigene Widgets:** Jedes Widget ist ein Ordner unter `widgets/` (`widget.php` + optional `widget.css`/`widget.js`). `widgets/_vorlage`
+  kopieren, umbenennen, anpassen – es erscheint automatisch unter „＋ Widget“. Alle Möglichkeiten (Einstellungen, gespeicherter Zustand,
+  Aktionen per Klick/Formular, automatisches Neuladen, Caching von Web-Abfragen) sind in der Vorlage kommentiert, siehe auch `widgets/README.md`.
+  Ein Fehler in einem Widget wird nur in diesem Widget angezeigt.
+- Außerdem auf der Startseite: **★ Favoriten** (Stern an jeder Kachel) und **🕘 zuletzt besucht** als Schnellleiste (pro Browser).
+
 ## Gender-Modus
 
 Über den Knopf **⚧** neben deinem Namen oben rechts (oder in VRC Nexus → Konto) lassen sich die Texte des Dashboards gendern:
@@ -151,6 +166,8 @@ anderen Rollen in der Admin-Zentrale geben). Jeder Dashboard-Benutzer verbindet 
   weil VRChat sie nur angemeldet ausliefert.
 - **📰 Info-Push**: Hilfe-Artikel, Quick-Menü-Banner und Ladebildschirme von VRChat mit Artikelansicht.
 - **Pronomen** der Freunde werden in der Liste angezeigt.
+- **Gruppen** als gestapelte, einklappbare Liste (👑 eigene, 🛡️ moderierte, 👥 weitere) mit Filter und Sortierung; Details öffnen sich im **Popup**
+  – mit ⧉ Link kopieren, 📣 in Discord teilen und ⬇ Mitgliederliste als CSV.
 - Tastenkürzel: `Strg+K` Palette, `Strg+V` ID öffnen, `/` Suche, `R` aktualisieren, `1`–`0` Reiter, `Esc` schließen.
 - Moderationsaktionen (Kick, Bann, Blockieren, Freundschaft beenden …) landen im Protokoll der Admin-Zentrale.
 
@@ -196,7 +213,7 @@ eintragen und „Adresse selbst eingetragen“ klicken. Bots, die vor diesem Upd
 
 - **Eingebaute Befehle** (einzeln abschaltbar): `/hilfe`, `/countdown`, `/termine`, `/würfel`, `/münze`, `/wähle`, `/8ball`, `/umfrage` (echte
   Discord-Umfrage), `/erinnerung` (z. B. `30m`, `2h`, `18:30`, `24.12. 18:00` – wird als geplante Nachricht gespeichert), `/info`, `/server`,
-  `/avatar`, `/bild` (jugendfreie Bilder) und `/nsfw` (nur in altersbeschränkten Kanälen, mit Tag-Vorschlägen und „🔁 Noch eins“).
+  `/avatar`, `/rechne` (Taschenrechner), `/zufallszahl`, `/wetter`, `/währung` (EZB-Kurse), `/bild` (jugendfreie Bilder) und `/nsfw` (nur in altersbeschränkten Kanälen, mit Tag-Vorschlägen und „🔁 Noch eins“).
 - **Eigene Befehle**: Name, Antwort mit Platzhaltern (`{user}`, `{name}`, `{text}`, `{channel}`, `{date}`, `{time}`, `{random:A|B|C}`),
   wahlweise als Infobox mit Bild/GIF, nur für die aufrufende Person sichtbar oder nur in NSFW-Kanälen. Nutzung wird gezählt.
 - **🧪 Ausprobieren**: jeden Befehl im Dashboard testen, ohne Discord und ohne Seiteneffekte – mit Vorschau im Discord-Look.
@@ -233,7 +250,8 @@ wird pro Benutzer im Protokoll vermerkt. Suchmaschinen werden per `noindex` ausg
   Favoriten, zufällig), Endlos-Scrollen. Vorschaubilder auf Wunsch **unscharf** bis zum Drüberfahren.
 - **Lightbox**: groß ansehen (auch Videos/GIFs), ← → blättern, Künstler und Tags anklicken (⇧-Klick = ausschließen),
   ⭐ Favorit (Taste `F`), Original, Quelle, 📨 **in einen NSFW-Kanal posten** (mit Kommentar).
-- **Favoriten** (filterbar) und **gespeicherte Suchen** – die auch als Auto-Post in der Discord-Zentrale nutzbar sind.
+- **Diashow** (Taste `S`, Tempo per Rechtsklick; Videos laufen bis zum Ende) in der Suche und für Favoriten.
+- **Favoriten** (filterbar, ⬇ Export als Linkliste oder JSON) und **gespeicherte Suchen** – die auch als Auto-Post in der Discord-Zentrale nutzbar sind.
 - **Blacklist**: eigene gesperrte Tags. Zusätzlich ist eine **feste Sperrliste** eingebaut, die sich nicht abschalten lässt:
   Darstellungen Minderjähriger (`young`, `cub`, `loli`, `shota`, `child` …) werden nie gesucht, angezeigt oder gepostet –
   auch nicht über `/nsfw` oder Auto-Posts.

@@ -1,0 +1,8 @@
+.wg-type-notes .nt { border-left: 3px solid var(--accent-gold); padding-left: 10px; }
+.wg-type-notes .nt-cyan { border-color: var(--accent-cyan); }
+.wg-type-notes .nt-purple { border-color: var(--accent-purple); }
+.wg-type-notes .nt-green { border-color: var(--accent-green); }
+.wg-type-notes .nt-red { border-color: var(--accent-red); }
+.wg-type-notes .nt-text { font-size: 0.88rem; max-height: 260px; overflow-y: auto; }
+.wg-type-notes .nt-at { margin: 6px 0; }
+.wg-type-notes .nt-btns { display: flex; gap: 6px; margin-top: 6px; }

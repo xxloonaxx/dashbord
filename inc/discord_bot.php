@@ -43,6 +43,11 @@ function dbot_builtins(): array {
         'info'       => ['Infos zu einem Mitglied', [['type' => 6, 'name' => 'nutzer', 'description' => 'Wen? (leer = du selbst)']], false],
         'server'     => ['Infos zu diesem Server', [], false],
         'avatar'     => ['Zeigt das Profilbild groß', [['type' => 6, 'name' => 'nutzer', 'description' => 'Wen? (leer = du selbst)']], false],
+        'rechne'     => ['Taschenrechner, z. B. (12+8)*1,19 oder 2^10', [['type' => 3, 'name' => 'ausdruck', 'description' => 'Rechenausdruck', 'required' => true, 'max_length' => 200]], false],
+        'wetter'     => ['Aktuelles Wetter und Vorhersage für einen Ort', [['type' => 3, 'name' => 'ort', 'description' => 'z. B. Hamburg', 'required' => true, 'max_length' => 80]], false],
+        'währung'    => ['Währung umrechnen (Tageskurse der EZB)', [['type' => 10, 'name' => 'betrag', 'description' => 'Betrag', 'required' => true],
+                                                       ['type' => 3, 'name' => 'von', 'description' => 'z. B. EUR', 'required' => true, 'max_length' => 3], ['type' => 3, 'name' => 'nach', 'description' => 'z. B. USD', 'required' => true, 'max_length' => 3]], false],
+        'zufallszahl' => ['Zufallszahl zwischen zwei Werten', [['type' => 4, 'name' => 'von', 'description' => 'Minimum (Standard 1)'], ['type' => 4, 'name' => 'bis', 'description' => 'Maximum (Standard 100)']], false],
         'bild'       => ['Zufälliges jugendfreies Bild (e926, Danbooru, waifu.pics …)', [['type' => 3, 'name' => 'tags', 'description' => 'Tags bzw. Kategorie', 'autocomplete' => true],
                                                        ['type' => 3, 'name' => 'quelle', 'description' => 'Bilder-Seite', 'choices' => $src(DBOT_SFW_SOURCES)]], false],
         'nsfw'       => ['🔞 Zufälliges NSFW-Bild (nur in altersbeschränkten Kanälen)', [['type' => 3, 'name' => 'tags', 'description' => 'Tags bzw. Kategorie', 'autocomplete' => true],
@@ -297,6 +302,22 @@ function dbot_handle(array $it, bool $test = false): array {
                 'fields' => [['name' => 'Mitglieder', 'value' => (string)(int)($g['approximate_member_count'] ?? 0), 'inline' => true], ['name' => 'Online', 'value' => (string)(int)($g['approximate_presence_count'] ?? 0), 'inline' => true],
                              ['name' => 'Boosts', 'value' => (int)($g['premium_subscription_count'] ?? 0) . ' (Stufe ' . (int)($g['premium_tier'] ?? 0) . ')', 'inline' => true], ['name' => 'Erstellt', 'value' => '<t:' . discord_ts($g['id']) . ':D>', 'inline' => true],
                              ['name' => 'Rollen', 'value' => (string)count($g['roles'] ?? []), 'inline' => true], ['name' => 'Emojis', 'value' => (string)count($g['emojis'] ?? []), 'inline' => true]], 'color' => 0x5865f2]]);
+        case 'rechne':
+            $expr = (string)($o['ausdruck'] ?? '');
+            try { $r = dbot_calc($expr); } catch (Throwable $e) { return dbot_reply('🧮 ' . $e->getMessage(), [], true); }
+            return dbot_reply('🧮 `' . str_replace('`', '', mb_substr($expr, 0, 200)) . '` = **' . rtrim(rtrim(number_format($r, 6, ',', '.'), '0'), ',') . '**');
+        case 'zufallszahl':
+            $a = (int)($o['von'] ?? 1); $b = (int)($o['bis'] ?? 100);
+            if ($a > $b) [$a, $b] = [$b, $a];
+            return dbot_reply('🎲 Zufallszahl zwischen ' . $a . ' und ' . $b . ': **' . random_int($a, $b) . '**');
+        case 'wetter':
+            $city = mb_substr(trim((string)($o['ort'] ?? '')), 0, 80);
+            return ['type' => 5, '_later' => function () use ($it, $city) { return dbot_weather($it, $city); }];
+        case 'währung':
+            $amt = (float)($o['betrag'] ?? 0);
+            $from = strtoupper(preg_replace('/[^a-z]/i', '', (string)($o['von'] ?? '')));
+            $to = strtoupper(preg_replace('/[^a-z]/i', '', (string)($o['nach'] ?? '')));
+            return ['type' => 5, '_later' => function () use ($it, $amt, $from, $to) { return dbot_currency($it, $amt, $from, $to); }];
         case 'bild':
         case 'nsfw':
             $nsfw = $name === 'nsfw';
@@ -309,6 +330,86 @@ function dbot_handle(array $it, bool $test = false): array {
             return ['type' => 5, '_later' => function () use ($it, $prov, $tags, $rating, $name) { return dbot_image_message($it, $prov, $tags, $rating, $name); }];
     }
     return dbot_reply('?', [], true);
+}
+
+/** Sicherer Taschenrechner (+ − * / ^ %, Klammern, Komma als Dezimaltrennzeichen) – kein eval */
+final class DbotCalc {
+    private string $s; private int $p = 0;
+    public function __construct(string $s) { $this->s = $s; }
+    private function peek(): string { return $this->s[$this->p] ?? ''; }
+    public function run(): float { $v = $this->expr(); if ($this->p !== strlen($this->s)) throw new RuntimeException('Ungültiger Ausdruck.'); return $v; }
+    private function expr(): float { $v = $this->term(); while (in_array($this->peek(), ['+', '-'], true)) { $op = $this->s[$this->p++]; $r = $this->term(); $v = $op === '+' ? $v + $r : $v - $r; } return $v; }
+    private function term(): float {
+        $v = $this->pow();
+        while (in_array($this->peek(), ['*', '/', '%'], true)) {
+            $op = $this->s[$this->p++]; $r = $this->pow();
+            if ($op === '*') $v *= $r; elseif ($r == 0) throw new RuntimeException('Division durch null.'); elseif ($op === '/') $v /= $r; else $v = fmod($v, $r);
+        }
+        return $v;
+    }
+    private function pow(): float { $b = $this->unary(); if ($this->peek() === '^') { $this->p++; return $b ** $this->pow(); } return $b; }
+    private function unary(): float { if ($this->peek() === '-') { $this->p++; return -$this->unary(); } if ($this->peek() === '+') { $this->p++; return $this->unary(); } return $this->atom(); }
+    private function atom(): float {
+        if ($this->peek() === '(') { $this->p++; $v = $this->expr(); if ($this->peek() !== ')') throw new RuntimeException('Klammer fehlt.'); $this->p++; return $v; }
+        if (!preg_match('/\G\d+(\.\d+)?/', $this->s, $m, 0, $this->p)) throw new RuntimeException('Ungültiger Ausdruck.');
+        $this->p += strlen($m[0]);
+        return (float)$m[0];
+    }
+}
+
+function dbot_calc(string $expr): float {
+    $s = str_replace([',', '×', '÷', '−', ' ', ':'], ['.', '*', '/', '-', '', '/'], $expr);
+    if ($s === '' || !preg_match('/^[\d.+\-*\/^%()]+$/', $s)) throw new RuntimeException('Erlaubt sind Zahlen, + − × ÷ ^ % und Klammern.');
+    if (strlen($s) > 200) throw new RuntimeException('Zu lang.');
+    $v = (new DbotCalc($s))->run();
+    if (!is_finite($v)) throw new RuntimeException('Ergebnis zu groß.');
+    return $v;
+}
+
+function dbot_get_json(string $url) {
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => true, CURLOPT_MAXREDIRS => 3, CURLOPT_CONNECTTIMEOUT => 6, CURLOPT_TIMEOUT => 10, CURLOPT_USERAGENT => 'GhostNodeDashboard/1.0 (discord bot)']);
+    $raw = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    curl_close($ch);
+    $j = $raw !== false && $code < 400 ? json_decode((string)$raw, true) : null;
+    if (!is_array($j)) throw new RuntimeException('Dienst nicht erreichbar (HTTP ' . $code . ').');
+    return $j;
+}
+
+function dbot_weather(array $it, string $city): array {
+    try {
+        $base = rtrim(setting('wx_base', ''), '/');
+        $geo = dbot_get_json(($base ?: 'https://geocoding-api.open-meteo.com') . '/v1/search?' . http_build_query(['name' => $city, 'count' => 1, 'language' => 'de']));
+        $p = $geo['results'][0] ?? null;
+        if (!$p) return ['content' => '🌍 Ort „' . $city . '“ nicht gefunden.'];
+        $d = dbot_get_json(($base ?: 'https://api.open-meteo.com') . '/v1/forecast?' . http_build_query(['latitude' => $p['latitude'], 'longitude' => $p['longitude'], 'timezone' => 'auto', 'forecast_days' => 3,
+            'current' => 'temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m', 'daily' => 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max']));
+        $codes = [0 => '☀️ klar', 1 => '🌤️ überwiegend klar', 2 => '⛅ teils bewölkt', 3 => '☁️ bedeckt', 45 => '🌫️ Nebel', 48 => '🌫️ Nebel', 51 => '🌦️ Niesel', 53 => '🌦️ Niesel', 55 => '🌧️ Niesel',
+                  61 => '🌦️ leichter Regen', 63 => '🌧️ Regen', 65 => '🌧️ starker Regen', 71 => '🌨️ leichter Schnee', 73 => '🌨️ Schnee', 75 => '❄️ starker Schnee', 80 => '🌦️ Schauer', 81 => '🌧️ Schauer', 82 => '⛈️ heftige Schauer', 95 => '⛈️ Gewitter', 96 => '⛈️ Gewitter', 99 => '⛈️ Gewitter'];
+        $c = $d['current'] ?? [];
+        $fields = [];
+        foreach ((array)($d['daily']['time'] ?? []) as $i => $day) $fields[] = ['name' => $i === 0 ? 'Heute' : date('d.m.', strtotime($day)), 'inline' => true,
+            'value' => ($codes[(int)$d['daily']['weather_code'][$i]] ?? '🌡️') . "
+" . round($d['daily']['temperature_2m_min'][$i]) . '° / ' . round($d['daily']['temperature_2m_max'][$i]) . '°' . ((int)($d['daily']['precipitation_probability_max'][$i] ?? 0) >= 30 ? ' · ☔ ' . (int)$d['daily']['precipitation_probability_max'][$i] . ' %' : '')];
+        dbot_log($it, 'wetter', true, $p['name']);
+        return ['embeds' => [['title' => '📍 ' . $p['name'] . (isset($p['admin1']) ? ', ' . $p['admin1'] : ''), 'color' => 0x38d5e6,
+            'description' => '**' . round((float)($c['temperature_2m'] ?? 0)) . ' °C** · ' . ($codes[(int)($c['weather_code'] ?? 0)] ?? '') . "
+gefühlt " . round((float)($c['apparent_temperature'] ?? 0)) . ' °C · 💧 ' . (int)($c['relative_humidity_2m'] ?? 0) . ' % · 💨 ' . round((float)($c['wind_speed_10m'] ?? 0)) . ' km/h',
+            'fields' => $fields, 'footer' => ['text' => 'Daten: Open-Meteo']]]];
+    } catch (Throwable $e) { return ['content' => '⚠ ' . $e->getMessage()]; }
+}
+
+function dbot_currency(array $it, float $amt, string $from, string $to): array {
+    try {
+        if (strlen($from) !== 3 || strlen($to) !== 3) return ['content' => '💱 Bitte Währungscodes mit drei Buchstaben angeben, z. B. EUR, USD, GBP, JPY.'];
+        if ($from === $to) return ['content' => '💱 ' . number_format($amt, 2, ',', '.') . ' ' . $from . ' = ' . number_format($amt, 2, ',', '.') . ' ' . $to];
+        $base = rtrim(setting('fx_base', ''), '/');
+        $j = dbot_get_json(($base ?: 'https://api.frankfurter.app') . '/latest?' . http_build_query(['amount' => $amt, 'from' => $from, 'to' => $to]));
+        if (!isset($j['rates'][$to])) return ['content' => '💱 Diese Währung kenne ich nicht.'];
+        dbot_log($it, 'währung', true, $from . '→' . $to);
+        return ['content' => '💱 **' . number_format($amt, 2, ',', '.') . ' ' . $from . '** = **' . number_format((float)$j['rates'][$to], 2, ',', '.') . ' ' . $to . '**  _(Kurs vom ' . date('d.m.Y', strtotime((string)($j['date'] ?? 'today'))) . ', EZB)_'];
+    } catch (Throwable $e) { return ['content' => '⚠ ' . $e->getMessage()]; }
 }
 
 /** Bild suchen und als Nachricht aufbereiten (für /bild, /nsfw, „Noch eins“) */

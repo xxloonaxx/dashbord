@@ -1,0 +1,9 @@
+.wg-type-countdowns .cd { display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(56, 213, 230, 0.07); text-decoration: none; color: inherit; }
+.wg-type-countdowns .cd-ic { font-size: 1.3rem; text-align: center; }
+.wg-type-countdowns .cd-b b { display: block; font-size: 0.86rem; color: #fff; }
+.wg-type-countdowns .cd-b small { font-size: 0.7rem; color: var(--text-muted); }
+.wg-type-countdowns .cd-left { font-variant-numeric: tabular-nums; color: var(--accent-gold); font-size: 0.85rem; font-weight: 700; }
+.wg-type-countdowns .cd.big { grid-template-columns: 44px 1fr; padding: 4px 0 12px; }
+.wg-type-countdowns .cd.big .cd-ic { font-size: 2rem; }
+.wg-type-countdowns .cd.big .cd-b b { font-size: 1rem; }
+.wg-type-countdowns .cd.big .cd-left { grid-column: 1 / -1; font-size: 1.6rem; text-align: center; color: var(--accent-cyan); text-shadow: 0 0 10px var(--accent-glow); }

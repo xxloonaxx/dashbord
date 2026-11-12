@@ -1,0 +1,10 @@
+.wg-type-weather .wt-now { display: flex; align-items: center; gap: 14px; }
+.wg-type-weather .wt-icon { font-size: 3rem; line-height: 1; }
+.wg-type-weather .wt-now b { display: block; font-size: 2rem; color: #fff; }
+.wg-type-weather .wt-now span { font-size: 0.8rem; color: var(--text-muted); }
+.wg-type-weather .wt-place { font-size: 0.8rem; color: var(--accent-cyan); margin-top: 6px; }
+.wg-type-weather .wt-meta { font-size: 0.7rem; color: var(--text-muted); margin-top: 4px; line-height: 1.6; }
+.wg-type-weather .wt-days { display: grid; grid-template-columns: repeat(auto-fit, minmax(48px, 1fr)); gap: 4px; margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border-color); text-align: center; }
+.wg-type-weather .wt-days div { display: flex; flex-direction: column; font-size: 0.7rem; color: var(--text-muted); }
+.wg-type-weather .wt-days i { font-style: normal; font-size: 1.3rem; }
+.wg-type-weather .wt-days b { color: #fff; font-size: 0.85rem; }
