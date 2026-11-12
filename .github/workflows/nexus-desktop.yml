@@ -21,17 +21,24 @@ jobs:
       - name: Tests
         working-directory: clients/nexus-desktop
         run: python -m unittest discover -s tests -v
+      # Windows kann dieses Repository nicht auschecken (Dateinamen wie „con.php“ sind dort reserviert) –
+      # darum reicht der Linux-Job nur den Client-Ordner weiter.
+      - name: Client-Quelltext weitergeben
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-src
+          path: clients/nexus-desktop/
+          retention-days: 1
 
   build-windows:
     needs: test
     runs-on: windows-latest
     steps:
-      # Nur den Client auschecken: Windows verbietet Dateinamen wie „con.php“ (reservierter Gerätename)
-      - uses: actions/checkout@v4
+      - name: Client-Quelltext holen
+        uses: actions/download-artifact@v4
         with:
-          sparse-checkout: |
-            clients/nexus-desktop/
-          sparse-checkout-cone-mode: false
+          name: client-src
+          path: clients/nexus-desktop
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
