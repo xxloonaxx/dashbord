@@ -298,6 +298,21 @@ Spielwiese für die Community – öffentlich, vieles geht auch ohne Konto:
   - **Anpassbar**: Name, Persönlichkeit (verspielt, verfressen, verschlafen, kuschelig, frech – beeinflusst die Werte), Lieblingsessen und Stimme.
   - Aussehen wahlweise wie deine Fursona, als Zufallstier oder mit **eigenen Bildern für 6 Emotionen**; dazu Hintergrund und Gehäusefarbe.
   - Wer angemeldet ist, bekommt den Stand auf dem Server gespeichert (geräteübergreifend). Die Hardware-Knöpfe A/B/C funktionieren auch.
+  - **💾 Spielstände**: bis zu 6 Haustiere gleichzeitig.
+    - Wechseln, duplizieren und als Datei exportieren oder importieren (einzeln oder alle).
+    - Alle Haustiere leben weiter, auch wenn sie gerade nicht aktiv sind.
+  - **Modi**: 🌸 Entspannt (½ Tempo), 🙂 Normal, 🔥 Schwer (1,5×) und **💀 Hardcore**.
+    - Hardcore: doppeltes Tempo, Echtzeit, kein Urlaub, keine Cheats, 1,5× Münzen.
+    - Bei zu langer Vernachlässigung geht das Haustier über die Regenbogenbrücke 🌈 und bleibt als Erinnerung im Spielstand.
+    - In allen anderen Modi stirbt niemand.
+  - **⚙️ Einstellungen** je Spielstand:
+    - Zeit: Echtzeit oder „pausiert, solange die Seite zu ist“.
+    - Wachstum: normal (7 Tage) oder schnell (~1 Tag).
+    - 🏖️ Urlaubsmodus, Häufchen an/aus, Krankheiten an/aus, 🌙 Auto-Schlaf (23–7 Uhr).
+    - Töne, Sprechblasen (das Haustier meldet sich, wenn es etwas braucht) und 🔔 Browser-Benachrichtigungen.
+  - **🃏 Cheats** (nicht im Hardcore-Modus): Codes im Einstellungs-Reiter, z. B. `MOREFLUFF`, `BELLYFULL`, `HATCHNOW`, `TIMEWARP`, `FASHION`, `SPARKLE`, `RAINBOW`, `DISCO`, `BIGFLUFF`, `IMMORTAL` … (Liste dort als Spoiler). Benutzte Cheats markieren den Spielstand mit 🃏.
+  - **Tastenkürzel**: Leertaste Boop, F Füttern, P Spielen, W Waschen, C Aufräumen, M Medizin, K Kraulen, H Umarmen, L Licht.
+  - Ein roter Punkt am Reiter zeigt, wenn das Haustier etwas braucht. Auf der Startseite gibt es eine Status-Karte.
 - **🎨 Fursona**: deine eigene Sona mit **deinen eigenen Bildern**.
   - Name, Art, **Geschlecht**, Pronomen (Vorschlag passend zum Geschlecht), Persönlichkeit, Bio und Ref-Link.
   - **⭐ Hauptbild / Ref-Sheet** (bis 1600 px).
@@ -333,7 +348,7 @@ Spielwiese für die Community – öffentlich, vieles geht auch ohne Konto:
   - Glossar
   - Pfotenabdrücke (Gästebuch)
   - Tierfakt und Zeichen-Idee des Tages
-  - **31 Erfolge**
+  - **35 Erfolge**
   - Easter Eggs
   - 🐾-Spur am Mauszeiger
 - Widget **„Boop!“** für die Startseite (unter „＋ Widget“).

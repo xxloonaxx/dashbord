@@ -367,6 +367,8 @@
         shop: ['🛒', 'Shopping-Tour', 'Etwas im Shop gekauft'], hat: ['🎩', 'Modisch', 'Ein Accessoire aufgesetzt'], custom: ['🖼️', 'Eigene Bilder', 'Ein eigenes Bild hochgeladen'],
         card: ['🃏', 'Kartenkünstler*in', 'Eine Karte gespeichert oder exportiert'], catch: ['🍖', 'Fangkünstler*in', '50 Punkte beim Leckerli fangen'],
         memory: ['🧠', 'Gutes Gedächtnis', 'Memory gelöst'], whack: ['👃', 'Nasen-Ninja', '30 Nasen gebooped'], ear: ['👂', 'Gutes Gehör', '8 von 10 Tierlauten erkannt'], wheel: ['🎡', 'Dreh am Rad', 'Das Glücksrad gedreht'],
+        hcadult: ['💀', 'Hardcore-Held*in', 'Im Hardcore-Modus ohne Cheats erwachsen geworden'], slots: ['💾', 'Großfamilie', '3 Spielstände angelegt'],
+        cheater: ['🃏', 'Schummler*in', 'Einen Cheat-Code benutzt'], rainbow: ['🌈', 'Regenbogenbrücke', 'Ein Hardcore-Haustier verloren'],
         owo: ['💬', 'OwO, was ist das?', 'Den Übersetzer benutzt'], paw: ['✍️', 'Pfotenabdruck', 'Im Gästebuch unterschrieben'],
         konami: ['🎮', 'Retro-Fluff', 'Den Konami-Code eingegeben'], secret: ['🦊', 'Neugierfuchs', 'Den Fuchs 10× angeklickt'], night: ['🌙', 'Nachteule', 'Zwischen 0 und 4 Uhr vorbeigeschaut'],
     };

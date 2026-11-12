@@ -516,3 +516,64 @@ label.chk.sm { font-size: 0.75rem; }
 .lb-nav.prev { left: 12px; } .lb-nav.next { right: 12px; }
 .lb-nav[hidden] { display: none; }
 @media (max-width: 600px) { .gallery-edit { grid-template-columns: 1fr 1fr; } .main-pic img { width: 110px; } }
+
+/* ================= Tamagotchi: Spielstände, Hardcore, Einstellungen, Cheats ================= */
+.tama-tabs { grid-template-columns: repeat(3, 1fr); }
+.tama-keys { margin: 10px 0 0; font-size: 0.66rem; }
+.fh-tabs button.alert { position: relative; }
+.fh-tabs button.alert::after { content: ''; position: absolute; top: 4px; right: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--accent-red); box-shadow: 0 0 8px var(--accent-red); animation: fhPulse 1.4s ease-in-out infinite; }
+@keyframes fhPulse { 50% { transform: scale(1.4); opacity: 0.6; } }
+.tama-device.hardcore { box-shadow: inset 0 -10px 24px rgba(0, 0, 0, 0.3), inset 0 8px 18px rgba(255, 255, 255, 0.25), 0 0 0 3px rgba(255, 85, 85, 0.6), 0 16px 40px rgba(255, 40, 40, 0.25); }
+.tama-device.rainbow { animation: tamaRainbow 4s linear infinite; }
+@keyframes tamaRainbow { to { filter: hue-rotate(360deg); } }
+.tama-screen.dead { filter: grayscale(0.85) brightness(0.8); }
+.tama-screen.vacation::after { content: '🏖️ Im Urlaub'; position: absolute; top: 32px; left: 50%; transform: translateX(-50%); background: rgba(255, 255, 255, 0.85); color: #1a1420; font-size: 0.75rem; font-weight: 700; padding: 2px 10px; border-radius: 10px; z-index: 4; }
+.tama-screen.disco { animation: tamaDisco 1.6s linear infinite; }
+@keyframes tamaDisco { 0% { box-shadow: inset 0 0 60px #ff4fd8; } 33% { box-shadow: inset 0 0 60px #4fd8ff; } 66% { box-shadow: inset 0 0 60px #ffe14f; } 100% { box-shadow: inset 0 0 60px #ff4fd8; } }
+.tp-wrap.sparkle::after { content: '✨'; position: absolute; top: -6%; right: -4%; font-size: 1.8rem; animation: tamaSpark 1.2s ease-in-out infinite; pointer-events: none; }
+.tp-wrap.sparkle::before { content: '✨'; position: absolute; bottom: 6%; left: -6%; font-size: 1.3rem; animation: tamaSpark 1.2s 0.6s ease-in-out infinite; pointer-events: none; z-index: 2; }
+.tp-wrap.sparkle { filter: drop-shadow(0 0 12px #ffe66d) drop-shadow(0 8px 10px rgba(0, 0, 0, 0.3)); }
+@keyframes tamaSpark { 50% { transform: scale(1.4) rotate(20deg); opacity: 0.4; } }
+.tama-grave { display: flex; flex-direction: column; align-items: center; gap: 2px; color: #fff; text-shadow: 0 1px 3px #000; }
+.grave-pet { width: 42%; opacity: 0.55; filter: grayscale(1); }
+.grave-stone { font-size: 3rem; margin-top: -12px; }
+.tama-grave small { font-size: 0.72rem; }
+.hc-banner { padding: 10px 12px; margin-bottom: 10px; border: 1px solid rgba(255, 85, 85, 0.6); background: rgba(255, 85, 85, 0.08); color: #ffb3b3; font-size: 0.78rem; line-height: 1.5; }
+.set-row { display: flex !important; gap: 10px; align-items: flex-start; padding: 7px 0; border-bottom: 1px solid rgba(56, 213, 230, 0.07); cursor: pointer; letter-spacing: 0 !important; }
+.set-row input { width: auto; margin: 3px 0 0; }
+.set-row b { display: block; color: var(--text-main); font-size: 0.82rem; font-weight: 600; }
+.set-row small { color: var(--text-muted); font-size: 0.7rem; }
+.set-row input:disabled + span { opacity: 0.55; }
+.cheat-form { display: flex; gap: 6px; margin-bottom: 6px; }
+.cheat-form input { flex: 1; font-family: monospace; letter-spacing: 2px; text-transform: uppercase; }
+.cheat-on { display: inline-block; font-family: monospace; font-size: 0.7rem; padding: 1px 6px; border: 1px solid var(--fh-b); color: #ffc2d6; border-radius: 8px; }
+.cheat-list { font-size: 0.78rem; margin: 6px 0; }
+.cheat-list summary { cursor: pointer; color: var(--fh-a); }
+.cheat-list div { padding: 3px 0; }
+.cheat-list code { color: var(--accent-gold); }
+.slots { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.slot { display: grid; grid-template-columns: 52px 1fr auto; gap: 10px; align-items: center; padding: 8px; background: rgba(4, 6, 9, 0.5); border: 1px solid var(--border-color); cursor: pointer; }
+.slot.on { border-color: var(--fh-a); background: rgba(255, 159, 67, 0.07); }
+.slot.dead { opacity: 0.7; }
+.slot.dead .slot-face { filter: grayscale(1); }
+.slot-face { width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; }
+.slot-face .fh-sona, .slot-face .fh-face-img { width: 52px; height: 52px; border-radius: 10px; }
+.slot-egg { font-size: 2rem; }
+.slot-info { min-width: 0; font-size: 0.85rem; }
+.slot-info small { display: block; font-size: 0.68rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slot-acts { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.slot-active { font-size: 0.7rem; color: var(--fh-a); font-weight: 700; padding: 0 4px; }
+.new-slot { padding: 10px; border: 1px dashed var(--border-color); margin-bottom: 10px; }
+.slot-tools { display: flex; gap: 6px; flex-wrap: wrap; }
+.mode-hc { border-color: rgba(255, 85, 85, 0.6) !important; color: #ffb3b3 !important; }
+.tama-start { border-color: rgba(255, 159, 67, 0.4); }
+.tsc { display: flex; gap: 12px; align-items: center; }
+.tsc-face { width: 86px; flex-shrink: 0; font-size: 3rem; text-align: center; }
+.tsc b { display: block; color: #fff; font-size: 1.05rem; }
+.tsc small { display: block; color: var(--text-muted); font-size: 0.75rem; margin-bottom: 3px; }
+@media (max-width: 600px) {
+    .pbar { grid-template-columns: 104px 1fr 28px; font-size: 0.74rem; }
+    .slot { grid-template-columns: 44px 1fr; }
+    .slot-acts { grid-column: 1 / -1; justify-content: flex-start; }
+    .tama-tabs button { font-size: 0.68rem; }
+}

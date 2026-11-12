@@ -324,14 +324,24 @@ function fh_pet_get(int $uid): ?array {
 }
 
 function fh_pet_save(int $uid, string $json): void {
-    if (strlen($json) > 60000) throw new InvalidArgumentException('Zu viele Daten.');
+    if (strlen($json) > 250000) throw new InvalidArgumentException('Zu viele Daten.');
     $state = json_decode($json, true);
     if (!is_array($state)) throw new InvalidArgumentException('Ungültige Daten.');
-    // Bilder: nur eigene, gespeicherte Bilder
-    foreach ((array)($state['images'] ?? []) as $k => $u) {
-        if (!is_string($u) || !preg_match(FH_IMG_RE, $u, $m) || fh_img_owner($m[1]) !== $uid) unset($state['images'][$k]);
+    // Ein Spielstand: nur eigene, gespeicherte Bilder; leere Objekte bleiben Objekte
+    $clean = function (array $p) use ($uid): array {
+        foreach ((array)($p['images'] ?? []) as $k => $u) {
+            if (!is_string($u) || !preg_match(FH_IMG_RE, $u, $m) || fh_img_owner($m[1]) !== $uid) unset($p['images'][$k]);
+        }
+        foreach (['images', 'inv', 'stat', 'randomLook', 'cfg', 'fx'] as $k) if (isset($p[$k])) $p[$k] = (object)$p[$k];
+        return $p;
+    };
+    if (isset($state['slots']) && is_array($state['slots'])) {   // Version 3: mehrere Spielstände
+        if (count($state['slots']) > 6) throw new InvalidArgumentException('Maximal 6 Spielstände.');
+        foreach ($state['slots'] as $id => $p) $state['slots'][$id] = is_array($p) ? $clean($p) : null;
+        $state['slots'] = (object)array_filter($state['slots']);
+    } else {
+        $state = $clean($state);
     }
-    foreach (['images', 'inv', 'stat', 'randomLook'] as $k) if (isset($state[$k])) $state[$k] = (object)$state[$k];   // leere Objekte bleiben Objekte
     fh_db()->prepare('INSERT INTO pets (user_id, state, updated) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET state = excluded.state, updated = excluded.updated')
            ->execute([$uid, json_encode($state, JSON_UNESCAPED_UNICODE), time()]);
 }

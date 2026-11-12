@@ -235,7 +235,8 @@ $EMO = ['neutral' => ['😐', 'Normal'], 'happy' => ['😊', 'Fröhlich'], 'sad'
             <div class="tama-side">
                 <div class="fh-card"><div class="fh-ct"><span id="tamaTitle">💗 Zustand</span><span class="coins" id="tamaCoins"></span></div><div id="tamaBars"></div><div class="tama-meta" id="tamaMeta"></div></div>
                 <div class="fh-card">
-                    <div class="tama-tabs"><button type="button" data-tt="shop" class="on">🛒 Shop</button><button type="button" data-tt="bag">🎒 Inventar</button><button type="button" data-tt="custom">⚙️ Anpassen</button><button type="button" data-tt="log">📜 Tagebuch</button></div>
+                    <div class="tama-tabs"><button type="button" data-tt="shop" class="on">🛒 Shop</button><button type="button" data-tt="bag">🎒 Inventar</button><button type="button" data-tt="custom">🎨 Anpassen</button><button type="button" data-tt="settings">⚙️ Einstellungen</button><button type="button" data-tt="slots">💾 Spielstände</button><button type="button" data-tt="log">📜 Tagebuch</button></div>
+                    <p class="muted small tama-keys">⌨️ Leertaste Boop · F Füttern · P Spielen · W Waschen · C Aufräumen · M Medizin · K Kraulen · H Umarmen · L Licht</p>
                     <div id="tamaTab"></div>
                 </div>
                 <div class="fh-card"><div class="fh-ct">📊 Gemeinsame Boops</div><div id="myBoops" class="my-boops"></div><div class="fh-ct" style="margin-top: 12px;">👑 Bestenliste</div><ol id="boopTop" class="boop-top"></ol></div>
