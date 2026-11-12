@@ -187,7 +187,12 @@ anderen Rollen in der Admin-Zentrale geben). Jeder Dashboard-Benutzer verbindet 
   weil VRChat sie nur angemeldet ausliefert.
 - **📰 Info-Push**: Hilfe-Artikel, Quick-Menü-Banner und Ladebildschirme von VRChat mit Artikelansicht.
 - **Pronomen** der Freunde werden in der Liste angezeigt.
-- **Gruppen** als gestapelte, einklappbare Liste (👑 eigene, 🛡️ moderierte, 👥 weitere) mit Filter und Sortierung; Details öffnen sich im **Popup**
+- **⭐ Favoriten** wie in VRCX – für Freunde, Welten und Avatare: links die **VRChat-Favoritengruppen** mit Zähler/Limit (z. B. 27/150) und
+  Sichtbarkeit (⋯ umbenennen, privat/Freunde/öffentlich), darunter **lokale Favoritengruppen** (unbegrenzt, nur im Dashboard, „＋ Neue Gruppe“)
+  und der **lokale Verlauf** angesehener Welten/Avatare. Rechts ein Raster (Spaltenzahl einstellbar) mit ⋯-Menü je Eintrag (öffnen, ID kopieren,
+  in andere VRChat- oder lokale Gruppe verschieben, entfernen) und **Bearbeiten-Modus** für Mehrfachauswahl.
+- In jedem **Welt-, Avatar- und Profil-Dialog**: „♥ VRChat-Favorit“ (Gruppe wählen/wechseln/entfernen) und „📌 Lokal“ (in eine oder mehrere lokale Gruppen merken).
+- **Gruppen** wahlweise als **Raster** (mit Banner, Spaltenzahl einstellbar) oder als Liste; gestapelte, einklappbare Abschnitte (👑 eigene, 🛡️ moderierte, 👥 weitere) mit Filter und Sortierung; Details öffnen sich im **Popup**
   – mit ⧉ Link kopieren, 📣 in Discord teilen und ⬇ Mitgliederliste als CSV.
 - Tastenkürzel: `Strg+K` Palette, `Strg+V` ID öffnen, `/` Suche, `R` aktualisieren, `1`–`0` Reiter, `Esc` schließen.
 - Moderationsaktionen (Kick, Bann, Blockieren, Freundschaft beenden …) landen im Protokoll der Admin-Zentrale.

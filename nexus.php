@@ -5,6 +5,7 @@
  * Alle Aktionen laufen als JSON-Anfragen (assets/nexus.js).
  */
 require_once __DIR__ . '/inc/vrchat.php';
+require_once __DIR__ . '/inc/vrchat_favs.php';
 
 // Handy-/Kalender-Abo der VRChat-Gruppen-Events: nexus.php?ics=<token> (ohne Anmeldung, nur mit geheimem Token)
 if (isset($_GET['ics'])) {
@@ -423,6 +424,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // ----- Direkt-Zugriff: Avatare, Mehrfach-Einladung, letzte Instanzen, Beobachten -----
                 case 'avatar':
                     $a = vrc_call($acc, 'GET', '/avatars/' . rawurlencode($valid($id, 'avtr')));
+                    vrc_history_add($uid, 'avatar', $a['id'], (string)($a['name'] ?? ''), (string)($a['thumbnailImageUrl'] ?? ''), (string)($a['authorName'] ?? ''));
                     $out = ['avatar' => ['id' => $a['id'], 'name' => $a['name'] ?? '', 'author' => $a['authorName'] ?? '', 'author_id' => $a['authorId'] ?? '', 'image' => $a['imageUrl'] ?? ($a['thumbnailImageUrl'] ?? ''),
                         'desc_html' => format_text((string)($a['description'] ?? ''), ['external' => true]), 'status' => $a['releaseStatus'] ?? '', 'created' => $a['created_at'] ?? '', 'updated' => $a['updated_at'] ?? '',
                         'version' => (int)($a['version'] ?? 0), 'featured' => !empty($a['featured']), 'current' => ($acc['me']['currentAvatar'] ?? '') === $a['id'],
@@ -430,6 +432,79 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'platforms' => array_values(array_unique(array_map(function ($p) { return VRC_PLATFORM[$p['platform'] ?? ''] ?? ($p['platform'] ?? ''); }, (array)($a['unityPackages'] ?? [])))),
                         'performance' => array_values(array_filter(array_map(function ($p) { return isset($p['performanceRating']) ? (VRC_PLATFORM[$p['platform'] ?? ''] ?? '') . ': ' . $p['performanceRating'] : ''; }, (array)($a['unityPackages'] ?? []))))]];
                     break;
+                // ----- Favoriten wie in VRCX: VRChat-Gruppen + lokale Gruppen + Verlauf -----
+                case 'favs':
+                    $kind = vrc_fav_kind((string)($in['kind'] ?? 'friend'));
+                    $groups = vrc_fav_groups($acc, $kind);
+                    $items = vrc_fav_remote($acc, $kind);
+                    $count = array_count_values(array_column($items, 'group'));
+                    $out = ['kind' => $kind, 'limit' => vrc_fav_limits($acc)[$kind], 'groups' => array_values(array_map(function ($g) use ($count) { return $g + ['count' => $count[$g['name']] ?? 0]; }, $groups)),
+                            'items' => $items, 'local_groups' => vrc_local_groups($uid, $kind), 'local' => vrc_local_items($uid, $kind), 'history' => $kind === 'friend' ? [] : vrc_history($uid, $kind)];
+                    break;
+                case 'fav_status':
+                    // Für die Auswahl in Profil-, Welt- und Avatar-Dialogen: wo steckt die ID schon drin?
+                    $kind = vrc_fav_kind((string)($in['kind'] ?? ''));
+                    $prefix = ['friend' => 'usr', 'world' => 'wrld', 'avatar' => 'avtr'][$kind];
+                    $vid = $valid($id, $prefix);
+                    $groups = vrc_fav_groups($acc, $kind);
+                    $cur = null;
+                    foreach ((array)vrc_call($acc, 'GET', '/favorites', ['type' => $kind, 'n' => 400]) as $f) if (($f['favoriteId'] ?? '') === $vid) $cur = ['group' => (string)(((array)($f['tags'] ?? []))[0] ?? ''), 'fav_id' => (string)$f['id']];
+                    $out = ['groups' => array_values($groups), 'current' => $cur, 'local_groups' => vrc_local_groups($uid, $kind), 'local' => vrc_local_of($uid, $kind, $vid)];
+                    break;
+                case 'fav_set':
+                    // target = „remote:<gruppe>“ (VRChat, ersetzt die bisherige Gruppe) oder „local:<gruppe>“ (zusätzlich)
+                    $kind = vrc_fav_kind((string)($in['kind'] ?? ''));
+                    $vid = $valid($id, ['friend' => 'usr', 'world' => 'wrld', 'avatar' => 'avtr'][$kind]);
+                    $target = (string)($in['target'] ?? '');
+                    if (strpos($target, 'remote:') === 0) {
+                        $grp = substr($target, 7);
+                        if (!preg_match('/^[\w\-]{1,40}$/', $grp)) throw new RuntimeException('Ungültige Gruppe.');
+                        if (!empty($in['fav_id'])) { try { vrc_call($acc, 'DELETE', '/favorites/' . rawurlencode($valid((string)$in['fav_id'], 'fvrt'))); } catch (VrcAuthError $e) { throw $e; } catch (Throwable $e) {} }
+                        elseif ($kind !== 'friend') { try { vrc_call($acc, 'DELETE', '/favorites/' . rawurlencode($vid)); } catch (VrcAuthError $e) { throw $e; } catch (Throwable $e) {} }
+                        $r = vrc_call($acc, 'POST', '/favorites', [], ['type' => $kind, 'favoriteId' => $vid, 'tags' => [$grp]]);
+                        if ($kind === 'friend') vrc_db()->prepare('UPDATE friends SET fav_group = ? WHERE user_id = ? AND vrc_id = ?')->execute([$grp, $uid, $vid]);
+                        $out = ['msg' => 'In VRChat-Favoriten gespeichert.', 'fav_id' => $r['id'] ?? ''];
+                    } elseif (strpos($target, 'local:') === 0) {
+                        vrc_local_add($uid, $kind, substr($target, 6), ['id' => $vid, 'name' => (string)($in['name'] ?? ''), 'image' => (string)($in['image'] ?? ''), 'sub' => (string)($in['sub'] ?? '')]);
+                        if (!empty($in['from_local']) && $in['from_local'] !== substr($target, 6)) vrc_local_remove($uid, $kind, (string)$in['from_local'], $vid);
+                        $out = ['msg' => 'Lokal gemerkt in „' . substr($target, 6) . '“.'];
+                    } else throw new RuntimeException('Bitte eine Liste wählen.');
+                    break;
+                case 'fav_remove':
+                    $kind = vrc_fav_kind((string)($in['kind'] ?? ''));
+                    $vid = $valid($id, ['friend' => 'usr', 'world' => 'wrld', 'avatar' => 'avtr'][$kind]);
+                    if (isset($in['local'])) { vrc_local_remove($uid, $kind, (string)$in['local'], $vid); $out = ['msg' => 'Aus der lokalen Liste entfernt.']; break; }
+                    vrc_call($acc, 'DELETE', '/favorites/' . rawurlencode(!empty($in['fav_id']) ? $valid((string)$in['fav_id'], 'fvrt') : $vid));
+                    if ($kind === 'friend') vrc_db()->prepare("UPDATE friends SET fav_group = '' WHERE user_id = ? AND vrc_id = ?")->execute([$uid, $vid]);
+                    $out = ['msg' => 'Aus den VRChat-Favoriten entfernt.'];
+                    break;
+                case 'local_group':
+                    $kind = vrc_fav_kind((string)($in['kind'] ?? ''));
+                    $name = mb_substr(trim((string)($in['name'] ?? '')), 0, 40);
+                    $old = (string)($in['old'] ?? '');
+                    $op = (string)($in['op'] ?? 'create');
+                    $db = vrc_db();
+                    if ($op !== 'delete' && $name === '') throw new RuntimeException('Bitte einen Namen eingeben.');
+                    if ($op === 'create') $db->prepare('INSERT OR IGNORE INTO local_fav_groups (user_id, kind, name, sort) VALUES (?, ?, ?, (SELECT COALESCE(MAX(sort), 0) + 1 FROM local_fav_groups WHERE user_id = ? AND kind = ?))')->execute([$uid, $kind, $name, $uid, $kind]);
+                    if ($op === 'rename') { $db->prepare('UPDATE local_fav_groups SET name = ? WHERE user_id = ? AND kind = ? AND name = ?')->execute([$name, $uid, $kind, $old]); $db->prepare('UPDATE OR REPLACE local_favs SET grp = ? WHERE user_id = ? AND kind = ? AND grp = ?')->execute([$name, $uid, $kind, $old]); }
+                    if ($op === 'delete') { $db->prepare('DELETE FROM local_fav_groups WHERE user_id = ? AND kind = ? AND name = ?')->execute([$uid, $kind, $old]); $db->prepare('DELETE FROM local_favs WHERE user_id = ? AND kind = ? AND grp = ?')->execute([$uid, $kind, $old]); }
+                    $out = ['msg' => ['create' => 'Gruppe angelegt.', 'rename' => 'Umbenannt.', 'delete' => 'Gruppe gelöscht.'][$op] ?? 'OK'];
+                    break;
+                case 'fav_group_rename':
+                    $kind = vrc_fav_kind((string)($in['kind'] ?? ''));
+                    $grp = (string)($in['group'] ?? '');
+                    if (!preg_match('/^[\w\-]{1,40}$/', $grp)) throw new RuntimeException('Ungültige Gruppe.');
+                    $body = [];
+                    if (isset($in['name'])) $body['displayName'] = mb_substr(trim((string)$in['name']), 0, 30);
+                    if (in_array($in['visibility'] ?? '', ['private', 'friends', 'public'], true)) $body['visibility'] = $in['visibility'];
+                    vrc_call($acc, 'PUT', '/favorite/group/' . $kind . '/' . rawurlencode($grp) . '/' . rawurlencode((string)$acc['vrc_id']), [], $body);
+                    $out = ['msg' => 'Gruppe gespeichert.'];
+                    break;
+                case 'history_clear':
+                    vrc_db()->prepare('DELETE FROM vrc_history WHERE user_id = ? AND kind = ?')->execute([$uid, vrc_fav_kind((string)($in['kind'] ?? ''))]);
+                    $out = ['msg' => 'Verlauf geleert.'];
+                    break;
+
                 case 'avatar_fav':
                     if (!empty($in['move'])) {   // in eine andere Favoritengruppe verschieben
                         $grp = preg_match('/^avatars\d{1,2}$/', (string)($in['group'] ?? '')) ? $in['group'] : 'avatars1';
@@ -528,6 +603,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     break;
                 case 'world':
                     $w = vrc_call($acc, 'GET', '/worlds/' . rawurlencode($valid($id, 'wrld')));
+                    vrc_history_add($uid, 'world', $w['id'], (string)($w['name'] ?? ''), (string)($w['thumbnailImageUrl'] ?? ''), (string)($w['authorName'] ?? ''));
                     vrc_db()->prepare('INSERT OR REPLACE INTO worlds (world_id, name, thumb, author, capacity, fetched) VALUES (?, ?, ?, ?, ?, ?)')
                             ->execute([$w['id'], $w['name'] ?? '?', $w['thumbnailImageUrl'] ?? '', $w['authorName'] ?? '', (int)($w['capacity'] ?? 0), time()]);
                     $instances = [];
@@ -776,6 +852,7 @@ session_write_close();
 <?php else: ?>
     <nav class="vx-tabs" id="tabs" role="tablist">
         <button type="button" class="vx-tabbtn active" data-tab="friends" role="tab"><span>👥</span>Freunde</button>
+        <button type="button" class="vx-tabbtn" data-tab="favs" role="tab"><span>⭐</span>Favoriten</button>
         <button type="button" class="vx-tabbtn" data-tab="feed" role="tab"><span>📜</span>Verlauf</button>
         <button type="button" class="vx-tabbtn" data-tab="stats" role="tab"><span>📈</span>Statistik</button>
         <button type="button" class="vx-tabbtn" data-tab="worlds" role="tab"><span>🌐</span>Welten</button>
@@ -919,6 +996,11 @@ session_write_close();
     <section class="vx-tab" data-pane="news" hidden>
         <div class="vx-tools"><div class="chips" id="newsKinds"></div><button type="button" class="btn btn-sm" id="newsRefresh" title="Neu laden">⟳</button></div>
         <div id="newsBox"></div>
+    </section>
+
+    <section class="vx-tab" data-pane="favs" hidden>
+        <div class="vx-chips" id="favKinds"><button type="button" class="chip on" data-fk="friend">👥 Freunde</button><button type="button" class="chip" data-fk="world">🌐 Welten</button><button type="button" class="chip" data-fk="avatar">🎭 Avatare</button></div>
+        <div class="vx-favwrap"><aside class="vx-favside" id="favSide"></aside><div class="vx-favmain" id="favMain"></div></div>
     </section>
 
     <section class="vx-tab" data-pane="groups" hidden>

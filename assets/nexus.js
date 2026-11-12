@@ -123,6 +123,7 @@
         if (name === 'worlds' && !loaded.worlds) loadWorlds('favorites');
         if (name === 'avatars' && !loaded.avatars) loadAvatars('mine');
         if (name === 'groups' && !loaded.groups) loadGroups();
+        if (name === 'favs' && (!loaded.favs || loaded.favsDirty)) { loaded.favs = true; loaded.favsDirty = false; loadFavs(); }
         if (name === 'notifs' && !loaded.notifs) loadNotifs();
         if (name === 'moderation') loadModeration();
         if (name === 'calendar') loadCalendar(false);
@@ -374,6 +375,7 @@
             + (u.is_friend ? '<button type="button" class="btn btn-sm btn-danger" data-act="unfriend">Freundschaft beenden</button>' : '<button type="button" class="btn btn-sm btn-gold" data-act="friend_request">＋ Freundschaftsanfrage</button>') + '</div>';
         const body = $('#userBody');
         body.innerHTML = h;
+        favPicker('friend', u.id, { name: u.name, image: u.image, sub: u.status_desc || '' }, u.is_friend);
         body.querySelector('.vx-note-form').addEventListener('submit', e => {
             e.preventDefault();
             const f = e.target;
@@ -473,6 +475,7 @@
             + '<label class="vx-auto"><input type="checkbox" name="invite_me" checked> mir sofort eine Einladung schicken</label><button class="btn btn-gold" style="margin-top:10px">＋ Instanz erstellen</button>'
             + (groups.length ? '' : '<p class="vx-small">Für Gruppen-Instanzen einmal den Reiter „Gruppen“ öffnen.</p>') + '</form></div></div>';
         $('#userBody').innerHTML = h;
+        favPicker('world', w.id, { name: w.name, image: w.image, sub: w.author }, true);
         const f = $('#newInst');
         f.type.addEventListener('change', () => { $('.vx-ni-group', f).hidden = f.type.value !== 'group'; });
         f.addEventListener('submit', e => {
@@ -663,10 +666,198 @@
         }).catch(fail(box));
     }
 
+    // ---------- Favoriten (wie VRCX): VRChat-Gruppen, lokale Gruppen, Verlauf ----------
+    const FAVK = { friend: ['👥', 'Freunde'], world: ['🌐', 'Welten'], avatar: ['🎭', 'Avatare'] };
+    const fv = Object.assign({ kind: 'friend', sel: null, cols: 'auto', q: '' }, store.get('favPrefs', {}), { q: '' });
+    let favData = null, favEdit = false, favChecked = new Set();
+    const favSave = () => store.set('favPrefs', { kind: fv.kind, sel: fv.sel, cols: fv.cols });
+    function loadFavs(kind) {
+        if (kind) { fv.kind = kind; fv.sel = null; favEdit = false; }
+        favSave();
+        const main = $('#favMain');
+        $('#favSide').innerHTML = '';
+        main.innerHTML = '<div class="vx-loading">Lade Favoriten …</div>';
+        $$('#favKinds [data-fk]').forEach(b => b.classList.toggle('on', b.dataset.fk === fv.kind));
+        api('favs', { kind: fv.kind }).then(d => { favData = d; favChecked.clear(); renderFavSide(); renderFavMain(); }).catch(fail(main));
+    }
+    const favLists = () => {
+        const d = favData;
+        return [...d.groups.map(g => ({ key: 'r:' + g.name, title: g.display, count: g.count, max: d.limit, vis: g.visibility, remote: g })),
+                ...d.local_groups.map(g => ({ key: 'l:' + g.name, title: g.name, count: d.local.filter(x => x.group === g.name).length, local: g })),
+                ...(fv.kind !== 'friend' ? [{ key: 'h', title: 'Lokaler Verlauf', count: d.history.length, max: 100, history: true }] : [])];
+    };
+    const VIS = { private: 'Privat', friends: 'Freunde', public: 'Öffentlich' };
+    function renderFavSide() {
+        const lists = favLists();
+        if (!lists.some(l => l.key === fv.sel)) fv.sel = lists.length ? lists[0].key : null;
+        const card = l => '<button type="button" class="vx-fgcard' + (l.key === fv.sel ? ' on' : '') + (l.remote ? ' remote' : '') + '" data-fsel="' + esc(l.key) + '"><span class="vx-fgtop"><b>' + esc(l.title) + '</b><em>' + l.count + (l.max ? '/' + l.max : '') + '</em></span>'
+            + '<span class="vx-fgbot"><small>' + (l.remote ? esc(VIS[l.vis] || l.vis) : l.history ? 'angesehene ' + FAVK[fv.kind][1] : 'nur im Dashboard') + '</small>' + (l.history || l.local || l.remote ? '<i data-fgmenu="' + esc(l.key) + '" title="Optionen">⋯</i>' : '') + '</span></button>';
+        $('#favSide').innerHTML = '<div class="vx-fghead"><b>VRChat-Favoriten</b><button type="button" class="vx-icbtn" data-freload title="Neu laden">⟳</button></div>' + lists.filter(l => l.remote).map(card).join('')
+            + (lists.some(l => l.remote) ? '' : '<div class="vx-small">Keine VRChat-Gruppen.</div>')
+            + '<div class="vx-fghead"><b>Lokale Favoriten</b></div>' + lists.filter(l => l.local).map(card).join('')
+            + '<button type="button" class="vx-fgnew" data-fgnew>＋ Neue Gruppe</button>'
+            + (fv.kind !== 'friend' ? '<div class="vx-fghead"><b>Lokaler Verlauf</b></div>' + lists.filter(l => l.history).map(card).join('') : '');
+    }
+    function favItems() {
+        const d = favData, k = fv.sel || '';
+        if (k.startsWith('r:')) return d.items.filter(x => x.group === k.slice(2)).map(x => Object.assign({ src: 'remote' }, x));
+        if (k.startsWith('l:')) return d.local.filter(x => x.group === k.slice(2)).map(x => Object.assign({ src: 'local' }, x, Object.assign({}, fv.kind === 'friend' ? friendLive(x.id) : {})));
+        if (k === 'h') return d.history.map(x => Object.assign({ src: 'history' }, x));
+        return [];
+    }
+    function friendLive(id) {
+        const f = friendById(id);
+        if (!f) return {};
+        const where = f.state === 'offline' ? '' : (f.loc && f.loc.world_name ? f.loc.world_name : f.state === 'active' ? 'Web/App' : '');
+        return { name: f.name, image: f.image, sub: f.status_desc || where, state: f.state, status: f.status, color: f.trust[1] };
+    }
+    function renderFavMain() {
+        const main = $('#favMain'), l = favLists().find(x => x.key === fv.sel);
+        if (!l) { main.innerHTML = '<div class="vx-empty">Keine Liste ausgewählt.</div>'; return; }
+        let list = favItems();
+        const q = fv.q.toLowerCase();
+        if (q) list = list.filter(x => (x.name + ' ' + (x.sub || '')).toLowerCase().includes(q));
+        if (fv.kind === 'friend') list.sort((a, b) => ((a.state || 'offline') === 'offline') - ((b.state || 'offline') === 'offline') || String(a.name).localeCompare(String(b.name), 'de'));
+        const cols = fv.cols === 'auto' ? '' : ' style="grid-template-columns:repeat(' + (+fv.cols) + ',minmax(0,1fr))"';
+        main.innerHTML = '<div class="vx-fmhead"><h3>' + esc(l.title) + ' <small>' + l.count + (l.max ? '/' + l.max : '') + '</small></h3>'
+            + '<input type="search" id="favQ" placeholder="Filtern …" value="' + esc(fv.q) + '"><select id="favCols" title="Spalten">' + ['auto', '1', '2', '3', '4', '5'].map(c => '<option value="' + c + '"' + (fv.cols === c ? ' selected' : '') + '>' + (c === 'auto' ? 'Spalten: auto' : c + ' Spalten') + '</option>').join('') + '</select>'
+            + (l.history ? '' : '<label class="vx-auto vx-editsw"><input type="checkbox" id="favEditSw"' + (favEdit ? ' checked' : '') + '> Bearbeiten</label>') + '</div>'
+            + (favEdit && !l.history ? '<div class="vx-fbulk"><span>' + favChecked.size + ' ausgewählt</span><select id="favBulkTo"><option value="">Verschieben nach …</option>' + moveOptions(l.key) + '</select><button type="button" class="btn btn-sm btn-danger" id="favBulkDel">Entfernen</button><button type="button" class="btn btn-sm" id="favBulkAll">Alle wählen</button></div>' : '')
+            + (list.length ? '<div class="vx-fgrid ' + fv.kind + '"' + cols + '>' + list.map((x, i) => favCard(x, i)).join('') + '</div>' : '<div class="vx-empty">' + (q ? 'Keine Treffer.' : 'Diese Liste ist leer.' + (fv.kind !== 'friend' && l.local ? ' Im ' + (fv.kind === 'world' ? 'Welt' : 'Avatar') + '-Dialog unter „⭐ Merken in“ hinzufügen.' : '')) + '</div>');
+        main._list = list;
+        const fq = $('#favQ');
+        fq.addEventListener('input', () => { fv.q = fq.value; const p = fq.selectionStart; renderFavMain(); const n = $('#favQ'); n.focus(); n.setSelectionRange(p, p); });
+        $('#favCols').addEventListener('change', e => { fv.cols = e.target.value; favSave(); renderFavMain(); });
+        if ($('#favEditSw')) $('#favEditSw').addEventListener('change', e => { favEdit = e.target.checked; favChecked.clear(); renderFavMain(); });
+        if ($('#favBulkTo')) {
+            $('#favBulkTo').addEventListener('change', e => { if (e.target.value) bulk(e.target.value); });
+            $('#favBulkDel').addEventListener('click', () => bulk(''));
+            $('#favBulkAll').addEventListener('click', () => { list.forEach(x => favChecked.add(x.id)); renderFavMain(); });
+        }
+    }
+    function favCard(x, i) {
+        const dot = fv.kind === 'friend' ? '<span class="vx-fdot" style="background:' + esc((ST[x.state === 'offline' || !x.state ? 'offline' : x.status] || ST.offline || {}).color || '#666') + '"></span>' : '';
+        return '<div class="vx-fcard' + (fv.kind === 'friend' && (!x.state || x.state === 'offline') ? ' off' : '') + '" data-fi="' + i + '" tabindex="0">'
+            + (favEdit ? '<input type="checkbox" class="vx-fchk" data-fchk="' + esc(x.id) + '"' + (favChecked.has(x.id) ? ' checked' : '') + '>' : '')
+            + '<span class="vx-fimg">' + img(vrcImg(x.image), fv.kind === 'friend' ? 'vx-av' : 'vx-fthumb', x.name) + dot + '</span>'
+            + '<span class="vx-ftxt"><b' + (x.color ? ' style="color:' + esc(x.color) + '"' : '') + '>' + esc(x.name || x.id) + (x.locked ? ' 🔒' : '') + '</b><small>' + esc(x.sub || '') + '</small></span>'
+            + '<button type="button" class="vx-fmenu" data-fmenu="' + i + '" title="Optionen">⋯</button></div>';
+    }
+    const vrcImg = u => u || '';
+    function moveOptions(exclude) {
+        const d = favData;
+        return '<optgroup label="VRChat-Favoriten">' + d.groups.filter(g => 'r:' + g.name !== exclude).map(g => '<option value="remote:' + esc(g.name) + '">♥ ' + esc(g.display) + ' (' + g.count + '/' + d.limit + ')</option>').join('') + '</optgroup>'
+            + '<optgroup label="Lokal">' + d.local_groups.filter(g => 'l:' + g.name !== exclude).map(g => '<option value="local:' + esc(g.name) + '">📌 ' + esc(g.name) + '</option>').join('') + '</optgroup>';
+    }
+    function favMove(x, target) {
+        const from = fv.sel || '';
+        const data = { kind: fv.kind, id: x.id, target, name: x.name || '', image: x.image || '', sub: x.sub || '' };
+        if (from.startsWith('r:') && target.startsWith('remote:')) data.fav_id = x.fav_id || '';
+        if (from.startsWith('l:') && target.startsWith('local:')) data.from_local = from.slice(2);
+        return api('fav_set', data).then(r => {
+            // Verschieben = an alter Stelle entfernen (VRChat → lokal bzw. lokal → VRChat)
+            if (from.startsWith('r:') && target.startsWith('local:')) return api('fav_remove', { kind: fv.kind, id: x.id, fav_id: x.fav_id || '' }).then(() => r);
+            if (from.startsWith('l:') && target.startsWith('remote:')) return api('fav_remove', { kind: fv.kind, id: x.id, local: from.slice(2) }).then(() => r);
+            return r;
+        });
+    }
+    function favDel(x) {
+        const from = fv.sel || '';
+        if (from === 'h') return Promise.resolve({ msg: '' });
+        return api('fav_remove', from.startsWith('l:') ? { kind: fv.kind, id: x.id, local: from.slice(2) } : { kind: fv.kind, id: x.id, fav_id: x.fav_id || '' });
+    }
+    async function bulk(target) {
+        const list = ($('#favMain')._list || []).filter(x => favChecked.has(x.id));
+        if (!list.length) return toast('Nichts ausgewählt.', true);
+        if (!target && !confirm(list.length + ' Einträge entfernen?')) return;
+        let ok = 0;
+        for (const x of list) { try { await (target ? favMove(x, target) : favDel(x)); ok++; } catch (e) { toast(e.message, true); } }
+        toast(ok + ' ' + (target ? 'verschoben' : 'entfernt') + '.');
+        loadFavs();
+    }
+    function popMenu(anchor, items) {
+        $$('.vx-pop').forEach(p => p.remove());
+        const p = document.createElement('div');
+        p.className = 'vx-pop';
+        p.innerHTML = items.map((it, i) => it === '-' ? '<hr>' : it.head ? '<div class="vx-pophead">' + esc(it.head) + '</div>' : '<button type="button" data-pi="' + i + '"' + (it.bad ? ' class="bad"' : '') + '>' + esc(it.label) + '</button>').join('');
+        document.body.append(p);
+        const r = anchor.getBoundingClientRect();
+        p.style.top = Math.min(window.scrollY + r.bottom + 4, window.scrollY + window.innerHeight - p.offsetHeight - 8) + 'px';
+        p.style.left = Math.max(8, Math.min(window.scrollX + r.right - p.offsetWidth, window.scrollX + document.documentElement.clientWidth - p.offsetWidth - 8)) + 'px';
+        p.addEventListener('click', e => { const b = e.target.closest('[data-pi]'); if (b) { p.remove(); items[+b.dataset.pi].fn(); } });
+        setTimeout(() => document.addEventListener('click', function off(e) { if (!p.contains(e.target)) { p.remove(); document.removeEventListener('click', off); } }), 0);
+    }
+    const openFavItem = x => fv.kind === 'friend' ? openUser(x.id) : fv.kind === 'world' ? openWorld(x.id) : openAvatar(x.id);
+    function favEntryMenu(btn, x) {
+        const d = favData, from = fv.sel || '', items = [{ label: '🔎 Öffnen', fn: () => openFavItem(x) }, { label: '⧉ ID kopieren', fn: () => copy(x.id) }, '-', { head: from === 'h' ? 'Merken in …' : 'Verschieben nach …' }];
+        d.groups.filter(g => 'r:' + g.name !== from).forEach(g => items.push({ label: '♥ ' + g.display + ' (' + g.count + '/' + d.limit + ')', fn: () => (from === 'h' ? api('fav_set', { kind: fv.kind, id: x.id, target: 'remote:' + g.name }) : favMove(x, 'remote:' + g.name)).then(r => { toast(r.msg); loadFavs(); }).catch(e => toast(e.message, true)) }));
+        d.local_groups.filter(g => 'l:' + g.name !== from).forEach(g => items.push({ label: '📌 ' + g.name, fn: () => (from === 'h' ? api('fav_set', { kind: fv.kind, id: x.id, target: 'local:' + g.name, name: x.name, image: x.image, sub: x.sub }) : favMove(x, 'local:' + g.name)).then(r => { toast(r.msg); loadFavs(); }).catch(e => toast(e.message, true)) }));
+        if (from !== 'h') items.push('-', { label: '🗑 Entfernen', bad: true, fn: () => favDel(x).then(r => { toast(r.msg); loadFavs(); }).catch(e => toast(e.message, true)) });
+        popMenu(btn, items);
+    }
+    function favGroupMenu(btn, key) {
+        const l = favLists().find(x => x.key === key);
+        if (!l) return;
+        if (l.remote) popMenu(btn, [
+            { label: '✎ Umbenennen', fn: () => { const n = prompt('Neuer Name (max. 30 Zeichen):', l.title); if (n) api('fav_group_rename', { kind: fv.kind, group: l.remote.name, name: n }).then(r => { toast(r.msg); loadFavs(); }).catch(e => toast(e.message, true)); } },
+            { head: 'Sichtbarkeit' }, ...['private', 'friends', 'public'].map(v => ({ label: (l.vis === v ? '● ' : '○ ') + VIS[v], fn: () => api('fav_group_rename', { kind: fv.kind, group: l.remote.name, visibility: v }).then(r => { toast(r.msg); loadFavs(); }).catch(e => toast(e.message, true)) }))]);
+        if (l.local) popMenu(btn, [
+            { label: '✎ Umbenennen', fn: () => { const n = prompt('Neuer Name:', l.title); if (n && n !== l.title) api('local_group', { kind: fv.kind, op: 'rename', old: l.title, name: n }).then(r => { toast(r.msg); fv.sel = 'l:' + n; loadFavs(); }).catch(e => toast(e.message, true)); } },
+            { label: '🗑 Gruppe löschen', bad: true, fn: () => { if (confirm('Lokale Gruppe „' + l.title + '“ mit ' + l.count + ' Einträgen löschen?')) api('local_group', { kind: fv.kind, op: 'delete', old: l.title }).then(r => { toast(r.msg); loadFavs(); }).catch(e => toast(e.message, true)); } }]);
+        if (l.history) popMenu(btn, [{ label: '🗑 Verlauf leeren', bad: true, fn: () => { if (confirm('Verlauf leeren?')) api('history_clear', { kind: fv.kind }).then(r => { toast(r.msg); loadFavs(); }).catch(e => toast(e.message, true)); } }]);
+    }
+    const copy = t => (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast('Kopiert.')).catch(() => prompt('Kopieren:', t));
+    $('#favKinds').addEventListener('click', e => { const b = e.target.closest('[data-fk]'); if (b) loadFavs(b.dataset.fk); });
+    $('#favSide').addEventListener('click', e => {
+        const m = e.target.closest('[data-fgmenu]');
+        if (m) { e.stopPropagation(); favGroupMenu(m, m.dataset.fgmenu); return; }
+        if (e.target.closest('[data-freload]')) return loadFavs();
+        if (e.target.closest('[data-fgnew]')) { const n = prompt('Name der neuen lokalen Gruppe:'); if (n) api('local_group', { kind: fv.kind, op: 'create', name: n }).then(r => { toast(r.msg); fv.sel = 'l:' + n.trim(); loadFavs(); }).catch(x => toast(x.message, true)); return; }
+        const c = e.target.closest('[data-fsel]');
+        if (c) { fv.sel = c.dataset.fsel; favSave(); favChecked.clear(); renderFavSide(); renderFavMain(); }
+    });
+    $('#favMain').addEventListener('click', e => {
+        const list = $('#favMain')._list || [];
+        const ck = e.target.closest('[data-fchk]');
+        if (ck) { e.stopPropagation(); if (ck.checked) favChecked.add(ck.dataset.fchk); else favChecked.delete(ck.dataset.fchk); const s = $('.vx-fbulk span'); if (s) s.textContent = favChecked.size + ' ausgewählt'; return; }
+        const m = e.target.closest('[data-fmenu]');
+        if (m) { e.stopPropagation(); favEntryMenu(m, list[+m.dataset.fmenu]); return; }
+        const c = e.target.closest('[data-fi]');
+        if (c && !e.target.closest('select, input')) { if (favEdit) { const x = list[+c.dataset.fi]; if (favChecked.has(x.id)) favChecked.delete(x.id); else favChecked.add(x.id); renderFavMain(); } else openFavItem(list[+c.dataset.fi]); }
+    });
+
+    // Auswahl „⭐ Merken in …“ für Profil-, Welt- und Avatar-Dialoge
+    function favPicker(kind, id, meta, isFriend) {
+        const head = $('#userBody .vx-u-head, #userBody .vx-w-head');
+        if (!head) return;
+        const box = document.createElement('div');
+        box.className = 'vx-favpick';
+        box.innerHTML = '<span class="vx-small">⭐ Lade Favoriten …</span>';
+        head.insertAdjacentElement('afterend', box);
+        api('fav_status', { kind, id }).then(d => {
+            const cur = d.current;
+            const remote = kind === 'friend' && !isFriend ? '' : '<label>♥ VRChat-Favorit <select data-fpremote><option value="">– keiner –</option>' + d.groups.map(g => '<option value="' + esc(g.name) + '"' + (cur && cur.group === g.name ? ' selected' : '') + '>' + esc(g.display) + '</option>').join('') + '</select></label>';
+            box.innerHTML = remote + '<span class="vx-fplocal">📌 Lokal: ' + d.local_groups.map(g => '<button type="button" class="vx-fpchip' + (d.local.includes(g.name) ? ' on' : '') + '" data-fplocal="' + esc(g.name) + '">' + (d.local.includes(g.name) ? '✓ ' : '＋ ') + esc(g.name) + '</button>').join('') + '<button type="button" class="vx-fpchip new" data-fpnew>＋ neue Gruppe</button></span>';
+            const sel = box.querySelector('[data-fpremote]');
+            if (sel) sel.addEventListener('change', () => {
+                const p = sel.value ? api('fav_set', { kind, id, target: 'remote:' + sel.value, fav_id: cur ? cur.fav_id : '' }) : api('fav_remove', { kind, id, fav_id: cur ? cur.fav_id : '' });
+                p.then(r => { toast(r.msg); if (r.fav_id) d.current = { group: sel.value, fav_id: r.fav_id }; if (loaded.favs) loaded.favsDirty = true; }).catch(x => toast(x.message, true));
+            });
+            box.addEventListener('click', e => {
+                const b = e.target.closest('[data-fplocal]');
+                if (b) {
+                    const on = b.classList.contains('on'), g = b.dataset.fplocal;
+                    (on ? api('fav_remove', { kind, id, local: g }) : api('fav_set', Object.assign({ kind, id, target: 'local:' + g }, meta))).then(r => { toast(r.msg); b.classList.toggle('on', !on); b.textContent = (!on ? '✓ ' : '＋ ') + g; }).catch(x => toast(x.message, true));
+                }
+                if (e.target.closest('[data-fpnew]')) { const n = prompt('Name der neuen lokalen Gruppe:'); if (n) api('fav_set', Object.assign({ kind, id, target: 'local:' + n.trim() }, meta)).then(r => { toast(r.msg); box.remove(); favPicker(kind, id, meta, isFriend); }).catch(x => toast(x.message, true)); }
+            });
+        }).catch(x => { box.innerHTML = '<span class="vx-small">⭐ ' + esc(x.message) + '</span>'; });
+    }
+
     // ---------- Gruppen ----------
     const can = (g, p) => g.owner || g.perms.includes('*') || g.perms.includes(p);
     // Gruppenliste: gestapelte, kompakte Zeilen (Moderiert oben), Details öffnen sich im Popup
-    const gPrefs = Object.assign({ q: '', sort: 'name', closed: {} }, store.get('groupPrefs', {}));
+    const gPrefs = Object.assign({ q: '', sort: 'name', closed: {}, view: 'grid', cols: 'auto' }, store.get('groupPrefs', {}));
     function loadGroups() {
         $('#groupsBox').innerHTML = '<div class="vx-loading">Lade Gruppen …</div>';
         api('groups').then(d => {
@@ -680,13 +871,18 @@
         const q = gPrefs.q.toLowerCase();
         const sorter = (a, b) => gPrefs.sort === 'members' ? b.members - a.members : gPrefs.sort === 'short' ? String(a.short).localeCompare(String(b.short), 'de') : a.name.localeCompare(b.name, 'de');
         const list = all.filter(g => !q || (g.name + ' ' + g.short).toLowerCase().includes(q));
-        const row = g => '<button type="button" class="vx-grow' + (g.mod ? ' mod' : '') + '" data-group="' + esc(g.id) + '">' + img(g.icon, 'vx-g-icon', '')
+        const tile = g => '<button type="button" class="vx-gtile' + (g.mod ? ' mod' : '') + '" data-group="' + esc(g.id) + '">' + (/^https:/.test(g.banner || '') ? '<span class="vx-gtile-ban" style="background-image:url(\'' + esc(g.banner.replace(/['"()\\\s]/g, encodeURIComponent)) + '\')"></span>' : '<span class="vx-gtile-ban none"></span>')
+            + img(g.icon, 'vx-g-icon', '') + '<b>' + esc(g.name) + '</b><small>' + esc(g.short) + ' · 👥 ' + Number(g.members).toLocaleString('de-DE') + '</small>'
+            + '<span class="vx-grow-b">' + (g.owner ? '<span class="vx-pill" style="--pc:#f3c262">👑 Besitzer</span>' : g.mod ? '<span class="vx-pill" style="--pc:#50fa7b">🛡️ Mod</span>' : '') + (g.rep ? '<span class="vx-pill rep">★</span>' : '') + '</span></button>';
+        const row = g => gPrefs.view === 'grid' ? tile(g) : '<button type="button" class="vx-grow' + (g.mod ? ' mod' : '') + '" data-group="' + esc(g.id) + '">' + img(g.icon, 'vx-g-icon', '')
             + '<span class="vx-grow-n"><b>' + esc(g.name) + '</b><small>' + esc(g.short) + '</small></span>'
             + '<span class="vx-grow-b">' + (g.owner ? '<span class="vx-pill" style="--pc:#f3c262">👑 Besitzer</span>' : g.mod ? '<span class="vx-pill" style="--pc:#50fa7b" title="' + esc(g.perms.join(', ')) + '">🛡️ Mod</span>' : '')
             + (g.rep ? '<span class="vx-pill rep">★</span>' : '') + '</span><span class="vx-grow-m">👥 ' + Number(g.members).toLocaleString('de-DE') + '</span><span class="vx-grow-c">›</span></button>';
-        const sec = (key, title, items) => items.length ? '<div class="vx-gstack' + (gPrefs.closed[key] ? ' closed' : '') + '" data-gsec="' + key + '"><button type="button" class="vx-gstack-h">' + title + ' <small>' + items.length + '</small></button><div class="vx-gstack-b">' + items.map(row).join('') + '</div></div>' : '';
+        const sec = (key, title, items) => items.length ? '<div class="vx-gstack' + (gPrefs.closed[key] ? ' closed' : '') + '" data-gsec="' + key + '"><button type="button" class="vx-gstack-h">' + title + ' <small>' + items.length + '</small></button><div class="vx-gstack-b' + (gPrefs.view === 'grid' ? ' grid' : '') + '"' + (gPrefs.view === 'grid' && gPrefs.cols !== 'auto' ? ' style="grid-template-columns:repeat(' + (+gPrefs.cols) + ',minmax(0,1fr))"' : '') + '>' + items.map(row).join('') + '</div></div>' : '';
         const owned = list.filter(g => g.owner).sort(sorter), mod = list.filter(g => g.mod && !g.owner).sort(sorter), rest = list.filter(g => !g.mod).sort(sorter);
         $('#groupsBox').innerHTML = '<div class="vx-tools vx-gtools"><input type="search" id="gFilter" placeholder="Gruppen filtern …" value="' + esc(gPrefs.q) + '" aria-label="Gruppen filtern">'
+            + '<span class="vx-seg"><button type="button" data-gview="grid" class="' + (gPrefs.view === 'grid' ? 'on' : '') + '" title="Raster">▦</button><button type="button" data-gview="list" class="' + (gPrefs.view === 'list' ? 'on' : '') + '" title="Liste">☰</button></span>'
+            + (gPrefs.view === 'grid' ? '<select id="gCols" aria-label="Spalten">' + ['auto', '2', '3', '4', '5', '6'].map(c => '<option value="' + c + '"' + (gPrefs.cols === c ? ' selected' : '') + '>' + (c === 'auto' ? 'Spalten: auto' : c + ' Spalten') + '</option>').join('') + '</select>' : '')
             + '<select id="gSort" aria-label="Sortierung"><option value="name">Name A–Z</option><option value="members">Meiste Mitglieder</option><option value="short">Kürzel</option></select>'
             + '<span class="vx-small">' + all.length + ' Gruppen · ' + all.filter(g => g.mod).length + ' mit Moderationsrechten</span></div>'
             + (all.length ? sec('own', '👑 Eigene Gruppen', owned) + sec('mod', '🛡️ Gruppen, die du moderierst', mod) + sec('rest', '👥 Weitere Gruppen', rest) || '<div class="vx-empty">Keine Treffer.</div>' : '<div class="vx-empty">Du bist in keiner Gruppe.</div>');
@@ -694,12 +890,14 @@
         const f = $('#gFilter');
         f.addEventListener('input', () => { gPrefs.q = f.value; store.set('groupPrefs', gPrefs); const pos = f.selectionStart; renderGroups(); const nf = $('#gFilter'); nf.focus(); nf.setSelectionRange(pos, pos); });
         $('#gSort').addEventListener('change', e => { gPrefs.sort = e.target.value; store.set('groupPrefs', gPrefs); renderGroups(); });
+        $$('[data-gview]').forEach(b => b.addEventListener('click', () => { gPrefs.view = b.dataset.gview; store.set('groupPrefs', gPrefs); renderGroups(); }));
+        if ($('#gCols')) $('#gCols').addEventListener('change', e => { gPrefs.cols = e.target.value; store.set('groupPrefs', gPrefs); renderGroups(); });
     }
     $('#groupsBox').addEventListener('click', e => {
         const h = e.target.closest('.vx-gstack-h');
         if (h) { const sx = h.parentElement; sx.classList.toggle('closed'); gPrefs.closed[sx.dataset.gsec] = sx.classList.contains('closed'); store.set('groupPrefs', gPrefs); return; }
         const b = e.target.closest('[data-group]');
-        if (b) { $$('.vx-grow').forEach(x => x.classList.toggle('on', x === b)); openGroup(b.dataset.group); }
+        if (b) { $$('.vx-grow, .vx-gtile').forEach(x => x.classList.toggle('on', x === b)); openGroup(b.dataset.group); }
     });
     const gModal = $('#groupModal');
     const closeGroup = () => { gModal.hidden = true; if ($('#userModal').hidden) document.body.style.overflow = ''; };
@@ -1313,6 +1511,7 @@
                 + '<dl class="vx-u-facts">' + (a.created ? '<dt>Erstellt</dt><dd>' + esc(isoDate(a.created)) + '</dd>' : '') + (a.updated ? '<dt>Aktualisiert</dt><dd>' + esc(isoDate(a.updated)) + '</dd>' : '')
                 + '<dt>Avatar-ID</dt><dd><code class="vx-id">' + esc(a.id) + '</code> <button type="button" class="vx-copy" data-copy="' + esc(a.id) + '">⧉</button></dd></dl>'
                 + (a.status !== 'public' && !a.current ? '<p class="vx-small">Hinweis: Private Avatare anderer Personen kann VRChat nicht anziehen lassen.</p>' : '');
+            favPicker('avatar', a.id, { name: a.name, image: a.image, sub: a.author }, true);
             const sel = $('#avSel');
             if (sel) sel.onclick = () => api('avatar_select', { id: a.id }).then(r => { toast(r.msg); load(false); openAvatar(a.id); }).catch(x => toast(x.message, true));
             $('#avFav').onclick = () => api('avatar_fav', { id: a.id, on: 1 }).then(r => toast(r.msg)).catch(x => toast(x.message, true));

@@ -142,6 +142,16 @@ function vrc_db(): PDO {
             PRAGMA user_version = 4;
         ");
     }
+    if ((int)$db->query('PRAGMA user_version')->fetchColumn() < 5) {
+        $db->exec("
+            CREATE TABLE local_fav_groups (user_id INTEGER NOT NULL, kind TEXT NOT NULL, name TEXT NOT NULL, sort INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (user_id, kind, name));
+            CREATE TABLE local_favs (user_id INTEGER NOT NULL, kind TEXT NOT NULL, grp TEXT NOT NULL, vrc_id TEXT NOT NULL, name TEXT NOT NULL DEFAULT '',
+                                     image TEXT NOT NULL DEFAULT '', sub TEXT NOT NULL DEFAULT '', added INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (user_id, kind, grp, vrc_id));
+            CREATE TABLE vrc_history (user_id INTEGER NOT NULL, kind TEXT NOT NULL, vrc_id TEXT NOT NULL, name TEXT NOT NULL DEFAULT '', image TEXT NOT NULL DEFAULT '',
+                                      sub TEXT NOT NULL DEFAULT '', ts INTEGER NOT NULL, PRIMARY KEY (user_id, kind, vrc_id));
+            PRAGMA user_version = 5;
+        ");
+    }
     return $db;
 }
 
