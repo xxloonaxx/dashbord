@@ -20,6 +20,21 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.1
+
+- **Menü oben** im Aufbau wie VRCX: Verlauf · Freunde-Orte · Spiel-Log · Spielerliste · Suche · Favoriten ▾ · Sozial ▾ · Benachrichtigungen · Meine Avatare · Welten · Diagramme ▾ · Werkzeuge · Spiel & OSC · Mehr ▾ · Direkt-Zugriff (<kbd>Strg</kbd>+<kbd>D</kbd>)
+- 👥 **Spielerliste**: wer gerade in deiner Instanz ist – Zeit, Name, Rang, Status, Symbole (VRChat+, altersverifiziert 18+, Freund, Favorit, Instanz-Besitzer, Early Adopter, VRChat-Team …), Plattform, Sprachen, Bio-Links, VRChat-Notiz und eigenes Memo; dazu, wer gegangen ist
+- 📍 **Freunde-Orte**: Freunde nach Instanz gruppiert
+- 📊 **Diagramme**: Instanz-Aktivität (Zeitleiste pro Tag), Gemeinsame Freunde (Netz-Grafik), Beliebte Welten, Statistik
+- 🧰 **Werkzeuge**: Screenshot-Manager (Welt & Mitspieler im Bild), Ordner-Verknüpfungen (VRChat-Fotos, Steam-Screenshots, Daten, Logs, Absturzberichte),
+  Gruppen-Einladungen, blockierte Gruppen, VRChat-`config.json`, Startoptionen (Desktop-Modus, Profil, FPS …), VRChat-Registry-Sicherung, Auto-Status & Einladungen,
+  Store & Kaufverlauf, Einladungsnachrichten, eigene Meldungen, Info-Push, Exporte (Discord-Namen, Memos → VRChat-Notizen, Freunde, eigene Avatare)
+- ⚙ **Einstellungen** (über 70): System, Oberfläche (Akzentfarbe, Zoom, Schrift, Menü …), Sozial, Benachrichtigungen (Windows, Vorlesen, Nicht-stören),
+  VR (XSOverlay, Chatbox), Medien (Screenshot-Infos, Kopien), Integrationen (Stream Deck, Discord-Status, Discord-Webhook), Erweitert
+- 🎛 **Stream-Deck-Plugin** (`streamdeck/`): Status setzen, Chatbox-Nachricht/Vorlage, Avatar-Parameter (umschalten/halten/setzen), OSC-Eingaben,
+  Chatbox-Rotator, Freunde online & Spieler in der Instanz als Live-Anzeige, VRChat starten, Instanz neu betreten, VRC Nexus öffnen.
+  Installation: Werkzeuge → Stream Deck → „Plugin installieren“ (oder `VRC-Nexus.streamDeckPlugin` doppelklicken); dort auch Port und Zugangsschlüssel.
+
 Nicht dabei (braucht das Dashboard): Discord-Teilen und die Kalender-Verbindung zum Dashboard-Kalender.
 
 ## Installation
@@ -27,7 +42,7 @@ Nicht dabei (braucht das Dashboard): Discord-Teilen und die Kalender-Verbindung 
 - **VRC-Nexus-…-Setup.exe** – normaler Installer (Startmenü, Deinstallieren), oder
 - **VRC-Nexus-…-portable.exe** – ohne Installation, einfach starten.
 
-Beide gibt es unter GitHub → **Actions → „VRC Nexus App (Windows)“ → neuester Lauf → Artifacts → VRC-Nexus-Windows**.
+Beide gibt es unter GitHub → **Actions → „VRC Nexus App (Windows)“ → neuester Lauf → Artifacts → VRC-Nexus-Windows** (dort liegt auch `VRC-Nexus.streamDeckPlugin`).
 Windows SmartScreen fragt beim ersten Start nach (die EXE ist nicht signiert): „Weitere Informationen“ → „Trotzdem ausführen“.
 
 ## Sicherheit & Daten
@@ -50,3 +65,6 @@ Aufbau: `main.js` (Electron: Fenster, Infobereich, Protokoll `app://`), `backend
 Portierung der PHP-Module des Dashboards nach JavaScript), `renderer/` (Oberfläche, identisch zur Dashboard-Version).
 Die Oberfläche spricht weiter „nexus.php“ an – in der App beantwortet das das eingebaute Backend.
 `tests/server.js` stellt dieselbe App zum Testen im Browser bereit.
+`backend/tools.js` enthält Spielerliste, Werkzeuge, Benachrichtigungen und die lokale Schnittstelle (`backend/localapi.js`, nur 127.0.0.1, mit Zugangsschlüssel),
+`backend/settings.js` das Einstellungs-Schema. Das Stream-Deck-Plugin liegt in `streamdeck/` (`npm run streamdeck` packt es, `node tests/streamdeck.test.js <port> <schlüssel>` testet es
+gegen eine nachgebaute Stream-Deck-App).

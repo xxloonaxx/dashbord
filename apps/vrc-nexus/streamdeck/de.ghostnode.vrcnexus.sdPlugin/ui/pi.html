@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>VRC Nexus</title>
+<style>
+    body { background: #2d2d2d; color: #d8d8d8; font: 13px "Segoe UI", -apple-system, sans-serif; margin: 0; padding: 6px 12px 12px; }
+    .row { display: flex; align-items: center; margin: 6px 0; gap: 8px; }
+    .row > label:first-child { width: 96px; flex: none; color: #969696; text-align: right; }
+    input[type=text], input[type=number], input[type=password], select, textarea { flex: 1; background: #3d3d3d; color: #d8d8d8; border: 0; border-radius: 3px; padding: 5px 6px; font: inherit; min-width: 0; }
+    textarea { min-height: 52px; resize: vertical; }
+    button { background: #3d3d3d; color: #d8d8d8; border: 1px solid #555; border-radius: 3px; padding: 4px 10px; font: inherit; cursor: pointer; }
+    button:hover { border-color: #38d5e6; }
+    details { border-top: 1px solid #444; margin-top: 10px; padding-top: 6px; }
+    summary { cursor: pointer; color: #38d5e6; margin-bottom: 4px; }
+    .hint { color: #8a8a8a; font-size: 11px; margin: 2px 0 6px 104px; }
+    .ok { color: #50fa7b; } .bad { color: #ff7070; }
+    [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div id="sec-status" hidden>
+    <div class="row"><label>Status</label><select data-s="status"><option value="join me">🔵 Join Me</option><option value="active">🟢 Online</option><option value="ask me">🟠 Ask Me</option><option value="busy">🔴 Beschäftigt</option></select></div>
+    <div class="row"><label>Statustext</label><input type="text" data-s="desc" maxlength="32" placeholder="optional, max. 32 Zeichen"></div>
+    <div class="hint">Die Taste leuchtet, wenn dieser Status gerade aktiv ist.</div>
+</div>
+<div id="sec-chatbox" hidden>
+    <div class="row"><label>Art</label><select data-s="mode"><option value="text">Eigener Text</option><option value="preset">Gespeicherte Vorlage</option></select></div>
+    <div class="row" data-show="mode=text"><label>Text</label><textarea data-s="text" maxlength="144" placeholder="Hallo zusammen! 🦊"></textarea></div>
+    <div class="row" data-show="mode=text"><label>Ton</label><input type="checkbox" data-s="sound"> <span class="hint" style="margin:0">Benachrichtigungston in VRChat</span></div>
+    <div class="row" data-show="mode=preset"><label>Vorlage</label><select data-s="preset" id="presetSel"><option value="">(erst Verbindung testen)</option></select></div>
+</div>
+<div id="sec-param" hidden>
+    <div class="row"><label>Parameter</label><input type="text" data-s="name" placeholder="z. B. EarsUp"></div>
+    <div class="row"><label>Modus</label><select data-s="mode"><option value="toggle">Umschalten (an/aus)</option><option value="hold">Halten (gedrückt = an)</option><option value="set">Wert setzen</option></select></div>
+    <div class="row" data-show="mode=set"><label>Typ</label><select data-s="type"><option value="bool">Bool</option><option value="int">Ganzzahl (0–255)</option><option value="float">Kommazahl (-1…1)</option></select></div>
+    <div class="row" data-show="mode=set"><label>Wert</label><input type="text" data-s="value" placeholder="1 / 0 / 42 / 0,5"></div>
+    <div class="hint">Namen aus „Spiel &amp; OSC“ in VRC Nexus (dort werden empfangene Parameter angezeigt).</div>
+</div>
+<div id="sec-input" hidden>
+    <div class="row"><label>Eingabe</label><select data-s="input">
+        <option value="Jump">Springen</option><option value="Voice">Mikrofon an/aus</option><option value="QuickMenuToggleLeft">Quick-Menü</option><option value="Run">Rennen</option>
+        <option value="MoveForward">Vorwärts</option><option value="MoveBackward">Rückwärts</option><option value="MoveLeft">Links</option><option value="MoveRight">Rechts</option>
+        <option value="LookLeft">Links drehen</option><option value="LookRight">Rechts drehen</option><option value="ComfortLeft">Schnell links drehen</option><option value="ComfortRight">Schnell rechts drehen</option>
+        <option value="GrabRight">Greifen</option><option value="UseRight">Benutzen</option><option value="DropRight">Loslassen</option><option value="PanicButton">Panik-Knopf (Safe Mode)</option></select></div>
+    <div class="row"><label>Halten</label><input type="checkbox" data-s="hold"> <span class="hint" style="margin:0">solange die Taste gedrückt ist</span></div>
+</div>
+<div id="sec-friends" hidden>
+    <div class="row"><label>Anzeige</label><select data-s="show"><option value="in_game">Im Spiel</option><option value="online">Online (Website/App)</option><option value="both">Beides</option></select></div>
+    <div class="row"><label>Beim Drücken</label><select data-s="tab"><option value="locations">Freunde-Orte öffnen</option><option value="friends">Freundesliste öffnen</option><option value="feed">Verlauf öffnen</option></select></div>
+</div>
+<div id="sec-open" hidden>
+    <div class="row"><label>Seite</label><select data-s="tab"><option value="">zuletzt offene Seite</option><option value="players">Spielerliste</option><option value="locations">Freunde-Orte</option><option value="friends">Freundesliste</option>
+        <option value="feed">Verlauf</option><option value="notifs">Benachrichtigungen</option><option value="avatars">Meine Avatare</option><option value="worlds">Welten</option><option value="tools">Werkzeuge</option><option value="client">Spiel &amp; OSC</option><option value="settings">Einstellungen</option></select></div>
+</div>
+<div id="sec-info" hidden><div class="hint" style="margin-left:0" id="infoText"></div></div>
+
+<details id="conn">
+    <summary>🔌 Verbindung zu VRC Nexus (gilt für alle Tasten)</summary>
+    <div class="row"><label>Port</label><input type="number" id="gPort" min="1024" max="65535" value="17865"></div>
+    <div class="row"><label>Schlüssel</label><input type="password" id="gToken" placeholder="aus VRC Nexus → Werkzeuge → Stream Deck"></div>
+    <div class="row"><label></label><button type="button" id="test">Verbindung testen</button><span id="testRes"></span></div>
+    <div class="hint">In VRC Nexus: Einstellungen → Integrationen → „Lokale Schnittstelle“ einschalten.</div>
+</details>
+
+<script>
+let sock = null, uuid = '', actionInfo = {}, settings = {}, globals = {};
+const $ = s => document.querySelector(s);
+const kind = () => (actionInfo.action || '').split('.').pop();
+const INFO = { rotator: 'Schaltet den Chatbox-Rotator aus „Spiel & OSC“ an oder aus.', players: 'Zeigt die Spielerzahl deiner Instanz. Drücken öffnet die Spielerliste.',
+    launch: 'Startet VRChat mit den Startoptionen aus VRC Nexus (Werkzeuge → Startoptionen).', rejoin: 'Betritt die Instanz, in der du gerade bist, neu.' };
+function send(event, payload) { sock.send(JSON.stringify(Object.assign({ event, context: uuid }, payload !== undefined ? { payload } : {}))); }
+function showDeps() {
+    document.querySelectorAll('[data-show]').forEach(el => {
+        const [k, v] = el.dataset.show.split('=');
+        const box = el.closest('[id^=sec-]');
+        const cur = (box.querySelector('[data-s="' + k + '"]') || {}).value;
+        el.hidden = cur !== v;
+    });
+}
+function fill() {
+    const k = kind();
+    const sec = $('#sec-' + k) || (INFO[k] ? $('#sec-info') : null);
+    if (sec) sec.hidden = false;
+    if (INFO[k]) $('#infoText').textContent = INFO[k];
+    document.querySelectorAll('#sec-' + k + ' [data-s]').forEach(el => {
+        const v = settings[el.dataset.s];
+        if (el.type === 'checkbox') el.checked = !!v; else if (v !== undefined) el.value = v;
+    });
+    showDeps();
+}
+document.addEventListener('input', e => {
+    const el = e.target.closest('[data-s]');
+    if (!el) return;
+    settings[el.dataset.s] = el.type === 'checkbox' ? el.checked : el.value;
+    send('setSettings', settings);
+    showDeps();
+});
+function saveGlobals() { globals = { port: Number($('#gPort').value) || 17865, token: $('#gToken').value.trim() }; send('setGlobalSettings', globals); }
+$('#gPort').addEventListener('change', saveGlobals);
+$('#gToken').addEventListener('change', saveGlobals);
+$('#test').addEventListener('click', () => { saveGlobals(); $('#testRes').textContent = '…'; setTimeout(() => sock.send(JSON.stringify({ action: actionInfo.action, event: 'sendToPlugin', context: uuid, payload: { cmd: 'test' } })), 300); });
+
+// wird von der Stream-Deck-App aufgerufen
+window.connectElgatoStreamDeckSocket = function (port, inUuid, registerEvent, info, inActionInfo) {
+    uuid = inUuid;
+    actionInfo = JSON.parse(inActionInfo || '{}');
+    settings = (actionInfo.payload && actionInfo.payload.settings) || {};
+    sock = new WebSocket('ws://127.0.0.1:' + port);
+    sock.onopen = () => { sock.send(JSON.stringify({ event: registerEvent, uuid })); send('getGlobalSettings'); fill(); };
+    sock.onmessage = e => {
+        const m = JSON.parse(e.data);
+        if (m.event === 'didReceiveGlobalSettings') {
+            globals = m.payload.settings || {};
+            $('#gPort').value = globals.port || 17865;
+            $('#gToken').value = globals.token || '';
+            if (!globals.token) $('#conn').open = true;
+        }
+        if (m.event === 'sendToPropertyInspector' && m.payload.cmd === 'test') {
+            const r = $('#testRes');
+            if (m.payload.ok) {
+                const st = m.payload.state;
+                r.className = 'ok';
+                r.textContent = '✔ verbunden' + (st.me ? ' als ' + st.me.name : '');
+                const sel = $('#presetSel');
+                if (sel) {
+                    sel.innerHTML = st.presets.length ? st.presets.map(p => '<option value="' + p.id + '">' + p.label.replace(/[<>&]/g, '') + '</option>').join('') : '<option value="">(keine Vorlagen in VRC Nexus)</option>';
+                    if (settings.preset) sel.value = settings.preset;
+                }
+            } else { r.className = 'bad'; r.textContent = '✖ ' + m.payload.error; }
+        }
+    };
+};
+</script>
+</body>
+</html>

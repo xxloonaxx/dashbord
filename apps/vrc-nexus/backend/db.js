@@ -7,10 +7,12 @@
 const fs = require('fs');
 const path = require('path');
 
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS user_cache (vrc_id TEXT PRIMARY KEY, data TEXT NOT NULL, fetched INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS mutual_cache (vrc_id TEXT PRIMARY KEY, data TEXT NOT NULL, fetched INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS accounts (user_id INTEGER PRIMARY KEY, vrc_id TEXT NOT NULL, display_name TEXT NOT NULL DEFAULT '', avatar TEXT NOT NULL DEFAULT '',
     cookies TEXT NOT NULL, me_json TEXT NOT NULL DEFAULT '{}', connected_at INTEGER NOT NULL, last_sync INTEGER NOT NULL DEFAULT 0, last_offline INTEGER NOT NULL DEFAULT 0,
     last_error TEXT NOT NULL DEFAULT '', my_location TEXT NOT NULL DEFAULT '', fav_groups TEXT NOT NULL DEFAULT '{}');

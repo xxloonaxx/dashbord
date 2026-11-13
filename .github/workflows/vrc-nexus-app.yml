@@ -55,6 +55,9 @@ jobs:
       - name: Tests (Windows)
         working-directory: app
         run: npm test
+      - name: Stream-Deck-Plugin packen
+        working-directory: app
+        run: node streamdeck/tools/pack.js
       - name: EXE bauen (portabel + Installer)
         working-directory: app
         run: npx electron-builder --win portable nsis --x64 --publish never
@@ -64,4 +67,5 @@ jobs:
           name: VRC-Nexus-Windows
           path: |
             app/dist/*.exe
+            app/streamdeck/VRC-Nexus.streamDeckPlugin
             app/README.md

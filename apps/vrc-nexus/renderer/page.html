@@ -48,24 +48,47 @@
         <div id="clientPane" class="nc"></div>
     </details>
 {{END_LOGIN}}{{IF_CONNECTED}}
-    <nav class="vx-tabs" id="tabs" role="tablist">
-        <button type="button" class="vx-tabbtn active" data-tab="friends" role="tab"><span>👥</span>Freunde</button>
-        <button type="button" class="vx-tabbtn" data-tab="favs" role="tab"><span>⭐</span>Favoriten</button>
-        <button type="button" class="vx-tabbtn" data-tab="feed" role="tab"><span>📜</span>Verlauf</button>
-        <button type="button" class="vx-tabbtn" data-tab="stats" role="tab"><span>📈</span>Statistik</button>
-        <button type="button" class="vx-tabbtn" data-tab="worlds" role="tab"><span>🌐</span>Welten</button>
-        <button type="button" class="vx-tabbtn" data-tab="avatars" role="tab"><span>🎭</span>Avatare</button>
-        <button type="button" class="vx-tabbtn" data-tab="groups" role="tab"><span>🛡️</span>Gruppen</button>
-        <button type="button" class="vx-tabbtn" data-tab="calendar" role="tab"><span>📅</span>Kalender</button>
-        <button type="button" class="vx-tabbtn" data-tab="gallery" role="tab"><span>🖼️</span>Galerie</button>
-        <button type="button" class="vx-tabbtn" data-tab="notifs" role="tab"><span>🔔</span>Benachrichtigungen</button>
-        <button type="button" class="vx-tabbtn" data-tab="shop" role="tab"><span>🛒</span>Shop</button>
-        <button type="button" class="vx-tabbtn" data-tab="global" role="tab"><span>🌍</span>VRChat</button>
-        <button type="button" class="vx-tabbtn" data-tab="moderation" role="tab"><span>🚫</span>Moderation</button>
-        <button type="button" class="vx-tabbtn" data-tab="news" role="tab"><span>📰</span>Info-Push</button>
-        <button type="button" class="vx-tabbtn" data-tab="search" role="tab"><span>🔍</span>Suche</button>
-        <button type="button" class="vx-tabbtn" data-tab="client" role="tab"><span>🎮</span>Spiel &amp; OSC</button>
-        <button type="button" class="vx-tabbtn" data-tab="account" role="tab"><span>⚙</span>Konto</button>
+    <nav class="vx-menu" id="tabs" role="menubar">
+        <button type="button" class="vx-tabbtn" data-tab="feed"><span>📰</span><em>Verlauf</em></button>
+        <button type="button" class="vx-tabbtn" data-tab="locations"><span>📍</span><em>Freunde-Orte</em></button>
+        <button type="button" class="vx-tabbtn" data-tab="client" data-msub="log"><span>🕘</span><em>Spiel-Log</em></button>
+        <button type="button" class="vx-tabbtn" data-tab="players"><span>👥</span><em>Spielerliste</em></button>
+        <button type="button" class="vx-tabbtn" data-tab="search"><span>🔍</span><em>Suche</em></button>
+        <div class="vx-mgroup"><button type="button" class="vx-mtop" aria-haspopup="true"><span>⭐</span><em>Favoriten</em><i>▾</i></button>
+            <div class="vx-mdrop" role="menu">
+                <button type="button" class="vx-tabbtn" data-tab="favs" data-msub="friend"><span>👤</span><em>Lieblings-Freunde</em></button>
+                <button type="button" class="vx-tabbtn" data-tab="favs" data-msub="world"><span>🌐</span><em>Lieblings-Welten</em></button>
+                <button type="button" class="vx-tabbtn" data-tab="favs" data-msub="avatar"><span>🎭</span><em>Lieblings-Avatare</em></button>
+            </div></div>
+        <div class="vx-mgroup"><button type="button" class="vx-mtop" aria-haspopup="true"><span>🫂</span><em>Sozial</em><i>▾</i></button>
+            <div class="vx-mdrop" role="menu">
+                <button type="button" class="vx-tabbtn" data-tab="feed" data-msub="friendlog"><span>📜</span><em>Freundes-Log</em></button>
+                <button type="button" class="vx-tabbtn" data-tab="friends"><span>👥</span><em>Freundesliste</em></button>
+                <button type="button" class="vx-tabbtn" data-tab="groups"><span>🛡️</span><em>Gruppen</em></button>
+                <button type="button" class="vx-tabbtn" data-tab="moderation"><span>🚫</span><em>Moderation</em></button>
+            </div></div>
+        <button type="button" class="vx-tabbtn" data-tab="notifs"><span>🔔</span><em>Benachrichtigungen</em></button>
+        <button type="button" class="vx-tabbtn" data-tab="avatars"><span>🎭</span><em>Meine Avatare</em></button>
+        <button type="button" class="vx-tabbtn" data-tab="worlds"><span>🌐</span><em>Welten</em></button>
+        <div class="vx-mgroup"><button type="button" class="vx-mtop" aria-haspopup="true"><span>📊</span><em>Diagramme</em><i>▾</i></button>
+            <div class="vx-mdrop" role="menu">
+                <button type="button" class="vx-tabbtn" data-tab="activity"><span>📈</span><em>Instanz-Aktivität</em></button>
+                <button type="button" class="vx-tabbtn" data-tab="network"><span>🕸</span><em>Gemeinsame Freunde</em></button>
+                <button type="button" class="vx-tabbtn" data-tab="global"><span>🔥</span><em>Beliebte Welten &amp; VRChat weltweit</em></button>
+                <button type="button" class="vx-tabbtn" data-tab="stats"><span>⏱</span><em>Statistik &amp; Spielzeit</em></button>
+            </div></div>
+        <button type="button" class="vx-tabbtn" data-tab="tools"><span>🧰</span><em>Werkzeuge</em></button>
+        <button type="button" class="vx-tabbtn" data-tab="client"><span>🎮</span><em>Spiel &amp; OSC</em></button>
+        <div class="vx-mgroup vx-mright"><button type="button" class="vx-mtop" aria-haspopup="true"><span>⚙</span><em>Mehr</em><i>▾</i></button>
+            <div class="vx-mdrop" role="menu">
+                <button type="button" class="vx-tabbtn" data-tab="settings"><span>⚙</span><em>Einstellungen</em></button>
+                <button type="button" class="vx-tabbtn" data-tab="account"><span>👤</span><em>Konto &amp; Status</em></button>
+                <button type="button" class="vx-tabbtn" data-tab="calendar"><span>📅</span><em>Gruppen-Kalender</em></button>
+                <button type="button" class="vx-tabbtn" data-tab="gallery"><span>🖼️</span><em>Galerie &amp; Inventar</em></button>
+                <button type="button" class="vx-tabbtn" data-tab="shop"><span>🛒</span><em>Shop &amp; Käufe</em></button>
+                <button type="button" class="vx-tabbtn" data-tab="news"><span>📰</span><em>Info-Push</em></button>
+            </div></div>
+        <button type="button" class="vx-direct" id="directBtn" title="ID oder Link aus der Zwischenablage öffnen"><span>🧭</span><em>Direkt-Zugriff</em><kbd>Strg</kbd><kbd>D</kbd></button>
     </nav>
     <div class="vx-bar" id="syncBar">
         <span id="syncInfo">Lade …</span>
@@ -252,6 +275,13 @@
         <div class="vx-results" id="searchBox"></div>
     </section>
 
+    <section class="vx-tab" data-pane="locations" hidden><div id="locBox"></div></section>
+    <section class="vx-tab" data-pane="players" hidden><div id="plBox"><div class="vx-loading">Lade Spielerliste …</div></div></section>
+    <section class="vx-tab" data-pane="activity" hidden><div id="actBox"></div></section>
+    <section class="vx-tab" data-pane="network" hidden><div id="netBox"></div></section>
+    <section class="vx-tab" data-pane="tools" hidden><div id="toolsBox"></div></section>
+    <section class="vx-tab" data-pane="settings" hidden><div id="setBox"></div></section>
+
     <section class="vx-tab" data-pane="client" hidden><div id="clientPane" class="nc"></div></section>
     <section class="vx-tab" data-pane="account" hidden>
         <div class="vx-cols">
@@ -307,15 +337,7 @@
                 <button type="button" class="btn btn-danger" id="logoutBtn">VRChat abmelden &amp; trennen</button>
             </div>
             
-                <div class="panel">
-                    <div class="panel-title">Einstellungen (Admin)</div>
-                    <form id="settingsForm">
-                        <label class="field">User-Agent für VRChat</label>
-                        <input type="text" name="user_agent" value="{{UA}}" placeholder="{{UA_DEFAULT}}">
-                        <p class="vx-small">VRChat bittet darum, dass sich Programme mit Name, Version und einer Kontaktmöglichkeit ausweisen, z. B. <code>MeinDashboard/1.0 kontakt@example.org</code>.</p>
-                        <button class="btn btn-sm">Speichern</button>
-                    </form>
-                </div>
+
         </div>
         <p class="vx-small">Tastenkürzel: <kbd>Strg</kbd>+<kbd>K</kbd> Befehlspalette · <kbd>Strg</kbd>+<kbd>V</kbd> ID/Link öffnen · <kbd>/</kbd> Suche · <kbd>R</kbd> aktualisieren · <kbd>1</kbd>–<kbd>9</kbd>, <kbd>0</kbd> Reiter · <kbd>Esc</kbd> schließen</p>
         <div class="panel"><div class="panel-title">📋 Direkt-Zugriff – was erkannt wird</div>
@@ -337,5 +359,6 @@
 </script>
 <script src="js/nexus.js"></script>
 <script src="js/nexus-client.js"></script>
+<script src="js/nexus-app.js"></script>
 </body>
 </html>

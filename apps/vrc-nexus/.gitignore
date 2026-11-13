@@ -2,3 +2,5 @@ node_modules/
 dist/
 tests/test.sqlite
 tests/*.sqlite
+tests/userdata/
+streamdeck/VRC-Nexus.streamDeckPlugin

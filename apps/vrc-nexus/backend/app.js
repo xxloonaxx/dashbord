@@ -10,6 +10,8 @@ const { VrcAuthError, UserError, now, str, int, cut, arr } = U;
 const { Vrc, UID, SYNC_MIN, OFFLINE_SYNC, FEED_KEEP_DAYS, VERSION } = require('./vrchat');
 const { Extra, NOTIF_TYPES, NOTIF_RESPONSES } = require('./extra');
 const { GameLog, KINDS } = require('./gamelog');
+const { Settings } = require('./settings');
+const { Tools } = require('./tools');
 
 const RENDERER = path.join(__dirname, '..', 'renderer');
 const truthy = v => v !== undefined && v !== null && v !== '' && v !== '0' && v !== false && v !== 'false';
@@ -18,13 +20,15 @@ const json = (data, status = 200) => ({ status, headers: { 'Content-Type': 'appl
 const download = (body, type, name) => ({ status: 200, headers: { 'Content-Type': type, 'Content-Disposition': 'attachment; filename="' + name + '"' }, body });
 
 class NexusApp {
-    /** @param opts { db, crypt, notify(title, body) } */
+    /** @param opts { db, crypt, notify(title, body, silent), host: Hilfsfunktionen von Electron (siehe tools.js) } */
     constructor(opts) {
         this.db = opts.db;
+        this.settings = new Settings(opts.db);
         this.vrc = new Vrc(opts.db, opts.crypt);
         this.x = new Extra(this.vrc);
-        this.game = new GameLog(opts.db, { onEvent: opts.onGameEvent });
-        this.vrc.onWatch = (name, world) => opts.notify && opts.notify('🟢 ' + name + ' ist online', world ? 'in ' + world : 'gerade ins Spiel gekommen');
+        this.game = new GameLog(opts.db, { onEvent: e => { if (this.tools) this.tools.onGameEvent(e); if (opts.onGameEvent) opts.onGameEvent(e); } });
+        this.tools = new Tools(this, Object.assign({ notify: opts.notify }, opts.host || {}));
+        this.vrc.onWatch = (name, world) => { if (this.settings.get('notify.watch')) this.tools.alert('🟢 ' + name + ' ist online', world ? 'in ' + world : 'gerade ins Spiel gekommen'); };
         this.notify = opts.notify || null;
     }
 
@@ -36,6 +40,8 @@ class NexusApp {
             if (q.has('img')) return await this.image(q.get('img'), int(q.get('v')) || 1);
             if (q.has('export')) return download(this.vrc.exportCsv(q.get('export') === 'feed' ? 'feed' : 'friends'), 'text/csv; charset=utf-8', 'vrc-nexus_' + (q.get('export') === 'feed' ? 'verlauf' : 'freunde') + '_' + new Date().toISOString().slice(0, 10) + '.csv');
             if (q.has('client_export')) return download(this.game.exportCsv(), 'text/csv; charset=utf-8', 'vrchat-spiellog_' + new Date().toISOString().slice(0, 10) + '.csv');
+            if (q.has('shot')) { const r = await this.tools.shotImage(q.get('shot'), q.get('t') === '1'); return { status: 200, headers: { 'Content-Type': r.type, 'Cache-Control': 'private, max-age=3600' }, body: r.body }; }
+            if (q.has('tools_export')) return await this.toolsExport(q.get('tools_export'));
             if (q.has('ics')) return download(this.vrc.calendarIcs(), 'text/calendar; charset=utf-8', 'vrchat-events.ics');
             return { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }, body: this.page() };
         } catch (e) {
@@ -62,7 +68,7 @@ class NexusApp {
         html = block(html, '\\{\\{IF_LOGIN\\}\\}', '\\{\\{END_LOGIN\\}\\}', !acc);
         html = block(html, '\\{\\{IF_CONNECTED\\}\\}', '\\{\\{END_CONNECTED\\}\\}', !!acc);
         const status = ['join me', 'active', 'ask me', 'busy'].map(s => '<label style="--sc: ' + U.VRC_STATUS[s][1] + ';"><input type="radio" name="status" value="' + esc(s) + '"><span>' + esc(U.VRC_STATUS[s][0]) + '</span></label>').join('\n');
-        const vrcx = { connected: !!acc, status: Object.fromEntries(Object.entries(U.VRC_STATUS).map(([k, v]) => [k, { label: v[0], color: v[1] }])), syncMin: SYNC_MIN, discord: false, app: true, version: VERSION };
+        const vrcx = { ui: this.settings.ui(), connected: !!acc, status: Object.fromEntries(Object.entries(U.VRC_STATUS).map(([k, v]) => [k, { label: v[0], color: v[1] }])), syncMin: SYNC_MIN, discord: false, app: true, version: VERSION };
         const map = { LOGIN_HIDDEN: p ? 'hidden' : '', TFA_HIDDEN: p ? '' : 'hidden', TFA_TYPES: esc((p || []).join(',')), STATUS_RADIOS: status, SYNC_MIN: SYNC_MIN, OFFLINE_MIN: OFFLINE_SYNC / 60,
             FEED_DAYS: FEED_KEEP_DAYS, UA: esc(this.db.setting('vrc_user_agent', '')), UA_DEFAULT: esc(this.vrc.userAgent()), VRCX_JSON: JSON.stringify(vrcx).replace(/</g, '\\u003c') };
         return html.replace(/\{\{(\w+)\}\}/g, (m, k) => (k in map ? String(map[k]) : m));
@@ -88,6 +94,7 @@ class NexusApp {
             }
             if (act === 'cancel_login') { this.vrc.pending = null; return { ok: true }; }
             if (act.startsWith('client_')) return await this.client(act, input);
+            if (act.startsWith('tools_')) return await this.toolAction(act, input);
             const acc = this.vrc.account();
             if (!acc) throw new VrcAuthError('Kein VRChat-Konto verbunden.');
             return await this.action(act, input, files, acc, id, user, valid);
@@ -111,6 +118,66 @@ class NexusApp {
             case 'client_preset_save': g.presetSave(input.label, str(input.kind), input); return { presets: g.presets() };
             case 'client_preset_delete': g.presetDelete(input.preset); return { presets: g.presets() };
             case 'client_log_clear': return { deleted: g.clear() };
+        }
+        throw new UserError('Unbekannte Aktion.');
+    }
+
+    // ---------------- Werkzeuge, Einstellungen, Spielerliste (tools.js) ----------------
+    async toolsExport(kind) {
+        const t = this.tools, day = new Date().toISOString().slice(0, 10);
+        if (kind === 'discord') return download(t.csv('discord', t.discordNames()), 'text/csv; charset=utf-8', 'vrchat-discord-namen_' + day + '.csv');
+        if (kind === 'memos') return download(t.csv('memos', t.memos()), 'text/csv; charset=utf-8', 'vrc-nexus-memos_' + day + '.csv');
+        if (kind === 'avatars') return download(t.csv('avatars', await t.ownAvatars()), 'text/csv; charset=utf-8', 'meine-avatare_' + day + '.csv');
+        if (kind === 'settings') return download(JSON.stringify(Object.assign({}, this.settings.all(), { 'int.api_token': undefined }), null, 2), 'application/json', 'vrc-nexus-einstellungen.json');
+        throw new UserError('Unbekannter Export.');
+    }
+
+    async toolAction(act, input) {
+        const t = this.tools, s = this.settings;
+        const needAcc = () => { if (!this.vrc.account()) throw new VrcAuthError('Kein VRChat-Konto verbunden.'); };
+        switch (act) {
+            case 'tools_overview': return await t.overview();
+            case 'tools_settings': return { schema: s.schema(), settings: s.all(), status: { api: t.api.status(), rpc: s.get('int.rpc') ? t.rpc.status() : 'aus' } };
+            case 'tools_settings_save': { let data = {}; try { data = JSON.parse(str(input.data) || '{}'); } catch (e) { throw new UserError('Ungültige Daten.'); } return Object.assign(s.save(data), { msg: 'Gespeichert.' }); }
+            case 'tools_settings_reset': return { settings: s.reset(), msg: 'Alle Einstellungen zurückgesetzt.' };
+            case 'tools_streamdeck_install': {
+                const f = t.host.pluginFile;
+                if (!f || !fs.existsSync(f)) throw new UserError('Plugin-Datei nicht gefunden – sie liegt im GitHub-Artefakt „VRC-Nexus-Windows“ (VRC-Nexus.streamDeckPlugin).');
+                if (t.host.openPath) await t.host.openPath(f);
+                return { msg: 'Stream-Deck-App wird geöffnet – Installation dort bestätigen.' };
+            }
+            case 'tools_token': return { token: s.newToken(), msg: 'Neuer Zugangsschlüssel erstellt – im Stream-Deck-Plugin eintragen.' };
+            case 'tools_test_notify': return t.testAlert();
+            case 'tools_backup': return t.backupNow();
+            case 'tools_cache_clear': this.db.exec('DELETE FROM user_cache; DELETE FROM mutual_cache;'); return { msg: 'Zwischenspeicher geleert.' };
+            case 'tools_vacuum': this.db.exec('VACUUM'); this.db.save(); return { msg: 'Datenbank optimiert.' };
+            case 'tools_folder': return await t.openFolder(str(input.which));
+            case 'tools_players': return t.playersNow();
+            case 'tools_memo': needAcc(); return await t.memoSave(str(input.id), str(input.memo));
+            case 'tools_network': needAcc(); return t.network(truthy(input.start));
+            case 'tools_activity': return t.activity(str(input.day));
+            case 'tools_shots': return t.screenshots(str(input.q));
+            case 'tools_shot': { const f = t.shotPath(str(input.rel)); return { meta: t.shotMeta(f), rel: str(input.rel), name: path.basename(f), path: f }; }
+            case 'tools_shot_meta': { const f = t.shotPath(str(input.rel)); if (!/\.png$/i.test(f)) throw new UserError('Nur bei PNG möglich.'); t.writeMeta(f, truthy(input.clear) ? undefined : t.metaNow()); return { meta: t.shotMeta(f), msg: 'Aktuelle Welt & Mitspieler eingetragen.' }; }
+            case 'tools_shot_open': { const f = t.shotPath(str(input.rel)); if (t.host.openPath) await t.host.openPath(truthy(input.folder) ? path.dirname(f) : f); return { ok: true }; }
+            case 'tools_config': return t.configRead();
+            case 'tools_config_save': return t.configSave(input);
+            case 'tools_launch_save': { const c = t.launchSave(input); return { launch: c, args: t.launchArgs(c).join(' '), msg: 'Gespeichert.' }; }
+            case 'tools_launch': return await t.launch(str(input.location));
+            case 'tools_reg_list': return { list: t.regList(), windows: process.platform === 'win32' };
+            case 'tools_reg_backup': return await t.regBackup(str(input.label));
+            case 'tools_reg_restore': return await t.regRestore(str(input.name));
+            case 'tools_reg_delete': return t.regDelete(str(input.name));
+            case 'tools_auto_save': return { auto: t.autoSave(input), msg: 'Gespeichert.' };
+            case 'tools_group_invites': needAcc(); return await t.groupInvites();
+            case 'tools_group_blocked': needAcc(); return await t.groupBlocked();
+            case 'tools_group_act': needAcc(); return await t.groupAct(str(input.kind), str(input.id));
+            case 'tools_messages': needAcc(); return await t.messages(str(input.type) || 'message');
+            case 'tools_message_save': needAcc(); return await t.messageSave(str(input.type), input.slot, str(input.message));
+            case 'tools_reports': needAcc(); return await t.reports();
+            case 'tools_report_delete': needAcc(); return await t.reportDelete(str(input.id));
+            case 'tools_discord_names': return { rows: t.discordNames() };
+            case 'tools_memos_to_vrc': needAcc(); return await t.memosToVrc(truthy(input.overwrite));
         }
         throw new UserError('Unbekannte Aktion.');
     }

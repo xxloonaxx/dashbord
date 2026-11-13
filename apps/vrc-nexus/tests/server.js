@@ -16,8 +16,15 @@ const crypt = { encrypt: s => 'plain:' + Buffer.from(s).toString('base64'), decr
 
 (async () => {
     const db = await openDatabase(process.env.NEXUS_DATA || path.join(__dirname, 'test.sqlite'));
-    const nexus = new NexusApp({ db, crypt, notify: (t, b) => console.log('[Benachrichtigung]', t, b) });
+    const host = {
+        userData: process.env.NEXUS_USERDATA || path.join(__dirname, 'userdata'),
+        pluginFile: path.join(__dirname, '..', 'streamdeck', 'VRC-Nexus.streamDeckPlugin'),
+        openPath: p => console.log('[öffnen]', p), openExternal: u => console.log('[extern]', u), spawn: (e, a) => console.log('[starten]', e, a.join(' ')),
+        speak: t => console.log('[vorlesen]', t), showTab: t => console.log('[reiter]', t), setTray: t => { host.tray = t; }, setLoginItem: on => console.log('[autostart]', on),
+    };
+    const nexus = new NexusApp({ db, crypt, host, notify: (t, b) => console.log('[Benachrichtigung]', t, b) });
     nexus.game.start(1000);
+    nexus.tools.start();
     http.createServer(async (req, res) => {
         const url = new URL(req.url, 'http://127.0.0.1:' + port);
         if (url.pathname === '/' || url.pathname === '/nexus.php') {

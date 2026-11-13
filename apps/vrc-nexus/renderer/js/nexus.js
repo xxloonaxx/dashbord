@@ -112,12 +112,19 @@
     const TRUST_ORDER = ['VRChat-Team', 'Trusted User', 'Known User', 'User', 'New User', 'Visitor', 'Nuisance'];
 
     // ---------- Reiter ----------
-    const TABS = $$('#tabs [data-tab]').map(b => b.dataset.tab);
-    function tab(name) {
+    const TABS = [...new Set($$('#tabs [data-tab]').map(b => b.dataset.tab))];
+    function tab(name, sub) {
         if (!TABS.includes(name)) name = 'friends';
-        $$('#tabs [data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+        sub = sub || '';
+        let hit = false;
+        $$('#tabs [data-tab]').forEach(b => { const on = b.dataset.tab === name && (b.dataset.msub || '') === sub; hit = hit || on; b.classList.toggle('active', on); });
+        if (!hit) $$('#tabs [data-tab="' + name + '"]').forEach((b, i) => b.classList.toggle('active', i === 0));
+        $$('#tabs .vx-mgroup').forEach(g => { g.classList.toggle('active', !!g.querySelector('.active')); g.classList.remove('open'); });
         $$('.vx-tab').forEach(p => { p.hidden = p.dataset.pane !== name; });
         store.set('tab', name);
+        store.set('tabSub', sub);
+        if (name === 'favs' && sub && fv.kind !== sub) { fv.kind = sub; fv.sel = null; loaded.favsDirty = true; }
+        if (name === 'feed') { const ft = $('#feedType'); if (sub === 'friendlog') ft.value = 'friend_add,friend_remove'; else if (ft.value === 'friend_add,friend_remove' && store.get('tabSubPrev') === 'friendlog') ft.value = ''; store.set('tabSubPrev', sub); }
         if (name === 'feed') loadFeed(true);
         if (name === 'stats') loadStats();
         if (name === 'worlds' && !loaded.worlds) loadWorlds('favorites');
@@ -133,8 +140,14 @@
         if (name === 'news' && !loaded.news) loadNews();
         if (name === 'client' && window.NexusClient) window.NexusClient.open();
         if (name !== 'client' && window.NexusClient) window.NexusClient.close();
+        if (window.NexusApp) window.NexusApp.open(name, sub);
     }
-    $('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) tab(b.dataset.tab); });
+    $('#tabs').addEventListener('click', e => {
+        const top = e.target.closest('.vx-mtop');
+        if (top) { const g = top.parentNode, was = g.classList.contains('open'); $$('#tabs .vx-mgroup').forEach(x => x.classList.remove('open')); g.classList.toggle('open', !was); return; }
+        const b = e.target.closest('[data-tab]'); if (b) tab(b.dataset.tab, b.dataset.msub);
+    });
+    document.addEventListener('click', e => { if (!e.target.closest('#tabs')) $$('#tabs .vx-mgroup.open').forEach(x => x.classList.remove('open')); });
     document.addEventListener('keydown', e => {
         if (e.target.closest('input, textarea, select') || e.ctrlKey || e.metaKey || e.altKey || !$('#userModal').hidden) return;
         if (e.key === '/') { e.preventDefault(); tab('friends'); $('#friendSearch').focus(); }
@@ -315,7 +328,8 @@
     const FILTERS = ['#friendSearch', '#friendSort', '#friendPlatform', '#friendTrust', '#showOffline', '#onlyNotes', '#compactView'];
     FILTERS.forEach(s => {
         const el = $(s);
-        if (el.type === 'checkbox') el.checked = store.get('f' + s, false); else if (el.tagName === 'SELECT') el.value = store.get('f' + s, el.value);
+        const ui = window.VRCX.ui || {}, def = { '#showOffline': !!ui['social.show_offline'], '#compactView': !!ui['ui.compact'], '#friendSort': ui['social.sort'] || el.value }[s];
+        if (el.type === 'checkbox') el.checked = store.get('f' + s, def || false); else if (el.tagName === 'SELECT') el.value = store.get('f' + s, def || el.value);
         el.addEventListener('input', () => { if (el.type === 'checkbox' || el.tagName === 'SELECT') store.set('f' + s, el.type === 'checkbox' ? el.checked : el.value); renderFriends(); });
     });
 
@@ -1414,8 +1428,6 @@
         Notification.requestPermission().then(p => { if (p === 'granted') notify('VRC Nexus', 'So sehen Benachrichtigungen aus 🐾'); else toast('Benachrichtigungen sind im Browser blockiert.', true); });
     });
     $('#logoutBtn').addEventListener('click', () => { if (confirm('VRChat-Verbindung trennen? Freunde, Verlauf und Notizen bleiben gespeichert.')) api('logout').then(() => location.reload()).catch(x => toast(x.message, true)); });
-    const sf = $('#settingsForm');
-    if (sf) sf.addEventListener('submit', e => { e.preventDefault(); api('settings', { user_agent: sf.user_agent.value }).then(r => toast(r.msg)).catch(x => toast(x.message, true)); });
 
     // ---------- Gruppen-Moderation im Profil ----------
     const gcan = (g, p) => g.perms.includes('*') || g.perms.includes(p);
@@ -1834,6 +1846,8 @@
 
     // Start
     load(false).then(() => load(true)).finally(schedule);
-    tab(store.get('tab', 'friends'));
+    window.NexusUI = { tab, api, toast, esc, img, ago, hm, dur, clock, num, launch, openUser, openWorld, openAvatar, openInstance, openModal, closeModal, load, readClipboard,
+        state: () => state, statusDot, isoDT, renderFriends, store };
+    { const st = (window.VRCX.ui || {})['ui.start_tab']; if (st && st !== 'last') tab(st); else tab(store.get('tab', 'friends'), store.get('tabSub', '')); }
     setInterval(() => { if (state && !$('[data-pane=friends]').hidden) renderFriends(); }, 60000);
 })();
