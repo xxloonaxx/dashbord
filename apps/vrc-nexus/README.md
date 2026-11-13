@@ -20,6 +20,10 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.3.6
+- **📈 Instanz-Verlauf** (Diagramme → Rückblick): Spielerzahl einer Instanz über die Zeit als Diagramm, Höchststand, Schnitt, verschiedene Leute, wer wann kam und ging – für jeden Weltbesuch der letzten 30 Tage.
+- **🌍 Meine Welten:** Besuche, Favoriten, Spieler gerade, Heat/Beliebtheit deiner hochgeladenen Welten – mit „seit gestern“, „7 Tage“ und Verlaufslinie (täglich mitgeschrieben, sobald du die Seite öffnest).
+
 ### Neu in 1.3.5
 - **Update mit Fortschrittsbalken:** Prozent, MB, Geschwindigkeit und Restzeit im Banner oben und unter Einstellungen → System; danach „wird installiert“. Unter Windows zusätzlich am Taskleisten-Symbol.
 - **Android lädt Updates selbst** (mit Balken) und öffnet danach direkt die Installation. Beim ersten Mal fragt Android, ob VRC Nexus „unbekannte Apps installieren“ darf. Klappt das nicht, öffnet sich wie bisher der Browser-Download.

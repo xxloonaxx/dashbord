@@ -134,7 +134,7 @@ class NexusApp {
             if (act.startsWith('speech_')) { if (!this.speech) throw new UserError('Spracheingabe gibt es nur in der Windows-App.'); return await this.speech.action(act, input); }
             if (act === 'overlay_act') return await this.tools.apiAction(str(input.action), input);
             if (act === 'overlay_cfg') { const s = this.settings.all(); return { phrases: str(s['vr.overlay_phrases']).split('\n').map(x => x.trim()).filter(Boolean).slice(0, 40), translate: !!s['vr.overlay_translate'], target: str(s['tr.chat_target'] || '') }; }
-            if (act.startsWith('ins_')) return this.insights.action(act, input);
+            if (act.startsWith('ins_')) return await this.insights.action(act, input);
             if (act.startsWith('mod_')) return await this.mod.action(act, input);
             if (act.startsWith('coll_')) return await this.coll.action(act, input);
             if (act === 'osclog' || act === 'osclog_clear') return this.osclog.action(act, input);

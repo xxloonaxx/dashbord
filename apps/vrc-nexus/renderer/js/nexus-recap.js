@@ -41,8 +41,8 @@
             + '</div>';
     }
     function load() {
-        box.innerHTML = '<div class="nx-row rc-bar"><span class="chips">' + [['recap', '🎁 Rückblick'], ['photos', '📸 Foto-Verlauf'], ['friends', '💛 Freunde-Pflege']].map(v => '<button type="button" class="chip' + (view === v[0] ? ' on' : '') + '" data-rv="' + v[0] + '">' + v[1] + '</button>').join('') + '</span>'
-            + (view !== 'friends' ? '<span class="chips">' + [[7, 'Woche'], [30, 'Monat'], [365, 'Jahr']].map(v => '<button type="button" class="chip' + (days === v[0] ? ' on' : '') + '" data-rd="' + v[0] + '">' + v[1] + '</button>').join('') + '</span>' : '')
+        box.innerHTML = '<div class="nx-row rc-bar"><span class="chips">' + [['recap', '🎁 Rückblick'], ['photos', '📸 Foto-Verlauf'], ['inst', '📈 Instanz-Verlauf'], ['myworlds', '🌍 Meine Welten'], ['friends', '💛 Freunde-Pflege']].map(v => '<button type="button" class="chip' + (view === v[0] ? ' on' : '') + '" data-rv="' + v[0] + '">' + v[1] + '</button>').join('') + '</span>'
+            + (['recap', 'photos'].includes(view) ? '<span class="chips">' + [[7, 'Woche'], [30, 'Monat'], [365, 'Jahr']].map(v => '<button type="button" class="chip' + (days === v[0] ? ' on' : '') + '" data-rd="' + v[0] + '">' + v[1] + '</button>').join('') + '</span>' : '')
             + '</div><div id="rcBody"><div class="vx-loading">…</div></div>';
         const body = box.querySelector('#rcBody');
         if (view === 'recap') {
@@ -56,6 +56,22 @@
                     + '<div class="ph-strip">' + v.photos.map(p => p.exists ? '<a href="nexus.php?shot=' + encodeURIComponent(p.rel) + '" target="_blank" title="' + esc(p.name) + '"><img loading="lazy" src="nexus.php?shot=' + encodeURIComponent(p.rel) + '&amp;t=1" alt=""></a>' : '<span class="ph-miss" title="' + esc(p.name) + '">📷 nicht mehr da</span>').join('') + '</div></section>').join('')
                     : '<div class="nc-empty">Keine Screenshots im Zeitraum.</div>';
             }).catch(e => { body.innerHTML = '<div class="vx-error">⚠ ' + esc(e.message) + '</div>'; });
+        } else if (view === 'inst') {
+            if (MOBILE) { body.innerHTML = '<p class="muted">Der Instanz-Verlauf kommt aus dem Spiel-Log vom PC – in der Windows-App.</p>'; return; }
+            UI.api('ins_instances').then(d => {
+                if (!d.visits.length) { body.innerHTML = '<div class="nc-empty">Noch keine Weltbesuche im Spiel-Log.</div>'; return; }
+                body.innerHTML = '<div class="nx-row"><select id="rcInst">' + d.visits.map(v => '<option value="' + v.start + '">' + esc(UI.isoDT(v.start * 1000)) + ' · ' + esc(v.name) + ' · ' + hm(v.seconds) + '</option>').join('') + '</select></div><div id="rcInstBody"></div>';
+                instLoad(d.visits[0].start);
+            }).catch(e => { body.innerHTML = '<div class="vx-error">⚠ ' + esc(e.message) + '</div>'; });
+        } else if (view === 'myworlds') {
+            UI.api('ins_myworlds').then(d => {
+                const dv = (x, k) => x ? '<span class="' + (x[k] > 0 ? 'ok' : 'muted') + '">' + (x[k] > 0 ? '+' : '') + x[k].toLocaleString('de-DE') + '</span>' : '<span class="muted">–</span>';
+                body.innerHTML = d.worlds.length ? '<p class="muted small">Veränderungen werden ab dem ersten Öffnen dieser Seite täglich mitgeschrieben (seit ' + esc(d.since) + ').</p><div class="rc-grid">' + d.worlds.map(w => '<section class="panel mw"><div class="mw-head" data-world="' + esc(w.id) + '"' + (/^https:/.test(w.thumb) ? ' style="background-image:url(\'' + esc(w.thumb.replace(/['"()\\\s]/g, encodeURIComponent)) + '\')"' : '') + '><b>' + esc(w.name) + '</b><span class="vx-pill">' + esc(w.status) + '</span></div>'
+                    + '<table class="mw-tab"><tr><th></th><th>gesamt</th><th>seit gestern</th><th>7 Tage</th></tr><tr><td>👣 Besuche</td><td>' + w.visits.toLocaleString('de-DE') + '</td><td>' + dv(w.d1, 'v') + '</td><td>' + dv(w.d7, 'v') + '</td></tr>'
+                    + '<tr><td>⭐ Favoriten</td><td>' + w.favorites.toLocaleString('de-DE') + '</td><td>' + dv(w.d1, 'f') + '</td><td>' + dv(w.d7, 'f') + '</td></tr></table>'
+                    + '<div class="small">👥 gerade ' + w.occupants + (w.capacity ? ' / ' + w.capacity : '') + ' · 🔥 ' + w.heat + ' · Beliebtheit ' + w.popularity + '</div>' + spark(w.history) + '</section>').join('') + '</div>'
+                    : '<div class="nc-empty">Du hast keine eigenen Welten hochgeladen.</div>';
+            }).catch(e => { body.innerHTML = '<div class="vx-error">⚠ ' + esc(e.message) + '</div>'; });
         } else UI.api('ins_friends', { days: inactiveDays, q: nameQ }).then(d => { body.innerHTML = renderFriends(d); }).catch(e => { body.innerHTML = '<div class="vx-error">⚠ ' + esc(e.message) + '</div>'; });
     }
     box.addEventListener('click', e => {
@@ -65,6 +81,32 @@
     box.addEventListener('change', e => { if (e.target.id === 'rcInact') { inactiveDays = +e.target.value; load(); } });
     let qt = null;
     box.addEventListener('input', e => { if (e.target.id === 'rcNameQ') { nameQ = e.target.value; clearTimeout(qt); qt = setTimeout(() => { load(); setTimeout(() => { const i = box.querySelector('#rcNameQ'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 300); }, 500); } });
+    /** kleine Verlaufslinie der Besuche (aus den täglichen Momentaufnahmen) */
+    function spark(h) {
+        if (!h || h.length < 2) return '<div class="muted small">Verlauf erscheint ab dem zweiten Tag.</div>';
+        const vals = h.map(x => x[1]), lo = Math.min(...vals), hi = Math.max(...vals), W = 260, H = 40;
+        const pts = vals.map((v, i) => (i / (vals.length - 1) * W).toFixed(1) + ',' + (H - (hi === lo ? H / 2 : (v - lo) / (hi - lo) * (H - 4) + 2)).toFixed(1)).join(' ');
+        return '<svg class="mw-spark" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="Besuche der letzten ' + h.length + ' Tage"><polyline points="' + pts + '" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
+    }
+    function instLoad(start) {
+        const b = box.querySelector('#rcInstBody');
+        if (!b) return;
+        UI.api('ins_instance', { start }).then(d => {
+            const W = 800, H = 160, t0 = d.start, t1 = Math.max(d.end, t0 + 60), peak = Math.max(1, d.peak);
+            const x = t => ((t - t0) / (t1 - t0) * W).toFixed(1), y = n => (H - n / peak * (H - 10)).toFixed(1);
+            let path = 'M0,' + H, last = 0;
+            for (const [t, n] of d.points) { path += ' L' + x(t) + ',' + y(last) + ' L' + x(t) + ',' + y(n); last = n; }
+            path += ' L' + W + ',' + y(last);
+            b.innerHTML = '<div class="rc-hero"><h2>📈 ' + esc(d.name || 'Instanz') + '</h2><div class="rc-kpis">'
+                + [['👥', d.peak, 'Höchststand' + (d.peak_at ? ' um ' + new Date(d.peak_at * 1000).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : '')], ['➗', String(d.avg).replace('.', ','), 'im Schnitt'], ['🧑‍🤝‍🧑', d.unique, 'verschiedene Leute'], ['⏱', hm(d.end - d.start), 'Dauer']]
+                    .map(k => '<div><span>' + k[0] + '</span><b>' + esc(String(k[1])) + '</b><small>' + k[2] + '</small></div>').join('') + '</div></div>'
+                + '<section class="panel"><svg class="in-chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="Spielerzahl über die Zeit"><path d="' + path + '" class="in-line"/></svg>'
+                + '<div class="in-axis"><span>' + new Date(t0 * 1000).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + '</span><span>' + new Date(t1 * 1000).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + '</span></div></section>'
+                + '<section class="panel"><h3>Kommen & Gehen</h3>' + (d.events.length ? d.events.slice().reverse().map(e => '<div class="rc-row"' + (e.id ? ' data-user="' + esc(e.id) + '"' : '') + '>' + (e.kind === 'player_join' ? '➡' : '⬅') + ' ' + esc(e.name)
+                    + '<span>' + new Date(e.ts * 1000).toLocaleTimeString('de-DE') + ' · ' + e.count + ' da</span></div>').join('') : '<p class="muted">Niemand kam oder ging.</p>') + '</section>';
+        }).catch(e => { b.innerHTML = '<div class="vx-error">⚠ ' + esc(e.message) + '</div>'; });
+    }
+    box.addEventListener('change', e => { if (e.target.id === 'rcInst') instLoad(e.target.value); });
     window.NexusRecap = { open: load };
     const pane = document.querySelector('[data-pane=recap]');
     if (pane && !pane.hidden) load();

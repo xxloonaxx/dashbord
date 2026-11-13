@@ -106,6 +106,56 @@ class Insights {
         return visits.filter(v => v.photos.length).reverse().slice(0, 100).map(v => Object.assign(v, { people: [...v.people].slice(0, 30) }));
     }
 
+    /** Instanz-Verlauf: Spielerzahl über die Zeit + wer kam/ging (Idee 22) */
+    instanceList() {
+        return this.app.game.visits(30).slice(0, 60).map(v => ({ start: v.start, end: v.end, name: v.name || v.world_id, world_id: v.world_id, instance: v.instance, seconds: v.seconds, players: v.players }));
+    }
+    instanceTimeline(start) {
+        start = int(start);
+        const rows = this.db.prepare("SELECT ts, kind, player_id, player_name, world_name FROM game_log WHERE user_id = ? AND ts >= ? AND ts <= ? ORDER BY ts, id").all(UID, start, start + 43200);
+        const here = new Map(), points = [], events = [];
+        let name = '', end = 0;
+        for (const r of rows) {
+            if (r.ts > start && (r.kind === 'world_join' || r.kind === 'world_leave' || r.kind === 'vrc_quit')) { end = r.ts; break; }
+            if (r.kind === 'world_join') name = r.world_name || name;
+            if (r.kind !== 'player_join' && r.kind !== 'player_leave') continue;
+            const k = r.player_id || 'n:' + r.player_name;
+            if (r.kind === 'player_join') here.set(k, r.player_name); else here.delete(k);
+            points.push([r.ts, here.size]);
+            events.push({ ts: r.ts, kind: r.kind, name: r.player_name, id: r.player_id, count: here.size });
+        }
+        if (!end) end = Math.min(now(), start + 43200);
+        const counts = points.map(p => p[1]);
+        return { start, end, name, points, events: events.slice(-400), peak: counts.length ? Math.max(...counts) : 0, peak_at: counts.length ? points[counts.indexOf(Math.max(...counts))][0] : 0,
+            avg: points.length ? Math.round(counts.reduce((a, b) => a + b, 0) / counts.length * 10) / 10 : 0, unique: new Set(events.map(e => e.id || e.name)).size };
+    }
+
+    /** Eigene Welten: Besuche/Favoriten/Spieler mit täglicher Momentaufnahme → Veränderung (Idee 23) */
+    async myWorlds() {
+        const acc = this.app.vrc.account();
+        if (!acc) throw new UserError('Kein VRChat-Konto verbunden.');
+        const list = await this.app.vrc.call(acc, 'GET', '/worlds', { user: 'me', releaseStatus: 'all', n: 100, sort: 'updated', order: 'descending' });
+        let snap = {};
+        try { snap = JSON.parse(this.db.setting('myworld_snap', '{}')) || {}; } catch (e) { snap = {}; }
+        const today = new Date().toISOString().slice(0, 10);
+        const out = [];
+        for (const w of Array.isArray(list) ? list : []) {
+            const id = str(w.id);
+            const cur = { v: int(w.visits), f: int(w.favorites), o: int(w.occupants) };
+            const hist = snap[id] = snap[id] || {};
+            hist[today] = cur;
+            const days = Object.keys(hist).sort();
+            for (const d of days.slice(0, -120)) delete hist[d];            // höchstens 120 Tage behalten
+            const ago = n => { const t = new Date(Date.now() - n * 86400000).toISOString().slice(0, 10); const d = days.filter(x => x <= t).pop(); return d ? hist[d] : null; };
+            const d1 = ago(1), d7 = ago(7);
+            out.push({ id, name: str(w.name), thumb: str(w.thumbnailImageUrl), status: str(w.releaseStatus), visits: cur.v, favorites: cur.f, occupants: cur.o, capacity: int(w.capacity),
+                heat: int(w.heat), popularity: int(w.popularity), updated: str(w.updated_at), d1: d1 ? { v: cur.v - d1.v, f: cur.f - d1.f } : null, d7: d7 ? { v: cur.v - d7.v, f: cur.f - d7.f } : null,
+                history: days.slice(-30).map(d => [d, hist[d].v, hist[d].f]) });
+        }
+        this.db.setSetting('myworld_snap', JSON.stringify(snap));
+        return { worlds: out, since: Object.values(snap).map(h => Object.keys(h).sort()[0]).sort()[0] || today };
+    }
+
     // ---------- Erinnerungen ----------
     tick() {
         if (this.app.mod) this.app.mod.tick().catch(() => {});
@@ -133,9 +183,12 @@ class Insights {
     start() { if (this.app.mobile) return; this.timer = setInterval(() => { try { this.tick(); } catch (e) { /* egal */ } }, 60000); if (this.timer.unref) this.timer.unref(); }
     stop() { clearInterval(this.timer); }
 
-    action(act, input) {
+    async action(act, input) {
+        if (act === 'ins_myworlds') return await this.myWorlds();
         switch (act) {
             case 'ins_recap': return this.recap(input.days);
+            case 'ins_instances': return { visits: this.instanceList() };
+            case 'ins_instance': return this.instanceTimeline(input.start);
             case 'ins_photos': return { visits: this.photos(input.days) };
             case 'ins_friends': return { anniversaries: this.anniversaries(int(input.ahead) || 30), inactive: this.inactive(input.days), names: this.names(str(input.q).trim()) };
         }
