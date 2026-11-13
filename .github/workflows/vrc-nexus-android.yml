@@ -48,7 +48,22 @@ jobs:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
         run: |
           if [ -n "$KEYSTORE_B64" ]; then
-            mkdir -p ~/.android && printf '%s' "$KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
+            printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/nexus.keystore"
+            echo "NEXUS_KEYSTORE=$RUNNER_TEMP/nexus.keystore" >> "$GITHUB_ENV"
+            # die Debug-Signatur ausdrücklich auf den festen Schlüssel umstellen
+            cat >> apps/vrc-nexus-android/android/app/build.gradle <<'GRADLE'
+
+          android {
+              signingConfigs {
+                  debug {
+                      storeFile file(System.getenv('NEXUS_KEYSTORE'))
+                      storePassword 'android'
+                      keyAlias 'androiddebugkey'
+                      keyPassword 'android'
+                  }
+              }
+          }
+          GRADLE
             echo "Fester Schlüssel aus dem Secret ANDROID_KEYSTORE_B64 wird verwendet."
           else
             echo "::warning::Secret ANDROID_KEYSTORE_B64 fehlt – die APK bekommt einen zufälligen Schlüssel und lässt sich nicht über eine ältere Version installieren."
@@ -56,6 +71,16 @@ jobs:
       - name: APK bauen
         working-directory: apps/vrc-nexus-android/android
         run: ./gradlew assembleDebug --no-daemon
+      - name: Signatur prüfen
+        run: |
+          APK=apps/vrc-nexus-android/android/app/build/outputs/apk/debug/app-debug.apk
+          GOT=$(keytool -printcert -jarfile "$APK" | grep -m1 'SHA256:' | awk '{print $2}')
+          echo "APK-Zertifikat: $GOT"
+          if [ -n "$NEXUS_KEYSTORE" ]; then
+            WANT=$(keytool -list -v -keystore "$NEXUS_KEYSTORE" -storepass android -alias androiddebugkey | grep -m1 'SHA256:' | awk '{print $2}')
+            echo "Erwartet:       $WANT"
+            [ "$GOT" = "$WANT" ] || { echo "::error::APK ist nicht mit dem festen Schlüssel signiert"; exit 1; }
+          fi
       - name: APK umbenennen
         run: cp apps/vrc-nexus-android/android/app/build/outputs/apk/debug/app-debug.apk "VRC-Nexus-$(node -p "require('./apps/vrc-nexus-android/package.json').version")-android.apk"
       - name: Artefakt hochladen
