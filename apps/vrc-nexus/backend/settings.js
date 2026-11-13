@@ -7,7 +7,8 @@ const crypto = require('crypto');
 const { str, int, cut, UserError } = require('./util');
 
 const STATUS = [['', '– nichts ändern –'], ['join me', '🔵 Join Me'], ['active', '🟢 Online'], ['ask me', '🟠 Ask Me'], ['busy', '🔴 Beschäftigt']];
-const TABS = { system: '🖥 System', ui: '🎨 Oberfläche', social: '👥 Sozial', notify: '🔔 Benachrichtigungen', vr: '🥽 VR', media: '📷 Medien', int: '🔌 Integrationen', adv: '🧪 Erweitert' };
+const TABS = { system: '🖥 System', ui: '🎨 Oberfläche', social: '👥 Sozial', notify: '🔔 Benachrichtigungen', vr: '🥽 VR', media: '📷 Medien', tr: '🌐 Übersetzen', int: '🔌 Integrationen', adv: '🧪 Erweitert' };
+const TR_LANGS = require('./translate').LANGS.map(l => [l[0], l[2]]);
 const START_TABS = [['friends', 'Freundesliste'], ['feed', 'Verlauf'], ['locations', 'Freunde-Orte'], ['players', 'Spielerliste'], ['favs', 'Favoriten'], ['worlds', 'Welten'],
     ['avatars', 'Meine Avatare'], ['notifs', 'Benachrichtigungen'], ['tools', 'Werkzeuge'], ['client', 'Spiel & OSC']];
 
@@ -79,6 +80,15 @@ const FIELDS = [
     ['media.copy_dir', 'media', 'Screenshots', 'text', '', 'Zielordner', 'Unterordner pro Monat werden angelegt.'],
     ['media.copy_by_world', 'media', 'Screenshots', 'bool', false, 'Unterordner nach Welt statt nach Monat', ''],
     ['media.manager_limit', 'media', 'Screenshot-Manager', 'number', 300, 'Höchstens so viele Bilder anzeigen', '', [20, 5000]],
+    // ---------- Übersetzen ----------
+    ['tr.key_deepl', 'tr', 'Anbieter', 'apikey', '', 'DeepL-API-Schlüssel', 'deepl.com → API → „DeepL API Free“ (500.000 Zeichen/Monat kostenlos). Wird verschlüsselt gespeichert.'],
+    ['tr.key_google', 'tr', 'Anbieter', 'apikey', '', 'Google-Cloud-Translation-Schlüssel', 'console.cloud.google.com → „Cloud Translation API“ aktivieren → API-Schlüssel. Wird verschlüsselt gespeichert.'],
+    ['tr.provider', 'tr', 'Anbieter', 'select', 'auto', 'Bevorzugter Anbieter', 'Automatisch: DeepL, falls eingetragen, sonst Google.', [['auto', 'automatisch'], ['deepl', 'DeepL'], ['google', 'Google']]],
+    ['tr.chat_default', 'tr', 'Chatbox', 'bool', false, 'Chatbox-Nachrichten standardmäßig übersetzen', 'Im Reiter „Spiel & OSC“ lässt es sich pro Nachricht umschalten.'],
+    ['tr.chat_target', 'tr', 'Chatbox', 'select', 'EN-US', 'Chatbox übersetzen nach', '', TR_LANGS],
+    ['tr.chat_mode', 'tr', 'Chatbox', 'select', 'both', 'Was in die Chatbox kommt', 'Passt beides nicht in 144 Zeichen, wird nur die Übersetzung gesendet.', [['only', 'nur die Übersetzung'], ['both', 'Original / Übersetzung'], ['both_nl', 'Original und Übersetzung in zwei Zeilen']]],
+    ['tr.ui_target', 'tr', 'In der App', 'select', 'DE', 'Texte in VRC Nexus übersetzen nach', 'Bio, Status, Gruppen, Beiträge, Benachrichtigungen …', TR_LANGS],
+    ['tr.select_button', 'tr', 'In der App', 'bool', true, '„🌐“-Knopf beim Markieren von Text', 'Text markieren → 🌐 klicken (oder Alt+T).'],
     // ---------- Integrationen ----------
     ['int.api', 'int', 'Stream Deck & lokale Schnittstelle', 'bool', false, 'Lokale Schnittstelle für das Stream-Deck-Plugin', 'Nur auf diesem PC erreichbar (127.0.0.1).'],
     ['int.api_port', 'int', 'Stream Deck & lokale Schnittstelle', 'number', 17865, 'Port', '', [1024, 65535]],
@@ -124,7 +134,7 @@ class Settings {
         const changed = [];
         for (const [k, raw] of Object.entries(input || {})) {
             const f = KEYS[k];
-            if (!f || f[3] === 'secret') continue;
+            if (!f || f[3] === 'secret' || f[3] === 'apikey') continue;
             let v;
             switch (f[3]) {
                 case 'bool': v = raw === true || raw === 1 || ['1', 'true', 'on', 'yes'].includes(str(raw)); break;

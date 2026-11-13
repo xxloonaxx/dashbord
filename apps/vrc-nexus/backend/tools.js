@@ -882,7 +882,12 @@ class Tools {
                 await this.setStatus(st, str(d.desc), 'manual');
                 return { ok: true, msg: 'Status: ' + st };
             }
-            case 'chatbox': await g.oscSend('chatbox', { text: d.text, sound: d.sound ? '1' : '' }); return { ok: true };
+            case 'chatbox': {
+                let text = str(d.text);
+                if (d.translate) text = (await this.app.tr.chat(text, str(d.target))).text;
+                await g.oscSend('chatbox', { text, sound: d.sound ? '1' : '' });
+                return { ok: true, text };
+            }
             case 'typing': await g.oscSend('typing', { on: d.on ? '1' : '' }); return { ok: true };
             case 'param': await g.oscSend('param', { name: d.name, type: d.type || 'bool', value: d.value }); return { ok: true };
             case 'toggle': {

@@ -12,6 +12,7 @@ const { Extra, NOTIF_TYPES, NOTIF_RESPONSES } = require('./extra');
 const { GameLog, KINDS } = require('./gamelog');
 const { Settings } = require('./settings');
 const { Tools } = require('./tools');
+const { Translator } = require('./translate');
 
 const RENDERER = path.join(__dirname, '..', 'renderer');
 const truthy = v => v !== undefined && v !== null && v !== '' && v !== '0' && v !== false && v !== 'false';
@@ -27,6 +28,7 @@ class NexusApp {
         this.vrc = new Vrc(opts.db, opts.crypt);
         this.x = new Extra(this.vrc);
         this.game = new GameLog(opts.db, { onEvent: e => { if (this.tools) this.tools.onGameEvent(e); if (opts.onGameEvent) opts.onGameEvent(e); } });
+        this.tr = new Translator(opts.db, opts.crypt, this.settings);
         this.tools = new Tools(this, Object.assign({ notify: opts.notify }, opts.host || {}));
         this.vrc.onWatch = (name, world) => { if (this.settings.get('notify.watch')) this.tools.alert('🟢 ' + name + ' ist online', world ? 'in ' + world : 'gerade ins Spiel gekommen'); };
         this.notify = opts.notify || null;
@@ -115,7 +117,12 @@ class NexusApp {
             case 'client_log': return { events: g.list(input) };
             case 'client_players': return { players: g.players(Math.max(1, Math.min(3650, int(input.days) || 30)), str(input.q).trim()) };
             case 'client_visits': return { visits: g.visits(Math.max(1, Math.min(365, int(input.days) || 7))).slice(0, 200) };
-            case 'client_osc': { const nid = await g.oscSend(str(input.kind), input); return { id: nid, osc: g.oscRecent() }; }
+            case 'client_osc': {
+                let sent = null;
+                if (str(input.kind) === 'chatbox' && truthy(input.translate)) { const c = await this.tr.chat(str(input.text), str(input.target)); input = Object.assign({}, input, { text: c.text }); sent = c.text; }
+                const nid = await g.oscSend(str(input.kind), input);
+                return { id: nid, osc: g.oscRecent(), sent };
+            }
             case 'client_osc_status': return { osc: g.oscRecent(), state: g.stateRow() };
             case 'client_preset_save': g.presetSave(input.label, str(input.kind), input); return { presets: g.presets() };
             case 'client_preset_delete': g.presetDelete(input.preset); return { presets: g.presets() };
@@ -139,7 +146,7 @@ class NexusApp {
         const needAcc = () => { if (!this.vrc.account()) throw new VrcAuthError('Kein VRChat-Konto verbunden.'); };
         switch (act) {
             case 'tools_overview': return await t.overview();
-            case 'tools_settings': return { schema: s.schema(), settings: s.all(), status: { api: t.api.status(), rpc: s.get('int.rpc') ? t.rpc.status() : 'aus' } };
+            case 'tools_settings': return { schema: s.schema(), settings: s.all(), status: { api: t.api.status(), rpc: s.get('int.rpc') ? t.rpc.status() : 'aus' }, tr: this.tr.status() };
             case 'tools_settings_save': { let data = {}; try { data = JSON.parse(str(input.data) || '{}'); } catch (e) { throw new UserError('Ungültige Daten.'); } return Object.assign(s.save(data), { msg: 'Gespeichert.' }); }
             case 'tools_settings_reset': return { settings: s.reset(), msg: 'Alle Einstellungen zurückgesetzt.' };
             case 'tools_streamdeck_install': {
@@ -148,6 +155,9 @@ class NexusApp {
                 if (t.host.openPath) await t.host.openPath(f);
                 return { msg: 'Stream-Deck-App wird geöffnet – Installation dort bestätigen.' };
             }
+            case 'tools_translate': return await this.tr.translate(str(input.text), str(input.target), str(input.provider));
+            case 'tools_tr_key': return Object.assign(this.tr.saveKey(str(input.provider), str(input.key)), { msg: str(input.key).trim() ? 'Schlüssel gespeichert.' : 'Schlüssel entfernt.' });
+            case 'tools_tr_test': { const r = await this.tr.translate('Hallo, wie geht es dir?', 'EN-US', str(input.provider)); return { msg: '✔ ' + (r.provider === 'deepl' ? 'DeepL' : 'Google') + ': „' + r.text + '“' }; }
             case 'tools_token': return { token: s.newToken(), msg: 'Neuer Zugangsschlüssel erstellt – im Stream-Deck-Plugin eintragen.' };
             case 'tools_test_notify': return t.testAlert();
             case 'tools_backup': return t.backupNow();
