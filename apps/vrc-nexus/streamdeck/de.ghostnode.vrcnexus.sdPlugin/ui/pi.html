@@ -28,6 +28,8 @@
     <div class="row"><label>Art</label><select data-s="mode"><option value="text">Eigener Text</option><option value="preset">Gespeicherte Vorlage</option></select></div>
     <div class="row" data-show="mode=text"><label>Text</label><textarea data-s="text" maxlength="144" placeholder="Hallo zusammen! 🦊"></textarea></div>
     <div class="row" data-show="mode=text"><label>Ton</label><input type="checkbox" data-s="sound"> <span class="hint" style="margin:0">Benachrichtigungston in VRChat</span></div>
+    <div class="row" data-show="mode=text"><label>Übersetzen</label><input type="checkbox" data-s="translate"> <span class="hint" style="margin:0">mit DeepL/Google (Schlüssel in VRC Nexus)</span></div>
+    <div class="hint" data-show="mode=text">/n = neue Zeile · Platzhalter wie {zeit} {welt} {spieler} {freunde} gehen auch.</div>
     <div class="row" data-show="mode=preset"><label>Vorlage</label><select data-s="preset" id="presetSel"><option value="">(erst Verbindung testen)</option></select></div>
 </div>
 <div id="sec-param" hidden>

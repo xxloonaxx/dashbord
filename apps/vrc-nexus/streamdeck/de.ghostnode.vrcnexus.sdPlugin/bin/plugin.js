@@ -125,7 +125,7 @@ async function keyDown(ctx, action, s) {
         case 'status': return act('status', { status: s.status || 'join me', desc: s.desc || '' });
         case 'chatbox':
             if (s.mode === 'preset') return act('preset', { id: s.preset });
-            return act('chatbox', { text: s.text || '', sound: !!s.sound });
+            return act('chatbox', { text: s.text || '', sound: !!s.sound, translate: !!s.translate, split: true });
         case 'param': {
             const mode = s.mode || 'toggle';
             if (!s.name) throw new Error('Parametername fehlt.');

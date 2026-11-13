@@ -2,7 +2,7 @@
   "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
   "UUID": "de.ghostnode.vrcnexus",
   "Name": "VRC Nexus",
-  "Version": "1.1.0.0",
+  "Version": "1.2.0.0",
   "Author": "GHOST NODE",
   "Description": "Steuert VRChat über die VRC-Nexus-App: Status, Chatbox, OSC-Parameter, Eingaben, Chatbox-Rotator, Freunde online, Spieler in der Instanz, VRChat starten.",
   "Category": "VRC Nexus",

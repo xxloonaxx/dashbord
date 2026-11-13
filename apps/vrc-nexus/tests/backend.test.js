@@ -242,6 +242,89 @@ test('Werkzeuge: Benachrichtigung an XSOverlay, Startoptionen, Spielerliste', as
     app.tools.stop();
 });
 
+
+// Nachbau von DeepL und Google Translate für die Tests
+function trMock() {
+    const http = require('http');
+    const seen = [];
+    const srv = http.createServer((req, res) => {
+        let b = '';
+        req.on('data', d => { b += d; });
+        req.on('end', () => {
+            const j = JSON.parse(b || '{}');
+            seen.push({ url: req.url, auth: req.headers.authorization || '', body: j });
+            res.setHeader('Content-Type', 'application/json');
+            if (req.url.startsWith('/v2/translate')) {
+                if (req.headers.authorization !== 'DeepL-Auth-Key deepl-test-key-1234567890:fx') { res.statusCode = 403; return res.end('{"message":"Wrong key"}'); }
+                return res.end(JSON.stringify({ translations: [{ detected_source_language: 'DE', text: '[' + j.target_lang + '] ' + j.text[0] }] }));
+            }
+            if (req.url.startsWith('/language/translate/v2')) return res.end(JSON.stringify({ data: { translations: [{ translatedText: '<' + j.target + '> ' + j.q[0], detectedSourceLanguage: 'de' }] } }));
+            res.statusCode = 404; res.end('{}');
+        });
+    });
+    return new Promise(r => srv.listen(0, '127.0.0.1', () => r({ srv, seen, base: 'http://127.0.0.1:' + srv.address().port })));
+}
+
+test('Übersetzen: DeepL, Google, Chatbox-Modus, Schlüssel verschlüsselt', async () => {
+    const m = await trMock();
+    process.env.NEXUS_DEEPL_BASE = m.base; process.env.NEXUS_GOOGLE_BASE = m.base;
+    const { NexusApp } = require('../backend/app');
+    const db = await openDatabase(null);
+    const crypt = { encrypt: s => 'enc:' + Buffer.from(s).toString('base64'), decrypt: s => Buffer.from(s.slice(4), 'base64').toString() };
+    const app = new NexusApp({ db, crypt, host: { userData: os.tmpdir() } });
+    app.game.osc.stopListen();
+    await assert.rejects(app.tr.translate('Hallo', 'EN-US'), /Kein Übersetzungs-Schlüssel/);
+    app.tr.saveKey('deepl', 'deepl-test-key-1234567890:fx');
+    app.tr.saveKey('google', 'google-test-key-ABCDEFGHIJKLMNOP');
+    assert.ok(db.setting('tr_keys').startsWith('enc:'));
+    assert.ok(!JSON.stringify(app.tr.status()).includes('deepl-test-key-1234567890'));
+    const r = await app.tr.translate('Hallo Welt', 'JA');
+    assert.deepStrictEqual([r.text, r.provider, r.detected], ['[JA] Hallo Welt', 'deepl', 'DE']);
+    const g = await app.tr.translate('Hallo', 'JA', 'google');
+    assert.strictEqual(g.text, '<ja> Hallo');
+    app.settings.save({ 'tr.chat_mode': 'both', 'tr.chat_target': 'EN-US' });
+    assert.strictEqual((await app.tr.chat('Hi du')).text, 'Hi du / [EN-US] Hi du');
+    app.settings.save({ 'tr.chat_mode': 'both_nl' });
+    assert.strictEqual((await app.tr.chat('Hi du')).text, 'Hi du\n[EN-US] Hi du');
+    app.tr.saveKey('deepl', 'deepl-falscher-schluessel-0000000:fx');
+    app.tr.cache.clear();
+    await assert.rejects(app.tr.translate('Neu', 'EN-US', 'deepl'), /DeepL: Schlüssel ungültig/);
+    const st = await app.trAction('tr_prefs', { provider: 'google', ui_target: 'FR' });
+    assert.strictEqual(st.provider, 'google');
+    assert.strictEqual(st.prefs.ui_target, 'FR');
+    m.srv.close(); app.tools.stop();
+    delete process.env.NEXUS_DEEPL_BASE; delete process.env.NEXUS_GOOGLE_BASE;
+});
+
+test('Chatbox: /n, Aufteilen, Platzhalter, Rotator mit mehreren Texten', async () => {
+    const { chatNewlines, splitChat } = require('../backend/gamelog');
+    assert.strictEqual(chatNewlines('Hallo/nWelt\\nzwei https://x.de/n ok'), 'Hallo\nWelt\nzwei https://x.de/n ok');
+    const parts = splitChat('Wort '.repeat(80).trim(), 144);
+    assert.ok(parts.length === 3 && parts.every(p => [...p].length <= 144) && parts[2].endsWith('(3/3)'));
+    const db = await openDatabase(null);
+    const g = new GameLog(db);
+    g.osc.stopListen();
+    g.vars = () => ({ freunde: '7', status: 'Online' });
+    g.state.worldName = 'Pug'; g.state.players.set('a', { id: 'a', name: 'A', since: 0 });
+    assert.strictEqual(g.rotatorText('🌐 {welt}/n👥 {spieler} · {freunde} Freunde · {status} · {gibtsnicht}'), '🌐 Pug\n👥 1 · 7 Freunde · Online · {gibtsnicht}');
+    assert.ok(/^\d+ h \d\d min$|^\d+ T \d+ h \d\d min$/.test(g.rotatorText('{countdown:2099-01-01 00:00}')));
+    assert.ok(['a', 'b'].includes(g.rotatorText('{zufall:a|b}')));
+    const c = g.saveCfg({ rotator_texts: 'eins\n\nzwei\ndrei', rotator_mode: 'seq' });
+    assert.deepStrictEqual([g.rotatorNext(c), g.rotatorNext(c), g.rotatorNext(c), g.rotatorNext(c)], ['eins', 'zwei', 'drei', 'eins']);
+    // senden: aufteilen + Platzhalter + Zeilenumbruch
+    const sock = dgram.createSocket('udp4');
+    const got = [];
+    sock.on('message', m => got.push(oscDecode(m)[0][1][0]));
+    await new Promise(r => sock.bind(0, '127.0.0.1', r));
+    g.osc.configure('127.0.0.1', sock.address().port);
+    g.osc.lastChat = 0;
+    await g.oscSend('chatbox', { text: 'In {welt}/nhallo', sound: '1' });
+    await g.oscSend('chatbox', { clear: '1' });
+    await U.sleep(3600);
+    sock.close();
+    assert.deepStrictEqual(got.slice(0, 2), ['In Pug\nhallo', '']);
+});
+
 (async () => {
     let ok = 0;
     for (const [name, fn] of tests) {

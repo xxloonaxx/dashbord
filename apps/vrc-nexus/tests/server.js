@@ -25,6 +25,7 @@ const crypt = { encrypt: s => 'plain:' + Buffer.from(s).toString('base64'), decr
     const nexus = new NexusApp({ db, crypt, host, notify: (t, b) => console.log('[Benachrichtigung]', t, b) });
     nexus.game.start(1000);
     nexus.tools.start();
+    nexus.link.start();
     http.createServer(async (req, res) => {
         const url = new URL(req.url, 'http://127.0.0.1:' + port);
         if (url.pathname === '/' || url.pathname === '/nexus.php') {

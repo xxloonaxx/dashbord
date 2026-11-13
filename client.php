@@ -10,6 +10,9 @@
  *   POST client.php?a=state              {"state":{running, world_id, instance, world_name, since, players:[{id,name,since}], avatar, avatar_id, osc, params}}
  *   GET  client.php?a=osc                offene OSC-Befehle abholen
  *   POST client.php?a=osc_ack            {"results":[{id, ok, error}]}
+ *   POST client.php?a=notes              {"since":ts, "notes":[{vrc_id, note, favorite, tags, watch, updated}]} → neuere Notizen vom Server
+ *   POST client.php?a=send               {"kind":"chatbox", "text":…} Befehl an den PC schicken (z. B. vom Handy)
+ *   GET  client.php?a=remote             Live-Status des PCs + letzte Befehle (für die Fernbedienung)
  * <title>Nexus Client API</title>
  */
 require_once __DIR__ . '/inc/modules/nexus_client.php';
@@ -79,6 +82,15 @@ try {
             if (!$post) nc_reply(['error' => 'Nur per POST.'], 405);
             nc_osc_ack($uid, (array)($body['results'] ?? []));
             nc_reply(['ok' => true]);
+        case 'notes':
+            if (!$post) nc_reply(['error' => 'Nur per POST.'], 405);
+            nc_reply(['ok' => true] + nc_notes_sync($uid, (int)($body['since'] ?? 0), (array)($body['notes'] ?? [])));
+        case 'send':
+            if (!$post) nc_reply(['error' => 'Nur per POST.'], 405);
+            $id = nc_osc_enqueue($uid, (string)($body['kind'] ?? ''), $body);
+            nc_reply(['ok' => true, 'id' => $id]);
+        case 'remote':
+            nc_reply(['ok' => true, 'state' => nc_state($uid), 'osc' => nc_osc_recent($uid), 'presets' => nc_presets($uid)]);
         default:
             nc_reply(['error' => 'Unbekannte Aktion.'], 404);
     }

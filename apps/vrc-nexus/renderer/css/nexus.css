@@ -603,3 +603,24 @@ span.vx-card-img { display: flex; align-items: center; justify-content: center; 
 .avdb-perf span { font-size: 0.66rem; }
 .avdb-perf .perf-excellent { color: #50fa7b; } .avdb-perf .perf-good { color: #a3e635; } .avdb-perf .perf-medium { color: #f3c262; }
 .avdb-perf .perf-poor { color: #fb923c; } .avdb-perf .perf-verypoor { color: #ff5555; }
+
+/* ---------- Übersetzen & Chatbox-Extras ---------- */
+.tr-bubble { position: absolute; z-index: 5000; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--accent-cyan); background: #0b121b; color: #fff; cursor: pointer; font-size: 15px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5); }
+.tr-bubble:hover { background: var(--accent-cyan); }
+.tr-pop { position: absolute; z-index: 5000; width: 360px; max-width: calc(100vw - 16px); background: #0d141d; border: 1px solid var(--border-color); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6); padding: 10px 12px; font-size: 0.86rem; }
+.tr-head { display: flex; align-items: center; gap: 8px; font-weight: 700; margin-bottom: 6px; }
+.tr-head select { margin-left: auto; max-width: 170px; font-size: 0.78rem; }
+.tr-x { background: none; border: 0; color: var(--text-muted); font-size: 18px; cursor: pointer; }
+.tr-src { color: var(--text-muted); font-size: 0.78rem; max-height: 80px; overflow: auto; border-left: 2px solid rgba(255, 255, 255, 0.1); padding-left: 8px; margin-bottom: 8px; white-space: pre-wrap; }
+.tr-pop .tr-out { white-space: pre-wrap; max-height: 260px; overflow: auto; color: var(--text-main); }
+.tr-foot { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.tr-by { color: var(--text-muted); font-size: 0.74rem; margin-right: auto; }
+.tr-key { border: 1px solid rgba(56, 213, 230, 0.15); padding: 10px; margin-bottom: 8px; }
+.tr-prefs { display: grid; gap: 4px; max-width: 520px; }
+.tr-chat { margin: 6px 0; }
+.tr-chat .tr-out { margin: 4px 0; color: var(--accent-cyan); white-space: pre-wrap; }
+.tr-emoji { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 6px; }
+.tr-emoji button { background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); color: var(--text-main); font: inherit; font-size: 0.8rem; padding: 2px 6px; cursor: pointer; border-radius: 4px; }
+.tr-emoji button:hover { border-color: var(--accent-cyan); }
+.tr-hist { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.tr-target { max-width: 190px; }

@@ -138,7 +138,12 @@
             e.preventDefault();
             const text = chat.text.value.trim();
             if (!text) return;
-            osc('chatbox', { text, sound: chat.sound.checked }).then(() => { chat.text.value = ''; $('#ncChatN').textContent = '0 / 144'; });
+            const extra = chat.translate ? { translate: chat.translate.checked ? '1' : '', target: chat.target.value, split: chat.split.checked ? '1' : '', delay: chat.delay.value } : {};
+            osc('chatbox', Object.assign({ text, sound: chat.sound.checked ? '1' : '' }, extra)).then(d => {
+                chat.text.value = ''; $('#ncChatN').textContent = '0 / 144';
+                if (d && d.sent) toast('🌐 gesendet: ' + d.sent);
+                else if (extra.delay && extra.delay !== '0') toast('⏱ wird in ' + extra.delay + ' s gesendet.');
+            });
         });
         $$('[data-typing]', chat).forEach(b => b.addEventListener('click', () => osc('typing', { on: b.dataset.typing === '1' })));
         // Parameter

@@ -10,12 +10,15 @@ Profil-Dialog mit Reitern (Gemeinsame Freunde, Gruppen, Welten, Lieblingswelten,
 Werkzeuge (Gruppen-Einladungen, blockierte Gruppen, Einladungsnachrichten, Meldungen, Exporte), Einstellungen.
 Benachrichtigungen kommen als Android-Benachrichtigung, Exporte (CSV/ICS/JSON) über „Teilen“.
 
+**Neu:** 🎮 **PC-Fernbedienung** – über das Dashboard die Chatbox (auch übersetzt), Eingaben und Avatar-Parameter am PC steuern
+(Einstellungen → 🔗 Dashboard: Adresse + Geräte-Token). 🌐 Übersetzen mit DeepL/Google (Text markieren → 🌐), Memo-Abgleich mit dem Dashboard.
+
 **Nicht dabei** (braucht den PC mit VRChat): Spiel-Log, Spielerliste, Instanz-Aktivität, OSC & Chatbox, Stream Deck,
 Screenshot-Manager, Ordner, VRChat-`config.json`, Startoptionen, Registry-Sicherung, Auto-Status, Discord-Status, XSOverlay.
 
 ## Installation
 
-GitHub → **Actions → „VRC Nexus App (Android)“ → neuester Lauf → Artifacts → VRC-Nexus-Android** → `VRC-Nexus-1.1.0-android.apk`
+GitHub → **Actions → „VRC Nexus App (Android)“ → neuester Lauf → Artifacts → VRC-Nexus-Android** → `VRC-Nexus-1.2.0-android.apk`
 aufs Handy kopieren und öffnen. Android fragt einmal nach „Installation aus unbekannten Quellen“ (die APK ist nicht im Play Store).
 
 ## Daten & Sicherheit

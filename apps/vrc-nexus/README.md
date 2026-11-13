@@ -20,6 +20,18 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.2
+
+- 🌐 **Übersetzen mit DeepL oder Google** (eigener API-Schlüssel, verschlüsselt gespeichert): Chatbox-Nachrichten übersetzt senden
+  (nur Übersetzung, „Original / Übersetzung“ oder zweizeilig), Text irgendwo markieren → 🌐 bzw. <kbd>Alt</kbd>+<kbd>T</kbd>, auch per Stream-Deck-Taste
+- 💬 **Chatbox**: `/n` = neue Zeile, Platzhalter auch in normalen Nachrichten, lange Nachrichten automatisch aufteilen (1/3 …),
+  Tipp-Anzeige beim Schreiben, Emoji-/Kaomoji-Leiste, zeitversetzt senden, Chatbox leeren, Verlauf der letzten Nachrichten
+- 🔄 **Chatbox-Rotator**: mehrere Texte im Wechsel (der Reihe nach oder zufällig), nur wenn VRChat läuft, Vorschau, neue Platzhalter
+  `{freunde}` `{freunde_online}` `{status}` `{statustext}` `{zugang}` `{region}` `{uhr}` `{wochentag}` `{countdown:2026-12-24 18:00}` `{zufall:a|b|c}`
+- 🔗 **Verbindung zum Dashboard** (Einstellungen → Dashboard, Geräte-Token aus Nexus → Client): Spiel-Log und Live-Status hochladen,
+  Chatbox-/OSC-Befehle aus dem Dashboard ausführen, Memos in beide Richtungen abgleichen
+- 📱 **Android → PC**: Die Android-App kann über das Dashboard die Chatbox, Eingaben und Avatar-Parameter am PC steuern („PC-Fernbedienung“)
+
 ### Neu in 1.1
 
 - **Menü oben** im Aufbau wie VRCX: Verlauf · Freunde-Orte · Spiel-Log · Spielerliste · Suche · Favoriten ▾ · Sozial ▾ · Benachrichtigungen · Meine Avatare · Welten · Diagramme ▾ · Werkzeuge · Spiel & OSC · Mehr ▾ · Direkt-Zugriff (<kbd>Strg</kbd>+<kbd>D</kbd>)

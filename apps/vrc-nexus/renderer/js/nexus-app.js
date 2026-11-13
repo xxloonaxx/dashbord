@@ -39,7 +39,7 @@
     if (MOBILE) {
         document.body.classList.add('mobile');
         $$('#tabs [data-tab=client], #tabs [data-tab=players], #tabs [data-tab=activity], #clientStandalone').forEach(el => el.parentNode.removeChild(el));
-    }
+    } else $$('#tabs [data-mobile]').forEach(el => el.parentNode.removeChild(el));
 
     // Direkt-Zugriff: Knopf im Menü + Strg+D
     $('#directBtn').addEventListener('click', () => UI.readClipboard(false));
@@ -60,6 +60,7 @@
         if (name === 'network') loadNetwork(false);
         if (name === 'tools') renderTools();
         if (name === 'settings') loadSettings();
+        if (name === 'remote') { loadRemote(); plTimer = setInterval(() => { if (!document.hidden && !document.activeElement.closest('#remBox form')) loadRemote(); }, 5000); }
         if (name === 'client' && sub) setTimeout(() => { const b = $('#ncSub [data-sub="' + sub + '"]'); if (b) b.click(); }, 300);
         if (name === 'gallery' && sub === 'inventory') setTimeout(() => { const b = $('#galKinds [data-gk=inventory]'); if (b) b.click(); }, 600);
     }
@@ -556,7 +557,7 @@
     }
     function renderSettings() {
         const d = setData, box = $('#setBox');
-        const MOBILE_HIDE = /^(sys\.|vr\.|media\.|int\.|social\.(players|memo)|notify\.(player_|screenshot|vrc_start)|adv\.(debug|devtools)|ui\.(wide|sticky_menu))/;
+        const MOBILE_HIDE = /^(link\.(upload|remote)|sys\.|vr\.|media\.|int\.|social\.(players|memo)|notify\.(player_|screenshot|vrc_start)|adv\.(debug|devtools)|ui\.(wide|sticky_menu))/;
         const visible = f => !MOBILE || !MOBILE_HIDE.test(f.key);
         const tabsShown = Object.keys(d.schema.tabs).filter(t => d.schema.fields.some(f => f.tab === t && visible(f)));
         if (!tabsShown.includes(setTab)) setTab = tabsShown[0];
@@ -565,6 +566,7 @@
         const extra = {
             system: '<div class="set-sec"><h3>Aktionen</h3><div class="nx-row"><button type="button" class="btn btn-sm" data-act="backup">💾 Datenbank jetzt sichern</button><button type="button" class="btn btn-sm" data-act="f:backups">📂 Sicherungen</button>'
                 + '<button type="button" class="btn btn-sm" data-act="f:nexus">📂 Datenordner</button></div></div>',
+            link: '<div class="set-sec"><h3>Geräte-Token</h3><div id="linkBox"><div class="vx-loading">Lade …</div></div></div>',
             notify: '<div class="set-sec"><h3>Test</h3><button type="button" class="btn btn-sm" data-act="test">🔔 Test-Benachrichtigung (alle eingeschalteten Wege)</button></div>',
             int: '<div class="set-sec"><h3>Status</h3><p class="vx-small">Lokale Schnittstelle: ' + esc(d.status.api) + ' · Discord: ' + esc(d.status.rpc) + '</p></div>',
             adv: '<div class="set-sec"><h3>Daten &amp; Wartung</h3><div class="nx-row"><button type="button" class="btn btn-sm" data-act="cache">🧹 Profil-Zwischenspeicher leeren</button><button type="button" class="btn btn-sm" data-act="vacuum">🗜 Datenbank optimieren</button>'
@@ -572,8 +574,10 @@
                 + '<button type="button" class="btn btn-sm btn-danger" data-act="reset">↺ Alles zurücksetzen</button></div></div>',
         }[setTab] || '';
         box.innerHTML = '<div class="nx-panel"><h2>⚙ Einstellungen</h2><div class="set-tabs">' + Object.entries(d.schema.tabs).filter(([k]) => tabsShown.includes(k)).map(([k, l]) => '<button type="button" data-st="' + k + '" class="' + (k === setTab ? 'on' : '') + '">' + esc(l) + '</button>').join('') + '</div>'
-            + secs.map(sec => '<div class="set-sec"><h3>' + esc(sec) + '</h3>' + fields.filter(f => f.section === sec).map(f => '<div class="set-row"><div><b>' + esc(f.label) + '</b>' + (f.hint ? '<div class="nx-hint">' + esc(f.hint) + '</div>' : '') + '</div>' + field(f, d.settings[f.key]) + '</div>').join('') + '</div>').join('')
-            + (MOBILE ? (setTab === 'adv' ? extra : '') : extra) + '<p class="vx-small">Änderungen werden sofort gespeichert.</p></div>';
+            + (setTab === 'tr' ? '<div id="trPanel"></div>' : '') + (setTab === 'tr' ? [] : secs).map(sec => '<div class="set-sec"><h3>' + esc(sec) + '</h3>' + fields.filter(f => f.section === sec).map(f => '<div class="set-row"><div><b>' + esc(f.label) + '</b>' + (f.hint ? '<div class="nx-hint">' + esc(f.hint) + '</div>' : '') + '</div>' + field(f, d.settings[f.key]) + '</div>').join('') + '</div>').join('')
+            + (MOBILE ? (['adv', 'link'].includes(setTab) ? extra : '') : extra) + '<p class="vx-small">Änderungen werden sofort gespeichert.</p></div>';
+        if (setTab === 'tr' && window.NexusTr) window.NexusTr.panel($('#trPanel'));
+        if (setTab === 'link') linkPanel();
     }
     $('#setBox').addEventListener('click', e => {
         const t = e.target.closest('[data-st]');
@@ -748,6 +752,72 @@
         ]));
     }
     $('#groupDetail') && $('#groupDetail').addEventListener('click', e => { const i = e.target.closest('#gPane [data-inst]'); if (i) UI.openInstance(i.dataset.inst); const w = e.target.closest('#gPane [data-world]'); if (w) { e.preventDefault(); UI.openWorld(w.dataset.world); } });
+
+    // ======================= Dashboard-Verbindung =======================
+    function linkPanel() {
+        const box = $('#linkBox');
+        if (!box) return;
+        api('tools_link_status').then(d => {
+            box.innerHTML = '<p class="vx-small">' + (MOBILE ? 'Mit dem Dashboard kannst du vom Handy aus die Chatbox und Avatar-Parameter an deinem PC steuern (dort muss VRC Nexus mit Dashboard-Verbindung laufen) und Memos abgleichen.'
+                    : 'Verbindet diese App mit deinem GHOST-NODE-Dashboard: Spiel-Log und Live-Status erscheinen dort unter Nexus → 🖥️ Client, Chatbox-Befehle aus dem Dashboard (oder vom Handy) werden hier ausgeführt, Memos werden abgeglichen.') + '</p>'
+                + '<div class="set-row"><div><b>Status</b><div class="nx-hint">' + (d.at ? 'zuletzt ' + UI.ago(d.at) : '') + (d.sent ? ' · ' + d.sent + ' Ereignisse hochgeladen' : '') + (d.received ? ' · ' + d.received + ' Befehle ausgeführt' : '') + '</div></div>'
+                + '<div class="' + (d.ok ? 'nx-ok' : 'vx-small') + '">' + (d.ok ? '✔ ' : '') + esc(d.msg) + (d.user ? ' · ' + esc(d.user) + ' (' + esc(d.device) + ')' : '') + '</div></div>'
+                + '<div class="set-row"><div><b>Geräte-Token</b><div class="nx-hint">Im Dashboard: Nexus → 🖥️ Client → Geräte → „Gerät hinzufügen“. Wird verschlüsselt gespeichert.</div></div>'
+                + '<div class="nx-row" style="margin:0"><input type="password" id="linkTok" placeholder="' + (d.token ? esc(d.token) : 'gnx_…') + '" autocomplete="off" style="flex:1"><button type="button" class="btn btn-sm btn-gold" data-l="save">Speichern</button>'
+                + (d.token ? '<button type="button" class="btn btn-sm btn-danger" data-l="del">Entfernen</button>' : '') + '</div></div>'
+                + '<div class="nx-row"><button type="button" class="btn btn-sm" data-l="test">🔌 Verbindung testen</button>' + (MOBILE ? '' : '<button type="button" class="btn btn-sm" data-l="sync">⟳ Jetzt abgleichen</button>') + '</div>';
+            box.onclick = e => {
+                const b = e.target.closest('[data-l]');
+                if (!b) return;
+                const l = b.dataset.l;
+                if (l === 'save' || l === 'del') return run('tools_link_token', { token: l === 'del' ? '' : $('#linkTok').value }, linkPanel).catch(() => {});
+                b.disabled = true;
+                run(l === 'test' ? 'tools_link_test' : 'tools_link_sync', {}, linkPanel).catch(() => {}).finally(() => { b.disabled = false; });
+            };
+        }).catch(fail(box));
+    }
+
+    // ======================= PC-Fernbedienung (Android → Dashboard → PC) =======================
+    const INPUTS = [['Jump', '⤴ Springen'], ['Voice', '🎙 Mikro'], ['QuickMenuToggleLeft', '☰ Quick-Menü'], ['Run', '🏃 Rennen'], ['PanicButton', '🛑 Panik']];
+    let remKeep = null;
+    function loadRemote() {
+        const box = $('#remBox');
+        api('tools_remote_state').then(d => {
+            const st = d.state || {}, fresh = st && st.fresh;
+            const params = Object.entries(st.params || {}).filter(([, v]) => typeof v === 'boolean').slice(0, 24);
+            const keep = remKeep || { text: '', translate: false };
+            box.innerHTML = '<div class="nx-panel"><h2>🎮 PC-Fernbedienung</h2>'
+                + (!d.state ? '<p>Noch kein PC verbunden. Am PC in VRC Nexus: Einstellungen → 🔗 Dashboard → Token eintragen und „Mit dem Dashboard verbinden“ einschalten.</p>'
+                    : '<p>' + (fresh ? '<span class="nx-ok">● PC online</span>' : '<span class="nx-bad">● PC nicht erreichbar</span> (zuletzt ' + UI.ago(st.updated) + ')') + ' · '
+                    + (st.running ? '🌐 <b>' + esc(st.world_name || '–') + '</b> · 👥 ' + (st.players || []).length + ' Spieler' : 'VRChat läuft nicht') + (st.osc ? ' · OSC aktiv' : '') + '</p>')
+                + '<form id="remChat" class="nx-form"><div class="nx-wide"><label class="field">💬 Chatbox</label><textarea name="text" rows="3" placeholder="Text für die Chatbox am PC – /n = neue Zeile">' + esc(keep.text) + '</textarea></div>'
+                + '<div class="nx-wide nx-row"><label class="vx-auto"><input type="checkbox" name="translate"' + (keep.translate ? ' checked' : '') + '> 🌐 übersetzen</label><label class="vx-auto"><input type="checkbox" name="split" checked> lange aufteilen</label>'
+                + '<label class="vx-auto"><input type="checkbox" name="sound"> Ton</label><button class="btn btn-gold">Senden</button><button type="button" class="btn btn-sm" data-r="clear">🧹 Leeren</button></div></form>'
+                + '<h3>Eingaben</h3><div class="nx-row">' + INPUTS.map(([k, l]) => '<button type="button" class="btn btn-sm" data-in="' + k + '">' + l + '</button>').join('')
+                + '<button type="button" class="btn btn-sm" data-ty="1">⌨ tippt …</button><button type="button" class="btn btn-sm" data-ty="0">⌨ aus</button></div>'
+                + (params.length ? '<h3>Avatar-Parameter</h3><div class="nx-row">' + params.map(([k, v]) => '<button type="button" class="chip' + (v ? ' on' : '') + '" data-p="' + esc(k) + '" data-v="' + (v ? 0 : 1) + '">' + (v ? '✔ ' : '') + esc(k) + '</button>').join('') + '</div>' : '')
+                + ((d.presets || []).length ? '<h3>Schnellknöpfe</h3><div class="nx-row">' + d.presets.map(p => '<button type="button" class="btn btn-sm" data-pre="' + p.id + '">' + esc(p.label) + '</button>').join('') + '</div>' : '')
+                + '<h3>Zuletzt</h3><div class="vx-small">' + (d.osc || []).slice(0, 8).map(o => esc(UI.clock(o.created)) + ' ' + esc(o.kind) + ' ' + esc((o.payload && (o.payload.text || o.payload.name)) || '') + ' – ' + esc(o.status)).join('<br>') + '</div></div>';
+            const f = $('#remChat');
+            f.oninput = () => { remKeep = { text: f.text.value, translate: f.translate.checked }; };
+            f.onsubmit = e => {
+                e.preventDefault();
+                if (!f.text.value.trim()) return;
+                run('tools_remote_send', { kind: 'chatbox', text: f.text.value, translate: f.translate.checked ? '1' : '', split: f.split.checked ? '1' : '', sound: f.sound.checked ? '1' : '' }, () => { remKeep = null; loadRemote(); }).catch(() => {});
+            };
+            box.onclick = e => {
+                const b = e.target.closest('[data-in], [data-ty], [data-p], [data-pre], [data-r]');
+                if (!b) return;
+                let d2;
+                if (b.dataset.in) d2 = { kind: 'input', name: b.dataset.in, value: '1', pulse: '1' };
+                else if (b.dataset.ty) d2 = { kind: 'typing', on: b.dataset.ty };
+                else if (b.dataset.p) d2 = { kind: 'param', name: b.dataset.p, type: 'bool', value: b.dataset.v };
+                else if (b.dataset.r) d2 = { kind: 'chatbox', clear: '1', text: ' ' };
+                else return toast('Schnellknöpfe bitte im Dashboard benutzen.');
+                run('tools_remote_send', d2, () => setTimeout(loadRemote, 1500)).catch(() => {});
+            };
+        }).catch(x => { box.innerHTML = '<div class="nx-panel"><h2>🎮 PC-Fernbedienung</h2><div class="vx-error">⚠ ' + esc(x.message) + '</div><p class="vx-small">Einstellungen → 🔗 Dashboard: Adresse und Geräte-Token eintragen, Verbindung einschalten.</p></div>'; });
+    }
 
     window.NexusApp = { open, applyUi, userExtra, groupExtra, menu };
     // Seite war vor dem Laden dieses Skripts schon offen?

@@ -297,6 +297,14 @@ das lässt sich in VRC Nexus → Konto einstellen (Recht `system.manage`). Vorau
   - „👯 oft gleichzeitig online mit …“
 - **🎲 Zufalls-Avatar** (Avatare): würfelt aus der gefilterten Liste und zieht den Avatar nach Rückfrage an.
 
+### Nexus: 🌐 Übersetzen & Verbindung zur App
+
+- **Übersetzen mit DeepL oder Google** (Konto → „Übersetzen“, Schlüssel je Benutzer AES-verschlüsselt): Chatbox-Nachrichten übersetzt senden,
+  Text markieren → 🌐 bzw. Alt+T. Hat das Dashboard keinen Schlüssel, übersetzt die verbundene Windows-App.
+- **Chatbox**: `/n` = neue Zeile, lange Nachrichten aufteilen, Tipp-Anzeige, Emojis, zeitversetzt senden, Chatbox leeren.
+- **client.php** kann jetzt zusätzlich `notes` (Memo-Abgleich), `send` (Befehle an den PC, z. B. vom Handy) und `remote` (Live-Status für die Fernbedienung).
+  Die Windows-App ist damit ein vollwertiger Client des Dashboards (wie der Python-Client), die Android-App eine Fernbedienung.
+
 ### VRC Nexus als eigenständige Windows-App (`apps/vrc-nexus`)
 
 Der komplette Nexus auch **ohne Server**: Electron-App mit eingebautem Backend (JavaScript-Portierung der PHP-Module,

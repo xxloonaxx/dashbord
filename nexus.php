@@ -795,6 +795,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 'platforms' => array_values(array_unique(array_map(function ($p) { return VRC_PLATFORM[$p['platform'] ?? ''] ?? ($p['platform'] ?? ''); }, (array)($a['unityPackages'] ?? []))))];
                     }, is_array($res) ? array_filter($res, 'is_array') : []))];
                     break;
+                case 'tr_status':
+                    require_once __DIR__ . '/inc/modules/translate.php';
+                    $out = tr_status($uid);
+                    break;
+                case 'tr_key':
+                    require_once __DIR__ . '/inc/modules/translate.php';
+                    tr_key_save($uid, (string)($in['provider'] ?? ''), (string)($in['key'] ?? ''));
+                    $out = tr_status($uid) + ['msg' => trim((string)($in['key'] ?? '')) !== '' ? 'Schlüssel gespeichert.' : 'Schlüssel entfernt.'];
+                    break;
+                case 'tr_prefs':
+                    require_once __DIR__ . '/inc/modules/translate.php';
+                    tr_prefs_save($uid, $in);
+                    $out = tr_status($uid) + ['msg' => 'Gespeichert.'];
+                    break;
+                case 'translate':
+                    require_once __DIR__ . '/inc/modules/translate.php';
+                    $out = tr_translate($uid, (string)($in['text'] ?? ''), (string)($in['target'] ?? ''), (string)($in['provider'] ?? ''));
+                    break;
+                case 'tr_test':
+                    require_once __DIR__ . '/inc/modules/translate.php';
+                    $r = tr_translate($uid, 'Hallo, wie geht es dir?', 'EN-US', (string)($in['provider'] ?? ''));
+                    $out = ['msg' => '✔ ' . ($r['provider'] === 'deepl' ? 'DeepL' : 'Google') . ': „' . $r['text'] . '“'];
+                    break;
                 case 'avatar_db':
                     $out = ['avatars' => vrc_avatar_db_search((int)($in['provider'] ?? 0), (string)($in['q'] ?? '')), 'current' => (string)($acc['me']['currentAvatar'] ?? '')];
                     foreach ($out['avatars'] as &$av) $av['current'] = $av['id'] === $out['current'];
@@ -1220,6 +1243,7 @@ session_write_close();
                     <button type="button" class="btn btn-sm" id="notifyTest" style="margin-top: 10px;">🔔 Test-Benachrichtigung</button>
                 </form>
             </div>
+            <div class="panel"><div class="panel-title">🌐 Übersetzen (DeepL / Google)</div><div id="trPanel"></div></div>
             <div class="panel">
                 <div class="panel-title">Verbindung &amp; Daten</div>
                 <p class="vx-small" id="connInfo"></p>
@@ -1260,5 +1284,6 @@ session_write_close();
 </script>
 <script src="assets/js/nexus.js"></script>
 <script src="assets/js/nexus-client.js"></script>
+<script src="assets/js/nexus-translate.js"></script>
 </body>
 </html>

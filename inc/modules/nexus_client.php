@@ -223,7 +223,19 @@ function nc_osc_enqueue(int $uid, string $kind, array $in): int {
         case 'chatbox':
             $text = trim(str_replace(["\r", "\t"], ['', ' '], (string)($in['text'] ?? '')));
             if ($text === '') throw new RuntimeException('Text fehlt.');
-            $payload = ['text' => mb_substr($text, 0, 144), 'sound' => !empty($in['sound'])];
+            // „/n“ bzw. „\n“ als Zeilenumbruch (nicht in Links)
+            $text = preg_replace_callback('~https?://\S+|/n|\\\\n~', function ($m) { return strlen($m[0]) === 2 ? "\n" : $m[0]; }, $text);
+            $on = function ($v) { return $v === true || in_array((string)$v, ['1', 'true', 'on'], true); };
+            $split = $on($in['split'] ?? '');
+            $translate = $on($in['translate'] ?? '');
+            if ($translate) {
+                require_once __DIR__ . '/translate.php';
+                if (tr_provider($uid) !== '') { $text = tr_chat($uid, $text, (string)($in['target'] ?? '')); $translate = false; }   // Server übersetzt selbst
+            }
+            $payload = ['text' => mb_substr($text, 0, $split ? 1000 : 144), 'sound' => in_array((string)($in['sound'] ?? ''), ['1', 'true', 'on'], true) || ($in['sound'] ?? null) === true, 'split' => $split];
+            if ($translate) $payload += ['translate' => true, 'target' => preg_replace('/[^A-Z-]/', '', strtoupper((string)($in['target'] ?? '')))];   // übersetzt die Windows-App
+            if (!empty($in['clear']) && $on($in['clear'])) $payload = ['text' => '', 'sound' => false, 'clear' => true];
+            if (!empty($in['delay'])) $payload['delay'] = max(0, min(3600, (int)$in['delay']));
             break;
         case 'typing':
             $payload = ['on' => !empty($in['on'])];
@@ -314,4 +326,28 @@ function nc_export_csv(int $uid): void {
     $st->execute([$uid]);
     foreach ($st as $r) fputcsv($out, [date('d.m.Y H:i:s', (int)$r['ts']), NC_KINDS[$r['kind']][1] ?? $r['kind'], $r['world_name'], $r['world_id'], $r['instance'], $r['player_name'], $r['player_id'], $r['detail']], ';');
     fclose($out);
+}
+
+// ---------- Notizen-Abgleich mit der Windows-App ----------
+
+/** Notizen vom Gerät übernehmen, wenn neuer; Server-Notizen seit $since zurückgeben */
+function nc_notes_sync(int $uid, int $since, array $notes): array {
+    $db = vrc_db();
+    $get = $db->prepare('SELECT updated FROM notes WHERE user_id = ? AND vrc_id = ?');
+    $put = $db->prepare('INSERT OR REPLACE INTO notes (user_id, vrc_id, note, favorite, updated, tags, watch) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    $got = [];
+    foreach (array_slice($notes, 0, 2000) as $n) {
+        if (!is_array($n) || !preg_match('/^usr_[0-9a-f-]{36}$/i', (string)($n['vrc_id'] ?? ''))) continue;
+        $upd = min(time(), (int)($n['updated'] ?? 0));
+        $get->execute([$uid, $n['vrc_id']]);
+        $cur = $get->fetchColumn();
+        if ($cur !== false && (int)$cur >= $upd) continue;
+        $put->execute([$uid, $n['vrc_id'], mb_substr((string)($n['note'] ?? ''), 0, 4000), !empty($n['favorite']) ? 1 : 0, $upd, mb_substr((string)($n['tags'] ?? ''), 0, 200), !empty($n['watch']) ? 1 : 0]);
+        $got[$n['vrc_id']] = true;
+    }
+    $st = $db->prepare('SELECT vrc_id, note, favorite, tags, watch, updated FROM notes WHERE user_id = ? AND updated > ? ORDER BY updated LIMIT 2000');
+    $st->execute([$uid, $since]);
+    $out = array_values(array_filter($st->fetchAll(), function ($r) use ($got) { return !isset($got[$r['vrc_id']]); }));
+    return ['notes' => array_map(function ($r) { return ['vrc_id' => $r['vrc_id'], 'note' => $r['note'], 'favorite' => (int)$r['favorite'], 'tags' => $r['tags'], 'watch' => (int)$r['watch'], 'updated' => (int)$r['updated']]; }, $out),
+            'received' => count($got), 'time' => time()];
 }

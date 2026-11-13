@@ -190,6 +190,13 @@ function vrc_migrate(PDO $db): void {
         PRAGMA user_version = 7;
     ");
     }
+    if ((int)$db->query('PRAGMA user_version')->fetchColumn() < 8) {
+        // Einstellungen je Benutzer (z. B. Übersetzungs-Schlüssel, verschlüsselt)
+        $db->exec("
+        CREATE TABLE IF NOT EXISTS user_prefs (user_id INTEGER NOT NULL, k TEXT NOT NULL, v TEXT NOT NULL, PRIMARY KEY (user_id, k));
+        PRAGMA user_version = 8;
+    ");
+    }
 }
 
 // ---------- Verschlüsselung der Sitzungs-Cookies ----------

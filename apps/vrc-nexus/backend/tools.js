@@ -120,6 +120,14 @@ class Tools {
         this.netBusy = false;
         this.log = [];
         this.settings.onChange(changed => this.applySettings(changed));
+        // zusätzliche Chatbox-Platzhalter: {freunde} {freunde_online} {status} {statustext}
+        app.game.vars = () => {
+            let fr = [];
+            try { fr = this.app.vrc.friendList(); } catch (e) { fr = []; }
+            const acc = this.acc(), me = acc ? acc.me || {} : {};
+            const ST = { 'join me': 'Join Me', active: 'Online', 'ask me': 'Ask Me', busy: 'Beschäftigt' };
+            return { freunde: String(fr.filter(f => f.state === 'online').length), freunde_online: String(fr.filter(f => f.state !== 'offline').length), status: ST[me.status] || '', statustext: str(me.statusDescription) };
+        };
     }
 
     start() {
@@ -885,7 +893,7 @@ class Tools {
             case 'chatbox': {
                 let text = str(d.text);
                 if (d.translate) text = (await this.app.tr.chat(text, str(d.target))).text;
-                await g.oscSend('chatbox', { text, sound: d.sound ? '1' : '' });
+                await g.oscSend('chatbox', { text, sound: d.sound ? '1' : '', split: d.split ? '1' : '' });
                 return { ok: true, text };
             }
             case 'typing': await g.oscSend('typing', { on: d.on ? '1' : '' }); return { ok: true };

@@ -200,6 +200,25 @@ function oscDecode(buf) {
     return [[address, args]];
 }
 
+/** „/n“ und „\n“ (als Text getippt) werden zu echten Zeilenumbrüchen in der Chatbox */
+function chatNewlines(t) { return str(t).replace(/https?:\/\/\S+|\/n|\\n/g, m => (m.length === 2 ? '\n' : m)).replace(/\n{3,}/g, '\n\n'); }
+/** Lange Nachricht an Wortgrenzen in Teile ≤ max Zeichen schneiden, mit (1/3)-Markierung */
+function splitChat(text, max) {
+    const words = Array.from(text).join('').split(/(\s+)/);
+    const parts = [];
+    let cur = '';
+    const lim = max - 6;
+    for (const w of words) {
+        if (Array.from(cur + w).length > lim) {
+            if (cur.trim()) parts.push(cur.trim());
+            cur = Array.from(w).length > lim ? '' : w.trimStart();
+            if (Array.from(w).length > lim) { const a = Array.from(w); for (let i = 0; i < a.length; i += lim) parts.push(a.slice(i, i + lim).join('')); }
+        } else cur += w;
+    }
+    if (cur.trim()) parts.push(cur.trim());
+    return parts.length > 1 ? parts.map((p, i) => p + ' (' + (i + 1) + '/' + parts.length + ')') : parts;
+}
+
 class Osc {
     constructor() { this.sock = dgram.createSocket('udp4'); this.sock.unref(); this.host = '127.0.0.1'; this.port = 9000; this.lastChat = 0; this.chain = Promise.resolve(); this.listener = null; this.params = {}; this.avatarId = ''; this.lastPacket = 0; this.listenError = ''; }
     configure(host, port) { this.host = host || '127.0.0.1'; this.port = int(port) || 9000; }
@@ -267,7 +286,7 @@ class GameLog {
     }
     cfg() {
         const d = { log_dir: '', osc_host: '127.0.0.1', osc_send_port: 9000, osc_listen_port: 9001, osc_listen: true, logs: true, rotator_enabled: false,
-            rotator_text: '🕒 {zeit} · 🌐 {welt} · 👥 {spieler}', rotator_seconds: 30 };
+            rotator_text: '🕒 {zeit} · 🌐 {welt} · 👥 {spieler}', rotator_seconds: 30, rotator_texts: '', rotator_mode: 'seq', rotator_only_game: false };
         try { return Object.assign(d, JSON.parse(this.db.setting('client_cfg', '{}'))); } catch (e) { return d; }
     }
     saveCfg(c) {
@@ -277,7 +296,10 @@ class GameLog {
             osc_send_port: Math.min(65535, Math.max(1, int(c.osc_send_port) || cur.osc_send_port)), osc_listen_port: Math.min(65535, Math.max(1, int(c.osc_listen_port) || cur.osc_listen_port)),
             osc_listen: c.osc_listen !== undefined ? !!c.osc_listen && c.osc_listen !== '0' : cur.osc_listen, logs: c.logs !== undefined ? !!c.logs && c.logs !== '0' : cur.logs,
             rotator_enabled: c.rotator_enabled !== undefined ? !!c.rotator_enabled && c.rotator_enabled !== '0' : cur.rotator_enabled,
-            rotator_text: c.rotator_text !== undefined ? cut(str(c.rotator_text), 200) : cur.rotator_text, rotator_seconds: Math.max(5, Math.min(3600, int(c.rotator_seconds) || cur.rotator_seconds)) });
+            rotator_text: c.rotator_text !== undefined ? cut(str(c.rotator_text), 200) : cur.rotator_text, rotator_seconds: Math.max(5, Math.min(3600, int(c.rotator_seconds) || cur.rotator_seconds)),
+            rotator_texts: c.rotator_texts !== undefined ? cut(str(c.rotator_texts).replace(/\r/g, ''), 4000) : cur.rotator_texts,
+            rotator_mode: c.rotator_mode !== undefined ? (['seq', 'random'].includes(str(c.rotator_mode)) ? str(c.rotator_mode) : 'seq') : cur.rotator_mode,
+            rotator_only_game: c.rotator_only_game !== undefined ? !!c.rotator_only_game && c.rotator_only_game !== '0' : cur.rotator_only_game });
         this.db.setSetting('client_cfg', JSON.stringify(n));
         this.applySettings();
         return n;
@@ -303,16 +325,44 @@ class GameLog {
         }
         this.saveState();
         const c = this.cfg();
-        if (c.rotator_enabled && Date.now() - this.lastRot >= Math.max(5, c.rotator_seconds) * 1000) {
+        if (c.rotator_enabled && Date.now() - this.lastRot >= Math.max(5, c.rotator_seconds) * 1000 && (!c.rotator_only_game || this.state.running)) {
             this.lastRot = Date.now();
-            this.osc.chatbox(this.rotatorText(c.rotator_text), false).catch(() => {});
+            this.osc.chatbox(this.rotatorText(this.rotatorNext(c)), false).catch(() => {});
         }
     }
-    rotatorText(tpl) {
+    /** Platzhalter in normalen Chatbox-Nachrichten (nur wenn {…} vorkommt) */
+    fillVars(text) { return /\{\w+(:[^}]*)?\}/.test(text) ? this.fill(text) : text; }
+    /** Nächster Rotator-Text: mehrere Texte (eine Zeile = ein Text) der Reihe nach oder zufällig */
+    rotatorNext(c) {
+        const list = str(c.rotator_texts).split('\n').map(x => x.trim()).filter(Boolean);
+        if (!list.length) return c.rotator_text;
+        if (c.rotator_mode === 'random') { let i; do { i = Math.floor(Math.random() * list.length); } while (list.length > 1 && i === this.rotIdx); this.rotIdx = i; return list[i]; }
+        this.rotIdx = ((this.rotIdx ?? -1) + 1) % list.length;
+        return list[this.rotIdx];
+    }
+    /** Rotator: Platzhalter füllen, /n bzw. \n als Zeilenumbruch, max. 144 Zeichen */
+    rotatorText(tpl) { return Array.from(chatNewlines(this.fill(tpl))).slice(0, 144).join(''); }
+    /** Platzhalter füllen: {zeit} {welt} {freunde} {countdown:2026-12-24 18:00} {zufall:a|b} … */
+    fill(tpl) {
         const s = this.state, d = new Date(), dur = s.since ? now() - s.since : 0;
-        const vals = { zeit: d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }), datum: d.toLocaleDateString('de-DE'), welt: s.worldName || '–', spieler: String(s.players.size),
-            avatar: s.avatar || '–', dauer: Math.floor(dur / 3600) + ':' + String(Math.floor(dur / 60) % 60).padStart(2, '0'), name: s.displayName || '' };
-        return str(tpl).replace(/\{(\w+)\}/g, (m, k) => (k in vals ? vals[k] : m)).slice(0, 144);
+        const extra = this.vars ? this.vars() : {};
+        const loc = s.worldId ? require('./util').location(s.worldId + ':' + s.instance) : null;
+        const vals = Object.assign({ zeit: d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }), zeit_s: d.toLocaleTimeString('de-DE'), datum: d.toLocaleDateString('de-DE'),
+            wochentag: d.toLocaleDateString('de-DE', { weekday: 'long' }), welt: s.worldName || '–', spieler: String(s.players.size), avatar: s.avatar || '–',
+            dauer: Math.floor(dur / 3600) + ':' + String(Math.floor(dur / 60) % 60).padStart(2, '0'), name: s.displayName || '', zugang: loc ? loc.access : '–', region: loc ? loc.region : '–',
+            uhr: ['🕛', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚'][d.getHours() % 12] }, extra);
+        let out = str(tpl).replace(/\{(\w+)(?::([^}]*))?\}/g, (m, k, arg) => {
+            if (k === 'zufall' && arg) { const o = arg.split('|'); return o[Math.floor(Math.random() * o.length)]; }
+            if (k === 'countdown' && arg) {
+                const t = new Date(arg.replace(' ', 'T')).getTime();
+                if (isNaN(t)) return m;
+                let r = Math.max(0, Math.floor((t - Date.now()) / 1000));
+                const dd = Math.floor(r / 86400); r %= 86400;
+                return (dd ? dd + ' T ' : '') + Math.floor(r / 3600) + ' h ' + String(Math.floor(r / 60) % 60).padStart(2, '0') + ' min';
+            }
+            return k in vals ? String(vals[k]) : m;
+        });
+        return out;
     }
     importAll() { if (!this.watcher) return 0; const ev = this.watcher.importAll(); this.store(ev); return ev.length; }
 
@@ -406,9 +456,20 @@ class GameLog {
         let payload;
         switch (kind) {
             case 'chatbox': {
-                const text = str(input.text).replace(/\r/g, '').replace(/\t/g, ' ').trim();
+                const on = v => !!v && v !== '0' && v !== 'false';
+                if (on(input.clear)) { payload = { text: '', sound: false }; break; }
+                let text = str(input.text).replace(/\r/g, '').replace(/\t/g, ' ').trim();
                 if (!text) throw new UserError('Text fehlt.');
-                payload = { text: cut(text, 144), sound: !!input.sound && input.sound !== '0' };
+                if (input.vars !== false && input.vars !== '0') text = this.fillVars(text);
+                text = chatNewlines(text);
+                const sound = on(input.sound);
+                if (Array.from(text).length > 144 && on(input.split)) {
+                    const parts = splitChat(text, 144);
+                    let last = 0;
+                    for (const [i, p] of parts.entries()) last = await this.oscSend('chatbox', { text: p, sound: i === 0 && sound, vars: false, delay: (int(input.delay) || 0) + i * 4 });
+                    return last;
+                }
+                payload = { text: Array.from(text).slice(0, 144).join(''), sound };
                 break;
             }
             case 'typing': payload = { on: !!input.on && input.on !== '0' }; break;
@@ -430,9 +491,14 @@ class GameLog {
                 break;
             default: throw new UserError('Unbekannte OSC-Art.');
         }
-        const id = this.db.prepare('INSERT INTO osc_queue (user_id, created, kind, payload, status) VALUES (?, ?, ?, ?, ?)').run(UID, now(), kind, JSON.stringify(payload), 'sent').lastId;
-        try { await this.osc.run(kind, payload); this.db.prepare("UPDATE osc_queue SET status = 'done', done = ? WHERE id = ?").run(now(), id); }
-        catch (e) { this.db.prepare("UPDATE osc_queue SET status = 'failed', done = ?, result = ? WHERE id = ?").run(now(), cut(e.message, 200), id); }
+        const delay = Math.max(0, Math.min(3600, int(input.delay) || 0));
+        const id = this.db.prepare('INSERT INTO osc_queue (user_id, created, kind, payload, status) VALUES (?, ?, ?, ?, ?)').run(UID, now(), kind, JSON.stringify(payload), delay ? 'pending' : 'sent').lastId;
+        const exec = async () => {
+            try { await this.osc.run(kind, payload); this.db.prepare("UPDATE osc_queue SET status = 'done', done = ? WHERE id = ?").run(now(), id); }
+            catch (e) { this.db.prepare("UPDATE osc_queue SET status = 'failed', done = ?, result = ? WHERE id = ?").run(now(), cut(e.message, 200), id); }
+        };
+        if (delay) { const t = setTimeout(() => { this.db.prepare("UPDATE osc_queue SET status = 'sent' WHERE id = ?").run(id); exec(); }, delay * 1000); if (t.unref) t.unref(); }
+        else await exec();
         this.db.prepare('DELETE FROM osc_queue WHERE user_id = ? AND created < ?').run(UID, now() - 7 * 86400);
         return id;
     }
@@ -453,4 +519,4 @@ class GameLog {
     presetDelete(id) { this.db.prepare('DELETE FROM osc_presets WHERE id = ? AND user_id = ?').run(int(id), UID); }
 }
 
-module.exports = { GameLog, LogParser, LogWatcher, SessionState, Osc, oscEncode, oscDecode, KINDS, defaultLogDir };
+module.exports = { chatNewlines, splitChat, GameLog, LogParser, LogWatcher, SessionState, Osc, oscEncode, oscDecode, KINDS, defaultLogDir };

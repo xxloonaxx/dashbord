@@ -113,6 +113,7 @@ app.whenReady().then(async () => {
     nexus = new NexusApp({ db, crypt, notify, host });
     nexus.game.start(Number(nexus.settings.get('sys.log_poll_ms')) || 1000);
     nexus.tools.start();
+    nexus.link.start();
     protocol.handle('app', async request => {
         const url = new URL(request.url);
         if (url.pathname === '/' || url.pathname === '/nexus.php' || url.pathname === '/index.html') {

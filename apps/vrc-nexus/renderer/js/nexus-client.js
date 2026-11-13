@@ -129,9 +129,16 @@
                     <div class="nc-card">
                         <h4>💬 Chatbox-Rotator</h4>
                         <label class="check"><input type="checkbox" name="rotator_enabled"> automatisch Status in die Chatbox schreiben</label>
+                        <label class="small">Ein Text</label>
                         <input type="text" name="rotator_text" maxlength="200">
-                        <div class="nc-row"><label class="small">alle</label><input type="number" name="rotator_seconds" min="5" max="3600" style="width: 90px;"><span class="small">Sekunden</span></div>
-                        <p class="muted small">Platzhalter: {zeit} {datum} {welt} {spieler} {avatar} {dauer} {name}</p>
+                        <label class="small">… oder mehrere im Wechsel (eine Zeile = ein Text)</label>
+                        <textarea name="rotator_texts" rows="4" placeholder="🕒 {zeit} · 🌐 {welt}/n👥 {spieler} Spieler&#10;🎧 Musik an, Mikro aus&#10;{zufall:Hallo!|Hi!|Moin!} Schön, dass du da bist"></textarea>
+                        <div class="nc-row"><label class="small">alle</label><input type="number" name="rotator_seconds" min="5" max="3600" style="width: 90px;"><span class="small">Sekunden</span>
+                            <select name="rotator_mode"><option value="seq">der Reihe nach</option><option value="random">zufällig</option></select></div>
+                        <label class="check"><input type="checkbox" name="rotator_only_game"> nur wenn VRChat läuft</label>
+                        <p class="muted small"><b>/n</b> = neue Zeile · Platzhalter: {zeit} {zeit_s} {uhr} {datum} {wochentag} {welt} {zugang} {region} {spieler} {avatar} {dauer} {name}
+                            {freunde} {freunde_online} {status} {statustext} {countdown:2026-12-24 18:00} {zufall:a|b|c}</p>
+                        <div class="nc-row"><button type="button" class="btn btn-sm" id="ncRotPrev">👁 Vorschau</button><span class="small" id="ncRotOut" style="white-space: pre-wrap;"></span></div>
                         <button class="btn btn-sm btn-gold">💾 Speichern</button>
                     </div>
                 </form>
@@ -145,7 +152,12 @@
             e.preventDefault();
             const text = chat.text.value.trim();
             if (!text) return;
-            osc('chatbox', { text, sound: chat.sound.checked }).then(() => { chat.text.value = ''; $('#ncChatN').textContent = '0 / 144'; });
+            const extra = chat.translate ? { translate: chat.translate.checked ? '1' : '', target: chat.target.value, split: chat.split.checked ? '1' : '', delay: chat.delay.value } : {};
+            osc('chatbox', Object.assign({ text, sound: chat.sound.checked ? '1' : '' }, extra)).then(d => {
+                chat.text.value = ''; $('#ncChatN').textContent = '0 / 144';
+                if (d && d.sent) toast('🌐 gesendet: ' + d.sent);
+                else if (extra.delay && extra.delay !== '0') toast('⏱ wird in ' + extra.delay + ' s gesendet.');
+            });
         });
         $$('[data-typing]', chat).forEach(b => b.addEventListener('click', () => osc('typing', { on: b.dataset.typing === '1' })));
         // Parameter
@@ -209,9 +221,13 @@
         cfgForm.addEventListener('submit', e => {
             e.preventDefault();
             const f = cfgForm, d = {};
-            ['log_dir', 'osc_host', 'osc_send_port', 'osc_listen_port', 'rotator_text', 'rotator_seconds'].forEach(k => { d[k] = f[k].value; });
-            ['logs', 'osc_listen', 'rotator_enabled'].forEach(k => { d[k] = f[k].checked ? '1' : '0'; });
+            ['log_dir', 'osc_host', 'osc_send_port', 'osc_listen_port', 'rotator_text', 'rotator_seconds', 'rotator_texts', 'rotator_mode'].forEach(k => { d[k] = f[k].value; });
+            ['logs', 'osc_listen', 'rotator_enabled', 'rotator_only_game'].forEach(k => { d[k] = f[k].checked ? '1' : '0'; });
             api('client_cfg_save', d).then(r => { data.cfg = r.cfg; toast('Gespeichert.'); refresh(); }).catch(fail);
+        });
+        $('#ncRotPrev').addEventListener('click', () => {
+            const f = cfgForm, lines = f.rotator_texts.value.split('\n').map(x => x.trim()).filter(Boolean);
+            api('client_rot_preview', { text: lines[0] || f.rotator_text.value }).then(r => { $('#ncRotOut').textContent = r.text + '  (' + [...r.text].length + '/144)'; }).catch(fail);
         });
         $('#ncImport').addEventListener('click', () => {
             if (!confirm('Alle vorhandenen VRChat-Logdateien einlesen? (Doppelte Einträge werden erkannt.)')) return;
@@ -291,8 +307,8 @@
     function renderTokens() {
         const f = $('#ncCfg'), c = data.cfg || {};
         if (!f || f.contains(document.activeElement)) return;
-        ['log_dir', 'osc_host', 'osc_send_port', 'osc_listen_port', 'rotator_text', 'rotator_seconds'].forEach(k => { f[k].value = c[k] ?? ''; });
-        ['logs', 'osc_listen', 'rotator_enabled'].forEach(k => { f[k].checked = !!c[k]; });
+        ['log_dir', 'osc_host', 'osc_send_port', 'osc_listen_port', 'rotator_text', 'rotator_seconds', 'rotator_texts', 'rotator_mode'].forEach(k => { f[k].value = c[k] ?? ''; });
+        ['logs', 'osc_listen', 'rotator_enabled', 'rotator_only_game'].forEach(k => { f[k].checked = !!c[k]; });
         $('#ncLogDir').textContent = data.log_dir || '';
         $('#ncOscErr').textContent = data.state && data.state.osc_error ? '⚠ ' + data.state.osc_error : '';
     }

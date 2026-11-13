@@ -13,6 +13,7 @@ const { GameLog, KINDS } = require('./gamelog');
 const { Settings } = require('./settings');
 const { Tools } = require('./tools');
 const { Translator } = require('./translate');
+const { DashLink } = require('./dashlink');
 
 const RENDERER = path.join(__dirname, '..', 'renderer');
 const truthy = v => v !== undefined && v !== null && v !== '' && v !== '0' && v !== false && v !== 'false';
@@ -29,6 +30,7 @@ class NexusApp {
         this.x = new Extra(this.vrc);
         this.game = new GameLog(opts.db, { onEvent: e => { if (this.tools) this.tools.onGameEvent(e); if (opts.onGameEvent) opts.onGameEvent(e); } });
         this.tr = new Translator(opts.db, opts.crypt, this.settings);
+        this.link = new DashLink(this);
         this.tools = new Tools(this, Object.assign({ notify: opts.notify }, opts.host || {}));
         this.vrc.onWatch = (name, world) => { if (this.settings.get('notify.watch')) this.tools.alert('🟢 ' + name + ' ist online', world ? 'in ' + world : 'gerade ins Spiel gekommen'); };
         this.notify = opts.notify || null;
@@ -99,6 +101,7 @@ class NexusApp {
             if (act === 'cancel_login') { this.vrc.pending = null; return { ok: true }; }
             if (act.startsWith('client_')) return await this.client(act, input);
             if (act.startsWith('tools_')) return await this.toolAction(act, input);
+            if (['tr_status', 'tr_key', 'tr_prefs', 'translate', 'tr_test'].includes(act)) return await this.trAction(act, input);
             const acc = this.vrc.account();
             if (!acc) throw new VrcAuthError('Kein VRChat-Konto verbunden.');
             return await this.action(act, input, files, acc, id, user, valid);
@@ -126,6 +129,7 @@ class NexusApp {
             case 'client_osc_status': return { osc: g.oscRecent(), state: g.stateRow() };
             case 'client_preset_save': g.presetSave(input.label, str(input.kind), input); return { presets: g.presets() };
             case 'client_preset_delete': g.presetDelete(input.preset); return { presets: g.presets() };
+            case 'client_rot_preview': return { text: g.rotatorText(str(input.text)) };
             case 'client_log_clear': return { deleted: g.clear() };
         }
         throw new UserError('Unbekannte Aktion.');
@@ -139,6 +143,23 @@ class NexusApp {
         if (kind === 'avatars') return download(t.csv('avatars', await t.ownAvatars()), 'text/csv; charset=utf-8', 'meine-avatare_' + day + '.csv');
         if (kind === 'settings') return download(JSON.stringify(Object.assign({}, this.settings.all(), { 'int.api_token': undefined }), null, 2), 'application/json', 'vrc-nexus-einstellungen.json');
         throw new UserError('Unbekannter Export.');
+    }
+
+    /** Übersetzen – gleiche Aktionen wie im Dashboard (nexus.php), damit eine Oberfläche für beide reicht */
+    async trAction(act, input) {
+        const tr = this.tr, s = this.settings;
+        const status = () => { const st = tr.status(); const all = s.all(); st.prefs = { provider: all['tr.provider'], chat_target: all['tr.chat_target'], chat_mode: all['tr.chat_mode'], ui_target: all['tr.ui_target'], chat_default: all['tr.chat_default'], select_button: all['tr.select_button'] }; return st; };
+        if (act === 'tr_status') return status();
+        if (act === 'tr_key') { tr.saveKey(str(input.provider), str(input.key)); return Object.assign(status(), { msg: str(input.key).trim() ? 'Schlüssel gespeichert.' : 'Schlüssel entfernt.' }); }
+        if (act === 'tr_prefs') {
+            const map = {};
+            for (const k of ['provider', 'chat_target', 'chat_mode', 'ui_target', 'chat_default', 'select_button']) if (input[k] !== undefined) map['tr.' + k] = input[k];
+            s.save(map);
+            return Object.assign(status(), { msg: 'Gespeichert.' });
+        }
+        if (act === 'translate') return await tr.translate(str(input.text), str(input.target), str(input.provider));
+        const r = await tr.translate('Hallo, wie geht es dir?', 'EN-US', str(input.provider));
+        return { msg: '✔ ' + (r.provider === 'deepl' ? 'DeepL' : 'Google') + ': „' + r.text + '“' };
     }
 
     async toolAction(act, input) {
@@ -158,6 +179,12 @@ class NexusApp {
             case 'tools_translate': return await this.tr.translate(str(input.text), str(input.target), str(input.provider));
             case 'tools_tr_key': return Object.assign(this.tr.saveKey(str(input.provider), str(input.key)), { msg: str(input.key).trim() ? 'Schlüssel gespeichert.' : 'Schlüssel entfernt.' });
             case 'tools_tr_test': { const r = await this.tr.translate('Hallo, wie geht es dir?', 'EN-US', str(input.provider)); return { msg: '✔ ' + (r.provider === 'deepl' ? 'DeepL' : 'Google') + ': „' + r.text + '“' }; }
+            case 'tools_link_status': return this.link.info();
+            case 'tools_link_token': return Object.assign(this.link.saveToken(str(input.token)), { msg: str(input.token).trim() ? 'Token gespeichert.' : 'Token entfernt.' });
+            case 'tools_link_test': return await this.link.test();
+            case 'tools_link_sync': { this.link.last = { osc: 0, state: 0, events: 0, notes: 0 }; await this.link.tick(); const n = this.link.s('link.notes') ? await this.link.syncNotes() : { sent: 0, received: 0 }; return Object.assign(this.link.info(), { msg: 'Abgeglichen: ' + this.link.status.sent + ' Spiel-Ereignisse hochgeladen, Notizen ' + n.sent + ' gesendet / ' + n.received + ' empfangen.' }); }
+            case 'tools_remote_state': return await this.link.remoteState();
+            case 'tools_remote_send': { const d = Object.assign({}, input); delete d.act; return await this.link.remoteSend(str(input.kind), d); }
             case 'tools_token': return { token: s.newToken(), msg: 'Neuer Zugangsschlüssel erstellt – im Stream-Deck-Plugin eintragen.' };
             case 'tools_test_notify': return t.testAlert();
             case 'tools_backup': return t.backupNow();
