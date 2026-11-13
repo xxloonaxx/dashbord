@@ -48,7 +48,7 @@ if (native) {
     const crypt = { encrypt: s => 'plain:' + Buffer.from(s).toString('base64'), decrypt: s => (s.startsWith('plain:') ? Buffer.from(s.slice(6), 'base64').toString() : '{}') };
     const host = {
         userData: '/data', notify,
-        openExternal: url => window.open(url, '_system'),
+        openExternal: url => { window.location.href = url; },     // externe Adresse → Capacitor öffnet den System-Browser / Download
         speak: t => { if (window.speechSynthesis) speechSynthesis.speak(Object.assign(new SpeechSynthesisUtterance(t), { lang: 'de-DE' })); },
     };
     const app = new NexusApp({ db, crypt, host, notify, mobile: true });
@@ -57,6 +57,7 @@ if (native) {
     app.game.watcher = null;
     app.tools.backupTick = () => {};                       // Sicherungen sind am PC sinnvoll, nicht im Telefon-Speicher
     app.tools.start();
+    app.updater.start();
     window.__nexus = app;
 
     // fetch umleiten: nexus.php → eingebautes Backend, alles andere → (native) Netz

@@ -325,6 +325,46 @@ test('Chatbox: /n, Aufteilen, Platzhalter, Rotator mit mehreren Texten', async (
     assert.deepStrictEqual(got.slice(0, 2), ['In Pug\nhallo', '']);
 });
 
+
+test('Auto-Update: neueste Version finden, Windows installieren, Android öffnen', async () => {
+    const { newer } = require('../backend/updater');
+    assert.ok(newer('1.2.10', '1.2.9') && newer('2.0.0', '1.9.9') && !newer('1.2.1', '1.2.1') && !newer('1.2.0', '1.2.1'));
+    const http = require('http');
+    const asset = (n, sz) => ({ name: n, size: sz, browser_download_url: 'https://github.com/x/releases/download/t/' + n });
+    const releases = [
+        { tag_name: 'vrc-nexus-v99.0.1', draft: false, prerelease: true, assets: [] },                       // Vorabversion → ignorieren
+        { tag_name: 'anderes-v100.0.0', draft: false, prerelease: false, assets: [] },                         // anderes Projekt → ignorieren
+        { tag_name: 'vrc-nexus-v9.1.0', draft: false, prerelease: false, body: '## Neu\n**Mehr**', html_url: 'https://github.com/x/releases/tag/vrc-nexus-v9.1.0',
+          published_at: '2026-11-13T10:00:00Z', assets: [asset('VRC-Nexus-9.1.0-Setup.exe', 10), asset('VRC-Nexus-9.1.0-portable.exe', 11), asset('VRC-Nexus-9.1.0-android.apk', 12)] },
+        { tag_name: 'vrc-nexus-v9.0.9', draft: false, prerelease: false, assets: [] },
+    ];
+    const srv = http.createServer((req, res) => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(req.url.startsWith('/repos/xxloonaxx/dashbord/releases') ? releases : [])); });
+    await new Promise(r => srv.listen(0, '127.0.0.1', r));
+    process.env.NEXUS_UPDATE_API = 'http://127.0.0.1:' + srv.address().port;
+    const { NexusApp } = require('../backend/app');
+    const calls = [];
+    const db = await openDatabase(null);
+    const app = new NexusApp({ db, crypt: { encrypt: s => s, decrypt: s => s }, host: { userData: os.tmpdir(), installUpdate: async (a, p) => { p('50 %'); calls.push(a.setup.name); } } });
+    app.game.osc.stopListen();
+    const st = await app.updater.check();
+    assert.strictEqual(st.version, '9.1.0');
+    assert.ok(st.available && st.assets.setup && st.assets.apk && st.assets.portable);
+    assert.ok((await app.post({ act: 'update_check' }, {})).msg.includes('9.1.0'));
+    const r = await app.post({ act: 'update_install' }, {});
+    assert.ok(r.msg.includes('9.1.0') && calls[0] === 'VRC-Nexus-9.1.0-Setup.exe');
+    // Android: Download öffnen statt installieren
+    const opened = [];
+    const db2 = await openDatabase(null);
+    const mob = new NexusApp({ db: db2, crypt: { encrypt: s => s, decrypt: s => s }, mobile: true, host: { userData: os.tmpdir(), openExternal: u => opened.push(u) } });
+    mob.game.osc.stopListen();
+    await mob.updater.check();
+    assert.strictEqual(mob.updater.status().platform, 'android');
+    await mob.updater.install();
+    assert.ok(opened[0].endsWith('VRC-Nexus-9.1.0-android.apk'));
+    srv.close(); app.tools.stop(); mob.tools.stop();
+    delete process.env.NEXUS_UPDATE_API;
+});
+
 (async () => {
     let ok = 0;
     for (const [name, fn] of tests) {

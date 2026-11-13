@@ -22,6 +22,8 @@ const FIELDS = [
     ['sys.hw_accel', 'system', 'Leistung', 'bool', true, 'Hardwarebeschleunigung', 'Wirkt nach einem Neustart der App.'],
     ['sys.log_poll_ms', 'system', 'Leistung', 'select', '1000', 'VRChat-Log prüfen alle', '', [['500', '0,5 s'], ['1000', '1 s'], ['2000', '2 s'], ['5000', '5 s']]],
     ['sys.global_sample', 'system', 'Leistung', 'bool', true, 'Weltweite Spielerzahl alle 15 min messen', 'Für das Diagramm „VRChat weltweit“.'],
+    ['upd.check', 'system', 'Updates', 'bool', true, 'Automatisch nach Updates suchen', 'Beim Start und alle 6 Stunden (GitHub-Releases).'],
+    ['upd.mode', 'system', 'Updates', 'select', 'notify', 'Wenn ein Update da ist', 'Automatisch installieren nur, wenn VRChat gerade nicht läuft.', [['notify', 'nur Bescheid geben'], ['auto', 'automatisch herunterladen & installieren']]],
     ['sys.backup', 'system', 'Sicherung', 'select', 'weekly', 'Datenbank automatisch sichern', '', [['off', 'nie'], ['daily', 'täglich'], ['weekly', 'wöchentlich']]],
     ['sys.backup_keep', 'system', 'Sicherung', 'number', 5, 'Anzahl Sicherungen behalten', '', [1, 60]],
     // ---------- Oberfläche ----------

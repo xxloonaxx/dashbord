@@ -52,6 +52,34 @@ const host = {
     showTab: tab => { if (!win) return; win.show(); win.focus(); if (tab) win.webContents.executeJavaScript('window.NexusUI && NexusUI.tab(' + JSON.stringify(tab) + ')').catch(() => {}); },
     setTray: text => { if (tray) tray.setToolTip(text); },
     thumbnail: async file => (await nativeImage.createThumbnailFromPath(file, { width: 360, height: 220 })).toJPEG(80),
+    /** Update installieren: Installer still ausführen bzw. portable EXE ersetzen, dann neu starten */
+    installUpdate: async (assets, progress) => {
+        const portable = process.env.PORTABLE_EXECUTABLE_FILE;
+        const a = portable ? assets.portable : assets.setup;
+        if (!a) throw new Error('Im Release fehlt die passende Datei (' + (portable ? 'portable' : 'Setup') + ').');
+        const res = await fetch(a.url, { redirect: 'follow' });
+        if (!res.ok || !res.body) throw new Error('Download fehlgeschlagen (HTTP ' + res.status + ').');
+        const file = path.join(app.getPath('temp'), a.name);
+        const out = fs.createWriteStream(file);
+        let got = 0;
+        for await (const chunk of res.body) {
+            got += chunk.length;
+            if (!out.write(chunk)) await new Promise(r => out.once('drain', r));
+            if (a.size) progress(Math.round(got / a.size * 100) + ' %');
+        }
+        await new Promise(r => out.end(r));
+        if (a.size && got !== a.size) throw new Error('Download unvollständig – bitte erneut versuchen.');
+        if (portable) {
+            // die laufende EXE kann sich nicht selbst ersetzen → kleines Skript wartet, kopiert und startet neu
+            const cmd = path.join(app.getPath('temp'), 'vrc-nexus-update.cmd');
+            fs.writeFileSync(cmd, ['@echo off', 'set n=0', ':retry', 'ping 127.0.0.1 -n 2 > nul', 'copy /y "' + file + '" "' + portable + '" > nul',
+                'if errorlevel 1 (set /a n+=1 & if %n% lss 30 goto retry)', 'start "" "' + portable + '"', 'del "' + file + '"'].join('\r\n'));
+            spawn('cmd.exe', ['/c', cmd], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+        } else {
+            spawn(file, ['/S', '--force-run'], { detached: true, stdio: 'ignore' }).unref();
+        }
+        setTimeout(() => { quitting = true; app.quit(); }, 1200);
+    },
     applySettings: (changed, s) => {
         prefs = { 'sys.hw_accel': s['sys.hw_accel'], 'sys.close_to_tray': s['sys.close_to_tray'], 'sys.start_minimized': s['sys.start_minimized'], 'adv.devtools': s['adv.devtools'] };
         try { fs.writeFileSync(PREFS_FILE, JSON.stringify(prefs)); } catch (e) { /* egal */ }
@@ -90,6 +118,7 @@ function trayMenu() {
         { label: '👥 Spielerliste', click: () => host.showTab('players') },
         { label: '🧰 Werkzeuge', click: () => host.showTab('tools') },
         { label: '▶ VRChat starten', click: () => nexus && nexus.tools.launch('').catch(e => notify('VRC Nexus', e.message)) },
+        { label: '⬆ Nach Updates suchen', click: () => nexus && nexus.updater.check().then(st => notify('VRC Nexus', st.available ? 'Version ' + st.version + ' ist verfügbar – Einstellungen → System → Jetzt aktualisieren.' : 'Du hast die neueste Version (' + st.current + ').')).catch(e => notify('VRC Nexus', e.message)) },
         { type: 'separator' },
         { label: 'Mit Windows starten', type: 'checkbox', checked: app.getLoginItemSettings().openAtLogin,
           click: m => { nexus.settings.save({ 'sys.autostart': m.checked }); } },
@@ -114,6 +143,7 @@ app.whenReady().then(async () => {
     nexus.game.start(Number(nexus.settings.get('sys.log_poll_ms')) || 1000);
     nexus.tools.start();
     nexus.link.start();
+    nexus.updater.start();
     protocol.handle('app', async request => {
         const url = new URL(request.url);
         if (url.pathname === '/' || url.pathname === '/nexus.php' || url.pathname === '/index.html') {

@@ -185,3 +185,9 @@ body.wide .wrapper { max-width: none !important; }
 .vx-menu .vx-tabbtn .vx-badge { font-size: 0.68rem; padding: 0 5px; line-height: 1.5; }
 body.menu-icons .vx-menu .vx-tabbtn .vx-badge, body.mobile .vx-menu .vx-tabbtn .vx-badge { position: absolute; top: 1px; right: 0; }
 @media (max-width: 1100px) { .vx-menu > .vx-tabbtn .vx-badge { position: absolute; top: 1px; right: 0; } }
+
+/* ---------- Updates ---------- */
+.upd-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 12px; padding: 8px 12px; border: 1px solid var(--accent-gold); background: rgba(243, 194, 98, 0.08); font-size: 0.86rem; }
+.upd-bar .btn:first-of-type { margin-left: auto; }
+.upd-new { border: 1px solid var(--accent-gold); background: rgba(243, 194, 98, 0.06); padding: 10px 12px; margin: 8px 0; }
+.upd-notes { margin-top: 6px; max-height: 260px; overflow: auto; }

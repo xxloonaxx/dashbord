@@ -14,6 +14,7 @@ const { Settings } = require('./settings');
 const { Tools } = require('./tools');
 const { Translator } = require('./translate');
 const { DashLink } = require('./dashlink');
+const { Updater } = require('./updater');
 
 const RENDERER = path.join(__dirname, '..', 'renderer');
 const truthy = v => v !== undefined && v !== null && v !== '' && v !== '0' && v !== false && v !== 'false';
@@ -31,6 +32,7 @@ class NexusApp {
         this.game = new GameLog(opts.db, { onEvent: e => { if (this.tools) this.tools.onGameEvent(e); if (opts.onGameEvent) opts.onGameEvent(e); } });
         this.tr = new Translator(opts.db, opts.crypt, this.settings);
         this.link = new DashLink(this);
+        this.updater = new Updater(this);
         this.tools = new Tools(this, Object.assign({ notify: opts.notify }, opts.host || {}));
         this.vrc.onWatch = (name, world) => { if (this.settings.get('notify.watch')) this.tools.alert('🟢 ' + name + ' ist online', world ? 'in ' + world : 'gerade ins Spiel gekommen'); };
         this.notify = opts.notify || null;
@@ -102,6 +104,9 @@ class NexusApp {
             if (act.startsWith('client_')) return await this.client(act, input);
             if (act.startsWith('tools_')) return await this.toolAction(act, input);
             if (['tr_status', 'tr_key', 'tr_prefs', 'translate', 'tr_test'].includes(act)) return await this.trAction(act, input);
+            if (act === 'update_status') return this.updater.status();
+            if (act === 'update_check') { const st = await this.updater.check(); return Object.assign(this.updater.status(), { msg: st.available ? '⬆ Version ' + st.version + ' ist verfügbar.' : '✔ Du hast die neueste Version (' + st.current + ').' }); }
+            if (act === 'update_install') return await this.updater.install();
             const acc = this.vrc.account();
             if (!acc) throw new VrcAuthError('Kein VRChat-Konto verbunden.');
             return await this.action(act, input, files, acc, id, user, valid);

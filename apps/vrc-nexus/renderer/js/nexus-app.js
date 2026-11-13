@@ -557,7 +557,7 @@
     }
     function renderSettings() {
         const d = setData, box = $('#setBox');
-        const MOBILE_HIDE = /^(link\.(upload|remote)|sys\.|vr\.|media\.|int\.|social\.(players|memo)|notify\.(player_|screenshot|vrc_start)|adv\.(debug|devtools)|ui\.(wide|sticky_menu))/;
+        const MOBILE_HIDE = /^(upd\.mode|link\.(upload|remote)|sys\.|vr\.|media\.|int\.|social\.(players|memo)|notify\.(player_|screenshot|vrc_start)|adv\.(debug|devtools)|ui\.(wide|sticky_menu))/;
         const visible = f => !MOBILE || !MOBILE_HIDE.test(f.key);
         const tabsShown = Object.keys(d.schema.tabs).filter(t => d.schema.fields.some(f => f.tab === t && visible(f)));
         if (!tabsShown.includes(setTab)) setTab = tabsShown[0];
@@ -575,9 +575,11 @@
         }[setTab] || '';
         box.innerHTML = '<div class="nx-panel"><h2>⚙ Einstellungen</h2><div class="set-tabs">' + Object.entries(d.schema.tabs).filter(([k]) => tabsShown.includes(k)).map(([k, l]) => '<button type="button" data-st="' + k + '" class="' + (k === setTab ? 'on' : '') + '">' + esc(l) + '</button>').join('') + '</div>'
             + (setTab === 'tr' ? '<div id="trPanel"></div>' : '') + (setTab === 'tr' ? [] : secs).map(sec => '<div class="set-sec"><h3>' + esc(sec) + '</h3>' + fields.filter(f => f.section === sec).map(f => '<div class="set-row"><div><b>' + esc(f.label) + '</b>' + (f.hint ? '<div class="nx-hint">' + esc(f.hint) + '</div>' : '') + '</div>' + field(f, d.settings[f.key]) + '</div>').join('') + '</div>').join('')
+            + (setTab === 'system' ? '<div class="set-sec"><h3>Version &amp; Updates</h3><div id="updBox"><div class="vx-loading">…</div></div></div>' : '')
             + (MOBILE ? (['adv', 'link'].includes(setTab) ? extra : '') : extra) + '<p class="vx-small">Änderungen werden sofort gespeichert.</p></div>';
         if (setTab === 'tr' && window.NexusTr) window.NexusTr.panel($('#trPanel'));
         if (setTab === 'link') linkPanel();
+        if (setTab === 'system') updatePanel();
     }
     $('#setBox').addEventListener('click', e => {
         const t = e.target.closest('[data-st]');
@@ -818,6 +820,50 @@
             };
         }).catch(x => { box.innerHTML = '<div class="nx-panel"><h2>🎮 PC-Fernbedienung</h2><div class="vx-error">⚠ ' + esc(x.message) + '</div><p class="vx-small">Einstellungen → 🔗 Dashboard: Adresse und Geräte-Token eintragen, Verbindung einschalten.</p></div>'; });
     }
+
+    // ======================= Updates =======================
+    const md = t => esc(t).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/^## (.*)$/gm, '<b>$1</b>').replace(/\n/g, '<br>');
+    function updateHtml(d, full) {
+        const plat = d.platform === 'android' ? 'Android' : 'Windows';
+        return '<div class="set-row"><div><b>Installiert</b><div class="nx-hint">' + plat + (d.checked ? ' · zuletzt geprüft ' + UI.ago(d.checked) : '') + '</div></div><div>VRC Nexus <b>' + esc(d.current) + '</b></div></div>'
+            + (d.available ? '<div class="upd-new"><b>⬆ Version ' + esc(d.version) + ' ist verfügbar</b>' + (d.published ? ' <span class="vx-small">vom ' + esc(UI.isoDT(d.published)) + '</span>' : '')
+                + (full && d.notes ? '<details><summary class="vx-small">Was ist neu?</summary><div class="vx-small upd-notes">' + md(d.notes) + '</div></details>' : '')
+                + '<div class="nx-row"><button type="button" class="btn btn-gold" data-upd="install"' + (d.busy ? ' disabled' : '') + '>' + (d.platform === 'android' ? '⬇ APK herunterladen' : d.busy ? '⏳ ' + esc(d.progress) : '⬆ Jetzt aktualisieren') + '</button>'
+                + (d.page ? '<a class="btn btn-sm" href="' + esc(d.page) + '" target="_blank" rel="noopener">Release ansehen</a>' : '') + '</div></div>'
+                : '<p class="vx-small">' + (d.version ? '✔ Das ist die neueste Version.' : 'Noch nicht geprüft.') + '</p>')
+            + '<div class="nx-row"><button type="button" class="btn btn-sm" data-upd="check">🔎 Nach Updates suchen</button></div>';
+    }
+    function updatePanel() {
+        const box = $('#updBox');
+        if (!box) return;
+        api('update_status').then(d => { box.innerHTML = updateHtml(d, true); }).catch(fail(box));
+    }
+    let updPoll = null;
+    function updAction(kind, box) {
+        if (kind === 'check') return run('update_check', {}, d => { if (box) box.innerHTML = updateHtml(d, true); updBanner(d); }).catch(() => {});
+        if (!confirm(MOBILE ? 'Neue APK herunterladen? Danach antippen und „Installieren“ wählen.' : 'Update jetzt installieren? VRC Nexus wird dafür kurz beendet und neu gestartet.')) return;
+        run('update_install', {}).then(() => {
+            if (MOBILE) return;
+            clearInterval(updPoll);
+            updPoll = setInterval(() => api('update_status').then(d => { if (box) box.innerHTML = updateHtml(d, true); updBanner(d); }).catch(() => {}), 1000);
+        }).catch(() => {});
+    }
+    document.addEventListener('click', e => {
+        const b = e.target.closest('[data-upd]');
+        if (!b) return;
+        if (b.dataset.upd === 'later') { UI.store.set('updLater', b.dataset.v); updBanner(null); return; }
+        updAction(b.dataset.upd, $('#updBox'));
+    });
+    function updBanner(d) {
+        let bar = $('#updBar');
+        if (!d || !d.available || (UI.store.get('updLater', '') === d.version && !d.busy)) { if (bar) bar.parentNode.removeChild(bar); return; }
+        if (!bar) { bar = document.createElement('div'); bar.id = 'updBar'; bar.className = 'upd-bar'; const t = $('#tabs'); t.parentNode.insertBefore(bar, t.nextSibling); }
+        bar.innerHTML = '⬆ <b>VRC Nexus ' + esc(d.version) + '</b> ist verfügbar (du hast ' + esc(d.current) + ').'
+            + '<button type="button" class="btn btn-sm btn-gold" data-upd="install"' + (d.busy ? ' disabled' : '') + '>' + (MOBILE ? '⬇ APK laden' : d.busy ? '⏳ ' + esc(d.progress) : 'Jetzt aktualisieren') + '</button>'
+            + '<button type="button" class="btn btn-sm" onclick="NexusUI.tab(\'settings\')">Was ist neu?</button><button type="button" class="btn btn-sm" data-upd="later" data-v="' + esc(d.version) + '">Später</button>';
+    }
+    setTimeout(() => api('update_status').then(updBanner).catch(() => {}), 1500);
+    setInterval(() => api('update_status').then(updBanner).catch(() => {}), 10 * 60 * 1000);
 
     window.NexusApp = { open, applyUi, userExtra, groupExtra, menu };
     // Seite war vor dem Laden dieses Skripts schon offen?

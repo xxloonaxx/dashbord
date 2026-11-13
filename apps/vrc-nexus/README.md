@@ -20,6 +20,13 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.2.2 – Auto-Update
+
+- Sucht beim Start und alle 6 Stunden auf GitHub-Releases nach einer neuen Version (Einstellungen → System → Updates; Tray: „Nach Updates suchen“)
+- Windows-Installer-Version: lädt das Update, installiert still und startet neu · portable EXE: ersetzt sich selbst und startet neu
+- Wahlweise nur Bescheid geben (Banner oben) oder automatisch installieren (nur wenn VRChat gerade nicht läuft)
+- Android: Banner „Update verfügbar“ öffnet den Download der neuen APK (installieren muss man selbst bestätigen)
+
 ### Neu in 1.2
 
 - 🌐 **Übersetzen mit DeepL oder Google** (eigener API-Schlüssel, verschlüsselt gespeichert): Chatbox-Nachrichten übersetzt senden
