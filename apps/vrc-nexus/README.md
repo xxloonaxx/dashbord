@@ -20,6 +20,9 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.3.9
+- **🎤 Mikrofon-Auswahl für die Spracheingabe** (Spiel & OSC → Sprache): alle Mikrofone zur Auswahl (z. B. das vom VR-Headset), Verstärkung, Empfindlichkeit und „🔊 Mikro testen“ mit Pegelbalken. Ist das gewählte Mikro gerade nicht da, wird es am Namen wiedergefunden – sonst das Windows-Standardmikrofon.
+
 ### Neu in 1.3.8
 - **SteamVR-Overlay blockiert VRChat nicht mehr:** Das Fenster am Handgelenk/im Raum ist nur noch bedienbar, wenn du es **direkt anschaust** – sonst wird es halb durchsichtig und der Laser geht an VRChat (abschaltbar: Einstellungen → VR).
 - **Controller-Toggle:** linke obere Taste (Index: B, Quest/Rift: Y, Vive/WMR: Menü) **doppelt drücken** blendet das Overlay ein/aus. Umbelegen in SteamVR → Einstellungen → Controller → Controller-Belegung verwalten → „VRC Nexus“.

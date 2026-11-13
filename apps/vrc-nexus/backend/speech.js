@@ -16,7 +16,7 @@ const MODELS = { tiny: ['Tiny', 75], base: ['Base', 142], small: ['Small', 466],
 const LANGS = { de: 'Deutsch', en: 'Englisch', auto: 'automatisch', fr: 'Französisch', es: 'Spanisch', ja: 'Japanisch', nl: 'Niederländisch', pl: 'Polnisch', it: 'Italienisch', ru: 'Russisch', tr: 'Türkisch' };
 const FALLBACK_BIN = 'https://github.com/ggml-org/whisper.cpp/releases/download/v1.7.6/whisper-bin-x64.zip';
 const DEF = { enabled: false, engine: 'local', model: 'base', lang: 'de', translate: false, target: 'EN-US', whisper_en: false, prefix: '🎙 ', typing: true, sound: false,
-    hotkey: 'Alt+V', vad: true, silence: 1.2, max: 30, threads: 4, bin: '' };
+    hotkey: 'Alt+V', vad: true, silence: 1.2, max: 30, threads: 4, bin: '', mic: '', mic_label: '', gain: 100, threshold: 2 };
 
 /** Datei herunterladen (mit Weiterleitungen), Fortschritt über onProgress(bytes, total) */
 function download(url, file, onProgress, depth = 0) {
@@ -78,6 +78,10 @@ class Speech {
             max: c.max !== undefined ? Math.max(3, Math.min(120, int(c.max) || 30)) : cur.max,
             threads: c.threads !== undefined ? Math.max(1, Math.min(32, int(c.threads) || 4)) : cur.threads,
             bin: c.bin !== undefined ? cut(str(c.bin).trim(), 400) : cur.bin,
+            mic: c.mic !== undefined ? cut(str(c.mic), 200) : cur.mic,
+            mic_label: c.mic_label !== undefined ? cut(str(c.mic_label), 200) : cur.mic_label,
+            gain: c.gain !== undefined ? Math.max(25, Math.min(400, int(c.gain) || 100)) : cur.gain,
+            threshold: c.threshold !== undefined ? Math.max(1, Math.min(20, int(c.threshold) || 2)) : cur.threshold,
         });
         this.app.db.setSetting('speech_cfg', JSON.stringify(n));
         if (this.app.tools.host.applySpeech) this.app.tools.host.applySpeech(n);
