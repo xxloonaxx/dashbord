@@ -60,6 +60,7 @@
                 <button type="button" class="vx-tabbtn" data-tab="favs" data-msub="friend"><span>👤</span><em>Lieblings-Freunde</em></button>
                 <button type="button" class="vx-tabbtn" data-tab="favs" data-msub="world"><span>🌐</span><em>Lieblings-Welten</em></button>
                 <button type="button" class="vx-tabbtn" data-tab="favs" data-msub="avatar"><span>🎭</span><em>Lieblings-Avatare</em></button>
+                <button type="button" class="vx-tabbtn" data-tab="coll"><span>📚</span><em>Sammlungen mit Tags</em></button>
             </div></div>
         <div class="vx-mgroup"><button type="button" class="vx-mtop" aria-haspopup="true"><span>🫂</span><em>Sozial</em><i>▾</i></button>
             <div class="vx-mdrop" role="menu">
@@ -67,6 +68,7 @@
                 <button type="button" class="vx-tabbtn" data-tab="friends"><span>👥</span><em>Freundesliste</em></button>
                 <button type="button" class="vx-tabbtn" data-tab="groups"><span>🛡️</span><em>Gruppen</em></button>
                 <button type="button" class="vx-tabbtn" data-tab="moderation"><span>🚫</span><em>Moderation</em></button>
+                <button type="button" class="vx-tabbtn" data-tab="mod"><span>🛡</span><em>Mod-Zentrale (Gruppen)</em></button>
             </div></div>
         <button type="button" class="vx-tabbtn" data-tab="notifs"><span>🔔</span><em>Benachrichtigungen</em></button>
         <button type="button" class="vx-tabbtn" data-tab="avatars"><span>🎭</span><em>Meine Avatare</em></button>
@@ -106,6 +108,8 @@
     <div class="vx-myloc" id="myLoc" hidden></div>
     <div class="vx-error" id="globalErr" hidden></div>
 
+    <section class="vx-tab" data-pane="mod" hidden><div id="modBox"></div></section>
+    <section class="vx-tab" data-pane="coll" hidden><div id="collBox"></div></section>
     <section class="vx-tab" data-pane="recap" hidden><div id="recapBox"></div></section>
     <section class="vx-tab" data-pane="home" hidden><div id="homeBox" class="hm"></div></section>
     <section class="vx-tab" data-pane="friends">
@@ -372,5 +376,6 @@
 <script src="js/nexus-home.js"></script>
 <script src="js/nexus-speech.js"></script>
 <script src="js/nexus-recap.js"></script>
+<script src="js/nexus-mod.js"></script>
 </body>
 </html>

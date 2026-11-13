@@ -22,6 +22,8 @@ const { Automation } = require('./automation');
 const { Home } = require('./home');
 const { Speech } = require('./speech');
 const { Insights } = require('./insights');
+const { ModTools } = require('./modtools');
+const { Collections } = require('./collections');
 
 const RENDERER = path.join(__dirname, '..', 'renderer');
 const truthy = v => v !== undefined && v !== null && v !== '' && v !== '0' && v !== false && v !== 'false';
@@ -48,6 +50,8 @@ class NexusApp {
         this.home = new Home(this);
         this.speech = opts.mobile ? null : new Speech(this, opts.crypt);
         this.insights = new Insights(this);
+        this.mod = new ModTools(this);
+        this.coll = new Collections(this);
         this.vrc.onWatch = (name, world) => { if (this.settings.get('notify.watch')) this.tools.alert('🟢 ' + name + ' ist online', world ? 'in ' + world : 'gerade ins Spiel gekommen'); };
         this.notify = opts.notify || null;
         this.mobile = !!opts.mobile;
@@ -64,6 +68,7 @@ class NexusApp {
             if (q.has('client_export')) return download(this.game.exportCsv(), 'text/csv; charset=utf-8', 'vrchat-spiellog_' + new Date().toISOString().slice(0, 10) + '.csv');
             if (q.has('shot')) { const r = await this.tools.shotImage(q.get('shot'), q.get('t') === '1'); return { status: 200, headers: { 'Content-Type': r.type, 'Cache-Control': 'private, max-age=3600' }, body: r.body }; }
             if (q.has('tools_export')) return await this.toolsExport(q.get('tools_export'));
+            if (q.has('mod_export')) return download(await this.mod.exportCsv(str(q.get('mod_export'))), 'text/csv; charset=utf-8', 'moderation_' + new Date().toISOString().slice(0, 10) + '.csv');
             if (q.has('ics')) return download(this.vrc.calendarIcs(), 'text/calendar; charset=utf-8', 'vrchat-events.ics');
             return { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }, body: this.page() };
         } catch (e) {
@@ -122,6 +127,8 @@ class NexusApp {
             if (act === 'overlay_act') return await this.tools.apiAction(str(input.action), input);
             if (act === 'overlay_cfg') { const s = this.settings.all(); return { phrases: str(s['vr.overlay_phrases']).split('\n').map(x => x.trim()).filter(Boolean).slice(0, 40), translate: !!s['vr.overlay_translate'], target: str(s['tr.chat_target'] || '') }; }
             if (act.startsWith('ins_')) return this.insights.action(act, input);
+            if (act.startsWith('mod_')) return await this.mod.action(act, input);
+            if (act.startsWith('coll_')) return await this.coll.action(act, input);
             if (act === 'home_data') return this.home.data();
             if (act === 'home_summary') return this.home.summary();
             if (act.startsWith('tools_')) return await this.toolAction(act, input);

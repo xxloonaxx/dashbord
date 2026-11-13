@@ -18,14 +18,14 @@
         return '<div class="rc-hero"><h2>🎁 ' + esc(title) + '</h2><div class="rc-kpis">'
             + [['⏱', hm(d.playtime), 'Spielzeit'], ['📅', d.active_days, 'aktive Tage'], ['🌐', d.worlds_count, 'Welten'], ['👋', d.people_count, 'Leute getroffen'], ['📸', d.shots, 'Fotos'], ['💛', d.new_friends.length, 'neue Freunde']]
                 .map(k => '<div><span>' + k[0] + '</span><b>' + esc(String(k[1])) + '</b><small>' + k[2] + '</small></div>').join('') + '</div>'
-            + (d.longest ? '<p>🏆 Längste Sitzung: <b>' + hm(d.longest.seconds) + '</b> in <b>' + esc(d.longest.name) + '</b> (' + esc(UI.isoDT(d.longest.start)) + ')' + (d.best_day ? ' · Lieblingstag: <b>' + d.best_day + '</b> · meist um <b>' + d.best_hour + ' Uhr</b>' : '') + '</p>' : '<p class="muted">Noch keine Spielzeit im Zeitraum – die Auswertung kommt aus dem Spiel-Log.</p>')
+            + (d.longest ? '<p>🏆 Längste Sitzung: <b>' + hm(d.longest.seconds) + '</b> in <b>' + esc(d.longest.name) + '</b> (' + esc(UI.isoDT(d.longest.start * 1000)) + ')' + (d.best_day ? ' · Lieblingstag: <b>' + d.best_day + '</b> · meist um <b>' + d.best_hour + ' Uhr</b>' : '') + '</p>' : '<p class="muted">Noch keine Spielzeit im Zeitraum – die Auswertung kommt aus dem Spiel-Log.</p>')
             + '</div><div class="rc-grid">'
             + '<section class="panel"><h3>🌐 Top-Welten</h3>' + (d.top_worlds.length ? d.top_worlds.map((w, i) => '<div class="rc-row"' + (w.id ? ' data-world="' + esc(w.id) + '"' : '') + '><b>' + (i + 1) + '.</b> ' + esc(w.name) + '<span>' + hm(w.seconds) + ' · ' + w.visits + '×</span></div>').join('') : '<p class="muted">–</p>') + '</section>'
             + '<section class="panel"><h3>👥 Am meisten Zeit mit</h3>' + (d.top_people.length ? d.top_people.map((p, i) => '<div class="rc-row"' + (p.id ? ' data-user="' + esc(p.id) + '"' : '') + '><b>' + (i + 1) + '.</b> ' + (p.friend ? '💛 ' : '') + esc(p.name) + '<span>' + hm(p.seconds) + ' · ' + p.meets + '×</span></div>').join('') : '<p class="muted">–</p>') + '</section>'
             + '<section class="panel"><h3>🎭 Avatare</h3>' + (d.avatars.length ? d.avatars.map(a => '<div class="rc-row">' + esc(a.name) + '<span>' + a.n + '× gewechselt</span></div>').join('') : '<p class="muted">Keine Avatarwechsel im Log.</p>') + '</section>'
             + '<section class="panel"><h3>📊 Wann du spielst</h3>' + bars(d.by_day, DAYS) + bars(d.by_hour, d.by_hour.map((_, i) => String(i))) + '</section>'
-            + '<section class="panel"><h3>💛 Neue Freunde</h3>' + (d.new_friends.length ? d.new_friends.map(f => '<div class="rc-row" data-user="' + esc(f.id) + '">' + esc(f.name) + '<span>' + esc(UI.isoDT(f.ts)) + '</span></div>').join('') : '<p class="muted">–</p>') + '</section>'
-            + '<section class="panel"><h3>💤 AFK-Verdacht</h3><p class="muted small">Sitzungen über 3 h, in denen niemand dazukam.</p>' + (d.afk.length ? d.afk.map(a => '<div class="rc-row">' + esc(a.name) + '<span>' + hm(a.seconds) + ' · ' + esc(UI.isoDT(a.start)) + '</span></div>').join('') : '<p class="muted">Keine.</p>') + '</section>'
+            + '<section class="panel"><h3>💛 Neue Freunde</h3>' + (d.new_friends.length ? d.new_friends.map(f => '<div class="rc-row" data-user="' + esc(f.id) + '">' + esc(f.name) + '<span>' + esc(UI.isoDT(f.ts * 1000)) + '</span></div>').join('') : '<p class="muted">–</p>') + '</section>'
+            + '<section class="panel"><h3>💤 AFK-Verdacht</h3><p class="muted small">Sitzungen über 3 h, in denen niemand dazukam.</p>' + (d.afk.length ? d.afk.map(a => '<div class="rc-row">' + esc(a.name) + '<span>' + hm(a.seconds) + ' · ' + esc(UI.isoDT(a.start * 1000)) + '</span></div>').join('') : '<p class="muted">Keine.</p>') + '</section>'
             + '</div>';
     }
     function renderFriends(d) {
@@ -37,7 +37,7 @@
                 + (d.inactive.length ? d.inactive.slice(0, 200).map(f => '<div class="rc-row" data-user="' + esc(f.id) + '">' + (f.favorite ? '⭐ ' : '') + esc(f.name) + '<span>' + f.days + ' Tage' + (f.note ? ' · 📝' : '') + '</span></div>').join('') : '<p class="muted">Niemand.</p>')
                 + '<p class="muted small">Antippen öffnet das Profil – dort kannst du eine Notiz hinterlassen oder die Freundschaft beenden.</p></section>'
             + '<section class="panel"><h3>🏷 Namensverlauf</h3><input type="search" id="rcNameQ" placeholder="🔎 alter oder neuer Name" value="' + esc(nameQ) + '">'
-                + (d.names.length ? d.names.map(n => '<div class="rc-row" data-user="' + esc(n.id) + '"><span class="muted">' + esc(n.old) + '</span> → <b>' + esc(n.new) + '</b><span>' + esc(UI.isoDT(n.ts)) + '</span></div>').join('') : '<p class="muted">Noch keine Namensänderungen aufgezeichnet.</p>') + '</section>'
+                + (d.names.length ? d.names.map(n => '<div class="rc-row" data-user="' + esc(n.id) + '"><span class="muted">' + esc(n.old) + '</span> → <b>' + esc(n.new) + '</b><span>' + esc(UI.isoDT(n.ts * 1000)) + '</span></div>').join('') : '<p class="muted">Noch keine Namensänderungen aufgezeichnet.</p>') + '</section>'
             + '</div>';
     }
     function load() {

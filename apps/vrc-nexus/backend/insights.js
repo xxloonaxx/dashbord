@@ -86,6 +86,7 @@ class Insights {
 
     // ---------- Erinnerungen ----------
     tick() {
+        if (this.app.mod) this.app.mod.tick().catch(() => {});
         const s = this.app.settings;
         const t = this.app.tools;
         if (s.get('notify.events')) {

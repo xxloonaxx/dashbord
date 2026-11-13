@@ -20,6 +20,11 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.3.1
+- **🛡 Mod-Zentrale** (Sozial → Mod-Zentrale, für Gruppen mit Kick-Rechten): Beitrittsanfragen-Assistent mit Vertrauensstufe, Kontoalter, 18+, Freund?, schon getroffen?, Warnliste und Vorschlag (annehmen/ablehnen/ansehen); Warnliste mit Notizen; geplante Gruppen-Beiträge; Export von Gruppen-Protokoll + Warnliste als CSV.
+- **📚 Sammlungen** (Favoriten → Sammlungen): Welten und Avatare ohne VRChat-Begrenzung, mit Tags, Notiz, Suche und 🎲 Zufall aus einem Tag; Knopf „📚 Sammlung“ in jedem Welt-/Avatar-Fenster; Warnung bei „Very Poor“ auf Quest/Android.
+- Datumsanzeige im Rückblick korrigiert.
+
 ### Neu in 1.3
 - **🏠 Startseite mit Widgets** (Windows + Android): Status, Freunde im Spiel, Instanz, Chatbox, Makros, Benachrichtigungen, Heute, Spielt gerade, Kamera, Lieblings-Parameter, Uhr & Countdown, Notizzettel, Sprache, Overlay, Version – mit „✏️ Anpassen“ ein-/ausblenden, verschieben, breit/schmal.
 - **📱 Android-Homescreen-Widget:** Freunde im Spiel/online, ungelesene Benachrichtigungen, die ersten Freunde mit Welt; Tippen öffnet die App. (Aktualisiert sich, solange die App läuft bzw. beim Verlassen der App.)

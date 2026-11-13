@@ -142,6 +142,8 @@
         if (name !== 'client' && window.NexusClient) window.NexusClient.close();
         if (window.NexusApp) window.NexusApp.open(name, sub);
         if (name === 'recap' && window.NexusRecap) window.NexusRecap.open();
+        if (name === 'mod' && window.NexusMod) window.NexusMod.open();
+        if (name === 'coll' && window.NexusColl) window.NexusColl.open();
         if (window.NexusHome) { if (name === 'home') window.NexusHome.open(); else window.NexusHome.close(); }
     }
     $('#tabs').addEventListener('click', e => {
@@ -516,6 +518,7 @@
             + (groups.length ? '' : '<p class="vx-small">Für Gruppen-Instanzen einmal den Reiter „Gruppen“ öffnen.</p>') + '</form></div></div>';
         $('#userBody').innerHTML = h;
         favPicker('world', w.id, { name: w.name, image: w.image, sub: w.author }, true);
+        if (window.NexusColl) window.NexusColl.decorate(w.id);
         const f = $('#newInst');
         f.type.addEventListener('change', () => { $('.vx-ni-group', f).hidden = f.type.value !== 'group'; });
         f.addEventListener('submit', e => {
@@ -1818,6 +1821,7 @@
                 + '<dt>Avatar-ID</dt><dd><code class="vx-id">' + esc(a.id) + '</code> <button type="button" class="vx-copy" data-copy="' + esc(a.id) + '">⧉</button></dd></dl>'
                 + (a.status !== 'public' && !a.current ? '<p class="vx-small">Hinweis: Private Avatare anderer Personen kann VRChat nicht anziehen lassen.</p>' : '');
             favPicker('avatar', a.id, { name: a.name, image: a.image, sub: a.author }, true);
+            if (window.NexusColl) window.NexusColl.decorate(a.id);
             const sel = $('#avSel');
             if (sel) sel.onclick = () => api('avatar_select', { id: a.id }).then(r => { toast(r.msg); load(false); openAvatar(a.id); }).catch(x => toast(x.message, true));
             $('#avFav').onclick = () => api('avatar_fav', { id: a.id, on: 1 }).then(r => toast(r.msg)).catch(x => toast(x.message, true));
