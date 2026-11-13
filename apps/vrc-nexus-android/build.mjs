@@ -22,6 +22,7 @@ await build({
     alias: { fs: shim('fs.js'), os: shim('os.js'), crypto: shim('crypto.js'), dgram: shim('dgram.js'), net: shim('stub.js'), http: shim('stub.js'), https: shim('stub.js'),
         child_process: shim('stub.js'), zlib: shim('stub.js'), path: 'path-browserify' },
     inject: [shim('globals.js')],
+    nodePaths: [path.join(here, 'node_modules')],          // Pakete für ../vrc-nexus/backend aus diesem Ordner nehmen
     define: { __dirname: '"/backend"', __filename: '"/backend/app.js"' },
     loader: { '.html': 'text' },
 });
