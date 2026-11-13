@@ -180,3 +180,8 @@ body.wide .wrapper { max-width: none !important; }
 .nx-menu .nx-sub { display: none; position: absolute; left: calc(100% + 6px); top: -4px; }
 .nx-menu.nx-left .nx-sub { left: auto; right: calc(100% + 6px); }
 .nx-menu .nx-mi:hover > .nx-sub, .nx-menu .nx-mi.open > .nx-sub { display: block; }
+/* Zähler am Menüpunkt (z. B. Benachrichtigungen) – auch in der Symbol-Ansicht klein oben rechts */
+.vx-menu .vx-tabbtn { position: relative; }
+.vx-menu .vx-tabbtn .vx-badge { font-size: 0.68rem; padding: 0 5px; line-height: 1.5; }
+body.menu-icons .vx-menu .vx-tabbtn .vx-badge, body.mobile .vx-menu .vx-tabbtn .vx-badge { position: absolute; top: 1px; right: 0; }
+@media (max-width: 1100px) { .vx-menu > .vx-tabbtn .vx-badge { position: absolute; top: 1px; right: 0; } }

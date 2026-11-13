@@ -1234,7 +1234,7 @@
                         + '<span class="nf-msg" title="' + esc(n.message) + '">' + msg + '</span>'
                         + '<span class="nf-acts">' + acts.join('') + '</span></div>';
                 }).join('') + '</div>' : '<div class="vx-empty">' + (nfView === 'open' ? 'Keine offenen Benachrichtigungen. 🎉' : 'Noch nichts im Verlauf.') + '</div>');
-            $('[data-tab=notifs]').innerHTML = '<span>🔔</span>Benachrichtigungen' + (d.unseen ? ' <b class="vx-badge">' + d.unseen + '</b>' : '');
+            $('[data-tab=notifs]').innerHTML = '<span>🔔</span><em>Benachrichtigungen</em>' + (d.unseen ? ' <b class="vx-badge">' + d.unseen + '</b>' : '');
         }).catch(fail(box));
     }
     $('#nfView').addEventListener('click', e => { const b = e.target.closest('[data-view]'); if (!b) return; nfView = b.dataset.view; $$('#nfView .chip').forEach(c => c.classList.toggle('on', c === b)); loadNotifs(true); });
