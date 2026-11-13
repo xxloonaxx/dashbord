@@ -280,3 +280,16 @@ body.mobile .hm-grid { grid-template-columns: 1fr; } body.mobile .hm-w.wide { gr
 .ph-strip { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
 .ph-strip img { height: 120px; border: 1px solid rgba(255,255,255,0.1); }
 .ph-miss { display: inline-flex; align-items: center; height: 120px; padding: 0 12px; border: 1px dashed #555; font-size: 0.8rem; opacity: 0.7; }
+
+/* ---------- 📜 OSC-Log ---------- */
+.ol-cats { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 10px; }
+.ol-cats small { opacity: 0.7; }
+.ol-grid { grid-template-columns: 1fr 280px; }
+@media (max-width: 900px) { .ol-grid { grid-template-columns: 1fr; } }
+.ol-list { max-height: 640px; overflow: auto; }
+.ol-tab { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.ol-tab td { padding: 3px 6px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: top; }
+.ol-name { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ol-out { color: var(--accent-gold, #f3c262); }
+.ol-tab tr.c-avatar td { background: rgba(243,194,98,0.08); font-weight: 600; }
+.ol-tab tr.c-toggle b { color: #50fa7b; } .ol-tab tr.c-int b { color: #38d5e6; } .ol-tab tr.c-camera b { color: #ff79c6; } .ol-tab tr.c-chatbox b { color: #f1fa8c; }

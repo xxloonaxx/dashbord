@@ -434,6 +434,22 @@ test('1.3: Parameter-Erkennung, Makros, Kamera, Automatik, Sprache, Rückblick',
     assert.ok(rc.playtime >= 2900 && rc.top_people[0].name === 'Luna');
     const home = await app.post({ act: 'home_data' }, {});
     assert.ok(Array.isArray(home.macros) && home.friends && home.cam);
+    // OSC-Log: Kategorien, nur Änderungen, Drosselung, Gesendetes
+    const { category } = require('../backend/osclog');
+    assert.deepStrictEqual(['/avatar/change', '/avatar/parameters/Ears', '/avatar/parameters/Outfit', '/avatar/parameters/Hue', '/avatar/parameters/VelocityX', '/avatar/parameters/GestureLeft', '/avatar/parameters/AFK', '/usercamera/Zoom', '/chatbox/input', '/input/Jump', '/foo']
+        .map((a, i) => category(a, [[A, true, 3, 0.5, 0.1, 2, true, 50, 'x', 1, 1][i]])), ['avatar', 'toggle', 'int', 'float', 'motion', 'gesture', 'state', 'camera', 'chatbox', 'input', 'other']);
+    const L = app.osclog;
+    L.buf = [];
+    L.add('in', '/avatar/parameters/Ears', [true]); L.add('in', '/avatar/parameters/Ears', [true]); L.add('in', '/avatar/parameters/Ears', [false]);
+    for (let i = 0; i < 5; i++) L.add('in', '/avatar/parameters/VelocityX', [i / 10]);
+    L.add('out', '/chatbox/input', ['Hi', true, false]);
+    const ql = L.query({ range: 'live' });
+    assert.strictEqual(ql.counts.toggle, 2);
+    assert.strictEqual(ql.counts.motion, 1);
+    assert.strictEqual(ql.items[0].d, 'out');
+    assert.deepStrictEqual(ql.items.find(e => e.c === 'toggle').p, true);
+    L.flush();
+    assert.ok(L.query({ range: 'today' }).total >= 4);
     app.tools.stop();
     delete process.env.NEXUS_VRCHAT_DIR;
 });

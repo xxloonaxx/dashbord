@@ -20,6 +20,12 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.3.4
+- **📜 OSC-Log** (Spiel & OSC → OSC-Log): schreibt **alles** mit, was über OSC von VRChat kommt und an VRChat geht – jede Änderung mit Zeit, Avatar, altem → neuem Wert.
+  Kategorien zum An-/Abwählen: Avatarwechsel, Schalter, Zahlen, Regler, Gesten & Stimme, Bewegung & Haltung, Status (AFK, Stumm …), Kamera, Chatbox, Eingaben, Tracking, Sonstiges.
+  Live-Ansicht, Zeitraum (Heute / 7 / 30 Tage / alles), Richtung, Avatar, Suche, „Am häufigsten“, CSV-Export. Gespeichert als Tagesdateien im Datenordner (`osc-log`), Aufbewahrung und Drosselung für Dauer-Werte unter Einstellungen → VR → OSC-Log.
+- Android-APK mit festem Signierschlüssel: Updates lassen sich über die installierte App installieren (einmalig alte Version deinstallieren).
+
 ### Neu in 1.3.2
 - **📸 Foto-Verlauf** (Diagramme → Rückblick → Foto-Verlauf): deine Screenshots nach Weltbesuch sortiert, mit wem du dort warst, Vorschaubilder, Klick öffnet das Foto.
 - **Beobachtete Freunde:** zusätzlich Meldung, wenn sie „Join Me“ setzen oder in eine öffentliche Instanz gehen (Einstellungen → Benachrichtigungen).

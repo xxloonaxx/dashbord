@@ -46,6 +46,7 @@
             <nav class="nc-sub" id="ncSub">
                 <button type="button" class="chip" data-sub="live">📡 Live &amp; OSC</button>
                 <button type="button" class="chip" data-sub="params">🎚 Parameter</button>
+                <button type="button" class="chip" data-sub="osclog">📜 OSC-Log</button>
                 <button type="button" class="chip" data-sub="cam">📷 Kamera</button>
                 <button type="button" class="chip" data-sub="macros">⚡ Makros</button>
                 <button type="button" class="chip" data-sub="auto">🤖 Automatik</button>
@@ -100,6 +101,22 @@
                 </div>
                 <div class="muted small" id="ncPInfo"></div>
                 <div class="nc-pgrid" id="ncPList"></div>
+            </div>
+            <div class="nc-pane" data-p="osclog" hidden>
+                <div class="nc-row nc-filter">
+                    <select id="olRange"><option value="live">Live (Speicher)</option><option value="today">Heute</option><option value="7">7 Tage</option><option value="30">30 Tage</option><option value="all">Alles</option></select>
+                    <select id="olDir"><option value="">⇄ beide Richtungen</option><option value="in">⬅ von VRChat</option><option value="out">➡ an VRChat</option></select>
+                    <select id="olAv"><option value="">alle Avatare</option></select>
+                    <input type="search" id="olQ" placeholder="🔎 Parameter / Wert">
+                    <label class="check small"><input type="checkbox" id="olLive" checked> mitlaufen</label>
+                    <a class="btn btn-sm" id="olCsv" href="#">⬇ CSV</a>
+                    <button type="button" class="btn btn-sm" id="olClear">🗑</button>
+                </div>
+                <div class="ol-cats" id="olCats"></div>
+                <div class="nc-grid ol-grid">
+                    <div class="nc-card ol-list"><div class="muted small" id="olInfo"></div><div id="olRows"></div></div>
+                    <div class="nc-card"><h4>📊 Am häufigsten</h4><div id="olTop"></div><h4 style="margin-top:10px">💾 Tagesdateien</h4><div id="olFiles" class="small"></div></div>
+                </div>
             </div>
             <div class="nc-pane" data-p="cam" hidden>
                 <div class="muted small" id="ncCInfo"></div>
@@ -316,6 +333,7 @@
         if (name === 'log') loadLog(true);
         if (name === 'params') loadParams();
         if (name === 'cam') loadCam();
+        if (name === 'osclog') loadOscLog();
         if (name === 'macros') loadMacros();
         if (name === 'auto') loadAuto();
         if (name === 'speech' && window.NexusSpeech) window.NexusSpeech.open();
@@ -561,6 +579,53 @@
             + '<button type="button" class="nc-link" data-a="test" data-id="' + esc(r.id) + '">testen</button><button type="button" class="nc-link" data-a="edit" data-id="' + esc(r.id) + '">bearbeiten</button>'
             + '<button type="button" class="nc-x" data-a="delete" data-id="' + esc(r.id) + '">✕</button></div>').join('')
             : '<div class="muted small">Noch keine Regeln – nimm eine Vorlage unten.</div>';
+    }
+
+    // ---------- 📜 OSC-Log ----------
+    let olData = null, olCats = store.get('olCats', []), olBound = false, olTimer = null;
+    const olFilter = () => ({ range: $('#olRange').value, dir: $('#olDir').value, avatar: $('#olAv').value, q: $('#olQ').value.trim(), cats: olCats.join(','), limit: 400 });
+    function loadOscLog() {
+        if (!olBound) {
+            olBound = true;
+            ['#olRange', '#olDir', '#olAv'].forEach(s => $(s).addEventListener('change', loadOscLog));
+            let qt = null;
+            $('#olQ').addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(loadOscLog, 300); });
+            $('#olCats').addEventListener('click', e => {
+                const b = e.target.closest('[data-olc]');
+                if (!b) return;
+                const c = b.dataset.olc;
+                if (!c) olCats = []; else olCats = olCats.includes(c) ? olCats.filter(x => x !== c) : olCats.concat(c);
+                store.set('olCats', olCats);
+                loadOscLog();
+            });
+            $('#olCsv').addEventListener('click', e => { e.preventDefault(); const p = new URLSearchParams(Object.assign({ osclog_export: 1 }, olFilter())); location.href = 'nexus.php?' + p.toString(); });
+            $('#olClear').addEventListener('click', () => { if (confirm('Den ganzen OSC-Log löschen (auch die Tagesdateien)?')) api('osclog_clear').then(d => { toast(d.msg); loadOscLog(); }).catch(fail); });
+            $('#olTop').addEventListener('click', e => { const b = e.target.closest('[data-ola]'); if (b) { $('#olQ').value = b.dataset.ola.replace(/^\/avatar\/parameters\//, ''); loadOscLog(); } });
+        }
+        clearTimeout(olTimer);
+        return api('osclog', olFilter()).then(d => { olData = d; renderOscLog(); }).catch(fail).finally(() => {
+            if (sub === 'osclog' && openNow && $('#olLive').checked && $('#olRange').value === 'live') olTimer = setTimeout(loadOscLog, 1000);
+        });
+    }
+    const olVal = v => v === null || v === undefined ? '–' : typeof v === 'boolean' ? (v ? '● an' : '○ aus') : Array.isArray(v) ? v.map(x => typeof x === 'number' && !Number.isInteger(x) ? x.toFixed(2) : String(x)).join(', ') : typeof v === 'number' && !Number.isInteger(v) ? v.toFixed(3) : String(v);
+    function renderOscLog() {
+        const d = olData;
+        const avSel = $('#olAv'), cur = avSel.value;
+        const ids = Object.keys(d.avatars);
+        if (avSel.options.length - 1 !== ids.length) avSel.innerHTML = '<option value="">alle Avatare</option>' + ids.map(id => '<option value="' + esc(id) + '"' + (id === cur ? ' selected' : '') + '>' + esc(d.avatars[id]) + '</option>').join('');
+        $('#olCats').innerHTML = '<button type="button" class="chip' + (!olCats.length ? ' on' : '') + '" data-olc="">alle</button>'
+            + Object.entries(d.cats).map(([k, v]) => '<button type="button" class="chip' + (olCats.includes(k) ? ' on' : '') + '" data-olc="' + k + '">' + v[0] + ' ' + esc(v[1]) + (d.counts[k] ? ' <small>' + num(d.counts[k]) + '</small>' : '') + '</button>').join('');
+        $('#olInfo').textContent = num(d.total) + ' Einträge' + (d.items.length < d.total ? ' (die neuesten ' + d.items.length + ' angezeigt)' : '') + (d.cfg.on ? '' : ' · ⚠ Mitschreiben ist aus (Einstellungen → VR → OSC-Log)') + (d.osc_active ? '' : ' · ⚠ gerade kein OSC von VRChat');
+        $('#olRows').innerHTML = d.items.length ? '<table class="ol-tab"><tbody>' + d.items.map(e => {
+            const name = e.a.replace(/^\/avatar\/parameters\//, '');
+            return '<tr class="c-' + e.c + '"><td class="mono small">' + new Date(e.t).toLocaleTimeString('de-DE') + (d.cfg && $('#olRange').value !== 'live' && $('#olRange').value !== 'today' ? '<br><span class="muted">' + new Date(e.t).toLocaleDateString('de-DE') + '</span>' : '') + '</td>'
+                + '<td title="' + esc(d.cats[e.c] ? d.cats[e.c][1] : e.c) + '">' + (d.cats[e.c] || ['❔'])[0] + '</td><td>' + (e.d === 'in' ? '⬅' : '<span class="ol-out">➡</span>') + '</td>'
+                + '<td class="ol-name" title="' + esc(e.a) + '">' + esc(e.c === 'avatar' ? (d.avatars[e.v] || e.v) : name) + '</td>'
+                + '<td class="mono small">' + (e.p !== null && e.c !== 'avatar' ? '<span class="muted">' + esc(olVal(e.p)) + ' → </span>' : '') + '<b>' + esc(e.c === 'avatar' ? 'Avatar gewechselt' : olVal(e.v)) + '</b></td>'
+                + '<td class="small muted">' + esc(e.c !== 'avatar' ? (d.avatars[e.av] || '') : '') + '</td></tr>';
+        }).join('') + '</tbody></table>' : '<div class="nc-empty">Noch nichts geloggt. In VRChat OSC einschalten (Action-Menü → Optionen → OSC → Aktiviert) – jede Änderung erscheint hier.</div>';
+        $('#olTop').innerHTML = d.top.length ? d.top.map(t => '<div class="rc-row" data-ola="' + esc(t.a) + '" style="cursor:pointer">' + esc(t.a.replace(/^\/avatar\/parameters\//, '')) + '<span>' + num(t.n) + '×</span></div>').join('') : '<span class="muted small">–</span>';
+        $('#olFiles').innerHTML = d.files.length ? d.files.slice(-10).reverse().map(f => esc(f.day) + ' · ' + (f.size > 1048576 ? (f.size / 1048576).toFixed(1) + ' MB' : Math.ceil(f.size / 1024) + ' KB')).join('<br>') + '<br><span class="muted">Aufbewahrt: ' + d.cfg.days + ' Tage</span>' : '<span class="muted">noch keine</span>';
     }
 
     // ---------- ⚡ Makros ----------
