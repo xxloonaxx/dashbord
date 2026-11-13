@@ -1,0 +1,11 @@
+{
+  "appId": "de.ghostnode.vrcnexus",
+  "appName": "VRC Nexus",
+  "webDir": "www",
+  "android": { "backgroundColor": "#040609" },
+  "plugins": {
+    "CapacitorHttp": { "enabled": true },
+    "CapacitorCookies": { "enabled": true },
+    "LocalNotifications": { "iconColor": "#38d5e6" }
+  }
+}

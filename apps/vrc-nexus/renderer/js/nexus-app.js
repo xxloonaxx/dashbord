@@ -10,6 +10,8 @@
     const t2 = ts => ts ? new Date(ts * 1000).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : '';
     const dt = ts => ts ? new Date(ts * 1000).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
     const size = b => b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.round(b / 1024) + ' KB';
+    const MOBILE = !!window.VRCX.mobile;
+    const dl = href => (window.NexusMobile ? window.NexusMobile.download(href) : (location.href = href));
     const run = (act, data, after) => api(act, data).then(r => { if (r.msg) toast(r.msg); if (after) after(r); return r; }).catch(x => { toast(x.message, true); throw x; });
 
     // ======================= Aussehen aus den Einstellungen =======================
@@ -34,6 +36,10 @@
         document.body.style.zoom = (Math.max(70, Math.min(150, +s['ui.zoom'] || 100)) / 100).toString();
     }
     applyUi(window.VRCX.ui || {});
+    if (MOBILE) {
+        document.body.classList.add('mobile');
+        $$('#tabs [data-tab=client], #tabs [data-tab=players], #tabs [data-tab=activity], #clientStandalone').forEach(el => el.parentNode.removeChild(el));
+    }
 
     // Direkt-Zugriff: Knopf im Menü + Strg+D
     $('#directBtn').addEventListener('click', () => UI.readClipboard(false));
@@ -288,6 +294,10 @@
         ['Export', [['discord', '💬', 'Discord-Namen', 'Discord-Namen deiner VRChat-Freunde finden'], ['memos', '📝', 'Memos exportieren', 'Memos als VRChat-Notizen speichern oder als CSV'],
             ['x:friends', '📋', 'Freundesliste exportieren', 'Freundesliste als CSV'], ['x:avatars', '🎭', 'Eigene Avatare exportieren', 'Deine Avatare als CSV']]],
     ];
+    // Auf Android: nur, was ohne PC funktioniert
+    const PC_ONLY = new Set(['shots', 'f:photos', 'f:steam', 'f:nexus', 'f:vrchat', 'f:logs', 'f:crashes', 'config', 'launch', 'registry', 'auto', 'streamdeck']);
+    if (MOBILE) TOOLS.forEach(sec => { sec[1] = sec[1].filter(t => !PC_ONLY.has(t[0])); });
+    for (let i = TOOLS.length - 1; i >= 0; i--) if (!TOOLS[i][1].length) TOOLS.splice(i, 1);
     const closedSecs = new Set(UI.store.get('toolsClosed', []));
     function renderTools() {
         const box = $('#toolsBox');
@@ -309,8 +319,8 @@
     function tool(id) {
         if (id === 'back') return renderTools();
         if (id.startsWith('f:')) return run('tools_folder', { which: id.slice(2) }).catch(() => {});
-        if (id === 'x:friends') { location.href = 'nexus.php?export=friends'; return; }
-        if (id === 'x:avatars') { toast('Avatare werden abgefragt …'); location.href = 'nexus.php?tools_export=avatars'; return; }
+        if (id === 'x:friends') { dl('nexus.php?export=friends'); return; }
+        if (id === 'x:avatars') { toast('Avatare werden abgefragt …'); dl('nexus.php?tools_export=avatars'); return; }
         const jump = { inventory: ['gallery', 'inventory'], calendar: ['calendar'], shop: ['shop'], purchases: ['shop'], news: ['news'] }[id];
         if (jump) { UI.tab(jump[0], jump[1]); if (id === 'purchases') setTimeout(() => { const p = $('#shopBox .sh-purch, #shopBox table'); if (p) p.scrollIntoView({ behavior: 'smooth' }); }, 1200); return; }
         ({ shots: toolShots, blocked: () => toolGroups('blocked'), ginvites: () => toolGroups('invites'), config: toolConfig, launch: toolLaunch, registry: toolRegistry, auto: toolAuto,
@@ -546,7 +556,11 @@
     }
     function renderSettings() {
         const d = setData, box = $('#setBox');
-        const fields = d.schema.fields.filter(f => f.tab === setTab);
+        const MOBILE_HIDE = /^(sys\.|vr\.|media\.|int\.|social\.(players|memo)|notify\.(player_|screenshot|vrc_start)|adv\.(debug|devtools)|ui\.(wide|sticky_menu))/;
+        const visible = f => !MOBILE || !MOBILE_HIDE.test(f.key);
+        const tabsShown = Object.keys(d.schema.tabs).filter(t => d.schema.fields.some(f => f.tab === t && visible(f)));
+        if (!tabsShown.includes(setTab)) setTab = tabsShown[0];
+        const fields = d.schema.fields.filter(f => f.tab === setTab && visible(f));
         const secs = [...new Set(fields.map(f => f.section))];
         const extra = {
             system: '<div class="set-sec"><h3>Aktionen</h3><div class="nx-row"><button type="button" class="btn btn-sm" data-act="backup">💾 Datenbank jetzt sichern</button><button type="button" class="btn btn-sm" data-act="f:backups">📂 Sicherungen</button>'
@@ -557,9 +571,9 @@
                 + '<a class="btn btn-sm" href="nexus.php?tools_export=settings">⬇ Einstellungen exportieren</a><label class="btn btn-sm">⬆ Importieren<input type="file" accept=".json" id="setImport" hidden></label>'
                 + '<button type="button" class="btn btn-sm btn-danger" data-act="reset">↺ Alles zurücksetzen</button></div></div>',
         }[setTab] || '';
-        box.innerHTML = '<div class="nx-panel"><h2>⚙ Einstellungen</h2><div class="set-tabs">' + Object.entries(d.schema.tabs).map(([k, l]) => '<button type="button" data-st="' + k + '" class="' + (k === setTab ? 'on' : '') + '">' + esc(l) + '</button>').join('') + '</div>'
+        box.innerHTML = '<div class="nx-panel"><h2>⚙ Einstellungen</h2><div class="set-tabs">' + Object.entries(d.schema.tabs).filter(([k]) => tabsShown.includes(k)).map(([k, l]) => '<button type="button" data-st="' + k + '" class="' + (k === setTab ? 'on' : '') + '">' + esc(l) + '</button>').join('') + '</div>'
             + secs.map(sec => '<div class="set-sec"><h3>' + esc(sec) + '</h3>' + fields.filter(f => f.section === sec).map(f => '<div class="set-row"><div><b>' + esc(f.label) + '</b>' + (f.hint ? '<div class="nx-hint">' + esc(f.hint) + '</div>' : '') + '</div>' + field(f, d.settings[f.key]) + '</div>').join('') + '</div>').join('')
-            + extra + '<p class="vx-small">Änderungen werden sofort gespeichert.</p></div>';
+            + (MOBILE ? (setTab === 'adv' ? extra : '') : extra) + '<p class="vx-small">Änderungen werden sofort gespeichert.</p></div>';
     }
     $('#setBox').addEventListener('click', e => {
         const t = e.target.closest('[data-st]');

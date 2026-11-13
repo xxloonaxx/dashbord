@@ -49,7 +49,8 @@ class Vrc {
             throw new UserError('VRChat ist nicht erreichbar (' + (e.cause && e.cause.code || e.message) + '). Besteht eine Internetverbindung?');
         }
         const setc = typeof res.headers.getSetCookie === 'function' ? res.headers.getSetCookie() : [res.headers.get('set-cookie') || ''];
-        for (const line of setc) { const m = /^(auth|twoFactorAuth)=([^;]*)/i.exec(line.trim()); if (m) cookies[m[1]] = m[2]; }
+        // auch zusammengefasste Kopfzeilen („a=1; Path=/, b=2; …“) wie bei Android/Capacitor
+        for (const line of setc) { const re = /(?:^|,\s*)(auth|twoFactorAuth)=([^;,]*)/gi; let m; while ((m = re.exec(String(line).trim()))) cookies[m[1]] = m[2]; }
         const text = await res.text();
         let json = null;
         try { json = JSON.parse(text); } catch (e) { json = null; }
@@ -72,7 +73,8 @@ class Vrc {
         if (code === 401) throw new UserError('VRChat: Benutzername/E-Mail oder Passwort falsch.');
         if (code === 429) throw new UserError('VRChat: Zu viele Anmeldeversuche – bitte einige Minuten warten.');
         if (code !== 200 || !json) throw new UserError('VRChat-Anmeldung fehlgeschlagen: ' + this.errorText(code, json));
-        if (!cookies.auth) throw new UserError('VRChat hat kein Sitzungs-Cookie geschickt – bitte später erneut versuchen.');
+        // Android: Cookies verwaltet das native Netz (JavaScript sieht sie nicht)
+        if (!cookies.auth && !this.nativeCookies) throw new UserError('VRChat hat kein Sitzungs-Cookie geschickt – bitte später erneut versuchen.');
         if (json.requiresTwoFactorAuth) return { need2fa: arr(json.requiresTwoFactorAuth), cookies };
         return { user: json, cookies };
     }
@@ -115,7 +117,7 @@ class Vrc {
 
     async disconnect(remote = true) {
         const a = this.account();
-        if (a && remote && Object.keys(a.cookie_jar).length) { try { await this.http(a.cookie_jar, 'PUT', '/logout'); } catch (e) { /* egal */ } }
+        if (a && remote && (Object.keys(a.cookie_jar).length || this.nativeCookies)) { try { await this.http(a.cookie_jar, 'PUT', '/logout'); } catch (e) { /* egal */ } }
         this.db.prepare('DELETE FROM accounts WHERE user_id = ?').run(UID);
         this.db.save();
     }

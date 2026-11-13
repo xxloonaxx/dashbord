@@ -113,7 +113,7 @@ class Settings {
         // vorhandene Einzel-Einstellungen spiegeln
         s['adv.api_base'] = this.db.setting('vrc_api_base', '');
         s['adv.user_agent'] = this.db.setting('vrc_user_agent', '');
-        if (!s['int.api_token']) { s['int.api_token'] = crypto.randomBytes(18).toString('base64url'); this.db.setSetting('app_settings', JSON.stringify(s)); }
+        if (!s['int.api_token']) { s['int.api_token'] = crypto.randomBytes(18).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); this.db.setSetting('app_settings', JSON.stringify(s)); }
         this.cache = s;
         return s;
     }
@@ -146,7 +146,7 @@ class Settings {
         return { settings: cur, changed };
     }
     write(s) { this.cache = s; this.db.setSetting('app_settings', JSON.stringify(s)); }
-    newToken() { const s = Object.assign({}, this.all(), { 'int.api_token': crypto.randomBytes(18).toString('base64url') }); this.write(s); this.listeners.forEach(fn => fn(['int.api_token'], s)); return s['int.api_token']; }
+    newToken() { const s = Object.assign({}, this.all(), { 'int.api_token': crypto.randomBytes(18).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') }); this.write(s); this.listeners.forEach(fn => fn(['int.api_token'], s)); return s['int.api_token']; }
     reset() { this.db.setSetting('app_settings', '{}'); this.cache = null; const s = this.all(); this.listeners.forEach(fn => fn(Object.keys(s), s)); return s; }
     onChange(fn) { this.listeners.push(fn); }
     /** Für die Oberfläche: Schema ohne Funktionen */

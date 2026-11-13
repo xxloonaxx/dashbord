@@ -36,7 +36,8 @@ PHP-Dashboard ohne Framework. Datenbank wahlweise **SQLite** (ohne Einrichtung) 
 ├── clients/
 │   └── nexus-desktop/  Windows-Client für VRC Nexus (Python, OSC & Logs) – siehe eigenes README
 ├── apps/
-│   └── vrc-nexus/   VRC Nexus als eigenständige Windows-App (Electron, ohne Server) – siehe eigenes README
+│   ├── vrc-nexus/          VRC Nexus als eigenständige Windows-App (Electron, ohne Server) – siehe eigenes README
+│   └── vrc-nexus-android/  VRC Nexus als Android-App (Capacitor, ohne PC-Funktionen) – siehe eigenes README
 ├── tools/           Kommandozeilen-Werkzeuge (db.php) – per .htaccess gesperrt
 ├── uploads/         öffentliche Bilder der Galerie-Vorlage
 └── data/            ALLES Private – per .htaccess gesperrt, nicht im Repository

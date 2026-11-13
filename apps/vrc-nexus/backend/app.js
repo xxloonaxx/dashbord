@@ -30,6 +30,8 @@ class NexusApp {
         this.tools = new Tools(this, Object.assign({ notify: opts.notify }, opts.host || {}));
         this.vrc.onWatch = (name, world) => { if (this.settings.get('notify.watch')) this.tools.alert('🟢 ' + name + ' ist online', world ? 'in ' + world : 'gerade ins Spiel gekommen'); };
         this.notify = opts.notify || null;
+        this.mobile = !!opts.mobile;
+        this.vrc.nativeCookies = this.mobile;
     }
 
     /** Hauptweg: { method, path, query: URLSearchParams, form: Object, files: { file: {buffer,type,name} } } */
@@ -68,7 +70,7 @@ class NexusApp {
         html = block(html, '\\{\\{IF_LOGIN\\}\\}', '\\{\\{END_LOGIN\\}\\}', !acc);
         html = block(html, '\\{\\{IF_CONNECTED\\}\\}', '\\{\\{END_CONNECTED\\}\\}', !!acc);
         const status = ['join me', 'active', 'ask me', 'busy'].map(s => '<label style="--sc: ' + U.VRC_STATUS[s][1] + ';"><input type="radio" name="status" value="' + esc(s) + '"><span>' + esc(U.VRC_STATUS[s][0]) + '</span></label>').join('\n');
-        const vrcx = { ui: this.settings.ui(), connected: !!acc, status: Object.fromEntries(Object.entries(U.VRC_STATUS).map(([k, v]) => [k, { label: v[0], color: v[1] }])), syncMin: SYNC_MIN, discord: false, app: true, version: VERSION };
+        const vrcx = { ui: this.settings.ui(), mobile: !!this.mobile, connected: !!acc, status: Object.fromEntries(Object.entries(U.VRC_STATUS).map(([k, v]) => [k, { label: v[0], color: v[1] }])), syncMin: SYNC_MIN, discord: false, app: true, version: VERSION };
         const map = { LOGIN_HIDDEN: p ? 'hidden' : '', TFA_HIDDEN: p ? '' : 'hidden', TFA_TYPES: esc((p || []).join(',')), STATUS_RADIOS: status, SYNC_MIN: SYNC_MIN, OFFLINE_MIN: OFFLINE_SYNC / 60,
             FEED_DAYS: FEED_KEEP_DAYS, UA: esc(this.db.setting('vrc_user_agent', '')), UA_DEFAULT: esc(this.vrc.userAgent()), VRCX_JSON: JSON.stringify(vrcx).replace(/</g, '\\u003c') };
         return html.replace(/\{\{(\w+)\}\}/g, (m, k) => (k in map ? String(map[k]) : m));
