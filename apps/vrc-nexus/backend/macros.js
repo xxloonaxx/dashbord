@@ -15,7 +15,7 @@
  */
 const { str, int, cut, sleep, UserError } = require('./util');
 
-const KINDS = ['chatbox', 'param', 'toggle', 'wait', 'input', 'cam', 'status', 'avatar', 'rotator', 'typing', 'speak', 'notify'];
+const KINDS = ['webhook', 'chatbox', 'param', 'toggle', 'wait', 'input', 'cam', 'status', 'avatar', 'rotator', 'typing', 'speak', 'notify'];
 const yes = v => /^(1|an|on|ja|true|ein)$/i.test(str(v).trim());
 
 function parse(script) {
@@ -88,6 +88,15 @@ class Macros {
                     case 'avatar': await this.app.tools.call('PUT', '/avatars/' + encodeURIComponent(s.arg.trim()) + '/select'); break;
                     case 'rotator': g.saveCfg({ rotator_enabled: yes(s.arg) ? '1' : '0' }); break;
                     case 'speak': if (this.app.tools.host.speak) this.app.tools.host.speak(g.fill(s.arg, vars)); break;
+                    case 'webhook': {
+                        // webhook https://… [Text] → POST JSON (z. B. Home Assistant, IFTTT, Node-RED)
+                        const [url, ...rest] = s.arg.split(/\s+/);
+                        if (!/^https?:\/\/[^\s]+$/i.test(url)) throw new UserError('webhook braucht eine http(s)-Adresse.');
+                        const st = g.state;
+                        await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(10000),
+                            body: JSON.stringify({ source: 'vrc-nexus', text: g.fill(rest.join(' '), vars), world: st.worldName || '', players: st.players.size, running: !!st.running, vars }) }).catch(e => { throw new UserError('Webhook: ' + e.message); });
+                        break;
+                    }
                     case 'notify': this.app.tools.alert('VRC Nexus', g.fill(s.arg, vars)); break;
                 }
                 n++;

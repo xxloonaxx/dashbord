@@ -135,8 +135,9 @@ class Tools {
         this.timer = setInterval(() => this.tick().catch(e => this.debug('tick', e)), 5000);
         if (this.timer.unref) this.timer.unref();
         if (this.app.auto) this.app.auto.start();
+        if (this.app.insights) this.app.insights.start();
     }
-    stop() { if (this.timer) clearInterval(this.timer); this.timer = null; if (this.app.auto) this.app.auto.stop(); this.api.stop(); this.rpc.close(); }
+    stop() { if (this.timer) clearInterval(this.timer); this.timer = null; if (this.app.auto) this.app.auto.stop(); if (this.app.insights) this.app.insights.stop(); this.api.stop(); this.rpc.close(); }
     applySettings(changed) {
         const all = changed.includes('*');
         if (all || changed.some(k => k.startsWith('int.api'))) this.api.apply();

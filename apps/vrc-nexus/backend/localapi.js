@@ -26,6 +26,11 @@ class LocalApi {
     stop() { if (this.server) this.server.close(); this.server = null; this.port = 0; }
     status() { return this.server ? 'läuft auf 127.0.0.1:' + this.port : this.error || 'aus'; }
 
+    obsState() {
+        const g = this.tools.app.game, st = g.state, a = this.tools.app.auto;
+        return { running: !!st.running, world: st.worldName || '', players: st.players.size, since: st.since || 0, avatar: st.avatar || '',
+            chat: g.osc.lastChat && Date.now() - g.osc.lastChat < 60000 ? g.osc.lastText || '' : '', music: a ? a.music : '', afk: a ? !!a.afkSince : false };
+    }
     send(res, code, data) {
         res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
         res.end(JSON.stringify(data));
@@ -39,6 +44,13 @@ class LocalApi {
         const got = Buffer.from(token);
         if (!want.length || got.length !== want.length || !crypto.timingSafeEqual(got, want)) return this.send(res, 401, { error: 'Falscher Zugangsschlüssel.' });
         if (req.method === 'GET' && url.pathname === '/api/state') return this.send(res, 200, this.tools.apiState());
+        // Stream-Overlay für OBS (Browser-Quelle): /obs?token=…  (Stil: &theme=light, &hide=players,chat …)
+        if (req.method === 'GET' && (url.pathname === '/obs' || url.pathname === '/obs.json')) {
+            if (!this.tools.settings.get('int.obs')) return this.send(res, 403, { error: 'Stream-Overlay ist aus (Einstellungen → Integrationen).' });
+            if (url.pathname === '/obs.json') return this.send(res, 200, this.obsState());
+            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+            return res.end(OBS_HTML);
+        }
         if (req.method === 'POST' && url.pathname === '/api/action') {
             let body = '';
             for await (const c of req) { body += c; if (body.length > 20000) throw new UserError('Zu groß.'); }
@@ -49,5 +61,19 @@ class LocalApi {
         return this.send(res, 404, { error: 'Unbekannt.' });
     }
 }
+
+const OBS_HTML = `<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>VRC Nexus · OBS</title><style>
+html,body{margin:0;background:transparent;font:600 26px/1.3 "Segoe UI",system-ui,sans-serif;color:#fff;text-shadow:0 2px 6px #000,0 0 2px #000}
+.box{display:inline-flex;flex-direction:column;gap:6px;padding:14px 20px;background:rgba(6,10,16,.55);border-left:5px solid #38d5e6;border-radius:6px;margin:10px}
+.w{color:#f3c262}.s{font-size:20px;opacity:.9}.c{font-size:22px;white-space:pre-wrap;max-width:900px;border-top:1px solid rgba(255,255,255,.2);padding-top:6px}
+body.light{color:#111;text-shadow:none}body.light .box{background:rgba(255,255,255,.8)}[hidden]{display:none!important}</style></head>
+<body><div class="box" id="b" hidden><div class="w" id="w"></div><div class="s" id="s"></div><div class="c" id="c" hidden></div></div><script>
+const q=new URLSearchParams(location.search),hide=(q.get('hide')||'').split(',');if(q.get('theme')==='light')document.body.classList.add('light');
+const $=i=>document.getElementById(i),fmt=s=>{s=Math.max(0,Math.floor(Date.now()/1000-s));return Math.floor(s/3600)+':'+String(Math.floor(s/60)%60).padStart(2,'0')};
+async function tick(){try{const d=await (await fetch('/obs.json?token='+encodeURIComponent(q.get('token')||''))).json();
+$('b').hidden=!d.running&&!d.chat;$('w').textContent=d.world?'🌐 '+d.world:'VRChat';
+$('s').textContent=[!hide.includes('players')&&d.world?'👥 '+d.players:'',!hide.includes('time')&&d.since?'⏱ '+fmt(d.since):'',!hide.includes('music')&&d.music?'🎵 '+d.music:'',d.afk?'💤 AFK':''].filter(Boolean).join('   ');
+$('c').hidden=hide.includes('chat')||!d.chat;$('c').textContent='💬 '+d.chat;}catch(e){}}tick();setInterval(tick,2000);
+</script></body></html>`;
 
 module.exports = { LocalApi, int };

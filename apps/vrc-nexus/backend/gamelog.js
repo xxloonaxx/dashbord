@@ -230,6 +230,7 @@ class Osc {
             if (wait > 0) await U.sleep(wait);
             await this.send('/chatbox/input', str(text).replace(/\r/g, '').slice(0, 144), true, !!sound);
             this.lastChat = Date.now();
+            this.lastText = str(text).slice(0, 144);
         });
         return this.chain;
     }

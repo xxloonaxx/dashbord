@@ -141,6 +141,7 @@
         if (name === 'client' && window.NexusClient) window.NexusClient.open();
         if (name !== 'client' && window.NexusClient) window.NexusClient.close();
         if (window.NexusApp) window.NexusApp.open(name, sub);
+        if (name === 'recap' && window.NexusRecap) window.NexusRecap.open();
         if (window.NexusHome) { if (name === 'home') window.NexusHome.open(); else window.NexusHome.close(); }
     }
     $('#tabs').addEventListener('click', e => {

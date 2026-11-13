@@ -21,6 +21,7 @@ const { Macros } = require('./macros');
 const { Automation } = require('./automation');
 const { Home } = require('./home');
 const { Speech } = require('./speech');
+const { Insights } = require('./insights');
 
 const RENDERER = path.join(__dirname, '..', 'renderer');
 const truthy = v => v !== undefined && v !== null && v !== '' && v !== '0' && v !== false && v !== 'false';
@@ -46,6 +47,7 @@ class NexusApp {
         this.auto = new Automation(this);
         this.home = new Home(this);
         this.speech = opts.mobile ? null : new Speech(this, opts.crypt);
+        this.insights = new Insights(this);
         this.vrc.onWatch = (name, world) => { if (this.settings.get('notify.watch')) this.tools.alert('🟢 ' + name + ' ist online', world ? 'in ' + world : 'gerade ins Spiel gekommen'); };
         this.notify = opts.notify || null;
         this.mobile = !!opts.mobile;
@@ -119,6 +121,7 @@ class NexusApp {
             if (act.startsWith('speech_')) { if (!this.speech) throw new UserError('Spracheingabe gibt es nur in der Windows-App.'); return await this.speech.action(act, input); }
             if (act === 'overlay_act') return await this.tools.apiAction(str(input.action), input);
             if (act === 'overlay_cfg') { const s = this.settings.all(); return { phrases: str(s['vr.overlay_phrases']).split('\n').map(x => x.trim()).filter(Boolean).slice(0, 40), translate: !!s['vr.overlay_translate'], target: str(s['tr.chat_target'] || '') }; }
+            if (act.startsWith('ins_')) return this.insights.action(act, input);
             if (act === 'home_data') return this.home.data();
             if (act === 'home_summary') return this.home.summary();
             if (act.startsWith('tools_')) return await this.toolAction(act, input);
