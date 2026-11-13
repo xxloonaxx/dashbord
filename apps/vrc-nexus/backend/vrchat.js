@@ -572,6 +572,8 @@ class Vrc {
         return out;
     }
     canModerate(perms) { return arr(perms).some(p => Vrc.MOD_PERMS.includes(p)); }
+    /** Mindestens Kick-Rechte – Voraussetzung für die Moderation im Profil */
+    canKick(perms) { return arr(perms).some(p => ['*', 'group-members-remove', 'group-members-manage'].includes(p)); }
 
     // ---------- Kalender ----------
     eventRow(e, gnames) {

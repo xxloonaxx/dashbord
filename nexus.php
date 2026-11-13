@@ -346,6 +346,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $out = ['msg' => !empty($in['on']) ? 'Du repräsentierst jetzt diese Gruppe.' : 'Repräsentation entfernt.'];
                     break;
                 // ----- Gruppen-Moderation im Profil -----
+                case 'user_mutuals':
+                    $target = $valid($id, 'usr');
+                    $fl = [];
+                    foreach (vrc_friend_list($uid) as $f) $fl[$f['id']] = $f;
+                    $mf = []; $ferr = '';
+                    try {
+                        for ($off = 0; $off < 500; $off += 100) {
+                            $p = (array)vrc_call($acc, 'GET', '/users/' . rawurlencode($target) . '/mutuals/friends', ['n' => 100, 'offset' => $off]);
+                            $mf = array_merge($mf, array_filter($p, 'is_array'));
+                            if (count($p) < 100) break;
+                        }
+                    } catch (VrcAuthError $e) { throw $e; } catch (Throwable $e) { $ferr = 'VRChat zeigt die gemeinsamen Freunde gerade nicht'; }
+                    $friends = array_map(function ($m) use ($fl) { $f = $fl[$m['id'] ?? ''] ?? null;
+                        return ['id' => (string)($m['id'] ?? ''), 'name' => (string)($m['displayName'] ?? ($f['name'] ?? '?')), 'image' => $f['image'] ?? vrc_user_image($m), 'state' => $f['state'] ?? '', 'status' => (string)($m['status'] ?? ($f['status'] ?? ''))]; }, $mf);
+                    $groups = [];
+                    try { $groups = (array)vrc_call($acc, 'GET', '/users/' . rawurlencode($target) . '/mutuals/groups', ['n' => 100]); }
+                    catch (VrcAuthError $e) { throw $e; } catch (Throwable $e) {
+                        // Ersatz: Schnittmenge aus seinen und meinen Gruppen
+                        try {
+                            $mine = array_column((array)vrc_call($acc, 'GET', '/users/' . rawurlencode($acc['vrc_id']) . '/groups'), 'groupId');
+                            $groups = array_values(array_filter((array)vrc_call($acc, 'GET', '/users/' . rawurlencode($target) . '/groups'), function ($g) use ($mine) { return in_array($g['groupId'] ?? '', $mine, true); }));
+                        } catch (VrcAuthError $e2) { throw $e2; } catch (Throwable $e2) { $groups = []; }
+                    }
+                    $out = ['friends' => $friends, 'friends_error' => $ferr, 'groups' => array_values(array_map(function ($g) {
+                        return ['id' => (string)($g['groupId'] ?? ($g['id'] ?? '')), 'name' => (string)($g['name'] ?? ''), 'icon' => (string)($g['iconUrl'] ?? ''), 'members' => (int)($g['memberCount'] ?? 0)]; }, array_filter($groups, 'is_array')))];
+                    break;
+                case 'group_friends':
+                    $gid = $valid($id, 'grp');
+                    $friends = vrc_friend_list($uid);
+                    $total = count($friends);
+                    $found = []; $complete = false; $checked = 0;
+                    $info = [];
+                    try { $info = (array)vrc_call($acc, 'GET', '/groups/' . rawurlencode($gid)); } catch (VrcAuthError $e) { throw $e; } catch (Throwable $e) {}
+                    $byId = [];
+                    foreach ($friends as $f) $byId[$f['id']] = $f;
+                    if ((int)($info['memberCount'] ?? 0) > 0 && (int)$info['memberCount'] <= 1000) {
+                        try {
+                            for ($off = 0; $off < 1000; $off += 100) {
+                                $page = (array)vrc_call($acc, 'GET', '/groups/' . rawurlencode($gid) . '/members', ['n' => 100, 'offset' => $off]);
+                                foreach ($page as $m) { $mid = (string)($m['userId'] ?? ''); if (isset($byId[$mid])) $found[$mid] = !empty($m['isRepresenting']); }
+                                if (count($page) < 100) break;
+                            }
+                            $complete = true; $checked = $total;
+                        } catch (VrcAuthError $e) { throw $e; } catch (Throwable $e) { $found = []; }
+                    }
+                    if (!$complete) {
+                        // große Gruppe: einzeln prüfen – online und Favoriten zuerst
+                        usort($friends, function ($a, $b) { return [($b['state'] ?? '') === 'online', !empty($b['favorite'])] <=> [($a['state'] ?? '') === 'online', !empty($a['favorite'])]; });
+                        foreach (array_slice($friends, 0, 25) as $f) {
+                            $checked++;
+                            try { $m = vrc_call($acc, 'GET', '/groups/' . rawurlencode($gid) . '/members/' . rawurlencode($f['id'])); if (!empty($m['userId'])) $found[$f['id']] = !empty($m['isRepresenting']); }
+                            catch (VrcAuthError $e) { throw $e; } catch (Throwable $e) {}
+                        }
+                    }
+                    $list = [];
+                    foreach ($found as $fid => $rep) { $f = $byId[$fid]; $list[] = ['id' => $fid, 'name' => $f['name'], 'image' => $f['image'], 'state' => $f['state'], 'status' => $f['status'], 'rep' => $rep, 'world' => ($f['state'] === 'online' ? (string)($f['loc']['world_name'] ?? '') : '')]; }
+                    usort($list, function ($a, $b) { return [$a['state'] === 'offline', $a['name']] <=> [$b['state'] === 'offline', $b['name']]; });
+                    $out = ['friends' => $list, 'complete' => $complete, 'checked' => $checked, 'total' => $total];
+                    break;
                 case 'user_mod':
                     $target = $valid($id, 'usr');
                     $groups = (array)vrc_call($acc, 'GET', '/users/' . rawurlencode($acc['vrc_id']) . '/groups');
@@ -354,7 +413,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     foreach ($groups as $g) {
                         $gid = (string)($g['groupId'] ?? '');
                         $p = ($g['ownerId'] ?? '') === $acc['vrc_id'] ? ['*'] : ($perms[$gid] ?? []);
-                        if ($gid === '' || !vrc_can_moderate($p) || count($items) >= 15) continue;
+                        if ($gid === '' || !vrc_can_kick($p) || count($items) >= 30) continue;
                         $member = null;
                         try { $member = vrc_call($acc, 'GET', '/groups/' . rawurlencode($gid) . '/members/' . rawurlencode($target)); }
                         catch (VrcAuthError $e) { throw $e; } catch (Throwable $e) { $member = null; }
@@ -1035,6 +1094,7 @@ session_write_close();
             <label class="vx-auto"><input type="checkbox" id="showOffline"> Offline zeigen</label>
             <label class="vx-auto"><input type="checkbox" id="onlyNotes"> nur mit Notiz</label>
             <label class="vx-auto"><input type="checkbox" id="compactView"> kompakt</label>
+            <button type="button" class="btn btn-sm" id="randomFriend" title="Zufälligen Freund anzeigen, der gerade im Spiel ist">🎲 Zufallsfreund</button>
             <a class="btn btn-sm" href="nexus.php?export=friends" title="Freundesliste als CSV (Excel)">⬇ CSV</a>
         </div>
         <div class="chips vx-favchips" id="favChips"></div>
@@ -1164,6 +1224,7 @@ session_write_close();
             <select id="nfType"><option value="">Alle Arten</option></select>
             <input type="search" id="nfQ" placeholder="Von, Gruppe, Text …">
             <button type="button" class="btn btn-sm" id="nfReload">⟳ Neu laden</button>
+            <button type="button" class="btn btn-sm" id="nfSeeAll" title="Alle offenen als gelesen markieren">👁 Alle gelesen</button>
             <button type="button" class="btn btn-sm btn-danger" id="nfClear" title="Einträge löschen, die es bei VRChat nicht mehr gibt">🧹 Verlauf leeren</button>
         </div>
         <div id="notifBox"></div>

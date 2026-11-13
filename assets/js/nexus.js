@@ -370,7 +370,8 @@
         if (u.links && u.links.length) h += '<h4>Links</h4><ul class="vx-u-links">' + u.links.map(x => '<li><a href="' + esc(x) + '" target="_blank" rel="noopener noreferrer nofollow">' + esc(x.replace(/^https?:\/\//, '')) + '</a></li>').join('') + '</ul>';
         const mine = new Set((loaded.groupList || []).map(g => g.id));
         if (u.groups && u.groups.length) h += '<h4>Gruppen <small>' + u.groups.filter(g => mine.has(g.id)).length + ' gemeinsam</small></h4><div class="vx-u-groups">' + u.groups.sort((a, b) => (mine.has(b.id) - mine.has(a.id)) || (b.rep - a.rep)).map(g => '<button type="button" class="vx-pill' + (g.rep ? ' rep' : '') + (mine.has(g.id) ? ' mutual' : '') + '" data-opengroup="' + esc(g.id) + '" title="' + g.members + ' Mitglieder' + (mine.has(g.id) ? ' · du bist auch Mitglied' : '') + '">' + (g.rep ? '★ ' : '') + (mine.has(g.id) ? '🤝 ' : '') + esc(g.name) + '</button>').join('') + '</div>';
-        h += '<h4>🛡️ Gruppen-Moderation</h4><div id="uMod" class="vx-umods" data-user="' + esc(u.id) + '" data-name="' + esc(u.name) + '"><div class="vx-loading">Prüfe deine Gruppen …</div></div>';
+        h += '<h4>🤝 Gemeinsam</h4><div id="uMutual" class="vx-umutual"><div class="vx-loading">Lade gemeinsame Freunde &amp; Gruppen …</div></div>';
+        h += '<div id="uModSec"><h4>🛡️ Gruppen-Moderation <small>(Gruppen, in denen du mindestens kicken darfst)</small></h4><div id="uMod" class="vx-umods" data-user="' + esc(u.id) + '" data-name="' + esc(u.name) + '"><div class="vx-loading">Prüfe deine Gruppen …</div></div></div>';
         h += '<dl class="vx-u-facts">' + (u.joined ? '<dt>Dabei seit</dt><dd>' + esc(isoDate(u.joined)) + '</dd>' : '') + (u.last_login ? '<dt>Letzter Login</dt><dd>' + esc(isoDT(u.last_login)) + '</dd>' : '')
             + (u.last_activity ? '<dt>Zuletzt aktiv</dt><dd>' + esc(isoDT(u.last_activity)) + '</dd>' : '') + '<dt>VRChat-ID</dt><dd><code class="vx-id">' + esc(u.id) + '</code> <button type="button" class="vx-copy" data-copy="' + esc(u.id) + '" title="Kopieren">⧉</button></dd></dl>';
         h += '</div><div><h4>Meine Notiz <small>(nur für dich)</small></h4><form class="vx-note-form"><textarea name="note" rows="5" maxlength="4000" placeholder="z. B. kennengelernt auf der EF, mag Kaffee …">' + esc(u.note) + '</textarea>'
@@ -409,6 +410,7 @@
         }));
         if (!loaded.groupList) api('groups').then(d => { loaded.groupList = d.groups; }).catch(() => {});
         loadUserMod(u);
+        loadUserMutual(u);
         api('feed', { friend: u.id }).then(d => { $('#uFeed').innerHTML = d.items.length ? d.items.slice(0, 30).map(feedRow).join('') : '<div class="vx-empty">Noch nichts aufgezeichnet.</div>'; })
             .catch(() => { $('#uFeed').textContent = '–'; });
     }
@@ -425,13 +427,13 @@
         + (w.favorites ? '<span title="Favoriten">⭐ ' + num(w.favorites) + '</span>' : '') + (w.capacity ? '<span title="Kapazität">👤 ' + w.capacity + '</span>' : '') + (w.status && w.status !== 'public' ? '<span>' + esc(w.status) + '</span>' : '') + '</span></span></button>';
     let worldKind = 'favorites';
     function loadWorlds(kind, q) {
+        if (kind === 'roulette') { roulette(); return; }
         worldKind = kind;
         loaded.worlds = true;
         $$('#worldKinds .chip').forEach(c => c.classList.toggle('on', c.dataset.kind === kind));
         const box = $('#worldsBox');
         const instCard = (loc, name, sub, thumb, extra) => '<div class="vx-inst-card">' + img(thumb, 'vx-inst-img', '') + '<div><b><a href="#" data-inst="' + esc(loc) + '">' + esc(name) + '</a></b><small>' + esc(sub) + '</small><span class="vx-u-btns">'
             + '<a class="btn btn-sm btn-gold" href="' + esc(launch(loc)) + '">▶</a><button type="button" class="btn btn-sm" data-self="' + esc(loc) + '" title="Selbst-Einladung">📨</button><button type="button" class="btn btn-sm" data-link="' + esc(loc) + '" title="Link kopieren">🔗</button>' + (extra || '') + '</span></div></div>';
-        if (kind === 'roulette') { roulette(); return; }
         if (kind === 'bookmarks') {
             box.innerHTML = bookmarks.length ? '<div class="vx-inst vx-wide">' + bookmarks.map(b => { const l = parseRef(b.location) ? b.location : ''; const wl = (state.friends.find(f => f.loc && f.loc.world === l.split(':')[0]) || {}).loc || {};
                 return instCard(b.location, b.name, 'gemerkt ' + ago(b.ts), wl.world_thumb, '<button type="button" class="btn btn-sm btn-danger" data-bm="' + esc(b.location) + '" title="Aus der Merkliste">✕</button>'); }).join('') + '</div>'
@@ -1047,7 +1049,7 @@
             group = d.group;
             const g = group;
             remember('group', g.id, g.name);
-            const tabs = [['info', 'ℹ Info'], ['posts', '📢 Beiträge'], ['members', '👥 Mitglieder'], ['instances', '🌐 Instanzen']];
+            const tabs = [['info', 'ℹ Info'], ['friends', '🤝 Freunde'], ['posts', '📢 Beiträge'], ['members', '👥 Mitglieder'], ['instances', '🌐 Instanzen']];
             if (g.member && can(g, 'group-invites-manage')) tabs.push(['requests', '📥 Anfragen'], ['invite', '✉ Einladen']);
             if (g.member && can(g, 'group-bans-manage')) tabs.push(['bans', '🚫 Banns']);
             if (g.member && can(g, 'group-audit-view')) tabs.push(['audit', '📋 Protokoll']);
@@ -1086,6 +1088,7 @@
             });
             box.querySelector('.vx-gd-tabs').addEventListener('click', e => { const b = e.target.closest('[data-gt]'); if (!b) return; $$('.vx-gd-tabs .chip').forEach(x => x.classList.toggle('on', x === b)); groupPane(b.dataset.gt); });
             groupPane('info');
+            api('group_friends', { id: g.id }).then(d => { group.friendsData = d; const t = $('.vx-gd-tabs [data-gt=friends]'); if (t) t.innerHTML = '🤝 Freunde <b class="vx-badge sm">' + d.friends.length + '</b>'; }).catch(() => {});
             gModal.scrollTop = 0;
         }).catch(x => { box.innerHTML = '<div class="vx-error">⚠ ' + esc(x.message) + '</div>'; });
     }
@@ -1122,6 +1125,17 @@
                 const f = $('#gPost');
                 if (f) f.addEventListener('submit', e => { e.preventDefault(); api('group_post', { id: g.id, title: f.title.value, text: f.text.value, visibility: f.visibility.value, notify: f.notify.checked ? 1 : '' }).then(r => { toast(r.msg); groupPane('posts'); }).catch(x => toast(x.message, true)); });
             }).catch(fail(pane));
+            return;
+        }
+        if (name === 'friends') {
+            const show = d => {
+                const fr = d.friends;
+                pane.innerHTML = '<p class="vx-small">' + (d.complete ? 'Alle deine Freunde in dieser Gruppe' : 'Geprüft: ' + d.checked + ' von ' + d.total + ' Freunden (Online & Favoriten zuerst – die Gruppe ist zu groß für eine vollständige Liste)') + '.</p>'
+                    + (fr.length ? '<div class="vx-mchips">' + fr.map(m => '<button type="button" class="vx-mchip" data-user="' + esc(m.id) + '">' + img(m.image, 'vx-av xs', m.name) + statusDot(m.state === 'offline' ? 'offline' : m.status) + esc(m.name)
+                        + (m.rep ? ' <span class="vx-pill rep">★</span>' : '') + (m.world ? ' <small>🌐 ' + esc(m.world) + '</small>' : '') + '</button>').join('') + '</div>' : '<div class="vx-empty">Keine deiner Freunde ist in dieser Gruppe.</div>');
+            };
+            if (g.friendsData) show(g.friendsData);
+            else { loading(pane, 'Suche deine Freunde in der Gruppe …'); api('group_friends', { id: g.id }).then(d => { g.friendsData = d; show(d); }).catch(fail(pane)); }
             return;
         }
         if (name === 'instances') {
@@ -1419,11 +1433,23 @@
 
     // ---------- Gruppen-Moderation im Profil ----------
     const gcan = (g, p) => g.perms.includes('*') || g.perms.includes(p);
+    function loadUserMutual(u) {
+        const box = $('#uMutual');
+        if (!box) return;
+        api('user_mutuals', { id: u.id }).then(d => {
+            const fr = d.friends || [], gr = d.groups || [];
+            const chip = m => '<button type="button" class="vx-mchip" data-user="' + esc(m.id) + '">' + img(m.image, 'vx-av xs', m.name) + statusDot(m.state === 'offline' ? 'offline' : (m.status || 'offline')) + esc(m.name) + '</button>';
+            box.innerHTML = '<div class="vx-small">👥 <b>' + fr.length + '</b> gemeinsame Freunde' + (d.friends_error ? ' <span class="muted">(' + esc(d.friends_error) + ')</span>' : '') + '</div>'
+                + (fr.length ? '<div class="vx-mchips">' + fr.slice(0, 40).map(chip).join('') + (fr.length > 40 ? '<span class="vx-small">… und ' + (fr.length - 40) + ' weitere</span>' : '') + '</div>' : '')
+                + '<div class="vx-small" style="margin-top:6px">🛡️ <b>' + gr.length + '</b> gemeinsame Gruppen</div>'
+                + (gr.length ? '<div class="vx-mchips">' + gr.map(g => '<button type="button" class="vx-mchip" data-opengroup="' + esc(g.id) + '">' + img(g.icon, 'vx-av xs', g.name) + esc(g.name) + (g.members ? ' <small>' + g.members + '</small>' : '') + '</button>').join('') + '</div>' : '');
+        }).catch(x => { box.innerHTML = '<div class="vx-small muted">' + esc(x.message) + '</div>'; });
+    }
     function loadUserMod(u) {
         const box = $('#uMod');
         if (!box) return;
         api('user_mod', { id: u.id }).then(d => {
-            if (!d.groups.length) { box.innerHTML = '<div class="vx-empty">Du moderierst keine Gruppe.</div>'; return; }
+            if (!d.groups.length) { const sec = $('#uModSec'); if (sec) sec.parentNode.removeChild(sec); return; }
             box.innerHTML = d.groups.map(g => {
                 const m = g.member, roleName = id => (g.roles.find(r => r.id === id) || {}).name || '';
                 const b = (act, label, cls, extra) => '<button type="button" class="btn btn-sm ' + (cls || '') + '" data-umod="' + act + '" data-g="' + esc(g.id) + '"' + (extra || '') + '>' + label + '</button>';
@@ -1816,16 +1842,48 @@
             api('invite_many', { ids, location: loc }).then(r => { toast(r.msg); closeModal(); }).catch(x => { toast(x.message, true); $('#pGo').disabled = false; });
         };
     }
+    document.addEventListener('click', e => { if (e.target.closest('.vx-reroll')) roulette(); });
+    document.addEventListener('keydown', e => { if ((e.key === 'w' || e.key === 'W') && !e.ctrlKey && !e.altKey && !e.target.closest('input, textarea, select') && roulette.last && !modal.hidden && $('#userBody .vx-reroll')) roulette(); });
+    // Alle offenen Benachrichtigungen nacheinander als gelesen markieren
+    if ($('#nfSeeAll')) $('#nfSeeAll').addEventListener('click', async e => {
+        const btn = e.currentTarget;
+        if (!$('#notifBox [data-nop="see"]')) return toast('Nichts Ungelesenes.');
+        btn.disabled = true;
+        // die Liste wird nach jedem Klick neu aufgebaut → immer den ersten noch offenen nehmen
+        let n = 0;
+        for (let b; n < 60 && (b = $('#notifBox [data-nop="see"]')); n++) {
+            b.click();
+            for (let w = 0; w < 30 && b.isConnected; w++) await new Promise(r => setTimeout(r, 100));
+            await new Promise(r => setTimeout(r, 150));
+        }
+        btn.disabled = false;
+        toast(n + ' als gelesen markiert.');
+    });
+    // Zufälliger Freund, der gerade im Spiel ist (bevorzugt in betretbaren Instanzen)
+    if ($('#randomFriend')) $('#randomFriend').addEventListener('click', () => {
+        const on = state.friends.filter(f => f.state === 'online');
+        const open = on.filter(f => joinable(f.loc));
+        const pool = open.length ? open : on;
+        if (!pool.length) return toast('Gerade ist niemand im Spiel.', true);
+        const f = pool[Math.floor(Math.random() * pool.length)];
+        toast('🎲 ' + f.name + (f.loc && f.loc.world_name ? ' in ' + f.loc.world_name : ''));
+        openUser(f.id);
+    });
     function roulette() {
         tab('worlds');
         loading($('#worldsBox'), '🎲 Würfle eine Welt …');
         Promise.all([api('worlds', { kind: 'favorites' }).catch(() => ({ worlds: [] })), api('worlds', { kind: 'active' }).catch(() => ({ worlds: [] }))]).then(([a, b]) => {
-            const all = a.worlds.concat(b.worlds);
-            loadWorlds(worldKind === 'search' ? 'favorites' : worldKind);
+            const all = a.worlds.concat(b.worlds).filter((w, i, l) => l.findIndex(x => x.id === w.id) === i);
+            loadWorlds(['search', 'roulette'].includes(worldKind) ? 'favorites' : worldKind);
             if (!all.length) return toast('Keine Welten zum Auswürfeln gefunden.', true);
-            const w = all[Math.floor(Math.random() * all.length)];
+            let w;
+            do { w = all[Math.floor(Math.random() * all.length)]; } while (all.length > 1 && w.id === roulette.last);
+            roulette.last = w.id;
             toast('🎲 ' + w.name);
             openWorld(w.id);
+            // Knopf „nochmal würfeln“ ins Welten-Fenster, sobald es geladen ist
+            const add = (n = 0) => { const h = $('#userBody .vx-w-head h2'); if (h && !$('#userBody .vx-reroll')) h.insertAdjacentHTML('afterend', '<button type="button" class="btn btn-sm btn-gold vx-reroll" title="Taste W">🎲 Nochmal würfeln</button>'); else if (!h && n < 30) setTimeout(() => add(n + 1), 200); };
+            add();
         });
     }
 

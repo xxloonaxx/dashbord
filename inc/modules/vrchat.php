@@ -961,6 +961,11 @@ function vrc_can_moderate(array $perms): bool {
     return (bool)array_intersect($perms, VRC_MOD_PERMS);
 }
 
+/** Mindestens Kick-Rechte (Mitglieder entfernen) – Voraussetzung für die Moderation im Profil */
+function vrc_can_kick(array $perms): bool {
+    return (bool)array_intersect($perms, ['*', 'group-members-remove', 'group-members-manage']);
+}
+
 // ---------- VRChat-Kalender (Gruppen-Events) ----------
 
 function vrc_event_row(array $e, array $gnames): ?array {

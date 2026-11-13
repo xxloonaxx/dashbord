@@ -355,6 +355,49 @@ class NexusApp {
             case 'group_represent':
                 await call('PUT', '/groups/' + enc(valid(id, 'grp')) + '/representation', {}, { isRepresenting: truthy(input.on) });
                 return { msg: truthy(input.on) ? 'Du repräsentierst jetzt diese Gruppe.' : 'Repräsentation entfernt.' };
+            case 'user_mutuals': {
+                const target = valid(id, 'usr');
+                const fl = new Map(v.friendList().map(f => [f.id, f]));
+                let mf = [], ferr = '';
+                try {
+                    for (let off = 0; off < 500; off += 100) { const p = arr(await call('GET', '/users/' + enc(target) + '/mutuals/friends', { n: 100, offset: off })); mf = mf.concat(p); if (p.length < 100) break; }
+                } catch (e) { if (e instanceof VrcAuthError) throw e; ferr = 'VRChat zeigt die gemeinsamen Freunde gerade nicht'; }
+                let groups = await quiet(() => call('GET', '/users/' + enc(target) + '/mutuals/groups', { n: 100 }));
+                if (!groups) {
+                    const mine = new Set(arr(await quiet(() => call('GET', '/users/' + enc(acc.vrc_id) + '/groups'))).map(g => g.groupId));
+                    groups = arr(await quiet(() => call('GET', '/users/' + enc(target) + '/groups'))).filter(g => mine.has(g.groupId));
+                }
+                return { friends: mf.map(m => { const f = fl.get(m.id); return { id: str(m.id), name: str(m.displayName || (f && f.name)), image: f ? f.image : U.userImage(m), state: f ? f.state : '', status: str(m.status || (f && f.status)) }; }),
+                    friends_error: ferr, groups: arr(groups).map(g => ({ id: str(g.groupId || g.id), name: str(g.name), icon: str(g.iconUrl), members: int(g.memberCount) })) };
+            }
+            case 'group_friends': {
+                const gid = valid(id, 'grp');
+                let friends = v.friendList();
+                const total = friends.length, byId = new Map(friends.map(f => [f.id, f])), found = new Map();
+                let complete = false, checked = 0;
+                const info = (await quiet(() => call('GET', '/groups/' + enc(gid)))) || {};
+                if (int(info.memberCount) > 0 && int(info.memberCount) <= 1000) {
+                    try {
+                        for (let off = 0; off < 1000; off += 100) {
+                            const page = arr(await call('GET', '/groups/' + enc(gid) + '/members', { n: 100, offset: off }));
+                            for (const m of page) if (byId.has(m.userId)) found.set(m.userId, !!m.isRepresenting);
+                            if (page.length < 100) break;
+                        }
+                        complete = true; checked = total;
+                    } catch (e) { if (e instanceof VrcAuthError) throw e; found.clear(); }
+                }
+                if (!complete) {
+                    friends = friends.slice().sort((a, b) => ((b.state === 'online') - (a.state === 'online')) || (b.favorite - a.favorite));
+                    for (const f of friends.slice(0, 25)) {
+                        checked++;
+                        const m = await quiet(() => call('GET', '/groups/' + enc(gid) + '/members/' + enc(f.id)));
+                        if (m && m.userId) found.set(f.id, !!m.isRepresenting);
+                    }
+                }
+                const list = [...found].map(([fid, rep]) => { const f = byId.get(fid); return { id: fid, name: f.name, image: f.image, state: f.state, status: f.status, rep, world: f.state === 'online' ? str(f.loc && f.loc.world_name) : '' }; })
+                    .sort((a, b) => ((a.state === 'offline') - (b.state === 'offline')) || a.name.localeCompare(b.name));
+                return { friends: list, complete, checked, total };
+            }
             case 'user_mod': {
                 const target = valid(id, 'usr');
                 const groups = arr(await call('GET', '/users/' + enc(acc.vrc_id) + '/groups'));
@@ -363,7 +406,7 @@ class NexusApp {
                 for (const g of groups) {
                     const gid = str(g.groupId);
                     const p = g.ownerId === acc.vrc_id ? ['*'] : (perms[gid] || []);
-                    if (!gid || !v.canModerate(p) || items.length >= 15) continue;
+                    if (!gid || !v.canKick(p) || items.length >= 30) continue;
                     const member = await quiet(() => call('GET', '/groups/' + enc(gid) + '/members/' + enc(target)));
                     const roles = ((await quiet(() => call('GET', '/groups/' + enc(gid) + '/roles'))) || []);
                     items.push({ id: gid, name: str(g.name), icon: str(g.iconUrl), perms: p, roles: arr(roles).map(r => ({ id: str(r.id), name: str(r.name) })),

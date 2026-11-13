@@ -624,3 +624,12 @@ span.vx-card-img { display: flex; align-items: center; justify-content: center; 
 .tr-emoji button:hover { border-color: var(--accent-cyan); }
 .tr-hist { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .tr-target { max-width: 190px; }
+
+/* ---------- Gemeinsame Freunde & Gruppen ---------- */
+.vx-mchips { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0; }
+.vx-mchip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 3px; border: 1px solid rgba(56, 213, 230, 0.18); background: rgba(0, 0, 0, 0.25); color: var(--text-main); font: inherit; font-size: 0.8rem; cursor: pointer; border-radius: 14px; }
+.vx-mchip:hover { border-color: var(--accent-cyan); }
+.vx-mchip small { color: var(--text-muted); }
+.vx-av.xs { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; }
+.vx-badge.sm { font-size: 0.66rem; padding: 0 5px; }
+.vx-reroll { margin: 4px 0; }
