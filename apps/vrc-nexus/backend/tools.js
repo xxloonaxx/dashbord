@@ -824,6 +824,43 @@ class Tools {
         return { msg: done + ' Memos als VRChat-Notiz gespeichert' + (skipped ? ', ' + skipped + ' übersprungen (hatten schon eine Notiz)' : '') + '.' };
     }
 
+    // ======================= Profil-Reiter & frühere Instanzen =======================
+    async userJson(id) { U.valid(id, 'usr'); return { user: await this.call('GET', '/users/' + encodeURIComponent(id)) }; }
+    worldSlim(w) { return { id: str(w.id), name: str(w.name), thumb: str(w.thumbnailImageUrl || w.imageUrl), author: str(w.authorName), occupants: int(w.occupants), favorites: int(w.favorites), capacity: int(w.capacity), status: str(w.releaseStatus) }; }
+    async userTab(id, tab) {
+        U.valid(id, 'usr');
+        const e = encodeURIComponent(id);
+        const quiet = async fn => { try { return await fn(); } catch (x) { if (x instanceof VrcAuthError) throw x; return { error: x.message }; } };
+        switch (tab) {
+            case 'mutuals': return quiet(async () => {
+                const out = [];
+                for (let off = 0; off < 500; off += 100) { const p = arr(await this.call('GET', '/users/' + e + '/mutuals/friends', { n: 100, offset: off })); out.push(...p); if (p.length < 100) break; }
+                const fr = this.friendMap();
+                return { users: out.map(u => { const f = fr.get(u.id); return { id: str(u.id), name: str(u.displayName), image: f ? f.image : U.userImage(u), status: str(u.status), status_desc: str(u.statusDescription), state: f ? f.state : '' }; }) };
+            });
+            case 'worlds': return quiet(async () => ({ worlds: arr(await this.call('GET', '/worlds', { userId: id, releaseStatus: 'public', n: 100, sort: 'updated', order: 'descending' })).map(w => this.worldSlim(w)) }));
+            case 'favworlds': return quiet(async () => ({ worlds: arr(await this.call('GET', '/worlds/favorites', { userId: id, n: 100 })).map(w => this.worldSlim(w)) }));
+            case 'avatars': return quiet(async () => ({ avatars: arr(await this.call('GET', '/avatars', { userId: id, releaseStatus: 'public', n: 100, sort: 'updated', order: 'descending' }))
+                .map(a => ({ id: str(a.id), name: str(a.name), thumb: str(a.thumbnailImageUrl || a.imageUrl), author: str(a.authorName), status: str(a.releaseStatus) })) }));
+            case 'instances': return { instances: this.prevInstances("player_id = ?", [id]) };
+            case 'activity': {
+                const meets = this.db.prepare("SELECT COUNT(*) AS n, MIN(ts) AS first, MAX(ts) AS last, COUNT(DISTINCT world_id) AS worlds FROM game_log WHERE user_id = ? AND kind = 'player_join' AND player_id = ?").get(UID, id) || {};
+                const byDay = this.db.prepare("SELECT date(ts, 'unixepoch', 'localtime') AS d, COUNT(*) AS n FROM feed WHERE user_id = ? AND vrc_id = ? AND ts > ? GROUP BY d ORDER BY d").all(UID, id, now() - 60 * 86400);
+                const types = this.db.prepare('SELECT type, COUNT(*) AS n FROM feed WHERE user_id = ? AND vrc_id = ? GROUP BY type ORDER BY n DESC').all(UID, id);
+                return { meets: { count: int(meets.n), first: int(meets.first), last: int(meets.last), worlds: int(meets.worlds) }, days: byDay, types, stats: this.app.vrc.friendStats(id) };
+            }
+        }
+        throw new UserError('Unbekannter Reiter.');
+    }
+    /** Frühere Instanzen aus dem Spiel-Log (wo man war, optional gefiltert) */
+    prevInstances(where, args) {
+        const rows = this.db.prepare(`SELECT world_id, instance, MAX(world_name) AS world_name, MIN(ts) AS first, MAX(ts) AS last, COUNT(*) AS n FROM game_log
+                                      WHERE user_id = ? AND world_id <> '' AND ${where} GROUP BY world_id, instance ORDER BY last DESC LIMIT 100`).all(UID, ...args);
+        return rows.map(r => ({ world_id: r.world_id, world_name: r.world_name, location: r.world_id + ':' + r.instance, access: U.location(r.world_id + ':' + r.instance).access,
+            region: U.location(r.world_id + ':' + r.instance).region, first: int(r.first), last: int(r.last), count: int(r.n) }));
+    }
+    groupInstances(id) { U.valid(id, 'grp'); return { instances: this.prevInstances("kind = 'world_join' AND instance LIKE ?", ['%group(' + id + ')%']) }; }
+
     // ======================= Stream Deck / lokale Schnittstelle =======================
     apiState() {
         const st = this.app.game.state, acc = this.acc();

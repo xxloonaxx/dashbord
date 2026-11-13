@@ -124,3 +124,59 @@ body.wide .wrapper { max-width: none !important; }
 .shot small { color: var(--text-muted); display: block; }
 .shot-big { max-width: 100%; max-height: 60vh; display: block; margin: 0 auto 10px; }
 #plBox a, #toolsBox a, #actBox a, #userBody a[data-user], #userBody a[data-world] { color: var(--accent-cyan); }
+
+/* ---------- Freundeskarte (wie VRCX) ---------- */
+.vx-friend.fc { align-items: center; gap: 12px; padding: 10px 12px; border-radius: 6px; background: #12161d; border-color: rgba(255, 255, 255, 0.07); }
+.vx-friend.fc:hover { border-color: rgba(255, 255, 255, 0.22); background: #161b23; transform: none; box-shadow: none; }
+.vx-friend.fc.fav { border-left: 3px solid var(--accent-gold); }
+.fc-av { position: relative; flex-shrink: 0; width: 50px; height: 50px; border-radius: 50%; padding: 2px; background: var(--sc); }
+.fc-av .vx-av { width: 46px; height: 46px; border-radius: 50%; border: 2px solid #12161d; display: block; }
+.vx-friend.fc.compact .fc-av { width: 34px; height: 34px; } .vx-friend.fc.compact .fc-av .vx-av { width: 30px; height: 30px; }
+.fc-name { display: flex; align-items: center; gap: 5px; font-size: 0.95rem; min-width: 0; }
+.fc-name b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fc-sd { display: flex; gap: 6px; align-items: center; color: #9aa4b2; font-size: 0.8rem; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fc-sd i { font-style: normal; opacity: 0.7; }
+.fc-loc { display: flex; gap: 6px; align-items: center; font-size: 0.82rem; margin-top: 4px; min-width: 0; color: var(--text-main); }
+.fc-loc a { color: var(--text-main); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fc-loc a:hover { color: var(--accent-cyan); }
+.fc-loc small { color: var(--text-muted); white-space: nowrap; }
+.fc-loc.muted { color: var(--text-muted); }
+.fc-flag { display: inline-block; min-width: 20px; padding: 0 3px; border-radius: 3px; background: rgba(255, 255, 255, 0.07); text-align: center; font-size: 0.8rem; }
+.fc-dot { position: absolute; top: 9px; right: 9px; width: 11px; height: 11px; border-radius: 50%; background: var(--sc); box-shadow: 0 0 6px var(--sc); }
+.vx-friend.fc .vx-f-side { align-self: flex-end; }
+
+/* ---------- Profil-Reiter ---------- */
+.u-tabs { display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); margin: 12px 0 14px; }
+.u-tabs button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--text-muted); font: inherit; font-size: 0.86rem; padding: 8px 12px; cursor: pointer; }
+.u-tabs button:hover { color: var(--text-main); }
+.u-tabs button.on { color: #fff; font-weight: 700; border-bottom-color: #fff; }
+.vx-u-head { position: relative; }
+.u-more, .g-more { font-weight: 800; letter-spacing: 1px; }
+.vx-u-head .u-more { position: absolute; top: 0; right: 36px; }
+.u-glist { display: flex; flex-wrap: wrap; gap: 6px; }
+.u-glist .loc-p { color: var(--text-main); font: inherit; font-size: 0.82rem; }
+.u-glist .vx-av { width: 28px; height: 28px; border-radius: 50%; }
+.u-bars { display: flex; align-items: flex-end; gap: 2px; height: 80px; border-bottom: 1px solid var(--border-color); }
+.u-bars i { flex: 1; background: var(--accent-cyan); opacity: 0.75; min-width: 3px; }
+
+/* ---------- JSON ---------- */
+.js-view { font-family: Consolas, "Cascadia Mono", monospace; font-size: 0.8rem; background: #0b0f15; border: 1px solid rgba(255, 255, 255, 0.08); padding: 10px 12px; max-height: 60vh; overflow: auto; line-height: 1.55; }
+.js-in { padding-left: 18px; border-left: 1px dashed rgba(255, 255, 255, 0.12); margin-left: 4px; }
+.js-o > summary { cursor: pointer; list-style: none; }
+.js-o > summary::before { content: '▸ '; color: var(--text-muted); }
+.js-o[open] > summary::before { content: '▾ '; }
+.js-o[open] > summary .js-c { display: none; }
+.js-o:not([open]) > .js-p { display: none; }
+.js-k { color: #e2e8f0; } .js-s { color: #50fa7b; word-break: break-all; } .js-n { color: #79b8ff; } .js-b { color: #38d5e6; } .js-null { color: #ff79c6; } .js-p, .js-c { color: #8a94a3; }
+
+/* ---------- „⋯“-Menü mit Untermenü ---------- */
+.nx-menu { position: absolute; z-index: 4000; min-width: 210px; background: #1b1d22; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6); padding: 4px; }
+.nx-menu .nx-mi { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; background: none; border: 0; border-radius: 4px; color: #e5e7eb; font: inherit; font-size: 0.86rem; padding: 8px 10px; cursor: pointer; text-align: left; }
+.nx-menu .nx-mi > span { width: 18px; text-align: center; color: #9aa4b2; }
+.nx-menu .nx-mi > i { margin-left: auto; font-style: normal; color: #9aa4b2; }
+.nx-menu .nx-mi:hover, .nx-menu .nx-mi.open { background: rgba(255, 255, 255, 0.07); }
+.nx-menu .nx-mi.bad { color: #ff8080; }
+.nx-menu hr { border: 0; border-top: 1px solid rgba(255, 255, 255, 0.08); margin: 4px 0; }
+.nx-menu .nx-sub { display: none; position: absolute; left: calc(100% + 6px); top: -4px; }
+.nx-menu.nx-left .nx-sub { left: auto; right: calc(100% + 6px); }
+.nx-menu .nx-mi:hover > .nx-sub, .nx-menu .nx-mi.open > .nx-sub { display: block; }

@@ -176,6 +176,9 @@ class NexusApp {
             case 'tools_message_save': needAcc(); return await t.messageSave(str(input.type), input.slot, str(input.message));
             case 'tools_reports': needAcc(); return await t.reports();
             case 'tools_report_delete': needAcc(); return await t.reportDelete(str(input.id));
+            case 'tools_user_json': needAcc(); return await t.userJson(str(input.id));
+            case 'tools_user_tab': needAcc(); return await t.userTab(str(input.id), str(input.tab));
+            case 'tools_group_instances': return t.groupInstances(str(input.id));
             case 'tools_discord_names': return { rows: t.discordNames() };
             case 'tools_memos_to_vrc': needAcc(); return await t.memosToVrc(truthy(input.overwrite));
         }

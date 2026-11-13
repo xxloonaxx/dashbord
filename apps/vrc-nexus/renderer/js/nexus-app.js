@@ -590,7 +590,152 @@
         }).catch(x => { toast(x.message, true); renderSettings(); });
     });
 
-    window.NexusApp = { open, applyUi };
+    // ======================= Menü mit Untermenüs (wie VRCX „⋯“) =======================
+    function menu(anchor, items) {
+        $$('.nx-menu').forEach(m => m.remove());
+        const build = list => '<div class="nx-menu">' + list.map((it, i) => it === '-' ? '<hr>' : '<div class="nx-mi' + (it.bad ? ' bad' : '') + '" role="menuitem" tabindex="0" data-mi="' + i + '"><span>' + (it.icon || '') + '</span>' + esc(it.label)
+            + (it.sub ? '<i>›</i>' + build(it.sub).replace('class="nx-menu"', 'class="nx-menu nx-sub"') : '') + '</div>').join('') + '</div>';
+        const wrap = document.createElement('div');
+        wrap.innerHTML = build(items);
+        const m = wrap.firstChild;
+        document.body.append(m);
+        const r = anchor.getBoundingClientRect();
+        m.style.top = (window.scrollY + r.bottom + 4) + 'px';
+        m.style.left = Math.max(8, window.scrollX + r.right - m.offsetWidth) + 'px';
+        if (r.right + 200 > innerWidth) m.classList.add('nx-left');
+        m.addEventListener('click', e => {
+            const b = e.target.closest('.nx-mi[data-mi]');
+            if (!b) return;
+            const path = [];
+            for (let x = b; x && x !== m; x = x.parentNode) if (x.dataset && x.dataset.mi !== undefined) path.unshift(+x.dataset.mi);
+            let it = { sub: items };
+            for (const i of path) it = it.sub[i];
+            if (it.sub) { e.stopPropagation(); b.classList.toggle('open'); return; }
+            m.remove();
+            it.fn();
+        });
+        setTimeout(() => document.addEventListener('click', function off(e) { if (!m.contains(e.target)) { m.remove(); document.removeEventListener('click', off); } }), 0);
+    }
+    const copy = (text, what) => (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast(what + ' kopiert.')).catch(() => prompt(what + ':', text));
+    const shareItems = (url, name, id) => [{ icon: '⧉', label: 'Link kopieren', fn: () => copy(url, 'Link') }, { icon: '⧉', label: 'Name kopieren', fn: () => copy(name, 'Name') }, { icon: '⧉', label: 'ID kopieren', fn: () => copy(id, 'ID') }];
+    const instRows = list => list.length ? '<table class="nx-list"><thead><tr><th>Welt</th><th>Zugang</th><th>Region</th><th>Zuerst</th><th>Zuletzt</th><th></th></tr></thead><tbody>' + list.map(i => '<tr><td><a href="#" data-world="' + esc(i.world_id) + '">' + esc(i.world_name || i.world_id) + '</a></td><td>'
+        + esc(i.access) + '</td><td>' + esc(i.region) + '</td><td>' + dt(i.first) + '</td><td>' + dt(i.last) + '</td><td>' + (i.access !== 'Invite' ? '<a class="btn btn-sm" href="' + esc(UI.launch(i.location)) + '" title="Beitreten">▶</a>' : '')
+        + ' <button type="button" class="btn btn-sm" data-inst="' + esc(i.location) + '">ℹ</button></td></tr>').join('') + '</tbody></table>'
+        : '<div class="vx-empty">Keine früheren Instanzen im Spiel-Log (wird nur aufgezeichnet, solange VRC Nexus die VRChat-Logs mitliest).</div>';
+
+    // ======================= JSON-Ansicht =======================
+    function jsonTree(v, key, depth) {
+        const k = key !== undefined ? '<span class="js-k">"' + esc(key) + '"</span>: ' : '';
+        if (v === null) return '<div class="js-row">' + k + '<span class="js-null">null</span></div>';
+        if (typeof v === 'string') return '<div class="js-row">' + k + '<span class="js-s">"' + esc(v) + '"</span></div>';
+        if (typeof v === 'number') return '<div class="js-row">' + k + '<span class="js-n">' + v + '</span></div>';
+        if (typeof v === 'boolean') return '<div class="js-row">' + k + '<span class="js-b">' + v + '</span></div>';
+        const arrOf = Array.isArray(v), ents = arrOf ? v.map((x, i) => [i, x]) : Object.entries(v).sort((a, b) => a[0].localeCompare(b[0]));
+        return '<details class="js-o"' + (depth < 2 ? ' open' : '') + '><summary>' + k + '<span class="js-p">' + (arrOf ? '[' : '{') + '</span><span class="js-c">' + (arrOf ? '…]' : '…}') + '</span></summary>'
+            + '<div class="js-in">' + ents.map(([kk, x]) => jsonTree(x, arrOf ? undefined : kk, depth + 1)).join('') + '</div><span class="js-p">' + (arrOf ? ']' : '}') + '</span></details>';
+    }
+
+    // ======================= Profil: Reiter + Menü =======================
+    const U_TABS = [['info', 'Info'], ['mutuals', 'Gemeinsame Freunde'], ['groups', 'Gruppen'], ['worlds', 'Welten'], ['favworlds', 'Lieblingswelten'], ['avatars', 'Avatare'], ['activity', 'Aktivität'], ['instances', 'Frühere Instanzen'], ['json', 'JSON']];
+    function userExtra(u) {
+        const body = $('#userBody'), head = body.querySelector('.vx-u-head');
+        if (!head || body.querySelector('.u-tabs')) return;
+        const info = document.createElement('div');
+        info.className = 'u-pane'; info.dataset.up = 'info';
+        while (head.nextSibling) info.append(head.nextSibling);
+        const bar = document.createElement('div');
+        bar.className = 'u-tabs';
+        bar.innerHTML = U_TABS.map(([k, l], i) => '<button type="button" data-ut="' + k + '" class="' + (i ? '' : 'on') + '">' + esc(l) + '</button>').join('');
+        const more = document.createElement('button');
+        more.type = 'button'; more.className = 'btn btn-sm u-more'; more.textContent = '⋯'; more.title = 'Mehr';
+        head.append(more);
+        body.append(bar, info);
+        more.addEventListener('click', () => menu(more, [
+            { icon: '⟳', label: 'Aktualisieren', fn: () => UI.openUser(u.id) },
+            { icon: '↗', label: 'Teilen', sub: shareItems('https://vrchat.com/home/user/' + u.id, u.name, u.id) },
+            '-',
+            { icon: '🕘', label: 'Frühere Instanzen zeigen', fn: () => uTab(u, 'instances') },
+            { icon: '{ }', label: 'JSON anzeigen', fn: () => uTab(u, 'json') },
+            '-',
+            { icon: '⛔', label: 'Blockieren', bad: true, fn: () => { const b = body.querySelector('[data-mod=block]'); if (b) b.click(); } },
+        ]));
+        bar.addEventListener('click', e => { const b = e.target.closest('[data-ut]'); if (b) uTab(u, b.dataset.ut); });
+    }
+    function uTab(u, t) {
+        const body = $('#userBody');
+        $$('.u-tabs [data-ut]', body).forEach(b => b.classList.toggle('on', b.dataset.ut === t));
+        $$('.u-pane', body).forEach(p => { p.hidden = p.dataset.up !== t; });
+        let pane = body.querySelector('.u-pane[data-up="' + t + '"]');
+        if (pane && t !== 'json') return;
+        if (!pane) { pane = document.createElement('div'); pane.className = 'u-pane'; pane.dataset.up = t; body.append(pane); }
+        loading(pane);
+        const card = (o, attr) => '<button type="button" class="vx-card" ' + attr + '="' + esc(o.id) + '">' + img(o.thumb, 'vx-card-img', o.name) + '<span class="vx-card-body"><b>' + esc(o.name) + '</b><small>'
+            + esc(o.author ? 'von ' + o.author : '') + '</small><span class="vx-card-meta">' + (o.occupants ? '<span>🟢 ' + UI.num(o.occupants) + '</span>' : '') + (o.favorites ? '<span>⭐ ' + UI.num(o.favorites) + '</span>' : '')
+            + (o.status && o.status !== 'public' ? '<span>' + esc(o.status) + '</span>' : '') + '</span></span></button>';
+        const err = d => d.error ? '<div class="vx-error">⚠ ' + esc(d.error) + '</div>' : '';
+        if (t === 'groups') {
+            pane.innerHTML = (u.groups || []).length ? '<div class="u-glist">' + u.groups.map(g => '<button type="button" class="loc-p" data-opengroup="' + esc(g.id) + '">' + img(g.icon, 'vx-av', g.name) + '<b>' + esc(g.name) + '</b>'
+                + (g.rep ? ' <span class="vx-pill rep">★</span>' : '') + '<small class="vx-small">' + g.members + ' Mitgl.</small></button>').join('') + '</div>' : '<div class="vx-empty">Keine (öffentlichen) Gruppen.</div>';
+            return;
+        }
+        if (t === 'json') {
+            api('tools_user_json', { id: u.id }).then(d => {
+                const raw = JSON.stringify(d.user, null, 2);
+                pane.innerHTML = '<div class="nx-row"><button type="button" class="btn btn-sm" data-j="reload" title="Neu laden">⟳</button><button type="button" class="btn btn-sm" data-j="dl" title="Herunterladen">⬇</button>'
+                    + '<button type="button" class="btn btn-sm" data-j="copy">⧉ Kopieren</button><button type="button" class="btn btn-sm" data-j="all">alles aufklappen</button></div><div class="js-view">' + jsonTree({ user: d.user }, undefined, 0) + '</div>';
+                pane.onclick = e => {
+                    const b = e.target.closest('[data-j]'); if (!b) return;
+                    if (b.dataset.j === 'reload') uTab(u, 'json');
+                    if (b.dataset.j === 'copy') copy(raw, 'JSON');
+                    if (b.dataset.j === 'all') $$('details', pane).forEach(x => { x.open = true; });
+                    if (b.dataset.j === 'dl') { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([raw], { type: 'application/json' })); a.download = (u.name || 'user').replace(/[^\w-]+/g, '_') + '.json'; a.click(); }
+                };
+            }).catch(fail(pane));
+            return;
+        }
+        api('tools_user_tab', { id: u.id, tab: t }).then(d => {
+            if (t === 'mutuals') pane.innerHTML = err(d) + (d.users ? '<p class="vx-small">' + d.users.length + ' gemeinsame Freunde</p><div class="u-glist">' + d.users.map(m => '<span class="loc-p" data-user="' + esc(m.id) + '">' + img(m.image, 'vx-av', m.name)
+                + UI.statusDot(m.state === 'offline' ? 'offline' : m.status) + '<b>' + esc(m.name) + '</b></span>').join('') + '</div>' : '');
+            if (t === 'worlds' || t === 'favworlds') pane.innerHTML = err(d) + (d.worlds ? (d.worlds.length ? '<div class="vx-cards">' + d.worlds.map(w => card(w, 'data-world')).join('') + '</div>'
+                : '<div class="vx-empty">' + (t === 'worlds' ? 'Keine veröffentlichten Welten.' : 'Keine öffentlichen Lieblingswelten (nur sichtbar, wenn die Gruppe öffentlich ist).') + '</div>') : '');
+            if (t === 'avatars') pane.innerHTML = err(d) + (d.avatars ? (d.avatars.length ? '<div class="vx-cards">' + d.avatars.map(a => card(a, 'data-avatar-open')).join('') + '</div>' : '<div class="vx-empty">Keine öffentlichen Avatare.</div>') : '');
+            if (t === 'instances') pane.innerHTML = '<p class="vx-small">Instanzen, in denen du ' + esc(u.name) + ' getroffen hast (aus deinem Spiel-Log).</p>' + instRows(d.instances);
+            if (t === 'activity') {
+                const m = d.meets, s = d.stats || {}, max = Math.max(1, ...d.days.map(x => x.n));
+                pane.innerHTML = '<div class="vx-kpis sm"><div><b>' + m.count + '</b><span>Begegnungen im Spiel</span></div><div><b>' + m.worlds + '</b><span>Welten zusammen</span></div><div><b>' + (m.last ? UI.ago(m.last) : '–') + '</b><span>zuletzt getroffen</span></div>'
+                    + '<div><b>' + UI.hm(s.week || 0) + '</b><span>online (7 Tage)</span></div><div><b>' + UI.hm(s.month || 0) + '</b><span>online (30 Tage)</span></div></div>'
+                    + '<h4>Ereignisse pro Tag (60 Tage)</h4><div class="u-bars">' + (d.days.length ? d.days.map(x => '<i style="height:' + Math.max(4, x.n / max * 100) + '%" title="' + esc(x.d + ': ' + x.n) + '"></i>').join('') : '<span class="vx-small">Noch nichts aufgezeichnet.</span>') + '</div>'
+                    + '<h4>Arten</h4><p class="vx-small">' + d.types.map(x => esc(x.type) + ': ' + x.n).join(' · ') + '</p>';
+            }
+            pane.onclick = e => { const a = e.target.closest('[data-avatar-open]'); if (a) UI.openAvatar(a.dataset.avatarOpen); };
+        }).catch(fail(pane));
+    }
+
+    // ======================= Gruppe: „⋯“-Menü =======================
+    function groupExtra(g, reload) {
+        const btns = $('#groupDetail .vx-gd-head .vx-u-btns');
+        if (!btns || btns.querySelector('.g-more')) return;
+        const more = document.createElement('button');
+        more.type = 'button'; more.className = 'btn btn-sm g-more'; more.textContent = '⋯'; more.title = 'Mehr';
+        btns.append(more);
+        const url = g.short ? 'https://vrc.group/' + g.short : 'https://vrchat.com/home/group/' + g.id;
+        more.addEventListener('click', () => menu(more, [
+            { icon: '⟳', label: 'Aktualisieren', fn: reload },
+            { icon: '↗', label: 'Teilen', sub: shareItems(url, g.name, g.id) },
+            '-',
+            { icon: '🕘', label: 'Frühere Instanzen zeigen', fn: () => {
+                const pane = $('#gPane');
+                $$('.vx-gd-tabs .chip').forEach(x => x.classList.remove('on'));
+                loading(pane);
+                api('tools_group_instances', { id: g.id }).then(d => { pane.innerHTML = '<h3>🕘 Frühere Instanzen dieser Gruppe</h3>' + instRows(d.instances); }).catch(fail(pane));
+            } },
+            '-',
+            { icon: '⛔', label: 'Gruppe blockieren', bad: true, fn: () => { if (confirm('Gruppe „' + g.name + '“ blockieren? Sie kann dich dann nicht mehr einladen.')) run('tools_group_act', { kind: 'block', id: g.id }).catch(() => {}); } },
+        ]));
+    }
+    $('#groupDetail') && $('#groupDetail').addEventListener('click', e => { const i = e.target.closest('#gPane [data-inst]'); if (i) UI.openInstance(i.dataset.inst); const w = e.target.closest('#gPane [data-world]'); if (w) { e.preventDefault(); UI.openWorld(w.dataset.world); } });
+
+    window.NexusApp = { open, applyUi, userExtra, groupExtra, menu };
     // Seite war vor dem Laden dieses Skripts schon offen?
     const vis = $$('.vx-tab').find(p => !p.hidden);
     if (vis) open(vis.dataset.pane, UI.store.get('tabSub', ''));

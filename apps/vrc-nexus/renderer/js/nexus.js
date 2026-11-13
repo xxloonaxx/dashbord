@@ -260,16 +260,26 @@
         if (l.kind !== 'world') return '<span class="vx-loc muted">' + esc(l.label) + '</span>';
         return '<span class="vx-loc">🌐 <a href="#" data-world="' + esc(l.world) + '">' + esc(l.world_name || 'Welt wird geladen …') + '</a> <small>' + esc(l.access) + ' · ' + esc(l.region) + '</small></span>';
     };
+    const FLAG = { EU: '🇪🇺', US: '🇺🇸', USE: '🇺🇸', USW: '🇺🇸', USX: '🇺🇸', JP: '🇯🇵' };
     function friendCard(f) {
         const compact = $('#compactView').checked;
-        return '<div class="vx-friend st-' + f.state + (f.favorite ? ' fav' : '') + (compact ? ' compact' : '') + '" data-user="' + esc(f.id) + '" tabindex="0" role="button">'
-            + img(f.image, 'vx-av', f.name)
-            + '<span class="vx-f-main"><span class="vx-f-name">' + statusDot(f.state === 'offline' ? 'offline' : f.status) + '<b style="color:' + esc(f.trust[1]) + '">' + esc(f.name) + '</b>' + (f.favorite ? ' ⭐' : '') + (f.fav_group ? ' <span class="vx-vfav" title="VRChat-Favorit: ' + esc((state.fav_groups || {})[f.fav_group] || f.fav_group) + '">♥</span>' : '') + (f.pronouns ? ' <span class="vx-pron" data-nogender>' + esc(f.pronouns) + '</span>' : '') + '</span>'
-            + (!compact && f.status_desc ? '<span class="vx-f-sd">' + esc(f.status_desc) + '</span>' : '')
-            + (f.state === 'online' ? locLine(f.loc) : '<span class="vx-loc muted">' + (f.state === 'active' ? '💻 ' + esc(f.platform || 'Website / App') : 'Offline' + (f.since ? ' · ' + ago(f.since) : '')) + '</span>')
+        const st = f.state === 'offline' ? 'offline' : f.status, col = (ST[st] || ST.offline).color, l = f.loc || {};
+        let where;
+        if (f.state === 'online' && l.kind === 'world') where = '<span class="fc-loc"><span class="fc-flag" title="Region ' + esc(l.region) + '">' + (FLAG[l.region] || '🌐') + '</span><a href="#" data-world="' + esc(l.world) + '">'
+            + esc(l.world_name || 'Welt wird geladen …') + '</a><small>' + esc(l.access) + '</small></span>';
+        else if (f.state === 'online') where = '<span class="fc-loc muted"><span class="fc-flag">🔒</span>' + esc(l.label || 'Private Welt') + '</span>';
+        else if (f.state === 'active') where = '<span class="fc-loc muted"><span class="fc-flag">💻</span>' + esc(f.platform || 'Website / App') + '</span>';
+        else where = '<span class="fc-loc muted">Offline' + (f.since ? ' · ' + ago(f.since) : '') + '</span>';
+        return '<div class="vx-friend fc st-' + f.state + (f.favorite ? ' fav' : '') + (compact ? ' compact' : '') + '" data-user="' + esc(f.id) + '" tabindex="0" role="button" style="--sc:' + esc(col) + '">'
+            + '<span class="fc-av">' + img(f.image, 'vx-av', f.name) + '</span>'
+            + '<span class="vx-f-main"><span class="fc-name"><b style="color:' + esc(f.trust[1]) + '">' + esc(f.name) + '</b>' + (f.favorite ? ' ⭐' : '')
+            + (f.fav_group ? ' <span class="vx-vfav" title="VRChat-Favorit: ' + esc((state.fav_groups || {})[f.fav_group] || f.fav_group) + '">♥</span>' : '') + (f.pronouns ? ' <span class="vx-pron" data-nogender>' + esc(f.pronouns) + '</span>' : '') + '</span>'
+            + (!compact && f.status_desc ? '<span class="fc-sd"><i>✎</i>' + esc(f.status_desc) + '</span>' : '')
+            + where
             + (!compact && f.note ? '<span class="vx-f-note">📝 ' + esc(f.note.slice(0, 60)) + '</span>' : '')
-            + '</span><span class="vx-f-side"><span class="vx-f-since" title="seit">' + esc(f.state === 'offline' ? '' : dur(f.since)) + '</span>'
-            + (f.state === 'online' && joinable(f.loc) ? '<a class="vx-join" href="' + esc(launch(f.loc.location)) + '" title="Beitreten (öffnet VRChat)">▶</a>' : '') + '</span></div>';
+            + '</span><i class="fc-dot" title="' + esc((ST[st] || ST.offline).label) + '"></i>'
+            + '<span class="vx-f-side"><span class="vx-f-since" title="seit">' + esc(f.state === 'offline' ? '' : dur(f.since)) + '</span>'
+            + (f.state === 'online' && joinable(l) ? '<a class="vx-join" href="' + esc(launch(l.location)) + '" title="Beitreten (öffnet VRChat)">▶</a>' : '') + '</span></div>';
     }
     function fillTrustFilter() {
         const sel = $('#friendTrust');
@@ -423,6 +433,7 @@
         }));
         if (!loaded.groupList) api('groups').then(d => { loaded.groupList = d.groups; }).catch(() => {});
         loadUserMod(u);
+        if (window.NexusApp && window.NexusApp.userExtra) window.NexusApp.userExtra(u);
         api('feed', { friend: u.id }).then(d => { $('#uFeed').innerHTML = d.items.length ? d.items.slice(0, 30).map(feedRow).join('') : '<div class="vx-empty">Noch nichts aufgezeichnet.</div>'; })
             .catch(() => { $('#uFeed').textContent = '–'; });
     }
@@ -1100,6 +1111,7 @@
             });
             box.querySelector('.vx-gd-tabs').addEventListener('click', e => { const b = e.target.closest('[data-gt]'); if (!b) return; $$('.vx-gd-tabs .chip').forEach(x => x.classList.toggle('on', x === b)); groupPane(b.dataset.gt); });
             groupPane('info');
+            if (window.NexusApp && window.NexusApp.groupExtra) window.NexusApp.groupExtra(g, () => openGroup(g.id));
             gModal.scrollTop = 0;
         }).catch(x => { box.innerHTML = '<div class="vx-error">⚠ ' + esc(x.message) + '</div>'; });
     }
@@ -1846,7 +1858,7 @@
 
     // Start
     load(false).then(() => load(true)).finally(schedule);
-    window.NexusUI = { tab, api, toast, esc, img, ago, hm, dur, clock, num, launch, openUser, openWorld, openAvatar, openInstance, openModal, closeModal, load, readClipboard,
+    window.NexusUI = { popMenu, renderUser, feedRow, tab, api, toast, esc, img, ago, hm, dur, clock, num, launch, openUser, openWorld, openAvatar, openInstance, openModal, closeModal, load, readClipboard,
         state: () => state, statusDot, isoDT, renderFriends, store };
     { const st = (window.VRCX.ui || {})['ui.start_tab']; if (st && st !== 'last') tab(st); else tab(store.get('tab', 'friends'), store.get('tabSub', '')); }
     setInterval(() => { if (state && !$('[data-pane=friends]').hidden) renderFriends(); }, 60000);
