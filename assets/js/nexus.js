@@ -553,12 +553,40 @@
         e.preventDefault();
         const f = e.target, box = $('#avatarsBox');
         loading(box, 'Suche bei ' + ($('#avDbProv').selectedOptions[0] || {}).textContent + ' …');
-        api('avatar_db', { q: f.q.value, provider: f.provider.value }).then(d => {
+        // Zuerst direkt aus dem Browser (deine eigene Verbindung – manche Datenbanken sperren Webhosting-Server), sonst über den Server
+        avDbBrowser(avProviders[f.provider.value], f.q.value).catch(be => api('avatar_db', { q: f.q.value, provider: f.provider.value })
+            .catch(se => { throw new Error('Direkt aus dem Browser: ' + (be.message === 'Failed to fetch' ? 'blockiert oder nicht erreichbar' : be.message) + ' · Über den Server: ' + se.message + ' – die Datenbank lässt deinen Webserver offenbar nicht zu; probier es später noch einmal oder trage über ⚙ einen anderen Provider ein.'); })).then(d => {
             avatarList = d.avatars.map((a, i) => Object.assign(a, { _i: i }));
             if (!avatarList.length) { box.innerHTML = '<div class="vx-empty">Nichts gefunden.</div>'; $('#avatarCount').textContent = '0 Treffer'; return; }
             renderAvatars();
         }).catch(fail(box));
     });
+    function avDbBrowser(provider, q) {
+        q = String(q || '').trim();
+        if (!provider || !/^https:\/\//.test(provider) || q.length < 2) return Promise.reject(new Error('ungültig'));
+        const m = q.match(/(usr_[0-9a-f-]{36})/i), m2 = q.match(/(avtr_[0-9a-f-]{36})/i);
+        const params = new URLSearchParams(m ? { authorId: m[1], n: 500 } : m2 ? { search: m2[1], n: 50 } : { search: q.slice(0, 100), n: 500 });
+        const ctl = new AbortController();
+        const timer = setTimeout(() => ctl.abort(), 20000);
+        return fetch(provider + '?' + params, { mode: 'cors', credentials: 'omit', referrerPolicy: 'no-referrer', signal: ctl.signal, headers: { Accept: 'application/json' } }).then(r => {
+            clearTimeout(timer);
+            if (r.status === 404) return [];
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        }).then(data => {
+            if (!Array.isArray(data)) throw new Error('kein Ergebnis');
+            const https = u => typeof u === 'string' && /^https:\/\//.test(u) ? u : '';
+            const cur = state && state.me ? state.me.avatar : '';
+            const rated = r => r && r !== 'None';
+            return { avatars: data.slice(0, 500).filter(a => a && /^avtr_[0-9a-f-]{36}$/i.test(a.id || '')).map(a => {
+                const p = a.performance || {};
+                return { id: a.id, name: String(a.name || '').slice(0, 120), author: String(a.authorName || '').slice(0, 64), author_id: /^usr_[0-9a-f-]{36}$/i.test(a.authorId || '') ? a.authorId : '',
+                         thumb: https(a.thumbnailImageUrl) || https(a.imageUrl), desc: String(a.description || '').slice(0, 300), status: String(a.releaseStatus || ''), updated: String(a.updated_at || ''), created: String(a.created_at || ''),
+                         platforms: [rated(p.pc_rating) && 'PC', rated(p.android_rating) && 'Quest / Android', rated(p.ios_rating) && 'iOS'].filter(Boolean),
+                         perf: Object.fromEntries([['PC', p.pc_rating], ['Quest', p.android_rating], ['iOS', p.ios_rating]].filter(x => x[1])), current: a.id === cur };
+            }) };
+        });
+    }
     $('#avDbEdit').addEventListener('click', () => {
         const list = prompt('Avatar-Datenbanken (VRCX-kompatibel), eine https-Adresse pro Zeile bzw. mit Leerzeichen getrennt:', avProviders.join(' '));
         if (list === null) return;

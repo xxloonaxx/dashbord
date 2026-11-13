@@ -328,6 +328,7 @@ function vrc_avatar_db_search(int $provider, string $q): array {
     curl_close($ch);
     if ($raw === false) throw new RuntimeException('Provider nicht erreichbar: ' . $err);
     if ($code === 404) return [];
+    if ($code === 403 || $code === 429) throw new RuntimeException('HTTP ' . $code . ' (der Provider sperrt Anfragen von diesem Webserver)');
     if ($code !== 200) throw new RuntimeException('Provider antwortet mit HTTP ' . $code . '.');
     $data = json_decode((string)$raw, true);
     if (!is_array($data)) throw new RuntimeException('Provider liefert kein gültiges Ergebnis.');
