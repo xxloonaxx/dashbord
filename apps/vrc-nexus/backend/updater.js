@@ -44,7 +44,7 @@ class Updater {
             const a = {};
             for (const x of best.r.assets || []) {
                 const n = str(x.name), u = str(x.browser_download_url);
-                if (!/^https:\/\//.test(u)) continue;
+                if (!/^https:\/\//.test(u) && !(process.env.NEXUS_UPDATE_API && /^http:\/\/127\.0\.0\.1:/.test(u))) continue;   // http nur im lokalen Test
                 if (/-Setup\.exe$/i.test(n)) a.setup = { name: n, url: u, size: x.size };
                 else if (/-portable\.exe$/i.test(n)) a.portable = { name: n, url: u, size: x.size };
                 else if (/\.apk$/i.test(n)) a.apk = { name: n, url: u, size: x.size };
@@ -58,7 +58,7 @@ class Updater {
     status() {
         if (!this.last) { try { this.last = JSON.parse(this.app.db.setting('update_last', 'null')); } catch (e) { this.last = null; } }
         const l = this.last || {};
-        return Object.assign({ current: VERSION, available: false }, l, { available: !!(l.version && newer(l.version, VERSION)), current: VERSION, busy: this.busy, progress: this.progress, platform: this.app.mobile ? 'android' : process.platform });
+        return Object.assign({ current: VERSION, available: false }, l, { available: !!(l.version && newer(l.version, VERSION)), current: VERSION, busy: this.busy, progress: this.progress, prog: this.prog || null, platform: this.app.mobile ? 'android' : process.platform });
     }
     /** Update anwenden (Windows: herunterladen + installieren; Android: Download öffnen) */
     async install() {
@@ -67,6 +67,20 @@ class Updater {
         const host = this.app.tools.host;
         if (this.app.mobile) {
             if (!st.assets.apk) throw new UserError('Im Release fehlt die APK.');
+            if (host.downloadApk) {
+                if (this.busy) throw new UserError('Update läuft schon …');
+                this.busy = true;
+                this.setProg('download', 0, st.assets.apk.size || 0);
+                // im Hintergrund laden – die Oberfläche fragt den Fortschritt ab
+                host.downloadApk(st.assets.apk, (got, total) => this.setProg('download', got, total || st.assets.apk.size || 0))
+                    .then(() => { this.setProg('install', 1, 1); this.progress = 'Installation geöffnet – „Installieren“ antippen'; setTimeout(() => { this.busy = false; }, 4000); })
+                    .catch(async e => {
+                        this.busy = false;
+                        this.setProg('error', 0, 0, e.message);
+                        if (host.openExternal) await host.openExternal(st.assets.apk.url);   // Ersatzweg: Browser-Download
+                    });
+                return { msg: 'Update auf ' + st.version + ' wird heruntergeladen …', busy: true };
+            }
             if (host.openExternal) await host.openExternal(st.assets.apk.url);
             return { msg: 'Download von ' + st.assets.apk.name + ' geöffnet – danach antippen und „Installieren“ wählen.' };
         }
@@ -75,10 +89,31 @@ class Updater {
         this.busy = true;
         try {
             this.progress = 'lade herunter …';
-            await host.installUpdate(st.assets, p => { this.progress = p; });
+            const a = (process.env.PORTABLE_EXECUTABLE_FILE ? st.assets.portable : st.assets.setup) || {};
+            this.setProg('download', 0, a.size || 0);
+            await host.installUpdate(st.assets, (p, total) => {
+                if (typeof p === 'number') this.setProg('download', p, total || a.size || 0);
+                else this.progress = p;
+            });
+            this.setProg('install', 1, 1);
             this.progress = 'wird installiert – die App startet gleich neu';
             return { msg: 'Update auf ' + st.version + ' wird installiert – VRC Nexus startet gleich neu.' };
-        } catch (e) { this.busy = false; this.progress = ''; throw e; }
+        } catch (e) { this.busy = false; this.progress = ''; this.setProg('error', 0, 0, e.message); throw e; }
+    }
+
+    /** Fortschritt: Phase, Bytes, Prozent, Geschwindigkeit (gleitend), Restzeit */
+    setProg(phase, got, total, error) {
+        const now = Date.now(), p = this.prog && this.prog.phase === phase ? this.prog : null;
+        // Geschwindigkeit über Zeitfenster ≥ 0,5 s messen (einzelne Pakete kommen viel zu dicht)
+        let speed = p ? p.speed : 0, sAt = p ? p.sAt : now, sGot = p ? p.sGot : got;
+        if (p && now - p.sAt >= 500) {
+            const inst = (got - p.sGot) / ((now - p.sAt) / 1000);
+            speed = speed ? speed * 0.6 + inst * 0.4 : inst;
+            sAt = now; sGot = got;
+        }
+        const pct = total > 0 ? Math.min(100, Math.round(got / total * 1000) / 10) : null;
+        this.prog = { phase, got, total, pct, speed: Math.round(speed), eta: speed > 0 && total > got ? Math.round((total - got) / speed) : null, sAt, sGot, error: error || '' };
+        if (phase === 'download') this.progress = pct !== null ? pct.toFixed(0) + ' %' : Math.round(got / 1048576) + ' MB';
     }
 
     start() {

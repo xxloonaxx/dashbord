@@ -63,13 +63,18 @@ const host = {
         const file = path.join(app.getPath('temp'), a.name);
         const out = fs.createWriteStream(file);
         let got = 0;
-        for await (const chunk of res.body) {
-            got += chunk.length;
-            if (!out.write(chunk)) await new Promise(r => out.once('drain', r));
-            if (a.size) progress(Math.round(got / a.size * 100) + ' %');
-        }
+        try {
+            for await (const chunk of res.body) {
+                got += chunk.length;
+                if (!out.write(chunk)) await new Promise(r => out.once('drain', r));
+                const total = a.size || Number(res.headers.get('content-length')) || 0;
+                progress(got, total);
+                if (win && total) win.setProgressBar(Math.min(1, got / total));   // Fortschritt auch am Taskleisten-Symbol
+            }
+        } catch (e) { if (win) win.setProgressBar(-1); out.destroy(); throw e; }
         await new Promise(r => out.end(r));
-        if (a.size && got !== a.size) throw new Error('Download unvollständig – bitte erneut versuchen.');
+        if (win) win.setProgressBar(2);   // unbestimmt: wird installiert
+        if (a.size && got !== a.size) { if (win) win.setProgressBar(-1); throw new Error('Download unvollständig – bitte erneut versuchen.'); }
         if (portable) {
             // die laufende EXE kann sich nicht selbst ersetzen → kleines Skript wartet, kopiert und startet neu
             const cmd = path.join(app.getPath('temp'), 'vrc-nexus-update.cmd');

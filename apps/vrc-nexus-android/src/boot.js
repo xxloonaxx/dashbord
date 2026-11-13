@@ -49,6 +49,19 @@ if (native) {
     const host = {
         userData: '/data', notify,
         openExternal: url => { window.location.href = url; },     // externe Adresse → Capacitor öffnet den System-Browser / Download
+        /** Update: APK mit Fortschritt in den App-Cache laden, danach Android-Installationsdialog öffnen */
+        downloadApk: async (asset, progress) => {
+            if (!native) throw new Error('Nur in der Android-App.');
+            const W = registerPlugin('NexusWidget');
+            const sub = await Filesystem.addListener('progress', p => { if (p && p.url === asset.url) progress(p.bytes || 0, p.contentLength || asset.size || 0); });
+            try {
+                await Filesystem.deleteFile({ path: asset.name, directory: Directory.Cache }).catch(() => {});
+                const r = await Filesystem.downloadFile({ url: asset.url, path: asset.name, directory: Directory.Cache, progress: true });
+                progress(asset.size || 1, asset.size || 1);
+                const uri = r.path || (await Filesystem.getUri({ path: asset.name, directory: Directory.Cache })).uri;
+                await W.installApk({ path: uri });
+            } finally { sub.remove(); }
+        },
         speak: t => { if (window.speechSynthesis) speechSynthesis.speak(Object.assign(new SpeechSynthesisUtterance(t), { lang: 'de-DE' })); },
     };
     const app = new NexusApp({ db, crypt, host, notify, mobile: true });

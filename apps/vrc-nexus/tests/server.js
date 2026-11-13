@@ -20,7 +20,14 @@ const crypt = { encrypt: s => 'plain:' + Buffer.from(s).toString('base64'), decr
         userData: process.env.NEXUS_USERDATA || path.join(__dirname, 'userdata'),
         pluginFile: path.join(__dirname, '..', 'streamdeck', 'VRC-Nexus.streamDeckPlugin'),
         openPath: p => console.log('[öffnen]', p), openExternal: u => console.log('[extern]', u), spawn: (e, a) => console.log('[starten]', e, a.join(' ')),
-        speak: t => console.log('[vorlesen]', t), showTab: t => console.log('[reiter]', t), setTray: t => { host.tray = t; }, setLoginItem: on => console.log('[autostart]', on),
+        speak: t => console.log('[vorlesen]', t),
+        // nur im Test: Update „herunterladen“ (echter HTTP-Download mit Fortschritt), aber nichts installieren
+        installUpdate: process.env.NEXUS_FAKE_INSTALL ? async (assets, progress) => {
+            const res = await fetch(assets.setup.url);
+            let got = 0;
+            for await (const c of res.body) { got += c.length; progress(got, assets.setup.size); }
+            console.log('[update] heruntergeladen', got, 'Bytes – Installation übersprungen (Test)');
+        } : undefined, showTab: t => console.log('[reiter]', t), setTray: t => { host.tray = t; }, setLoginItem: on => console.log('[autostart]', on),
     };
     const nexus = new NexusApp({ db, crypt, host, notify: (t, b) => console.log('[Benachrichtigung]', t, b) });
     nexus.game.start(1000);

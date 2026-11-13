@@ -293,3 +293,18 @@ body.mobile .hm-grid { grid-template-columns: 1fr; } body.mobile .hm-w.wide { gr
 .ol-out { color: var(--accent-gold, #f3c262); }
 .ol-tab tr.c-avatar td { background: rgba(243,194,98,0.08); font-weight: 600; }
 .ol-tab tr.c-toggle b { color: #50fa7b; } .ol-tab tr.c-int b { color: #38d5e6; } .ol-tab tr.c-camera b { color: #ff79c6; } .ol-tab tr.c-chatbox b { color: #f1fa8c; }
+
+/* ---------- Update-Fortschritt ---------- */
+.upd-bar { flex-direction: column; align-items: stretch; }
+.upd-bar-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.upd-bar-row .btn:first-of-type { margin-left: auto; }
+.upd-bar.running { border-color: var(--accent-cyan, #38d5e6); background: rgba(56, 213, 230, 0.08); }
+.upd-prog { margin: 8px 0; }
+.upd-bar-track { height: 14px; background: rgba(255,255,255,0.08); border: 1px solid rgba(56,213,230,0.4); overflow: hidden; position: relative; }
+.upd-bar-track i { display: block; height: 100%; background: linear-gradient(90deg, #38d5e6, #f3c262); transition: width 0.4s ease; }
+.upd-bar-track i.indet { width: 35% !important; position: absolute; animation: updIndet 1.2s infinite linear; }
+@keyframes updIndet { from { left: -35%; } to { left: 100%; } }
+.upd-prog.inst .upd-bar-track i { background: repeating-linear-gradient(45deg, #50fa7b 0 12px, #3ccf66 12px 24px); background-size: 34px 34px; animation: updStripe 0.8s linear infinite; }
+@keyframes updStripe { from { background-position: 0 0; } to { background-position: 34px 0; } }
+.upd-prog-txt { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; font-size: 0.82rem; margin-top: 4px; }
+.upd-prog.err { color: #ff7070; font-size: 0.85rem; }

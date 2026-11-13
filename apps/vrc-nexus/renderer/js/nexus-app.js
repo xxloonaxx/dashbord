@@ -824,15 +824,30 @@
 
     // ======================= Updates =======================
     const md = t => esc(t).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/^## (.*)$/gm, '<b>$1</b>').replace(/\n/g, '<br>');
+    const mb = n => (n / 1048576).toFixed(1).replace('.', ',') + ' MB';
+    const secs = n => n >= 90 ? Math.round(n / 60) + ' min' : n + ' s';
+    /** Fortschrittsbalken: Herunterladen → Installieren (bzw. Fehler) */
+    function progHtml(d) {
+        const p = d.prog;
+        if (!p || (!d.busy && p.phase !== 'error')) return '';
+        if (p.phase === 'error') return '<div class="upd-prog err"><b>⚠ Update fehlgeschlagen:</b> ' + esc(p.error) + (MOBILE ? '<br><span class="vx-small">Der Download wurde stattdessen im Browser geöffnet.</span>' : '') + '</div>';
+        const inst = p.phase === 'install';
+        const pct = inst ? 100 : p.pct;
+        return '<div class="upd-prog' + (inst ? ' inst' : '') + '" role="progressbar" aria-valuemin="0" aria-valuemax="100"' + (pct !== null ? ' aria-valuenow="' + Math.round(pct) + '"' : '') + '>'
+            + '<div class="upd-bar-track"><i style="width:' + (pct === null ? 100 : pct) + '%"' + (pct === null ? ' class="indet"' : '') + '></i></div>'
+            + '<div class="upd-prog-txt"><b>' + (inst ? (MOBILE ? '📲 Installation wird geöffnet …' : '⚙ Wird installiert – VRC Nexus startet gleich neu …') : '⬇ Lade VRC Nexus ' + esc(d.version) + ' …') + '</b>'
+            + (inst ? '' : '<span>' + (pct !== null ? Math.floor(pct) + ' % · ' : '') + mb(p.got) + (p.total ? ' von ' + mb(p.total) : '') + (p.speed ? ' · ' + mb(p.speed) + '/s' : '') + (p.eta !== null && p.eta !== undefined ? ' · noch ' + secs(p.eta) : '') + '</span>') + '</div></div>';
+    }
     function updateHtml(d, full) {
         const plat = d.platform === 'android' ? 'Android' : 'Windows';
         return '<div class="set-row"><div><b>Installiert</b><div class="nx-hint">' + plat + (d.checked ? ' · zuletzt geprüft ' + UI.ago(d.checked) : '') + '</div></div><div>VRC Nexus <b>' + esc(d.current) + '</b></div></div>'
             + (d.available ? '<div class="upd-new"><b>⬆ Version ' + esc(d.version) + ' ist verfügbar</b>' + (d.published ? ' <span class="vx-small">vom ' + esc(UI.isoDT(d.published)) + '</span>' : '')
                 + (full && d.notes ? '<details><summary class="vx-small">Was ist neu?</summary><div class="vx-small upd-notes">' + md(d.notes) + '</div></details>' : '')
-                + '<div class="nx-row"><button type="button" class="btn btn-gold" data-upd="install"' + (d.busy ? ' disabled' : '') + '>' + (d.platform === 'android' ? '⬇ APK herunterladen' : d.busy ? '⏳ ' + esc(d.progress) : '⬆ Jetzt aktualisieren') + '</button>'
+                + progHtml(d)
+                + '<div class="nx-row"><button type="button" class="btn btn-gold" data-upd="install"' + (d.busy ? ' disabled' : '') + '>' + (d.busy ? '⏳ läuft …' : d.platform === 'android' ? '⬇ Update laden & installieren' : '⬆ Jetzt aktualisieren') + '</button>'
                 + (d.page ? '<a class="btn btn-sm" href="' + esc(d.page) + '" target="_blank" rel="noopener">Release ansehen</a>' : '') + '</div></div>'
                 : '<p class="vx-small">' + (d.version ? '✔ Das ist die neueste Version.' : 'Noch nicht geprüft.') + '</p>')
-            + '<div class="nx-row"><button type="button" class="btn btn-sm" data-upd="check">🔎 Nach Updates suchen</button></div>';
+            + '<div class="nx-row"><button type="button" class="btn btn-sm" data-upd="check"' + (d.busy ? ' disabled' : '') + '>🔎 Nach Updates suchen</button></div>';
     }
     function updatePanel() {
         const box = $('#updBox');
@@ -840,14 +855,21 @@
         api('update_status').then(d => { box.innerHTML = updateHtml(d, true); }).catch(fail(box));
     }
     let updPoll = null;
+    /** solange ein Update läuft: alle 0,5 s Fortschritt holen */
+    function updWatch() {
+        clearInterval(updPoll);
+        updPoll = setInterval(() => api('update_status').then(d => {
+            const box = $('#updBox');
+            if (box) box.innerHTML = updateHtml(d, true);
+            updBanner(d);
+            if (!d.busy) { clearInterval(updPoll); updPoll = null; }
+        }).catch(() => {}), 500);
+    }
     function updAction(kind, box) {
         if (kind === 'check') return run('update_check', {}, d => { if (box) box.innerHTML = updateHtml(d, true); updBanner(d); }).catch(() => {});
-        if (!confirm(MOBILE ? 'Neue APK herunterladen? Danach antippen und „Installieren“ wählen.' : 'Update jetzt installieren? VRC Nexus wird dafür kurz beendet und neu gestartet.')) return;
-        run('update_install', {}).then(() => {
-            if (MOBILE) return;
-            clearInterval(updPoll);
-            updPoll = setInterval(() => api('update_status').then(d => { if (box) box.innerHTML = updateHtml(d, true); updBanner(d); }).catch(() => {}), 1000);
-        }).catch(() => {});
+        if (!confirm(MOBILE ? 'Update jetzt herunterladen? Danach öffnet sich die Installation – „Installieren“ antippen.' : 'Update jetzt installieren? VRC Nexus wird dafür kurz beendet und neu gestartet.')) return;
+        run('update_install', {}).then(() => updWatch()).catch(() => {});
+        setTimeout(() => api('update_status').then(d => { if (box) box.innerHTML = updateHtml(d, true); updBanner(d); }).catch(() => {}), 150);
     }
     document.addEventListener('click', e => {
         const b = e.target.closest('[data-upd]');
@@ -857,11 +879,15 @@
     });
     function updBanner(d) {
         let bar = $('#updBar');
-        if (!d || !d.available || (UI.store.get('updLater', '') === d.version && !d.busy)) { if (bar) bar.parentNode.removeChild(bar); return; }
+        const running = d && (d.busy || (d.prog && d.prog.phase === 'error' && d.available));
+        if (!d || (!d.available && !d.busy) || (UI.store.get('updLater', '') === d.version && !running)) { if (bar) bar.parentNode.removeChild(bar); return; }
         if (!bar) { bar = document.createElement('div'); bar.id = 'updBar'; bar.className = 'upd-bar'; const t = $('#tabs'); t.parentNode.insertBefore(bar, t.nextSibling); }
-        bar.innerHTML = '⬆ <b>VRC Nexus ' + esc(d.version) + '</b> ist verfügbar (du hast ' + esc(d.current) + ').'
-            + '<button type="button" class="btn btn-sm btn-gold" data-upd="install"' + (d.busy ? ' disabled' : '') + '>' + (MOBILE ? '⬇ APK laden' : d.busy ? '⏳ ' + esc(d.progress) : 'Jetzt aktualisieren') + '</button>'
-            + '<button type="button" class="btn btn-sm" onclick="NexusUI.tab(\'settings\')">Was ist neu?</button><button type="button" class="btn btn-sm" data-upd="later" data-v="' + esc(d.version) + '">Später</button>';
+        bar.classList.toggle('running', !!d.busy);
+        bar.innerHTML = '<div class="upd-bar-row">⬆ <b>VRC Nexus ' + esc(d.version) + '</b>' + (d.busy ? ' wird aktualisiert' : ' ist verfügbar (du hast ' + esc(d.current) + ').')
+            + (d.busy ? '' : '<button type="button" class="btn btn-sm btn-gold" data-upd="install">' + (MOBILE ? '⬇ Laden & installieren' : 'Jetzt aktualisieren') + '</button>'
+                + '<button type="button" class="btn btn-sm" onclick="NexusUI.tab(\'settings\')">Was ist neu?</button><button type="button" class="btn btn-sm" data-upd="later" data-v="' + esc(d.version) + '">Später</button>') + '</div>'
+            + progHtml(d);
+        if (d.busy && !updPoll) updWatch();
     }
     setTimeout(() => api('update_status').then(updBanner).catch(() => {}), 1500);
     setInterval(() => api('update_status').then(updBanner).catch(() => {}), 10 * 60 * 1000);

@@ -20,6 +20,10 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.3.5
+- **Update mit Fortschrittsbalken:** Prozent, MB, Geschwindigkeit und Restzeit im Banner oben und unter Einstellungen → System; danach „wird installiert“. Unter Windows zusätzlich am Taskleisten-Symbol.
+- **Android lädt Updates selbst** (mit Balken) und öffnet danach direkt die Installation. Beim ersten Mal fragt Android, ob VRC Nexus „unbekannte Apps installieren“ darf. Klappt das nicht, öffnet sich wie bisher der Browser-Download.
+
 ### Neu in 1.3.4
 - **📜 OSC-Log** (Spiel & OSC → OSC-Log): schreibt **alles** mit, was über OSC von VRChat kommt und an VRChat geht – jede Änderung mit Zeit, Avatar, altem → neuem Wert.
   Kategorien zum An-/Abwählen: Avatarwechsel, Schalter, Zahlen, Regler, Gesten & Stimme, Bewegung & Haltung, Status (AFK, Stumm …), Kamera, Chatbox, Eingaben, Tracking, Sonstiges.
