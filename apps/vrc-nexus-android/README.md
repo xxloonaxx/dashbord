@@ -18,7 +18,7 @@ Screenshot-Manager, Ordner, VRChat-`config.json`, Startoptionen, Registry-Sicher
 
 ## Installation
 
-GitHub → **Actions → „VRC Nexus App (Android)“ → neuester Lauf → Artifacts → VRC-Nexus-Android** → `VRC-Nexus-1.2.0-android.apk`
+GitHub → **Releases → „VRC Nexus …“** (neueste Version) → `VRC-Nexus-…-android.apk`
 aufs Handy kopieren und öffnen. Android fragt einmal nach „Installation aus unbekannten Quellen“ (die APK ist nicht im Play Store).
 
 ## Daten & Sicherheit

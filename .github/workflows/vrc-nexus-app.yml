@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write      # für das automatische GitHub-Release
 
 jobs:
   test:
@@ -69,3 +69,26 @@ jobs:
             app/dist/*.exe
             app/streamdeck/VRC-Nexus.streamDeckPlugin
             app/README.md
+      - name: GitHub-Release aktualisieren
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          VER=$(node -p "require('./app/package.json').version")
+          TAG="vrc-nexus-v$VER"
+          MSG=$(printf '%s' "$HEAD_MSG" | head -n 1)
+          NOTES=$(printf '%s\n' "## VRC Nexus $VER" "" \
+            "| Datei | Wofür |" "|---|---|" \
+            "| VRC-Nexus-$VER-Setup.exe | Windows-Installer |" \
+            "| VRC-Nexus-$VER-portable.exe | Windows ohne Installation |" \
+            "| VRC-Nexus-$VER-android.apk | Android (ohne PC-Funktionen) |" \
+            "| VRC-Nexus.streamDeckPlugin | Stream-Deck-Plugin (Doppelklick installiert) |" "" \
+            "Die Dateien sind nicht signiert: Windows SmartScreen → „Weitere Informationen“ → „Trotzdem ausführen“; Android fragt nach „Installation aus unbekannten Quellen“." "" \
+            "Stand: ${GITHUB_SHA:0:7} vom $(date -u '+%d.%m.%Y %H:%M') UTC – $MSG")
+          if ! gh release view "$TAG" -R "$REPO" > /dev/null 2>&1; then
+            gh release create "$TAG" -R "$REPO" --target "$GITHUB_SHA" --title "VRC Nexus $VER" --notes "$NOTES" || sleep 15
+          fi
+          gh release upload "$TAG" -R "$REPO" --clobber app/dist/*.exe app/streamdeck/VRC-Nexus.streamDeckPlugin
+          gh release edit "$TAG" -R "$REPO" --notes "$NOTES"

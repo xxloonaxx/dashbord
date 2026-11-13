@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write      # für das automatische GitHub-Release
 
 jobs:
   apk:
@@ -36,17 +36,41 @@ jobs:
           npx cap add android
           rm -rf android/app/src/main/res/mipmap-anydpi-v26
           cp -r resources/android/* android/app/src/main/res/
-          sed -i 's/versionName "1.0"/versionName "1.2.0"/' android/app/build.gradle
+          VER=$(node -p "require('./package.json').version")
+          sed -i "s/versionName \"1.0\"/versionName \"$VER\"/" android/app/build.gradle
           npx cap sync android
       - name: APK bauen
         working-directory: apps/vrc-nexus-android/android
         run: ./gradlew assembleDebug --no-daemon
       - name: APK umbenennen
-        run: cp apps/vrc-nexus-android/android/app/build/outputs/apk/debug/app-debug.apk VRC-Nexus-1.2.0-android.apk
+        run: cp apps/vrc-nexus-android/android/app/build/outputs/apk/debug/app-debug.apk "VRC-Nexus-$(node -p "require('./apps/vrc-nexus-android/package.json').version")-android.apk"
       - name: Artefakt hochladen
         uses: actions/upload-artifact@v4
         with:
           name: VRC-Nexus-Android
           path: |
-            VRC-Nexus-1.2.0-android.apk
+            VRC-Nexus-*-android.apk
             apps/vrc-nexus-android/README.md
+      - name: GitHub-Release aktualisieren
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          VER=$(node -p "require('./apps/vrc-nexus-android/package.json').version")
+          TAG="vrc-nexus-v$VER"
+          MSG=$(printf '%s' "$HEAD_MSG" | head -n 1)
+          NOTES=$(printf '%s\n' "## VRC Nexus $VER" "" \
+            "| Datei | Wofür |" "|---|---|" \
+            "| VRC-Nexus-$VER-Setup.exe | Windows-Installer |" \
+            "| VRC-Nexus-$VER-portable.exe | Windows ohne Installation |" \
+            "| VRC-Nexus-$VER-android.apk | Android (ohne PC-Funktionen) |" \
+            "| VRC-Nexus.streamDeckPlugin | Stream-Deck-Plugin (Doppelklick installiert) |" "" \
+            "Die Dateien sind nicht signiert: Windows SmartScreen → „Weitere Informationen“ → „Trotzdem ausführen“; Android fragt nach „Installation aus unbekannten Quellen“." "" \
+            "Stand: ${GITHUB_SHA:0:7} vom $(date -u '+%d.%m.%Y %H:%M') UTC – $MSG")
+          if ! gh release view "$TAG" -R "$REPO" > /dev/null 2>&1; then
+            gh release create "$TAG" -R "$REPO" --target "$GITHUB_SHA" --title "VRC Nexus $VER" --notes "$NOTES" || sleep 15
+          fi
+          gh release upload "$TAG" -R "$REPO" --clobber VRC-Nexus-*-android.apk
+          gh release edit "$TAG" -R "$REPO" --notes "$NOTES"

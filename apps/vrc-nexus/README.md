@@ -54,7 +54,8 @@ Nicht dabei (braucht das Dashboard): Discord-Teilen und die Kalender-Verbindung 
 - **VRC-Nexus-…-Setup.exe** – normaler Installer (Startmenü, Deinstallieren), oder
 - **VRC-Nexus-…-portable.exe** – ohne Installation, einfach starten.
 
-Beide gibt es unter GitHub → **Actions → „VRC Nexus App (Windows)“ → neuester Lauf → Artifacts → VRC-Nexus-Windows** (dort liegt auch `VRC-Nexus.streamDeckPlugin`).
+Beide gibt es unter GitHub → **Releases → „VRC Nexus …“** (neueste Version), zusammen mit der Android-APK und `VRC-Nexus.streamDeckPlugin`.
+Jeder Build aktualisiert das Release seiner Version automatisch (zusätzlich liegen die Dateien als Artifacts beim jeweiligen Actions-Lauf).
 Windows SmartScreen fragt beim ersten Start nach (die EXE ist nicht signiert): „Weitere Informationen“ → „Trotzdem ausführen“.
 
 ## Sicherheit & Daten
