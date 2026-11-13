@@ -9,7 +9,7 @@ const { str, int, cut, UserError } = require('./util');
 const STATUS = [['', '– nichts ändern –'], ['join me', '🔵 Join Me'], ['active', '🟢 Online'], ['ask me', '🟠 Ask Me'], ['busy', '🔴 Beschäftigt']];
 const TABS = { system: '🖥 System', ui: '🎨 Oberfläche', social: '👥 Sozial', notify: '🔔 Benachrichtigungen', vr: '🥽 VR', media: '📷 Medien', tr: '🌐 Übersetzen', link: '🔗 Dashboard', int: '🔌 Integrationen', adv: '🧪 Erweitert' };
 const TR_LANGS = require('./translate').LANGS.map(l => [l[0], l[2]]);
-const START_TABS = [['friends', 'Freundesliste'], ['feed', 'Verlauf'], ['locations', 'Freunde-Orte'], ['players', 'Spielerliste'], ['favs', 'Favoriten'], ['worlds', 'Welten'],
+const START_TABS = [['home', 'Startseite (Widgets)'], ['friends', 'Freundesliste'], ['feed', 'Verlauf'], ['locations', 'Freunde-Orte'], ['players', 'Spielerliste'], ['favs', 'Favoriten'], ['worlds', 'Welten'],
     ['avatars', 'Meine Avatare'], ['notifs', 'Benachrichtigungen'], ['tools', 'Werkzeuge'], ['client', 'Spiel & OSC']];
 
 /* [schlüssel, reiter, abschnitt, typ, standard, beschriftung, hinweis, optionen] */

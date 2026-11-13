@@ -19,6 +19,7 @@ const { AvatarParams } = require('./avatarparams');
 const { Camera } = require('./camera');
 const { Macros } = require('./macros');
 const { Automation } = require('./automation');
+const { Home } = require('./home');
 
 const RENDERER = path.join(__dirname, '..', 'renderer');
 const truthy = v => v !== undefined && v !== null && v !== '' && v !== '0' && v !== false && v !== 'false';
@@ -42,6 +43,7 @@ class NexusApp {
         this.cam = new Camera(this);
         this.macros = new Macros(this);
         this.auto = new Automation(this);
+        this.home = new Home(this);
         this.vrc.onWatch = (name, world) => { if (this.settings.get('notify.watch')) this.tools.alert('🟢 ' + name + ' ist online', world ? 'in ' + world : 'gerade ins Spiel gekommen'); };
         this.notify = opts.notify || null;
         this.mobile = !!opts.mobile;
@@ -112,6 +114,8 @@ class NexusApp {
             if (act.startsWith('client_')) return await this.client(act, input);
             if (act.startsWith('cam_')) return await this.cam.action(act, input);
             if (act.startsWith('auto_')) return await this.auto.action(act, input);
+            if (act === 'home_data') return this.home.data();
+            if (act === 'home_summary') return this.home.summary();
             if (act.startsWith('tools_')) return await this.toolAction(act, input);
             if (['tr_status', 'tr_key', 'tr_prefs', 'translate', 'tr_test'].includes(act)) return await this.trAction(act, input);
             if (act === 'update_status') return this.updater.status();

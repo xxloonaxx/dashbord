@@ -49,6 +49,7 @@
     </details>
 {{END_LOGIN}}{{IF_CONNECTED}}
     <nav class="vx-menu" id="tabs" role="menubar">
+        <button type="button" class="vx-tabbtn" data-tab="home"><span>🏠</span><em>Start</em></button>
         <button type="button" class="vx-tabbtn" data-tab="feed"><span>📰</span><em>Verlauf</em></button>
         <button type="button" class="vx-tabbtn" data-tab="locations"><span>📍</span><em>Freunde-Orte</em></button>
         <button type="button" class="vx-tabbtn" data-tab="client" data-msub="log"><span>🕘</span><em>Spiel-Log</em></button>
@@ -104,6 +105,7 @@
     <div class="vx-myloc" id="myLoc" hidden></div>
     <div class="vx-error" id="globalErr" hidden></div>
 
+    <section class="vx-tab" data-pane="home" hidden><div id="homeBox" class="hm"></div></section>
     <section class="vx-tab" data-pane="friends">
         <div class="vx-tools">
             <input type="search" id="friendSearch" placeholder="Freunde suchen (Name, Welt, Status, Notiz) …  Taste /" aria-label="Freunde suchen">
@@ -365,5 +367,6 @@
 <script src="js/nexus-client.js"></script>
 <script src="js/nexus-translate.js"></script>
 <script src="js/nexus-app.js"></script>
+<script src="js/nexus-home.js"></script>
 </body>
 </html>

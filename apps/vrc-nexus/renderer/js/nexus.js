@@ -141,6 +141,7 @@
         if (name === 'client' && window.NexusClient) window.NexusClient.open();
         if (name !== 'client' && window.NexusClient) window.NexusClient.close();
         if (window.NexusApp) window.NexusApp.open(name, sub);
+        if (window.NexusHome) { if (name === 'home') window.NexusHome.open(); else window.NexusHome.close(); }
     }
     $('#tabs').addEventListener('click', e => {
         const top = e.target.closest('.vx-mtop');
@@ -1918,6 +1919,6 @@
     load(false).then(() => load(true)).finally(schedule);
     window.NexusUI = { popMenu, renderUser, feedRow, tab, api, toast, esc, img, ago, hm, dur, clock, num, launch, openUser, openWorld, openAvatar, openInstance, openModal, closeModal, load, readClipboard,
         state: () => state, statusDot, isoDT, renderFriends, store };
-    { const st = (window.VRCX.ui || {})['ui.start_tab']; if (st && st !== 'last') tab(st); else tab(store.get('tab', 'friends'), store.get('tabSub', '')); }
+    { const st = (window.VRCX.ui || {})['ui.start_tab']; if (st && st !== 'last') tab(st); else tab(store.get('tab', 'home'), store.get('tabSub', '')); }
     setInterval(() => { if (state && !$('[data-pane=friends]').hidden) renderFriends(); }, 60000);
 })();
