@@ -318,7 +318,7 @@ class NexusApp {
                 const res = arr(await call('GET', '/users/' + enc(acc.vrc_id) + '/groups'));
                 const gp = await v.groupPerms(acc, res);
                 return { groups: res.map(g => { const p = g.ownerId === acc.vrc_id ? ['*'] : (gp[g.groupId] || []);
-                    return { perms: p, mod: v.canModerate(p), id: str(g.groupId), name: str(g.name), short: str(g.shortCode) + '.' + str(g.discriminator), icon: str(g.iconUrl), banner: str(g.bannerUrl),
+                    return { perms: p, mod: v.canKick(p), staff: v.canModerate(p), id: str(g.groupId), name: str(g.name), short: str(g.shortCode) + '.' + str(g.discriminator), icon: str(g.iconUrl), banner: str(g.bannerUrl),
                         members: int(g.memberCount), rep: !!g.isRepresenting, owner: g.ownerId === acc.vrc_id }; }) };
             }
             case 'group': {

@@ -278,7 +278,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $res = vrc_call($acc, 'GET', '/users/' . rawurlencode($acc['vrc_id']) . '/groups');
                     $mine = $acc['vrc_id'];
                     $gperms = vrc_group_perms($acc, (array)$res);
-                    $out = ['groups' => array_map(function ($g) use ($mine, $gperms) { $p = ($g['ownerId'] ?? '') === $mine ? ['*'] : ($gperms[$g['groupId'] ?? ''] ?? []); return ['perms' => $p, 'mod' => vrc_can_moderate($p)] + ['id' => $g['groupId'] ?? '', 'name' => $g['name'] ?? '', 'short' => ($g['shortCode'] ?? '') . '.' . ($g['discriminator'] ?? ''),
+                    $out = ['groups' => array_map(function ($g) use ($mine, $gperms) { $p = ($g['ownerId'] ?? '') === $mine ? ['*'] : ($gperms[$g['groupId'] ?? ''] ?? []); return ['perms' => $p, 'mod' => vrc_can_kick($p), 'staff' => vrc_can_moderate($p)] + ['id' => $g['groupId'] ?? '', 'name' => $g['name'] ?? '', 'short' => ($g['shortCode'] ?? '') . '.' . ($g['discriminator'] ?? ''),
                                                                           'icon' => $g['iconUrl'] ?? '', 'banner' => $g['bannerUrl'] ?? '', 'members' => (int)($g['memberCount'] ?? 0),
                                                                           'rep' => !empty($g['isRepresenting']), 'owner' => ($g['ownerId'] ?? '') === $mine]; }, is_array($res) ? $res : [])];
                     break;
