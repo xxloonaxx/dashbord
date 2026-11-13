@@ -333,7 +333,7 @@ class GameLog {
         }
     }
     /** Platzhalter in normalen Chatbox-Nachrichten (nur wenn {…} vorkommt) */
-    fillVars(text) { return /\{\w+(:[^}]*)?\}/.test(text) ? this.fill(text) : text; }
+    fillVars(text, more) { return /\{\w+(:[^}]*)?\}/.test(text) ? this.fill(text, more) : text; }
     /** Nächster Rotator-Text: mehrere Texte (eine Zeile = ein Text) der Reihe nach oder zufällig */
     rotatorNext(c) {
         const list = str(c.rotator_texts).split('\n').map(x => x.trim()).filter(Boolean);
@@ -345,14 +345,14 @@ class GameLog {
     /** Rotator: Platzhalter füllen, /n bzw. \n als Zeilenumbruch, max. 144 Zeichen */
     rotatorText(tpl) { return Array.from(chatNewlines(this.fill(tpl))).slice(0, 144).join(''); }
     /** Platzhalter füllen: {zeit} {welt} {freunde} {countdown:2026-12-24 18:00} {zufall:a|b} … */
-    fill(tpl) {
+    fill(tpl, more) {
         const s = this.state, d = new Date(), dur = s.since ? now() - s.since : 0;
         const extra = this.vars ? this.vars() : {};
         const loc = s.worldId ? require('./util').location(s.worldId + ':' + s.instance) : null;
         const vals = Object.assign({ zeit: d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }), zeit_s: d.toLocaleTimeString('de-DE'), datum: d.toLocaleDateString('de-DE'),
             wochentag: d.toLocaleDateString('de-DE', { weekday: 'long' }), welt: s.worldName || '–', spieler: String(s.players.size), avatar: s.avatar || '–',
             dauer: Math.floor(dur / 3600) + ':' + String(Math.floor(dur / 60) % 60).padStart(2, '0'), name: s.displayName || '', zugang: loc ? loc.access : '–', region: loc ? loc.region : '–',
-            uhr: ['🕛', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚'][d.getHours() % 12] }, extra);
+            uhr: ['🕛', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚'][d.getHours() % 12] }, extra, more || {});
         let out = str(tpl).replace(/\{(\w+)(?::([^}]*))?\}/g, (m, k, arg) => {
             if (k === 'zufall' && arg) { const o = arg.split('|'); return o[Math.floor(Math.random() * o.length)]; }
             if (k === 'countdown' && arg) {
@@ -462,7 +462,7 @@ class GameLog {
                 if (on(input.clear)) { payload = { text: '', sound: false }; break; }
                 let text = str(input.text).replace(/\r/g, '').replace(/\t/g, ' ').trim();
                 if (!text) throw new UserError('Text fehlt.');
-                if (input.vars !== false && input.vars !== '0') text = this.fillVars(text);
+                if (input.vars !== false && input.vars !== '0') text = this.fillVars(text, input.vars && typeof input.vars === 'object' ? input.vars : null);
                 text = chatNewlines(text);
                 const sound = on(input.sound);
                 if (Array.from(text).length > 144 && on(input.split)) {

@@ -8,6 +8,7 @@ const http = require('http');
 const crypto = require('crypto');
 
 const PREFIX = 'de.ghostnode.vrcnexus.';
+const CAM_TITLE = { Capture: 'Foto', CaptureDelayed: 'Timer', Close: 'Kamera\nzu', burst: 'Serie', preset: 'Vorlage', Mode: 'Modus' };
 const STATUS = { 'join me': 'Join Me', active: 'Online', 'ask me': 'Ask Me', busy: 'Beschäftigt' };
 
 // ---------------- kleiner WebSocket-Client (RFC 6455, nur Text) ----------------
@@ -104,6 +105,27 @@ function render(ctx) {
             break;
         }
         case 'rotator': setState(ctx, st.rotator ? 1 : 0); break;
+        case 'notifs': setTitle(ctx, (st.notifs || 0) + '\nneu'); setState(ctx, st.notifs ? 1 : 0); break;
+        case 'camera': if (!s.title) setTitle(ctx, CAM_TITLE[s.cmd || 'Capture'] || ''); setState(ctx, s.cmd === 'burst' && st.cam && st.cam.burst ? 1 : 0); break;
+        case 'macro': setState(ctx, (st.running_macros || []).includes(s.id) ? 1 : 0); if (!s.title) setTitle(ctx, ((st.macros || []).find(m => m.id === s.id) || {}).name || 'Makro'); break;
+        case 'friend': {
+            const f = (st.friend_list || []).find(x => x.id === s.id);
+            setState(ctx, f && f.state === 'online' ? 1 : 0);
+            if (!s.title) setTitle(ctx, f ? f.name.slice(0, 10) + '\n' + (f.state === 'online' ? (f.world || 'im Spiel').slice(0, 10) : f.state === 'active' ? 'online' : 'offline') : '?');
+            break;
+        }
+        case 'overlay': setState(ctx, st.overlay && st.overlay.visible ? 1 : 0); break;
+        case 'speech': setState(ctx, st.speech && st.speech.recording ? 1 : 0); break;
+        case 'dial': {
+            const k = s.target || 'param';
+            let v = null, label = s.name || '', min = -1, max = 1;
+            if (k === 'zoom') { v = st.cam && st.cam.zoom; label = 'Zoom'; min = 20; max = 150; }
+            else if (k === 'param') { v = (st.osc && st.osc.params || {})[s.name]; if ((s.type || 'float') === 'int') { min = 0; max = 255; } }
+            else if (k === 'friends') { v = st.friends ? st.friends.in_game : null; label = 'Freunde'; min = 0; max = Math.max(1, st.friends ? st.friends.total : 1); }
+            const n = typeof v === 'boolean' ? (v ? 1 : 0) : Number(v);
+            send('setFeedback', ctx, { title: label || 'VRC Nexus', value: v === null || v === undefined ? '–' : String(Math.round(n * 100) / 100), indicator: { value: Number.isFinite(n) ? Math.round((n - min) / (max - min) * 100) : 0 } });
+            break;
+        }
         case 'param': {
             if ((s.mode || 'toggle') === 'toggle' && s.name) { const v = (st.osc && st.osc.params || {})[s.name]; setState(ctx, v === true || v === 1 ? 1 : 0); }
             break;
@@ -117,6 +139,22 @@ async function poll() {
     for (const ctx of contexts.keys()) render(ctx);
 }
 function schedule() { clearInterval(pollTimer); pollTimer = setInterval(poll, 3000); poll(); }
+
+// ---------------- Drehregler (Stream Deck +) ----------------
+async function dialRotate(ctx, s, ticks) {
+    const k = s.target || 'param';
+    if (k === 'zoom') return act('camera', { cmd: 'step', name: 'Zoom', step: ticks * (Number(s.step) || 5), base: 45 });
+    if (k === 'param') { if (!s.name) throw new Error('Parametername fehlt.'); return act('param_step', { name: s.name, type: s.type || 'float', step: ticks * (Number(s.step) || ((s.type || 'float') === 'int' ? 1 : 0.05)) }); }
+    if (k === 'exposure') return act('camera', { cmd: 'step', name: 'Exposure', step: ticks * (Number(s.step) || 0.2), base: 0 });
+    return null;
+}
+async function dialPress(ctx, s) {
+    const k = s.target || 'param';
+    if (k === 'zoom' || k === 'exposure') return act('camera', { cmd: 'Capture' });
+    if (k === 'param' && s.name) return act('param', { name: s.name, type: s.type || 'float', value: s.reset ?? '0' });
+    if (k === 'friends') return act('open', { tab: 'locations' });
+    return null;
+}
 
 // ---------------- Tasten ----------------
 async function keyDown(ctx, action, s) {
@@ -140,6 +178,25 @@ async function keyDown(ctx, action, s) {
         case 'launch': return act('launch');
         case 'rejoin': return act('rejoin');
         case 'open': return act('open', { tab: s.tab || '' });
+        case 'notifs': return act('open', { tab: 'notifs' });
+        case 'camera': {
+            const cmd = s.cmd || 'Capture';
+            if (cmd === 'burst') return act('camera', { cmd, count: s.count || 5, seconds: s.seconds || 2, delay: s.delay || 0 });
+            if (cmd === 'preset') return act('camera', { cmd, preset: s.preset || '' });
+            if (cmd === 'step') return act('camera', { cmd, name: s.name || 'Zoom', step: s.step || 10 });
+            return act('camera', { cmd, value: s.value ?? '' });
+        }
+        case 'macro': {
+            if (!s.id && !s.script) throw new Error('Kein Makro gewählt.');
+            const r = act('macro', s.id ? { id: s.id } : { script: s.script });
+            setState(ctx, 1);
+            return r;
+        }
+        case 'avatar': return act('avatar', { id: (s.id || '').trim() });
+        case 'friend': return act('friend', { id: s.id || '', op: s.op || 'join' });
+        case 'overlay': return act('overlay', {});
+        case 'speech': return act('speech', { op: s.mode === 'hold' ? 'start' : 'toggle' });
+        case 'dial': return dialPress(ctx, s);
     }
     return null;
 }
@@ -147,6 +204,7 @@ async function keyUp(ctx, action, s) {
     const kind = action.slice(PREFIX.length);
     if (kind === 'param' && s.mode === 'hold' && s.name) return act('param', { name: s.name, type: 'bool', value: false });
     if (kind === 'input' && s.hold) return act('input', { name: s.input || 'Jump', value: 0 });
+    if (kind === 'speech' && s.mode === 'hold') return act('speech', { op: 'stop' });
     return null;
 }
 
@@ -161,10 +219,12 @@ function onMessage(raw) {
         case 'didReceiveSettings': if (contexts.has(context)) { contexts.get(context).settings = settings; render(context); } break;
         case 'didReceiveGlobalSettings': globals = Object.assign({ port: 17865, token: '' }, settings); poll(); break;
         case 'keyDown':
-            keyDown(context, action, settings).then(r => { if (r && !['param', 'rotator'].includes(action.slice(PREFIX.length))) send('showOk', context); setTimeout(poll, 400); })
+            keyDown(context, action, settings).then(r => { if (r && !['param', 'rotator', 'macro', 'speech', 'overlay'].includes(action.slice(PREFIX.length))) send('showOk', context); setTimeout(poll, 400); })
                 .catch(e => { lastError = e.message; send('showAlert', context); send('logMessage', undefined, { message: 'VRC Nexus: ' + e.message }); });
             break;
         case 'keyUp': keyUp(context, action, settings).catch(() => send('showAlert', context)); break;
+        case 'dialRotate': dialRotate(context, settings, (payload && payload.ticks) || 0).then(() => setTimeout(poll, 250)).catch(e => { send('showAlert', context); send('logMessage', undefined, { message: 'VRC Nexus: ' + e.message }); }); break;
+        case 'dialDown': case 'touchTap': dialPress(context, settings).then(() => setTimeout(poll, 300)).catch(() => send('showAlert', context)); break;
         case 'sendToPlugin':
             if (payload && payload.cmd === 'test') {
                 nexus('GET', 'state').then(st => send('sendToPropertyInspector', context, { cmd: 'test', ok: true, state: st }))
@@ -184,4 +244,4 @@ function connect() {
 }
 
 if (require.main === module) connect();
-module.exports = { MiniWs, onMessage, keyDown, render, _test: { contexts, setGlobals: g => { globals = g; }, get state() { return lastState; }, poll } };
+module.exports = { MiniWs, onMessage, keyDown, render, dialRotate, _test: { contexts, setGlobals: g => { globals = g; }, get state() { return lastState; }, poll } };

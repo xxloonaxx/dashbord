@@ -879,7 +879,12 @@ class Tools {
             friends: { in_game: fr.filter(f => f.state === 'online').length, online: fr.filter(f => f.state === 'active').length, total: fr.length },
             game: { running: st.running, world: st.worldName, world_id: st.worldId, instance: st.instance, players: st.players.size, since: st.since },
             osc: { active: this.app.game.osc.active, avatar: this.app.game.osc.avatarId, params: Object.fromEntries(Object.entries(this.app.game.osc.params).slice(0, 64)) },
-            rotator: !!c.rotator_enabled, presets: this.app.game.presets().map(p => ({ id: p.id, label: p.label, kind: p.kind })) };
+            rotator: !!c.rotator_enabled, presets: this.app.game.presets().map(p => ({ id: p.id, label: p.label, kind: p.kind })),
+            notifs: (() => { try { return this.app.x.notifList({ view: 'open' }).unseen; } catch (e) { return 0; } })(),
+            cam: { mode: (this.app.game.osc.cam || {}).Mode ?? null, zoom: (this.app.game.osc.cam || {}).Zoom ?? null, burst: !!this.app.cam.burstRun },
+            macros: this.app.macros.list().map(m => ({ id: m.id, name: m.name })), running_macros: [...this.app.macros.running.keys()],
+            overlay: this.host.overlayState ? this.host.overlayState() : null, speech: this.app.speech ? this.app.speech.status() : null,
+            friend_list: fr.slice(0, 400).map(f => ({ id: f.id, name: f.name, state: f.state, loc: f.loc.kind === 'world' ? f.loc.location : '', world: f.loc.world_name || '' })) };
     }
     async apiAction(action, d) {
         const g = this.app.game;
@@ -926,6 +931,46 @@ class Tools {
                 if (this.host.openExternal) await this.host.openExternal('vrchat://launch?ref=vrc-nexus&id=' + st.worldId + ':' + st.instance);
                 return { ok: true };
             }
+            case 'camera': {
+                if (str(d.cmd) === 'burst') return { ok: true, msg: this.app.cam.burst(d.count, d.seconds, d.delay) };
+                if (str(d.cmd) === 'preset') return { ok: true, msg: await this.app.cam.loadPreset(d.preset) };
+                if (str(d.cmd) === 'step') { const cur = Number((g.osc.cam || {})[d.name]); return { ok: true, msg: await this.app.cam.cmd({ cmd: str(d.name), value: (Number.isFinite(cur) ? cur : Number(d.base) || 0) + (Number(d.step) || 0) }) }; }
+                return { ok: true, msg: await this.app.cam.cmd({ cmd: str(d.cmd), value: d.value }) };
+            }
+            case 'macro': return Object.assign({ ok: true }, await this.app.macros.run(str(d.id || d.script)));
+            case 'macro_stop': this.app.macros.stop(); return { ok: true };
+            case 'avatar': {
+                const id = str(d.id).trim();
+                if (!/^avtr_[0-9a-f-]{36}$/i.test(id)) throw new UserError('Ungültige Avatar-ID.');
+                await this.call('PUT', '/avatars/' + id + '/select');
+                return { ok: true, msg: 'Avatar gewechselt.' };
+            }
+            case 'param_step': {
+                const name = str(d.name), cur = Number(g.osc.params[name]) || 0;
+                const type = str(d.type || 'float');
+                let v = cur + (Number(d.step) || 0);
+                v = type === 'int' ? Math.max(0, Math.min(255, Math.round(v))) : Math.max(-1, Math.min(1, Math.round(v * 1000) / 1000));
+                await g.oscSend('param', { name, type, value: String(v) });
+                g.osc.params[name] = v;
+                return { ok: true, value: v };
+            }
+            case 'friend': {
+                const f = (this.app.vrc.friendList() || []).find(x => x.id === str(d.id));
+                if (!f) throw new UserError('Nicht in deiner Freundesliste.');
+                if (str(d.op) === 'invite') {
+                    const st = g.state;
+                    if (!st.worldId) throw new UserError('Du bist gerade in keiner Instanz.');
+                    await this.call('POST', '/invite/' + f.id, {}, { instanceId: st.worldId + ':' + st.instance });
+                    return { ok: true, msg: f.name + ' eingeladen.' };
+                }
+                if (f.loc.kind !== 'world') throw new UserError(f.name + ' ist in keiner offenen Instanz.');
+                const loc = f.loc.location;
+                if (str(d.op) === 'invite_me') { await this.call('POST', '/invite/myself/to/' + loc); return { ok: true, msg: 'Selbst-Einladung geschickt.' }; }
+                if (this.host.openExternal) await this.host.openExternal('vrchat://launch?ref=vrc-nexus&id=' + loc);
+                return { ok: true, msg: 'Trete ' + f.name + ' bei.' };
+            }
+            case 'overlay': if (!this.host.overlayToggle) throw new UserError('Das SteamVR-Overlay gibt es nur in der Windows-App.'); return Object.assign({ ok: true }, await this.host.overlayToggle(d.on));
+            case 'speech': if (!this.app.speech) throw new UserError('Spracheingabe ist nicht verfügbar.'); return Object.assign({ ok: true }, await this.app.speech.ptt(str(d.op || 'toggle')));
             case 'open': if (this.host.showTab) this.host.showTab(/^[a-z]{2,12}$/.test(str(d.tab)) ? str(d.tab) : ''); return { ok: true };
             case 'invite_self': {
                 const loc = str(d.location);

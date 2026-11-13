@@ -42,6 +42,25 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
             console.log('Taste ' + k.padEnd(8), r.event + (r.payload ? ' ' + JSON.stringify(r.payload) : ''));
             assert.notStrictEqual(r.event, 'showAlert');
         }
+        // neue Tasten (1.3): Kamera, Makro, Benachrichtigungen, Freund, Drehregler
+        const st = await (await fetch('http://127.0.0.1:' + apiPort + '/api/state', { headers: { 'X-Nexus-Token': token } })).json();
+        const fid = (st.friend_list.find(f => f.state === 'online') || st.friend_list[0] || {}).id;
+        const nk = { camera: ['ctxCam', { cmd: 'Capture' }], macro: ['ctxM', { script: 'param Tail = 1\nwait 0.2\nparam Tail = 0' }], notifs: ['ctxN', {}], friend: ['ctxFr', { id: fid, op: 'join' }] };
+        for (const [k, [ctx, se]] of Object.entries(nk)) tx({ event: 'willAppear', action: 'de.ghostnode.vrcnexus.' + k, context: ctx, payload: { settings: se } });
+        const nt = await wait(m => m.event === 'setTitle' && m.context === 'ctxN');
+        const ft = await wait(m => m.event === 'setTitle' && m.context === 'ctxFr');
+        console.log('Taste Benachrichtigungen:', JSON.stringify(nt.payload.title), '| Taste Freund:', JSON.stringify(ft.payload.title));
+        for (const [k, [ctx, se]] of Object.entries(nk)) {
+            const n = got.length;
+            tx({ event: 'keyDown', action: 'de.ghostnode.vrcnexus.' + k, context: ctx, payload: { settings: se } });
+            const r = await wait(m => got.indexOf(m) >= n && m.context === ctx && ['showOk', 'showAlert', 'setState'].includes(m.event));
+            console.log('Taste ' + k.padEnd(8), r.event + (r.payload ? ' ' + JSON.stringify(r.payload) : ''));
+            assert.notStrictEqual(r.event, 'showAlert');
+        }
+        tx({ event: 'willAppear', action: 'de.ghostnode.vrcnexus.dial', context: 'ctxD', payload: { settings: { target: 'param', name: 'Hue', type: 'float' } } });
+        tx({ event: 'dialRotate', action: 'de.ghostnode.vrcnexus.dial', context: 'ctxD', payload: { settings: { target: 'param', name: 'Hue', type: 'float', step: 0.1 }, ticks: 3 } });
+        const fb = await wait(m => m.event === 'setFeedback' && m.context === 'ctxD' && m.payload.value === '0.3');
+        console.log('Drehregler Hue nach 3 Rasten:', JSON.stringify(fb.payload));
         // Rotator wieder aus
         tx({ event: 'keyDown', action: 'de.ghostnode.vrcnexus.rotator', context: 'ctxR', payload: { settings: {} } });
         // Test-Knopf der Einstellungsseite

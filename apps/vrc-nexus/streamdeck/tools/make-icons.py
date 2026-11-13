@@ -66,6 +66,38 @@ def draw(name, d, n, on=False):
         d.ellipse(P((14, 14), (86, 86)), outline=col, width=w)
         d.polygon(P((50, 22), (60, 50), (50, 78), (40, 50)), outline=col, width=max(1, w // 2))
         d.polygon(P((50, 22), (60, 50), (40, 50)), fill=GOLD)
+    elif name == 'camera':
+        d.rounded_rectangle(P((12, 30), (88, 80)), radius=8 * s, outline=col, width=w)
+        d.polygon(P((34, 30), (40, 18), (60, 18), (66, 30)), fill=col)
+        d.ellipse(P((36, 40), (64, 68)), outline=GOLD if on else WHITE, width=w)
+    elif name == 'macro':
+        for i, y in enumerate((24, 46, 68)):
+            d.ellipse(P((14, y - 6), (26, y + 6)), fill=GOLD if on and i == 1 else col)
+            d.line(P((34, y), (86, y)), fill=col, width=w)
+    elif name == 'avatar':
+        d.ellipse(P((32, 12), (68, 48)), outline=col, width=w)
+        d.pieslice(P((16, 52), (84, 120)), 180, 360, outline=col, width=w)
+        d.polygon(P((62, 60), (90, 74), (62, 88)), fill=GOLD)
+    elif name == 'friend':
+        d.ellipse(P((32, 14), (68, 50)), fill=GREEN if on else None, outline=col, width=w)
+        d.arc(P((14, 56), (86, 120)), 180, 360, fill=col, width=w)
+    elif name == 'notifs':
+        d.pieslice(P((22, 16), (78, 84)), 180, 360, outline=col, width=w)
+        d.rectangle(P((22, 50), (78, 70)), outline=col, width=w)
+        d.ellipse(P((42, 72), (58, 88)), fill=col)
+        if on:
+            d.ellipse(P((62, 8), (90, 36)), fill=RED)
+    elif name == 'overlay':
+        d.rounded_rectangle(P((10, 30), (90, 70)), radius=14 * s, outline=col, width=w)
+        d.ellipse(P((22, 40), (42, 60)), fill=GOLD if on else col)
+        d.ellipse(P((58, 40), (78, 60)), fill=GOLD if on else col)
+    elif name == 'speech':
+        d.rounded_rectangle(P((38, 12), (62, 58)), radius=12 * s, fill=RED if on else col)
+        d.arc(P((26, 30), (74, 72)), 0, 180, fill=col, width=w)
+        d.line(P((50, 72), (50, 88)), fill=col, width=w)
+    elif name == 'dial':
+        d.ellipse(P((16, 16), (84, 84)), outline=col, width=w)
+        d.line(P((50, 50), (70, 28)), fill=GOLD, width=w)
     elif name == 'plugin':
         d.polygon(P((50, 8), (88, 30), (88, 70), (50, 92), (12, 70), (12, 30)), outline=CYAN, width=w)
         d.line(P((34, 66), (34, 34), (66, 66), (66, 34)), fill=GOLD, width=w + 2)
@@ -78,12 +110,12 @@ def save(name, size, key, on=False, suffix=''):
 
 
 os.makedirs(OUT, exist_ok=True)
-for name in ('status', 'chatbox', 'param', 'input', 'rotator', 'friends', 'players', 'launch', 'rejoin', 'open'):
+for name in ('status', 'chatbox', 'param', 'input', 'rotator', 'friends', 'players', 'launch', 'rejoin', 'open', 'camera', 'macro', 'avatar', 'friend', 'notifs', 'overlay', 'speech', 'dial'):
     save(name, 20, False, suffix='_icon')
     save(name, 40, False, suffix='_icon@2x')
     save(name, 72, True, suffix='_key')
     save(name, 144, True, suffix='_key@2x')
-    if name in ('param', 'rotator', 'status'):
+    if name in ('param', 'rotator', 'status', 'camera', 'macro', 'friend', 'notifs', 'overlay', 'speech'):
         save(name, 72, True, True, '_key_on')
         save(name, 144, True, True, '_key_on@2x')
 save('plugin', 28, False, suffix='_category')

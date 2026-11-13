@@ -17,6 +17,7 @@ const { DashLink } = require('./dashlink');
 const { Updater } = require('./updater');
 const { AvatarParams } = require('./avatarparams');
 const { Camera } = require('./camera');
+const { Macros } = require('./macros');
 
 const RENDERER = path.join(__dirname, '..', 'renderer');
 const truthy = v => v !== undefined && v !== null && v !== '' && v !== '0' && v !== false && v !== 'false';
@@ -38,6 +39,7 @@ class NexusApp {
         this.tools = new Tools(this, Object.assign({ notify: opts.notify }, opts.host || {}));
         this.params = new AvatarParams(this);
         this.cam = new Camera(this);
+        this.macros = new Macros(this);
         this.vrc.onWatch = (name, world) => { if (this.settings.get('notify.watch')) this.tools.alert('🟢 ' + name + ' ist online', world ? 'in ' + world : 'gerade ins Spiel gekommen'); };
         this.notify = opts.notify || null;
         this.mobile = !!opts.mobile;
@@ -142,6 +144,11 @@ class NexusApp {
             case 'client_rot_preview': return { text: g.rotatorText(str(input.text)) };
             case 'client_log_clear': return { deleted: g.clear() };
             case 'client_params': return this.params.list(str(input.avatar));
+            case 'client_macros': return { macros: this.macros.list() };
+            case 'client_macro_save': return { macros: this.macros.save(input.name, input.script, input.id), msg: 'Makro gespeichert.' };
+            case 'client_macro_delete': return { macros: this.macros.remove(input.id) };
+            case 'client_macro_run': { const r = await this.macros.run(str(input.id) || str(input.script)); return { msg: r.steps + ' Schritte ausgeführt.' }; }
+            case 'client_macro_stop': this.macros.stop(); return { msg: 'Gestoppt.' };
             case 'client_param_fav': return { favs: this.params.toggleFav(str(input.avatar), str(input.name)) };
         }
         throw new UserError('Unbekannte Aktion.');

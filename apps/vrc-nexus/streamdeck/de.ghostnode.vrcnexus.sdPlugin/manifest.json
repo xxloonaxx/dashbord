@@ -2,41 +2,379 @@
   "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
   "UUID": "de.ghostnode.vrcnexus",
   "Name": "VRC Nexus",
-  "Version": "1.2.0.0",
+  "Version": "1.3.0.0",
   "Author": "GHOST NODE",
-  "Description": "Steuert VRChat über die VRC-Nexus-App: Status, Chatbox, OSC-Parameter, Eingaben, Chatbox-Rotator, Freunde online, Spieler in der Instanz, VRChat starten.",
+  "Description": "Steuert VRChat über die VRC-Nexus-App: Status, Chatbox, Avatar-Parameter, Eingaben, Rotator, Makros, Kamera, Avatar wechseln, Freunde beitreten/einladen, Benachrichtigungen, SteamVR-Overlay, Spracheingabe, Drehregler.",
   "Category": "VRC Nexus",
   "CategoryIcon": "imgs/plugin_category",
   "Icon": "imgs/plugin",
   "CodePath": "bin/plugin.js",
-  "Nodejs": { "Version": "20", "Debug": "disabled" },
+  "Nodejs": {
+    "Version": "20",
+    "Debug": "disabled"
+  },
   "PropertyInspectorPath": "ui/pi.html",
   "SDKVersion": 2,
-  "Software": { "MinimumVersion": "6.5" },
+  "Software": {
+    "MinimumVersion": "6.5"
+  },
   "OS": [
-    { "Platform": "windows", "MinimumVersion": "10" },
-    { "Platform": "mac", "MinimumVersion": "12" }
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    },
+    {
+      "Platform": "mac",
+      "MinimumVersion": "12"
+    }
   ],
   "Actions": [
-    { "UUID": "de.ghostnode.vrcnexus.status", "Name": "Status setzen", "Tooltip": "VRChat-Status (Join Me, Online, Ask Me, Beschäftigt) mit Text setzen", "Icon": "imgs/status_icon",
-      "States": [{ "Image": "imgs/status_key", "TitleAlignment": "bottom", "FontSize": 11 }, { "Image": "imgs/status_key_on", "TitleAlignment": "bottom", "FontSize": 11 }], "Controllers": ["Keypad"] },
-    { "UUID": "de.ghostnode.vrcnexus.chatbox", "Name": "Chatbox-Nachricht", "Tooltip": "Text oder gespeicherte OSC-Vorlage in die VRChat-Chatbox senden", "Icon": "imgs/chatbox_icon",
-      "States": [{ "Image": "imgs/chatbox_key", "TitleAlignment": "bottom", "FontSize": 10 }], "Controllers": ["Keypad"] },
-    { "UUID": "de.ghostnode.vrcnexus.param", "Name": "Avatar-Parameter", "Tooltip": "OSC-Avatar-Parameter umschalten, setzen oder gedrückt halten", "Icon": "imgs/param_icon",
-      "States": [{ "Image": "imgs/param_key", "TitleAlignment": "bottom", "FontSize": 10 }, { "Image": "imgs/param_key_on", "TitleAlignment": "bottom", "FontSize": 10 }], "Controllers": ["Keypad"] },
-    { "UUID": "de.ghostnode.vrcnexus.input", "Name": "OSC-Eingabe", "Tooltip": "VRChat-Eingabe wie Springen, Stummschalten oder Quick-Menü", "Icon": "imgs/input_icon",
-      "States": [{ "Image": "imgs/input_key", "TitleAlignment": "bottom", "FontSize": 10 }], "Controllers": ["Keypad"] },
-    { "UUID": "de.ghostnode.vrcnexus.rotator", "Name": "Chatbox-Rotator", "Tooltip": "Chatbox-Rotator an/aus", "Icon": "imgs/rotator_icon",
-      "States": [{ "Image": "imgs/rotator_key", "Title": "Rotator\naus", "TitleAlignment": "bottom", "FontSize": 10 }, { "Image": "imgs/rotator_key_on", "Title": "Rotator\nan", "TitleAlignment": "bottom", "FontSize": 10 }], "Controllers": ["Keypad"] },
-    { "UUID": "de.ghostnode.vrcnexus.friends", "Name": "Freunde online", "Tooltip": "Zeigt, wie viele Freunde im Spiel / online sind", "Icon": "imgs/friends_icon",
-      "States": [{ "Image": "imgs/friends_key", "TitleAlignment": "middle", "FontSize": 14, "ShowTitle": true }], "Controllers": ["Keypad"] },
-    { "UUID": "de.ghostnode.vrcnexus.players", "Name": "Spieler in der Instanz", "Tooltip": "Zeigt die Spielerzahl deiner Instanz; Druck öffnet die Spielerliste", "Icon": "imgs/players_icon",
-      "States": [{ "Image": "imgs/players_key", "TitleAlignment": "middle", "FontSize": 14 }], "Controllers": ["Keypad"] },
-    { "UUID": "de.ghostnode.vrcnexus.launch", "Name": "VRChat starten", "Tooltip": "Startet VRChat mit den Startoptionen aus VRC Nexus", "Icon": "imgs/launch_icon",
-      "States": [{ "Image": "imgs/launch_key", "Title": "VRChat", "TitleAlignment": "bottom", "FontSize": 10 }], "Controllers": ["Keypad"] },
-    { "UUID": "de.ghostnode.vrcnexus.rejoin", "Name": "Instanz neu betreten", "Tooltip": "Betritt die aktuelle Instanz neu", "Icon": "imgs/rejoin_icon",
-      "States": [{ "Image": "imgs/rejoin_key", "Title": "Rejoin", "TitleAlignment": "bottom", "FontSize": 10 }], "Controllers": ["Keypad"] },
-    { "UUID": "de.ghostnode.vrcnexus.open", "Name": "VRC Nexus öffnen", "Tooltip": "Öffnet VRC Nexus auf einer bestimmten Seite", "Icon": "imgs/open_icon",
-      "States": [{ "Image": "imgs/open_key", "Title": "Nexus", "TitleAlignment": "bottom", "FontSize": 10 }], "Controllers": ["Keypad"] }
+    {
+      "UUID": "de.ghostnode.vrcnexus.status",
+      "Name": "Status setzen",
+      "Tooltip": "VRChat-Status (Join Me, Online, Ask Me, Beschäftigt) mit Text setzen",
+      "Icon": "imgs/status_icon",
+      "States": [
+        {
+          "Image": "imgs/status_key",
+          "TitleAlignment": "bottom",
+          "FontSize": 11
+        },
+        {
+          "Image": "imgs/status_key_on",
+          "TitleAlignment": "bottom",
+          "FontSize": 11
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ]
+    },
+    {
+      "UUID": "de.ghostnode.vrcnexus.chatbox",
+      "Name": "Chatbox-Nachricht",
+      "Tooltip": "Text oder gespeicherte OSC-Vorlage in die VRChat-Chatbox senden",
+      "Icon": "imgs/chatbox_icon",
+      "States": [
+        {
+          "Image": "imgs/chatbox_key",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ]
+    },
+    {
+      "UUID": "de.ghostnode.vrcnexus.param",
+      "Name": "Avatar-Parameter",
+      "Tooltip": "OSC-Avatar-Parameter umschalten, setzen oder gedrückt halten",
+      "Icon": "imgs/param_icon",
+      "States": [
+        {
+          "Image": "imgs/param_key",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        },
+        {
+          "Image": "imgs/param_key_on",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ]
+    },
+    {
+      "UUID": "de.ghostnode.vrcnexus.input",
+      "Name": "OSC-Eingabe",
+      "Tooltip": "VRChat-Eingabe wie Springen, Stummschalten oder Quick-Menü",
+      "Icon": "imgs/input_icon",
+      "States": [
+        {
+          "Image": "imgs/input_key",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ]
+    },
+    {
+      "UUID": "de.ghostnode.vrcnexus.rotator",
+      "Name": "Chatbox-Rotator",
+      "Tooltip": "Chatbox-Rotator an/aus",
+      "Icon": "imgs/rotator_icon",
+      "States": [
+        {
+          "Image": "imgs/rotator_key",
+          "Title": "Rotator\naus",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        },
+        {
+          "Image": "imgs/rotator_key_on",
+          "Title": "Rotator\nan",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ]
+    },
+    {
+      "UUID": "de.ghostnode.vrcnexus.friends",
+      "Name": "Freunde online",
+      "Tooltip": "Zeigt, wie viele Freunde im Spiel / online sind",
+      "Icon": "imgs/friends_icon",
+      "States": [
+        {
+          "Image": "imgs/friends_key",
+          "TitleAlignment": "middle",
+          "FontSize": 14,
+          "ShowTitle": true
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ]
+    },
+    {
+      "UUID": "de.ghostnode.vrcnexus.players",
+      "Name": "Spieler in der Instanz",
+      "Tooltip": "Zeigt die Spielerzahl deiner Instanz; Druck öffnet die Spielerliste",
+      "Icon": "imgs/players_icon",
+      "States": [
+        {
+          "Image": "imgs/players_key",
+          "TitleAlignment": "middle",
+          "FontSize": 14
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ]
+    },
+    {
+      "UUID": "de.ghostnode.vrcnexus.launch",
+      "Name": "VRChat starten",
+      "Tooltip": "Startet VRChat mit den Startoptionen aus VRC Nexus",
+      "Icon": "imgs/launch_icon",
+      "States": [
+        {
+          "Image": "imgs/launch_key",
+          "Title": "VRChat",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ]
+    },
+    {
+      "UUID": "de.ghostnode.vrcnexus.rejoin",
+      "Name": "Instanz neu betreten",
+      "Tooltip": "Betritt die aktuelle Instanz neu",
+      "Icon": "imgs/rejoin_icon",
+      "States": [
+        {
+          "Image": "imgs/rejoin_key",
+          "Title": "Rejoin",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ]
+    },
+    {
+      "UUID": "de.ghostnode.vrcnexus.open",
+      "Name": "VRC Nexus öffnen",
+      "Tooltip": "Öffnet VRC Nexus auf einer bestimmten Seite",
+      "Icon": "imgs/open_icon",
+      "States": [
+        {
+          "Image": "imgs/open_key",
+          "Title": "Nexus",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ]
+    },
+    {
+      "UUID": "de.ghostnode.vrcnexus.camera",
+      "Name": "Kamera",
+      "Tooltip": "VRChat-Kamera: Foto, Selbstauslöser, Serie, Vorlage, Modus",
+      "Icon": "imgs/camera_icon",
+      "States": [
+        {
+          "Image": "imgs/camera_key",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        },
+        {
+          "Image": "imgs/camera_key_on",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ]
+    },
+    {
+      "UUID": "de.ghostnode.vrcnexus.macro",
+      "Name": "Makro",
+      "Tooltip": "Führt ein OSC-Makro aus VRC Nexus aus",
+      "Icon": "imgs/macro_icon",
+      "States": [
+        {
+          "Image": "imgs/macro_key",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        },
+        {
+          "Image": "imgs/macro_key_on",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ]
+    },
+    {
+      "UUID": "de.ghostnode.vrcnexus.avatar",
+      "Name": "Avatar wechseln",
+      "Tooltip": "Wechselt zu einem bestimmten Avatar",
+      "Icon": "imgs/avatar_icon",
+      "States": [
+        {
+          "Image": "imgs/avatar_key",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ]
+    },
+    {
+      "UUID": "de.ghostnode.vrcnexus.friend",
+      "Name": "Freund",
+      "Tooltip": "Zeigt, ob ein Freund im Spiel ist – beitreten oder einladen",
+      "Icon": "imgs/friend_icon",
+      "States": [
+        {
+          "Image": "imgs/friend_key",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        },
+        {
+          "Image": "imgs/friend_key_on",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ]
+    },
+    {
+      "UUID": "de.ghostnode.vrcnexus.notifs",
+      "Name": "Benachrichtigungen",
+      "Tooltip": "Zähler der ungelesenen Benachrichtigungen",
+      "Icon": "imgs/notifs_icon",
+      "States": [
+        {
+          "Image": "imgs/notifs_key",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        },
+        {
+          "Image": "imgs/notifs_key_on",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ]
+    },
+    {
+      "UUID": "de.ghostnode.vrcnexus.overlay",
+      "Name": "SteamVR-Overlay",
+      "Tooltip": "Blendet das VRC-Nexus-Overlay in SteamVR ein/aus",
+      "Icon": "imgs/overlay_icon",
+      "States": [
+        {
+          "Image": "imgs/overlay_key",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        },
+        {
+          "Image": "imgs/overlay_key_on",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ]
+    },
+    {
+      "UUID": "de.ghostnode.vrcnexus.speech",
+      "Name": "Spracheingabe",
+      "Tooltip": "Sprache → Chatbox (Whisper): drücken bzw. halten",
+      "Icon": "imgs/speech_icon",
+      "States": [
+        {
+          "Image": "imgs/speech_key",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        },
+        {
+          "Image": "imgs/speech_key_on",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ]
+    },
+    {
+      "UUID": "de.ghostnode.vrcnexus.dial",
+      "Name": "Drehregler",
+      "Tooltip": "Stream Deck +: Parameter, Kamera-Zoom/Belichtung, Freunde",
+      "Icon": "imgs/dial_icon",
+      "States": [
+        {
+          "Image": "imgs/dial_key",
+          "TitleAlignment": "bottom",
+          "FontSize": 10
+        }
+      ],
+      "Controllers": [
+        "Encoder"
+      ],
+      "Encoder": {
+        "layout": "$B1",
+        "TriggerDescription": {
+          "Rotate": "Wert ändern",
+          "Push": "Auslösen / zurücksetzen",
+          "Touch": "Auslösen"
+        }
+      }
+    }
   ]
 }

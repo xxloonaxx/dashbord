@@ -47,6 +47,7 @@
                 <button type="button" class="chip" data-sub="live">📡 Live &amp; OSC</button>
                 <button type="button" class="chip" data-sub="params">🎚 Parameter</button>
                 <button type="button" class="chip" data-sub="cam">📷 Kamera</button>
+                <button type="button" class="chip" data-sub="macros">⚡ Makros</button>
                 <button type="button" class="chip" data-sub="log">📜 Spiel-Log</button>
                 <button type="button" class="chip" data-sub="people">🧑‍🤝‍🧑 Getroffen</button>
                 <button type="button" class="chip" data-sub="visits">🌐 Besuche</button>
@@ -117,6 +118,22 @@
                     <div class="nc-card"><h4>🔘 Schalter</h4><div class="nc-ctog" id="ncCToggles"></div>
                         <h4 style="margin-top:12px">📍 Pose</h4><div class="small mono" id="ncCPose">–</div>
                         <form class="nc-row" id="ncCPoseF"><input type="text" name="pose" placeholder="X Y Z  RX RY RZ" style="flex:1"><button class="btn btn-sm">Setzen</button></form></div>
+                </div>
+            </div>
+            <div class="nc-pane" data-p="macros" hidden>
+                <div class="nc-grid">
+                    <div class="nc-card"><h4>⚡ Gespeicherte Makros</h4><div id="ncMList"></div>
+                        <div class="nc-row"><button type="button" class="btn btn-sm" id="ncMNew">＋ Neues Makro</button><button type="button" class="btn btn-sm" id="ncMStop">■ Alle stoppen</button></div></div>
+                    <form class="nc-card" id="ncMForm"><h4>✏️ Makro bearbeiten</h4>
+                        <input type="hidden" name="id">
+                        <div class="nc-row"><input type="text" name="name" maxlength="40" placeholder="Name, z. B. Ohren wackeln" required style="flex:1"></div>
+                        <textarea name="script" rows="9" class="mono" placeholder="chatbox Hallo {name}!&#10;param Ears = 1&#10;wait 1.5&#10;param Ears = 0"></textarea>
+                        <div class="nc-row"><button class="btn btn-sm btn-gold">💾 Speichern</button><button type="button" class="btn btn-sm" id="ncMTry">▶ Testen</button></div>
+                        <details class="small"><summary>Schritte</summary><div class="muted">
+                            <code>chatbox Text</code> (Platzhalter, /n) · <code>typing an|aus</code> · <code>param Name = Wert</code> · <code>toggle Name</code> · <code>wait Sekunden</code> ·
+                            <code>input Jump|Voice|…</code> · <code>cam Capture|CaptureDelayed|Zoom 80|Mode 1</code> · <code>status join_me|active|ask_me|busy Text</code> ·
+                            <code>avatar avtr_…</code> · <code>rotator an|aus</code> · <code>speak Text</code> (vorlesen) · <code>notify Text</code> · <code># Kommentar</code></div></details>
+                    </form>
                 </div>
             </div>
             <div class="nc-pane" data-p="log" hidden>
@@ -278,6 +295,7 @@
         if (name === 'log') loadLog(true);
         if (name === 'params') loadParams();
         if (name === 'cam') loadCam();
+        if (name === 'macros') loadMacros();
         if (name === 'people') loadPeople();
         if (name === 'visits') loadVisits();
     }
@@ -460,6 +478,34 @@
             return '<div class="nc-prow' + (p.builtin ? ' builtin' : '') + '"><button type="button" class="nc-star' + (p.fav ? ' on' : '') + '" data-pfav="' + esc(p.name) + '" title="Favorit">★</button>'
                 + '<span class="nc-pname" title="' + esc(p.name) + '">' + esc(p.name) + ' <small class="muted">' + ({ bool: 'An/Aus', int: 'Zahl', float: 'Komma' })[p.type] + (p.live_only ? ' · nur live' : '') + '</small></span><span class="nc-pctl">' + ctl + '</span></div>';
         }).join('') : '<div class="nc-empty">Keine Parameter' + (q ? ' für „' + esc(q) + '“' : '') + '. VRChat legt die Datei an, sobald du den Avatar mit eingeschaltetem OSC trägst.</div>';
+    }
+
+    // ---------- ⚡ Makros ----------
+    let mList = [], mBound = false;
+    function loadMacros() {
+        if (!mBound) {
+            mBound = true;
+            const f = $('#ncMForm');
+            f.addEventListener('submit', e => { e.preventDefault(); api('client_macro_save', { id: f.id.value, name: f.name.value, script: f.script.value }).then(d => { mList = d.macros; const m = mList.find(x => x.name === f.name.value.trim()); if (m) f.id.value = m.id; renderMacros(); toast(d.msg); }).catch(fail); });
+            $('#ncMTry').addEventListener('click', () => api('client_macro_run', { script: f.script.value }).then(d => toast('⚡ ' + d.msg)).catch(fail));
+            $('#ncMNew').addEventListener('click', () => { f.reset(); f.id.value = ''; f.name.focus(); });
+            $('#ncMStop').addEventListener('click', () => api('client_macro_stop').then(d => toast(d.msg)).catch(fail));
+            $('#ncMList').addEventListener('click', e => {
+                const b = e.target.closest('[data-m]');
+                if (!b) return;
+                const m = mList.find(x => x.id === b.dataset.id);
+                if (b.dataset.m === 'run') api('client_macro_run', { id: m.id }).then(d => toast('⚡ ' + m.name + ': ' + d.msg)).catch(fail);
+                if (b.dataset.m === 'edit') { f.id.value = m.id; f.name.value = m.name; f.script.value = m.script; }
+                if (b.dataset.m === 'del' && confirm('Makro „' + m.name + '“ löschen?')) api('client_macro_delete', { id: m.id }).then(d => { mList = d.macros; renderMacros(); }).catch(fail);
+            });
+        }
+        return api('client_macros').then(d => { mList = d.macros; renderMacros(); }).catch(fail);
+    }
+    function renderMacros() {
+        $('#ncMList').innerHTML = mList.length ? mList.map(m => '<div class="nc-mrow"><button type="button" class="btn btn-sm btn-gold" data-m="run" data-id="' + esc(m.id) + '">▶</button><b>' + esc(m.name) + '</b>'
+            + '<span class="muted small">' + m.script.split('\n').filter(l => l.trim() && !l.trim().startsWith('#')).length + ' Schritte</span>'
+            + '<button type="button" class="nc-link" data-m="edit" data-id="' + esc(m.id) + '">bearbeiten</button><button type="button" class="nc-x" data-m="del" data-id="' + esc(m.id) + '">✕</button></div>').join('')
+            : '<div class="muted small">Noch keine Makros. Makros kannst du auch aufs Stream Deck, ins Overlay und in die Automatik legen.</div>';
     }
 
     // ---------- 📷 Kamera (VRChat-Kamera per OSC) ----------

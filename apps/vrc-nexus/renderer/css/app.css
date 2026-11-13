@@ -207,3 +207,7 @@ body.menu-icons .vx-menu .vx-tabbtn .vx-badge, body.mobile .vx-menu .vx-tabbtn .
 .nc-preset { display: inline-flex; align-items: center; margin: 0 4px 4px 0; }
 .nc-x { background: none; border: 0; color: #888; cursor: pointer; }
 #ncCBurst input { width: 64px !important; padding: 2px 4px; } #ncCBurst { font-size: 0.85rem; }
+
+.nc-mrow { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.nc-mrow b { flex: 1; }
+#ncMForm textarea { width: 100%; box-sizing: border-box; font-size: 0.85rem; }

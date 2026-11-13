@@ -55,6 +55,40 @@
     <div class="row"><label>Seite</label><select data-s="tab"><option value="">zuletzt offene Seite</option><option value="players">Spielerliste</option><option value="locations">Freunde-Orte</option><option value="friends">Freundesliste</option>
         <option value="feed">Verlauf</option><option value="notifs">Benachrichtigungen</option><option value="avatars">Meine Avatare</option><option value="worlds">Welten</option><option value="tools">Werkzeuge</option><option value="client">Spiel &amp; OSC</option><option value="settings">Einstellungen</option></select></div>
 </div>
+<div id="sec-camera" hidden>
+    <div class="row"><label>Aktion</label><select data-s="cmd"><option value="Capture">📸 Foto</option><option value="CaptureDelayed">⏱ Selbstauslöser</option><option value="burst">🎞 Serie</option>
+        <option value="preset">💾 Vorlage laden</option><option value="Mode">🔀 Modus setzen</option><option value="step">🔍 Wert schrittweise (z. B. Zoom +10)</option><option value="Close">✖ Kamera schließen</option></select></div>
+    <div class="row" data-show="cmd=burst"><label>Anzahl</label><input type="number" data-s="count" value="5" min="1" max="100"></div>
+    <div class="row" data-show="cmd=burst"><label>Abstand (s)</label><input type="number" data-s="seconds" value="2" min="0.3" step="0.1"></div>
+    <div class="row" data-show="cmd=preset"><label>Vorlage</label><input type="text" data-s="preset" placeholder="Name wie in VRC Nexus → Spiel &amp; OSC → Kamera"></div>
+    <div class="row" data-show="cmd=Mode"><label>Modus</label><select data-s="value"><option value="1">Foto</option><option value="2">Stream</option><option value="3">Emoji</option><option value="4">Mehrschicht</option><option value="5">Druck</option><option value="6">Drohne</option><option value="0">Aus</option></select></div>
+    <div class="row" data-show="cmd=step"><label>Wert</label><select data-s="name"><option value="Zoom">Zoom</option><option value="Exposure">Belichtung</option><option value="FocalDistance">Fokus</option><option value="Aperture">Blende</option></select></div>
+    <div class="row" data-show="cmd=step"><label>Schritt</label><input type="number" data-s="step" value="10" step="0.1"></div>
+</div>
+<div id="sec-macro" hidden>
+    <div class="row"><label>Makro</label><select data-s="id" id="macroSel"><option value="">(erst Verbindung testen)</option></select></div>
+    <div class="row"><label>oder Skript</label><textarea data-s="script" placeholder="param Ears = 1&#10;wait 1&#10;param Ears = 0"></textarea></div>
+    <div class="hint">Makros legst du in VRC Nexus → Spiel &amp; OSC → Makros an. Schritte: chatbox, param, toggle, wait, input, cam, status, avatar, rotator, typing.</div>
+</div>
+<div id="sec-avatar" hidden>
+    <div class="row"><label>Avatar-ID</label><input type="text" data-s="id" placeholder="avtr_…"></div>
+    <div class="hint">ID aus VRC Nexus → Meine Avatare (⋯ → ID kopieren).</div>
+</div>
+<div id="sec-friend" hidden>
+    <div class="row"><label>Freund</label><select data-s="id" id="friendSel"><option value="">(erst Verbindung testen)</option></select></div>
+    <div class="row"><label>Beim Drücken</label><select data-s="op"><option value="join">Beitreten</option><option value="invite_me">Mich einladen lassen (Selbst-Einladung)</option><option value="invite">In meine Instanz einladen</option></select></div>
+    <div class="hint">Die Taste leuchtet, wenn dein Freund im Spiel ist.</div>
+</div>
+<div id="sec-speech" hidden>
+    <div class="row"><label>Modus</label><select data-s="mode"><option value="toggle">Drücken = Start/Stopp</option><option value="hold">Halten zum Sprechen (Push-to-Talk)</option></select></div>
+    <div class="hint">Der erkannte Text geht in die Chatbox (Whisper, Einstellungen in VRC Nexus → Spiel &amp; OSC → Sprache).</div>
+</div>
+<div id="sec-dial" hidden>
+    <div class="row"><label>Regelt</label><select data-s="target"><option value="param">Avatar-Parameter</option><option value="zoom">Kamera-Zoom</option><option value="exposure">Kamera-Belichtung</option><option value="friends">Freunde im Spiel (nur Anzeige)</option></select></div>
+    <div class="row" data-show="target=param"><label>Parameter</label><input type="text" data-s="name" list="paramList" placeholder="z. B. Hue"><datalist id="paramList"></datalist></div>
+    <div class="row" data-show="target=param"><label>Typ</label><select data-s="type"><option value="float">Kommazahl (-1…1)</option><option value="int">Ganzzahl (0–255)</option></select></div>
+    <div class="row"><label>Schritt</label><input type="number" data-s="step" step="0.01" placeholder="automatisch"></div>
+</div>
 <div id="sec-info" hidden><div class="hint" style="margin-left:0" id="infoText"></div></div>
 
 <details id="conn">
@@ -70,7 +104,8 @@ let sock = null, uuid = '', actionInfo = {}, settings = {}, globals = {};
 const $ = s => document.querySelector(s);
 const kind = () => (actionInfo.action || '').split('.').pop();
 const INFO = { rotator: 'Schaltet den Chatbox-Rotator aus „Spiel & OSC“ an oder aus.', players: 'Zeigt die Spielerzahl deiner Instanz. Drücken öffnet die Spielerliste.',
-    launch: 'Startet VRChat mit den Startoptionen aus VRC Nexus (Werkzeuge → Startoptionen).', rejoin: 'Betritt die Instanz, in der du gerade bist, neu.' };
+    launch: 'Startet VRChat mit den Startoptionen aus VRC Nexus (Werkzeuge → Startoptionen).', rejoin: 'Betritt die Instanz, in der du gerade bist, neu.',
+    notifs: 'Zeigt die Zahl ungelesener Benachrichtigungen. Drücken öffnet sie in VRC Nexus.', overlay: 'Blendet das VRC-Nexus-Overlay in SteamVR ein oder aus (nur Windows-App).' };
 function send(event, payload) { sock.send(JSON.stringify(Object.assign({ event, context: uuid }, payload !== undefined ? { payload } : {}))); }
 function showDeps() {
     document.querySelectorAll('[data-show]').forEach(el => {
@@ -124,6 +159,10 @@ window.connectElgatoStreamDeckSocket = function (port, inUuid, registerEvent, in
                 const st = m.payload.state;
                 r.className = 'ok';
                 r.textContent = '✔ verbunden' + (st.me ? ' als ' + st.me.name : '');
+                const opt = (l, cur) => l.map(x => '<option value="' + x.id + '"' + (x.id === cur ? ' selected' : '') + '>' + String(x.name).replace(/[<>&]/g, '') + '</option>').join('');
+                if ($('#macroSel')) $('#macroSel').innerHTML = '<option value="">(Skript unten benutzen)</option>' + opt(st.macros || [], settings.id);
+                if ($('#friendSel')) $('#friendSel').innerHTML = opt((st.friend_list || []).slice().sort((a, b) => a.name.localeCompare(b.name)), settings.id);
+                if ($('#paramList')) $('#paramList').innerHTML = Object.keys((st.osc && st.osc.params) || {}).map(k => '<option value="' + k.replace(/["<>&]/g, '') + '">').join('');
                 const sel = $('#presetSel');
                 if (sel) {
                     sel.innerHTML = st.presets.length ? st.presets.map(p => '<option value="' + p.id + '">' + p.label.replace(/[<>&]/g, '') + '</option>').join('') : '<option value="">(keine Vorlagen in VRC Nexus)</option>';
