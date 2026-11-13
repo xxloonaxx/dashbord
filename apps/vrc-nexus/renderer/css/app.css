@@ -191,3 +191,19 @@ body.menu-icons .vx-menu .vx-tabbtn .vx-badge, body.mobile .vx-menu .vx-tabbtn .
 .upd-bar .btn:first-of-type { margin-left: auto; }
 .upd-new { border: 1px solid var(--accent-gold); background: rgba(243, 194, 98, 0.06); padding: 10px 12px; margin: 8px 0; }
 .upd-notes { margin-top: 6px; max-height: 260px; overflow: auto; }
+
+/* ---------- Parameter & Kamera ---------- */
+.nc-pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 6px; margin-top: 8px; }
+.nc-prow { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--line, #333); background: rgba(255,255,255,0.02); }
+.nc-prow.builtin { opacity: 0.6; }
+.nc-pname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nc-pctl { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.nc-pctl input[type=range] { width: 120px; }
+.nc-pints .chip { padding: 1px 6px; font-size: 0.75rem; }
+.nc-star { background: none; border: 0; color: #666; cursor: pointer; font-size: 1rem; padding: 0; }
+.nc-star.on { color: var(--accent-gold, #f3c262); }
+.nc-cslide { display: grid; grid-template-columns: 130px 1fr 48px; gap: 8px; align-items: center; font-size: 0.85rem; margin: 3px 0; }
+.nc-ctog { display: flex; flex-wrap: wrap; gap: 4px; }
+.nc-preset { display: inline-flex; align-items: center; margin: 0 4px 4px 0; }
+.nc-x { background: none; border: 0; color: #888; cursor: pointer; }
+#ncCBurst input { width: 64px !important; padding: 2px 4px; } #ncCBurst { font-size: 0.85rem; }

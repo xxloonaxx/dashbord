@@ -15,6 +15,8 @@ const { Tools } = require('./tools');
 const { Translator } = require('./translate');
 const { DashLink } = require('./dashlink');
 const { Updater } = require('./updater');
+const { AvatarParams } = require('./avatarparams');
+const { Camera } = require('./camera');
 
 const RENDERER = path.join(__dirname, '..', 'renderer');
 const truthy = v => v !== undefined && v !== null && v !== '' && v !== '0' && v !== false && v !== 'false';
@@ -34,6 +36,8 @@ class NexusApp {
         this.link = new DashLink(this);
         this.updater = new Updater(this);
         this.tools = new Tools(this, Object.assign({ notify: opts.notify }, opts.host || {}));
+        this.params = new AvatarParams(this);
+        this.cam = new Camera(this);
         this.vrc.onWatch = (name, world) => { if (this.settings.get('notify.watch')) this.tools.alert('🟢 ' + name + ' ist online', world ? 'in ' + world : 'gerade ins Spiel gekommen'); };
         this.notify = opts.notify || null;
         this.mobile = !!opts.mobile;
@@ -102,6 +106,7 @@ class NexusApp {
             }
             if (act === 'cancel_login') { this.vrc.pending = null; return { ok: true }; }
             if (act.startsWith('client_')) return await this.client(act, input);
+            if (act.startsWith('cam_')) return await this.cam.action(act, input);
             if (act.startsWith('tools_')) return await this.toolAction(act, input);
             if (['tr_status', 'tr_key', 'tr_prefs', 'translate', 'tr_test'].includes(act)) return await this.trAction(act, input);
             if (act === 'update_status') return this.updater.status();
@@ -136,6 +141,8 @@ class NexusApp {
             case 'client_preset_delete': g.presetDelete(input.preset); return { presets: g.presets() };
             case 'client_rot_preview': return { text: g.rotatorText(str(input.text)) };
             case 'client_log_clear': return { deleted: g.clear() };
+            case 'client_params': return this.params.list(str(input.avatar));
+            case 'client_param_fav': return { favs: this.params.toggleFav(str(input.avatar), str(input.name)) };
         }
         throw new UserError('Unbekannte Aktion.');
     }

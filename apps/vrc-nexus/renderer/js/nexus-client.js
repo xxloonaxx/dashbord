@@ -45,6 +45,8 @@
             <div class="nc-kpis" id="ncKpis"></div>
             <nav class="nc-sub" id="ncSub">
                 <button type="button" class="chip" data-sub="live">📡 Live &amp; OSC</button>
+                <button type="button" class="chip" data-sub="params">🎚 Parameter</button>
+                <button type="button" class="chip" data-sub="cam">📷 Kamera</button>
                 <button type="button" class="chip" data-sub="log">📜 Spiel-Log</button>
                 <button type="button" class="chip" data-sub="people">🧑‍🤝‍🧑 Getroffen</button>
                 <button type="button" class="chip" data-sub="visits">🌐 Besuche</button>
@@ -84,6 +86,38 @@
                     </div>
                 </div>
                 <div class="nc-card"><h4>🕒 Zuletzt gesendet</h4><div id="ncOsc"></div></div>
+            </div>
+            <div class="nc-pane" data-p="params" hidden>
+                <div class="nc-row nc-filter">
+                    <select id="ncPAv" title="Avatar"></select>
+                    <input type="search" id="ncPQ" placeholder="🔎 Parameter suchen …">
+                    <label class="check small"><input type="checkbox" id="ncPBuiltin"> VRChat-eigene zeigen</label>
+                    <label class="check small"><input type="checkbox" id="ncPFav"> nur ★</label>
+                    <button type="button" class="btn btn-sm" id="ncPReload">↻</button>
+                </div>
+                <div class="muted small" id="ncPInfo"></div>
+                <div class="nc-pgrid" id="ncPList"></div>
+            </div>
+            <div class="nc-pane" data-p="cam" hidden>
+                <div class="muted small" id="ncCInfo"></div>
+                <div class="nc-grid">
+                    <div class="nc-card"><h4>📷 Auslösen</h4>
+                        <div class="nc-row" id="ncCModes"></div>
+                        <div class="nc-row"><button type="button" class="btn btn-gold" data-cam="Capture">📸 Foto</button>
+                            <button type="button" class="btn btn-sm" data-cam="CaptureDelayed">⏱ Selbstauslöser</button>
+                            <button type="button" class="btn btn-sm" data-cam="Close">✖ Kamera zu</button></div>
+                        <form class="nc-row" id="ncCBurst"><b class="small">Serie:</b> <input type="number" name="count" value="5" min="1" max="100" style="width:64px"> Fotos alle
+                            <input type="number" name="seconds" value="2" min="0.3" step="0.1" style="width:64px"> s, Start nach <input type="number" name="delay" value="0" min="0" max="60" style="width:56px"> s
+                            <button class="btn btn-sm">▶ Start</button><button type="button" class="btn btn-sm" id="ncCStop">■</button></form>
+                        <h4 style="margin-top:12px">💾 Vorlagen</h4>
+                        <div class="nc-presets" id="ncCPresets"></div>
+                        <form class="nc-row" id="ncCSave"><input type="text" name="name" placeholder="Name der Vorlage (Pose + Werte)" maxlength="40"><button class="btn btn-sm">Speichern</button></form>
+                    </div>
+                    <div class="nc-card"><h4>🎚 Einstellungen</h4><div id="ncCSliders"></div></div>
+                    <div class="nc-card"><h4>🔘 Schalter</h4><div class="nc-ctog" id="ncCToggles"></div>
+                        <h4 style="margin-top:12px">📍 Pose</h4><div class="small mono" id="ncCPose">–</div>
+                        <form class="nc-row" id="ncCPoseF"><input type="text" name="pose" placeholder="X Y Z  RX RY RZ" style="flex:1"><button class="btn btn-sm">Setzen</button></form></div>
+                </div>
             </div>
             <div class="nc-pane" data-p="log" hidden>
                 <div class="nc-row nc-filter">
@@ -242,6 +276,8 @@
         $$('#ncSub [data-sub]').forEach(b => b.classList.toggle('on', b.dataset.sub === name));
         $$('.nc-pane').forEach(p => { p.hidden = p.dataset.p !== name; });
         if (name === 'log') loadLog(true);
+        if (name === 'params') loadParams();
+        if (name === 'cam') loadCam();
         if (name === 'people') loadPeople();
         if (name === 'visits') loadVisits();
     }
@@ -372,6 +408,99 @@
         }).catch(fail);
     }
 
+    // ---------- 🎚 Avatar-Parameter (aus der OSC-Konfiguration von VRChat) ----------
+    let pData = null, pAvatar = '', pBound = false;
+    const pVal = p => p.value === null ? '' : p.type === 'float' ? Number(p.value).toFixed(2) : String(p.value);
+    function loadParams() {
+        bindParams();
+        return api('client_params', { avatar: pAvatar }).then(d => { pData = d; renderParams(); }).catch(fail);
+    }
+    function bindParams() {
+        if (pBound) return;
+        pBound = true;
+        $('#ncPAv').addEventListener('change', e => { pAvatar = e.target.value; loadParams(); });
+        ['#ncPQ', '#ncPBuiltin', '#ncPFav'].forEach(s => $(s).addEventListener('input', renderParams));
+        $('#ncPReload').addEventListener('click', loadParams);
+        $('#ncPList').addEventListener('click', e => {
+            const fav = e.target.closest('[data-pfav]');
+            if (fav) { api('client_param_fav', { avatar: pData.avatar.id, name: fav.dataset.pfav }).then(() => loadParams()).catch(fail); return; }
+            const b = e.target.closest('[data-pset]');
+            if (b) setParam(b.dataset.pset, b.dataset.t, b.dataset.v);
+        });
+        $('#ncPList').addEventListener('change', e => {
+            const r = e.target.closest('[data-prange]');
+            if (r) setParam(r.dataset.prange, r.dataset.t, r.value);
+        });
+        $('#ncPList').addEventListener('input', e => { const r = e.target.closest('[data-prange]'); if (r && r.nextElementSibling) r.nextElementSibling.textContent = Number(r.value).toFixed(r.dataset.t === 'float' ? 2 : 0); });
+    }
+    function setParam(name, type, value) {
+        const v = type === 'bool' ? (value === '1' ? '1' : '') : value;
+        api('client_osc', { kind: 'param', name, type, value: v }).then(() => {
+            const p = pData && pData.params.find(x => x.name === name);
+            if (p) { p.value = type === 'bool' ? value === '1' : Number(value); renderParams(); }
+        }).catch(fail);
+    }
+    function renderParams() {
+        if (!pData) return;
+        const d = pData;
+        $('#ncPAv').innerHTML = (d.avatars.length ? '' : '<option value="">(keine Avatar-Dateien gefunden)</option>') + d.avatars.map(a => '<option value="' + esc(a.id) + '"' + (d.avatar && a.id === d.avatar.id ? ' selected' : '') + '>'
+            + (a.id === d.current ? '▶ ' : '') + esc(a.name) + ' (' + a.count + ')</option>').join('');
+        const q = $('#ncPQ').value.trim().toLowerCase(), bi = $('#ncPBuiltin').checked, fo = $('#ncPFav').checked;
+        const list = d.params.filter(p => (bi || !p.builtin) && (!fo || p.fav) && (!q || p.name.toLowerCase().includes(q)));
+        $('#ncPInfo').innerHTML = (d.avatar ? '🎭 <b>' + esc(d.avatar.name || d.avatar.id) + '</b>' + (d.avatar.id === d.current ? ' · <span class="nc-badge ok">wird getragen</span>' : ' · <span class="nc-badge">nicht getragen – Werte unbekannt</span>') : 'Kein Avatar erkannt.')
+            + ' · ' + d.params.length + ' Parameter' + (d.osc_active ? '' : ' · ⚠ Kein OSC empfangen – in VRChat: Action-Menü → Optionen → OSC → Aktiviert')
+            + '<br>Quelle: <span class="mono">' + esc(d.dir) + '</span>';
+        $('#ncPList').innerHTML = list.length ? list.map(p => {
+            let ctl;
+            if (!p.input) ctl = '<span class="muted small">nur Ausgabe</span> <b>' + esc(pVal(p)) + '</b>';
+            else if (p.type === 'bool') ctl = '<button type="button" class="btn btn-sm' + (p.value === true ? ' btn-gold' : '') + '" data-pset="' + esc(p.name) + '" data-t="bool" data-v="' + (p.value === true ? '0' : '1') + '">' + (p.value === true ? '● An' : '○ Aus') + '</button>';
+            else if (p.type === 'int') ctl = '<input type="range" min="0" max="255" step="1" value="' + (p.value === null ? 0 : p.value) + '" data-prange="' + esc(p.name) + '" data-t="int"><b class="small">' + esc(pVal(p) || '–') + '</b>'
+                + '<span class="nc-pints">' + [0, 1, 2, 3, 4, 5].map(n => '<button type="button" class="chip" data-pset="' + esc(p.name) + '" data-t="int" data-v="' + n + '">' + n + '</button>').join('') + '</span>';
+            else ctl = '<input type="range" min="-1" max="1" step="0.01" value="' + (p.value === null ? 0 : p.value) + '" data-prange="' + esc(p.name) + '" data-t="float"><b class="small">' + esc(pVal(p) || '–') + '</b>';
+            return '<div class="nc-prow' + (p.builtin ? ' builtin' : '') + '"><button type="button" class="nc-star' + (p.fav ? ' on' : '') + '" data-pfav="' + esc(p.name) + '" title="Favorit">★</button>'
+                + '<span class="nc-pname" title="' + esc(p.name) + '">' + esc(p.name) + ' <small class="muted">' + ({ bool: 'An/Aus', int: 'Zahl', float: 'Komma' })[p.type] + (p.live_only ? ' · nur live' : '') + '</small></span><span class="nc-pctl">' + ctl + '</span></div>';
+        }).join('') : '<div class="nc-empty">Keine Parameter' + (q ? ' für „' + esc(q) + '“' : '') + '. VRChat legt die Datei an, sobald du den Avatar mit eingeschaltetem OSC trägst.</div>';
+    }
+
+    // ---------- 📷 Kamera (VRChat-Kamera per OSC) ----------
+    let cData = null, cBound = false;
+    function loadCam() { bindCam(); return api('cam_state').then(d => { cData = d; renderCam(); }).catch(fail); }
+    function camCmd(cmd, value) { return api('cam_cmd', { cmd, value: value ?? '' }).then(d => { cData = d; renderCam(); toast('📷 ' + d.msg); }).catch(fail); }
+    function bindCam() {
+        if (cBound) return;
+        cBound = true;
+        const pane = $('[data-p=cam]');
+        pane.addEventListener('click', e => {
+            const b = e.target.closest('[data-cam]');
+            if (b) return camCmd(b.dataset.cam, b.dataset.v);
+            const t = e.target.closest('[data-ctog]');
+            if (t) return camCmd(t.dataset.ctog, t.classList.contains('on') ? '' : '1');
+            const l = e.target.closest('[data-cpload]');
+            if (l) return api('cam_preset_load', { name: l.dataset.cpload }).then(d => { cData = d; renderCam(); toast('📷 ' + d.msg); }).catch(fail);
+            const x = e.target.closest('[data-cpdel]');
+            if (x && confirm('Vorlage „' + x.dataset.cpdel + '“ löschen?')) api('cam_preset_delete', { name: x.dataset.cpdel }).then(d => { cData = d; renderCam(); }).catch(fail);
+        });
+        pane.addEventListener('change', e => { const r = e.target.closest('[data-cslide]'); if (r) camCmd(r.dataset.cslide, r.value); });
+        pane.addEventListener('input', e => { const r = e.target.closest('[data-cslide]'); if (r && r.nextElementSibling) r.nextElementSibling.textContent = r.value; });
+        $('#ncCBurst').addEventListener('submit', e => { e.preventDefault(); const f = e.target; api('cam_burst', { count: f.count.value, seconds: f.seconds.value, delay: f.delay.value }).then(d => { cData = d; toast('📷 ' + d.msg); }).catch(fail); });
+        $('#ncCStop').addEventListener('click', () => api('cam_burst_stop').then(d => toast(d.msg)).catch(fail));
+        $('#ncCSave').addEventListener('submit', e => { e.preventDefault(); api('cam_preset_save', { name: e.target.name.value }).then(d => { cData = d; renderCam(); e.target.reset(); toast(d.msg); }).catch(fail); });
+        $('#ncCPoseF').addEventListener('submit', e => { e.preventDefault(); camCmd('Pose', e.target.pose.value); });
+    }
+    function renderCam() {
+        const d = cData;
+        if (!d) return;
+        const v = d.values || {};
+        $('#ncCInfo').innerHTML = (d.osc_active ? '<span class="nc-badge ok">OSC aktiv</span>' : '⚠ Noch nichts von VRChat empfangen – OSC einschalten, sonst kommen keine Kamerawerte zurück (Senden geht trotzdem).')
+            + (d.burst ? ' · 📸 Serie läuft: ' + d.burst.done + ' / ' + d.burst.count : '');
+        $('#ncCModes').innerHTML = Object.entries(d.modes).map(([k, n]) => '<button type="button" class="chip' + (String(d.mode) === k ? ' on' : '') + '" data-cam="Mode" data-v="' + k + '">' + esc(n) + '</button>').join('');
+        $('#ncCSliders').innerHTML = d.sliders.map(([k, n, mi, ma, st]) => '<label class="nc-cslide"><span>' + esc(n) + '</span><input type="range" min="' + mi + '" max="' + ma + '" step="' + st + '" value="' + (v[k] ?? (mi + ma) / 2) + '" data-cslide="' + k + '"><b class="small">' + (v[k] === undefined ? '–' : esc(String(Math.round(v[k] * 100) / 100))) + '</b></label>').join('');
+        $('#ncCToggles').innerHTML = d.toggles.map(([k, n]) => '<button type="button" class="chip' + (v[k] === true ? ' on' : '') + '" data-ctog="' + k + '">' + esc(n) + '</button>').join('');
+        $('#ncCPose').textContent = Array.isArray(d.pose) ? d.pose.map(n => Number(n).toFixed(2)).join('  ') : '– (kommt von VRChat, sobald die Kamera offen ist)';
+        $('#ncCPresets').innerHTML = d.presets.length ? d.presets.map(p => '<span class="nc-preset"><button type="button" class="btn btn-sm" data-cpload="' + esc(p.name) + '">📷 ' + esc(p.name) + '</button><button type="button" class="nc-x" data-cpdel="' + esc(p.name) + '">✕</button></span>').join('')
+            : '<span class="muted small">Noch keine Vorlagen.</span>';
+    }
+
     function refresh() {
         return api('client_overview').then(d => {
             data = d;
@@ -382,7 +511,7 @@
     function poll() {
         clearTimeout(timer);
         if (!openNow || document.hidden) return;
-        timer = setTimeout(() => api('client_osc_status').then(d => { data.osc = d.osc; data.state = d.state; renderOsc(); renderLive(); }).catch(() => {}).finally(poll), 5000);
+        timer = setTimeout(() => api('client_osc_status').then(d => { data.osc = d.osc; data.state = d.state; renderOsc(); renderLive(); if (sub === 'cam') return api('cam_state').then(c => { cData = c; renderCam(); }); if (sub === 'params' && !document.activeElement.closest('[data-p=params]')) return loadParams(); }).catch(() => {}).finally(poll), 5000);
     }
 
     window.NexusClient = {

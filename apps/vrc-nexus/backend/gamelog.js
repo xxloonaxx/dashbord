@@ -220,7 +220,7 @@ function splitChat(text, max) {
 }
 
 class Osc {
-    constructor() { this.sock = dgram.createSocket('udp4'); this.sock.unref(); this.host = '127.0.0.1'; this.port = 9000; this.lastChat = 0; this.chain = Promise.resolve(); this.listener = null; this.params = {}; this.avatarId = ''; this.lastPacket = 0; this.listenError = ''; }
+    constructor() { this.sock = dgram.createSocket('udp4'); this.sock.unref(); this.host = '127.0.0.1'; this.port = 9000; this.lastChat = 0; this.chain = Promise.resolve(); this.listener = null; this.params = {}; this.avatarId = ''; this.lastPacket = 0; this.listenError = ''; this.cam = {}; this.onMessage = null; }
     configure(host, port) { this.host = host || '127.0.0.1'; this.port = int(port) || 9000; }
     send(address, ...args) { return new Promise((res, rej) => this.sock.send(oscEncode(address, ...args), this.port, this.host, e => (e ? rej(e) : res()))); }
     chatbox(text, sound = true) {
@@ -262,6 +262,8 @@ class Osc {
                     const v = args[0];
                     this.params[address.slice(19)] = typeof v === 'number' && !Number.isInteger(v) ? Math.round(v * 1000) / 1000 : v;
                 }
+                else if (address.startsWith('/usercamera/') && args.length) this.cam[address.slice(12)] = args.length === 1 ? args[0] : args;
+                if (this.onMessage) { try { this.onMessage(address, args); } catch (e) { /* egal */ } }
             }
         });
         s.bind(int(port) || 9001, '127.0.0.1');
