@@ -29,7 +29,11 @@ class VrOverlay {
         this.watch = null;
         this.failures = 0;
     }
-    state() { return { enabled: !!this.cfg['vr.overlay'], running: !!this.proc, visible: this.visible, status: this.status, mode: this.cfg['vr.overlay_mode'] || 'wrist' }; }
+    state() {
+        const li = this.lastInput;
+        return { enabled: !!this.cfg['vr.overlay'], running: !!this.proc, visible: this.visible, mode: this.cfg['vr.overlay_mode'] || 'wrist',
+            status: this.status + (li ? ' · letzte Laser-Eingabe ' + li.t + ' bei ' + li.x + ',' + li.y + ' (' + Math.round((Date.now() - li.at) / 1000) + ' s her)' : this.proc ? ' · noch keine Laser-Eingabe empfangen' : '') };
+    }
 
     apply(s) {
         this.cfg = s;
@@ -133,9 +137,16 @@ class VrOverlay {
             case 'visible': this.visible = !!m.v; break;
             case 'quit': this.status = 'SteamVR beendet'; break;
             case 'mouse':
+                if (m.t !== 'move' || !this.lastInput || Date.now() - this.lastInput.at > 1000) this.lastInput = { t: m.t === 'move' ? 'Bewegung' : m.t === 'down' ? 'Klick' : 'Loslassen', x: m.x, y: m.y, at: Date.now() };
                 if (!wc) return;
+                // Koordinaten auf die Seite begrenzen (falls SteamVR doch 0…1 liefert: hochrechnen)
+                if (m.x <= 1 && m.y <= 1 && m.x >= 0 && m.y >= 0 && (m.x % 1 || m.y % 1)) { m.x = Math.round(m.x * W); m.y = Math.round(m.y * H); }
+                m.x = Math.max(0, Math.min(W - 1, Math.round(m.x))); m.y = Math.max(0, Math.min(H - 1, Math.round(m.y)));
                 if (m.t === 'move') wc.sendInputEvent({ type: 'mouseMove', x: m.x, y: m.y });
-                else wc.sendInputEvent({ type: m.t === 'down' ? 'mouseDown' : 'mouseUp', x: m.x, y: m.y, button: 'left', clickCount: 1 });
+                else {
+                    if (m.t === 'down') { try { wc.focus(); } catch (e) { /* egal */ } wc.sendInputEvent({ type: 'mouseMove', x: m.x, y: m.y }); }
+                    wc.sendInputEvent({ type: m.t === 'down' ? 'mouseDown' : 'mouseUp', x: m.x, y: m.y, button: 'left', clickCount: 1 });
+                }
                 break;
             case 'scroll': if (wc) wc.sendInputEvent({ type: 'mouseWheel', x: W / 2, y: H / 2, deltaX: 0, deltaY: Math.round(m.dy * 120), canScroll: true }); break;
         }

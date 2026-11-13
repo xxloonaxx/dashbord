@@ -20,6 +20,9 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.3.7
+- **Fehler behoben: SteamVR-Overlay ließ sich nicht mit dem Controller bedienen.** Die Laser-Position kam als 0…1 statt in Pixeln an – jeder Klick landete in der Ecke. Zusätzlich zeigt der Overlay-Status jetzt die letzte Laser-Eingabe (Startseite → Widget „SteamVR-Overlay“), damit man sieht, ob Klicks ankommen.
+
 ### Neu in 1.3.6
 - **📈 Instanz-Verlauf** (Diagramme → Rückblick): Spielerzahl einer Instanz über die Zeit als Diagramm, Höchststand, Schnitt, verschiedene Leute, wer wann kam und ging – für jeden Weltbesuch der letzten 30 Tage.
 - **🌍 Meine Welten:** Besuche, Favoriten, Spieler gerade, Heat/Beliebtheit deiner hochgeladenen Welten – mit „seit gestern“, „7 Tage“ und Verlaufslinie (täglich mitgeschrieben, sobald du die Seite öffnest).

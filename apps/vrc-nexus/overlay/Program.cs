@@ -46,6 +46,8 @@ namespace NexusOverlay
                 ov.SetOverlayFlag(h, VROverlayFlags.SendVRSmoothScrollEvents, true);
                 ov.SetOverlayFlag(h, VROverlayFlags.EnableClickStabilization, true);
             }
+            // Laser-Koordinaten in Pixeln der Seite melden (Standard wäre 0…1 → jeder Klick landet links oben)
+            SetMouseScale(curW, curH);
             ov.SetOverlayWidthInMeters(dash, 2.4f);
             ov.SetOverlayFlag(hud, VROverlayFlags.MakeOverlaysInteractiveIfVisible, true);
             ov.SetOverlaySortOrder(hud, 10);
@@ -103,13 +105,7 @@ namespace NexusOverlay
         {
             for (int i = 0; i + 3 < bgra.Length; i += 4) { byte b = bgra[i]; bgra[i] = bgra[i + 2]; bgra[i + 2] = b; }
             var ov = OpenVR.Overlay;
-            if (w != curW || h != curH)
-            {
-                curW = w; curH = h;
-                var scale = new HmdVector2_t { v0 = w, v1 = h };
-                ov.SetOverlayMouseScale(dash, ref scale);
-                ov.SetOverlayMouseScale(hud, ref scale);
-            }
+            if (w != curW || h != curH) SetMouseScale(w, h);
             var handle = GCHandle.Alloc(bgra, GCHandleType.Pinned);
             try
             {
@@ -117,6 +113,14 @@ namespace NexusOverlay
                 if (hudVisible) ov.SetOverlayRaw(hud, handle.AddrOfPinnedObject(), w, h, 4);
             }
             finally { handle.Free(); }
+        }
+
+        static void SetMouseScale(uint w, uint h)
+        {
+            curW = w; curH = h;
+            var scale = new HmdVector2_t { v0 = w, v1 = h };
+            OpenVR.Overlay.SetOverlayMouseScale(dash, ref scale);
+            OpenVR.Overlay.SetOverlayMouseScale(hud, ref scale);
         }
 
         static string Str(string json, string key) { var m = Regex.Match(json, "\"" + key + "\"\\s*:\\s*\"([^\"]*)\""); return m.Success ? m.Groups[1].Value : null; }
