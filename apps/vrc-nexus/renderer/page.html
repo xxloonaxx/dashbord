@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VRC Nexus</title>
+    <link rel="icon" href="icon.png">
+    <link rel="stylesheet" href="css/hud.css">
+    <link rel="stylesheet" href="css/nexus.css">
+    <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="wrapper" style="max-width: 1320px;">
+    <header class="vx-head">
+        <div>
+            <div class="hud-tag">VRChat // Freunde · Welten · Avatare · Gruppen · Desktop</div>
+            <h1>VRC Nexus</h1>
+        </div>
+        {{IF_CONNECTED}}<div class="vx-me" id="me"></div>{{END_CONNECTED}}
+    </header>
+
+{{IF_LOGIN}}
+    <div class="vx-login panel">
+        <div class="panel-title">VRChat-Konto verbinden</div>
+        <form id="loginForm" {{LOGIN_HIDDEN}}>
+            <label class="field" for="vxU">VRChat-Benutzername oder E-Mail</label>
+            <input type="text" id="vxU" name="username" autocomplete="username" required>
+            <label class="field" for="vxP" style="margin-top: 12px;">Passwort</label>
+            <input type="password" id="vxP" name="password" autocomplete="current-password" required>
+            <button type="submit" class="btn btn-gold" style="margin-top: 16px; width: 100%;">Anmelden</button>
+        </form>
+        <form id="tfaForm" {{TFA_HIDDEN}} data-types="{{TFA_TYPES}}">
+            <p class="vx-tfa-info" id="tfaInfo">Zwei-Faktor-Code eingeben.</p>
+            <div class="vx-tfa-types" id="tfaTypes"></div>
+            <input type="text" id="vxCode" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="12" placeholder="123456" required>
+            <button type="submit" class="btn btn-gold" style="margin-top: 14px; width: 100%;">Bestätigen</button>
+            <button type="button" class="btn btn-sm" id="tfaCancel" style="margin-top: 10px;">Abbrechen</button>
+        </form>
+        <div class="vx-error" id="loginErr" hidden></div>
+        <ul class="vx-notes">
+            <li>🔒 Dein Passwort wird <b>nicht gespeichert</b> – es geht nur einmal direkt an VRChat. Gespeichert wird nur das Sitzungs-Cookie, verschlüsselt.</li>
+            <li>🔑 Zwei-Faktor-Schutz (Authenticator-App, E-Mail-Code oder Wiederherstellungscode) wird unterstützt.</li>
+            <li>⚠ Die VRChat-API ist inoffiziell. VRC Nexus fragt bewusst sparsam ab (höchstens alle 45 s) und führt nichts automatisch aus.</li>
+        </ul>
+    </div>
+    <details class="panel nc-standalone" id="clientStandalone">
+        <summary class="panel-title" style="cursor: pointer;">🎮 Spiel-Log &amp; OSC – funktioniert auch ohne VRChat-Anmeldung</summary>
+        <div id="clientPane" class="nc"></div>
+    </details>
+{{END_LOGIN}}{{IF_CONNECTED}}
+    <nav class="vx-tabs" id="tabs" role="tablist">
+        <button type="button" class="vx-tabbtn active" data-tab="friends" role="tab"><span>👥</span>Freunde</button>
+        <button type="button" class="vx-tabbtn" data-tab="favs" role="tab"><span>⭐</span>Favoriten</button>
+        <button type="button" class="vx-tabbtn" data-tab="feed" role="tab"><span>📜</span>Verlauf</button>
+        <button type="button" class="vx-tabbtn" data-tab="stats" role="tab"><span>📈</span>Statistik</button>
+        <button type="button" class="vx-tabbtn" data-tab="worlds" role="tab"><span>🌐</span>Welten</button>
+        <button type="button" class="vx-tabbtn" data-tab="avatars" role="tab"><span>🎭</span>Avatare</button>
+        <button type="button" class="vx-tabbtn" data-tab="groups" role="tab"><span>🛡️</span>Gruppen</button>
+        <button type="button" class="vx-tabbtn" data-tab="calendar" role="tab"><span>📅</span>Kalender</button>
+        <button type="button" class="vx-tabbtn" data-tab="gallery" role="tab"><span>🖼️</span>Galerie</button>
+        <button type="button" class="vx-tabbtn" data-tab="notifs" role="tab"><span>🔔</span>Benachrichtigungen</button>
+        <button type="button" class="vx-tabbtn" data-tab="shop" role="tab"><span>🛒</span>Shop</button>
+        <button type="button" class="vx-tabbtn" data-tab="global" role="tab"><span>🌍</span>VRChat</button>
+        <button type="button" class="vx-tabbtn" data-tab="moderation" role="tab"><span>🚫</span>Moderation</button>
+        <button type="button" class="vx-tabbtn" data-tab="news" role="tab"><span>📰</span>Info-Push</button>
+        <button type="button" class="vx-tabbtn" data-tab="search" role="tab"><span>🔍</span>Suche</button>
+        <button type="button" class="vx-tabbtn" data-tab="client" role="tab"><span>🎮</span>Spiel &amp; OSC</button>
+        <button type="button" class="vx-tabbtn" data-tab="account" role="tab"><span>⚙</span>Konto</button>
+    </nav>
+    <div class="vx-bar" id="syncBar">
+        <span id="syncInfo">Lade …</span>
+        <svg class="vx-spark" id="spark" viewBox="0 0 120 26" preserveAspectRatio="none" aria-hidden="true"></svg>
+        <span class="vx-bar-right">
+            <label class="vx-auto"><input type="checkbox" id="autoRefresh" checked> automatisch</label>
+            <button type="button" class="btn btn-sm btn-gold" id="clipBtn" title="ID oder Link aus der Zwischenablage öffnen (oder einfach Strg+V)">📋 Direkt-Zugriff</button>
+            <button type="button" class="btn btn-sm" id="palBtn" title="Befehlspalette (Strg+K)">⌘ Strg+K</button>
+            <button type="button" class="btn btn-sm" id="refreshBtn" title="Jetzt mit VRChat abgleichen (Taste R)">⟳ Aktualisieren</button>
+        </span>
+    </div>
+    <div class="vx-myloc" id="myLoc" hidden></div>
+    <div class="vx-error" id="globalErr" hidden></div>
+
+    <section class="vx-tab" data-pane="friends">
+        <div class="vx-tools">
+            <input type="search" id="friendSearch" placeholder="Freunde suchen (Name, Welt, Status, Notiz) …  Taste /" aria-label="Freunde suchen">
+            <select id="friendSort" aria-label="Sortierung">
+                <option value="state">Nach Status</option><option value="name">Name A–Z</option><option value="since">Zuletzt geändert</option>
+                <option value="trust">Vertrauensstufe</option><option value="world">Nach Welt</option><option value="friend_since">Neueste Freunde</option>
+            </select>
+            <select id="friendPlatform" aria-label="Plattform"><option value="">Alle Plattformen</option><option value="standalonewindows">💻 PC</option><option value="android">📱 Quest / Android</option><option value="ios">🍏 iOS</option><option value="web">🌐 Website / App</option></select>
+            <select id="friendTrust" aria-label="Vertrauensstufe"><option value="">Alle Stufen</option></select>
+            <label class="vx-auto"><input type="checkbox" id="showOffline"> Offline zeigen</label>
+            <label class="vx-auto"><input type="checkbox" id="onlyNotes"> nur mit Notiz</label>
+            <label class="vx-auto"><input type="checkbox" id="compactView"> kompakt</label>
+            <a class="btn btn-sm" href="nexus.php?export=friends" title="Freundesliste als CSV (Excel)">⬇ CSV</a>
+        </div>
+        <div class="chips vx-favchips" id="favChips"></div>
+        <div id="friendsBox"></div>
+    </section>
+
+    <section class="vx-tab" data-pane="feed" hidden>
+        <div class="vx-tools">
+            <input type="search" id="feedSearch" placeholder="Verlauf durchsuchen …" aria-label="Verlauf durchsuchen">
+            <select id="feedType" aria-label="Art">
+                <option value="">Alle Ereignisse</option><option value="online,offline,active">Online / Offline</option><option value="gps">Ortswechsel</option>
+                <option value="status">Status</option><option value="avatar">Avatar</option><option value="friend_add,friend_remove">Freunde +/−</option>
+                <option value="name,bio,trust">Name / Bio / Vertrauen</option><option value="self">🧭 Meine Orte</option>
+            </select>
+            <label class="vx-auto"><input type="checkbox" id="feedFav"> nur ⭐ Favoriten</label>
+            <a class="btn btn-sm" href="nexus.php?export=feed" title="Kompletten Verlauf als CSV">⬇ CSV</a>
+        </div>
+        <div class="vx-feed" id="feedBox"></div>
+        <button type="button" class="btn btn-sm" id="feedMore" hidden>Ältere laden</button>
+    </section>
+
+    <section class="vx-tab" data-pane="stats" hidden>
+        <div id="statsBox"><div class="vx-loading">Lade Statistik …</div></div>
+    </section>
+
+    <section class="vx-tab" data-pane="worlds" hidden>
+        <div class="vx-tools">
+            <div class="chips" id="worldKinds">
+                <button type="button" class="chip on" data-kind="favorites">⭐ Favoriten</button><button type="button" class="chip" data-kind="recent">🕘 Zuletzt besucht</button>
+                <button type="button" class="chip" data-kind="active">🔥 Gerade beliebt</button><button type="button" class="chip" data-kind="mine">🛠 Meine Welten</button>
+                <button type="button" class="chip" data-kind="friends">👥 Wo Freunde sind</button>
+                <button type="button" class="chip" data-kind="recentinst">🧭 Meine letzten Instanzen</button><button type="button" class="chip" data-kind="bookmarks">🔖 Gemerkt</button>
+                <button type="button" class="chip" data-kind="roulette">🎲 Welt-Roulette</button>
+            </div>
+            <form id="worldSearch" class="vx-inline"><input type="search" name="q" placeholder="Welten suchen …" minlength="2" aria-label="Welten suchen"><button class="btn btn-sm btn-gold">Suchen</button></form>
+        </div>
+        <div class="vx-cards" id="worldsBox"></div>
+    </section>
+
+    <section class="vx-tab" data-pane="avatars" hidden>
+        <div class="vx-tools">
+            <div class="chips" id="avatarKinds"><button type="button" class="chip on" data-kind="mine">🎭 Meine Avatare</button><button type="button" class="chip" data-kind="favorites">⭐ Favoriten</button><button type="button" class="chip" data-kind="search">🔎 Avatar-Suche</button></div>
+            <input type="search" id="avatarSearch" placeholder="Avatare filtern (Name, Autor) …" aria-label="Avatare filtern">
+            <select id="avatarSort" aria-label="Sortierung">
+                <option value="group">Nach Favoritengruppe</option><option value="updated">Zuletzt aktualisiert</option><option value="created">Neueste zuerst</option>
+                <option value="name">Name A–Z</option><option value="author">Nach Autor</option><option value="platform">PC + Quest zuerst</option><option value="vrchat">Reihenfolge wie in VRChat</option>
+            </select>
+            <select id="avatarPf" aria-label="Plattform"><option value="">Alle Plattformen</option><option value="cross">💻+📱 PC &amp; Quest</option><option value="PC">💻 PC</option><option value="Quest / Android">📱 Quest</option></select>
+            <button type="button" class="btn btn-sm" id="avatarRandom" title="Zufälligen Avatar aus der (gefilterten) Liste anziehen">🎲 Zufall</button>
+            <span class="vx-small" id="avatarCount"></span>
+        </div>
+        <form class="vx-bar avdb-bar" id="avDbForm" hidden>
+            <input type="search" name="q" placeholder="Avatar suchen – Name, Stichwort, Autor-ID (usr_…) oder Avatar-ID" required minlength="2">
+            <select name="provider" id="avDbProv" aria-label="Datenbank"></select>
+            <button class="btn btn-sm btn-gold">🔎 Suchen</button>
+            <button type="button" class="btn btn-sm" id="avDbEdit" hidden title="Provider verwalten">⚙</button>
+        </form>
+        <div id="avatarsBox"></div>
+    </section>
+
+    <section class="vx-tab" data-pane="calendar" hidden>
+        <div class="vx-tools">
+            <select id="calGroup" aria-label="Gruppe"><option value="">Alle Gruppen</option></select>
+            <select id="calCat" aria-label="Kategorie"><option value="">Alle Kategorien</option><option value="hangout">💬 Treffen</option><option value="gaming">🎮 Gaming</option><option value="music">🎵 Musik</option>
+                <option value="dance">💃 Tanz</option><option value="performance">🎭 Auftritt</option><option value="arts">🎨 Kunst</option><option value="education">📚 Bildung</option><option value="exploration">🧭 Erkunden</option>
+                <option value="film_media">🎬 Film &amp; Medien</option><option value="avatars">🦊 Avatare</option><option value="wellness">🧘 Wohlfühlen</option><option value="roleplaying">🐉 Rollenspiel</option><option value="other">📦 Sonstiges</option></select>
+            <label class="vx-auto"><input type="checkbox" id="calFav"> nur ⭐ interessiert</label>
+            <button type="button" class="btn btn-sm" id="calRefresh">⟳ Neu laden</button>
+            <span class="vx-small" id="calInfo"></span>
+        </div>
+        <div class="vx-cols vx-calcols">
+            <div id="calList"></div>
+            <div>
+                <div class="panel"><div class="panel-title">🔄 Synchronisieren</div><div id="calSync"></div></div>
+                <form class="panel" id="calCreate" hidden>
+                    <div class="panel-title">＋ Event im VRChat-Kalender</div>
+                    <label class="field">Gruppe</label><select name="group"></select>
+                    <label class="field">Titel</label><input type="text" name="title" maxlength="64" required>
+                    <div class="vx-tools" style="margin: 0;"><div style="flex: 1;"><label class="field">Beginn</label><input type="datetime-local" name="start" required></div><div style="flex: 1;"><label class="field">Ende</label><input type="datetime-local" name="end"></div></div>
+                    <label class="field">Kategorie</label><select name="category"><option value="hangout">💬 Treffen</option><option value="gaming">🎮 Gaming</option><option value="music">🎵 Musik</option><option value="dance">💃 Tanz</option>
+                        <option value="performance">🎭 Auftritt</option><option value="arts">🎨 Kunst</option><option value="education">📚 Bildung</option><option value="exploration">🧭 Erkunden</option><option value="film_media">🎬 Film &amp; Medien</option>
+                        <option value="avatars">🦊 Avatare</option><option value="wellness">🧘 Wohlfühlen</option><option value="roleplaying">🐉 Rollenspiel</option><option value="other">📦 Sonstiges</option></select>
+                    <label class="field">Sichtbarkeit</label><select name="access"><option value="group">🔒 Nur Gruppe</option><option value="public">🌍 Öffentlich</option></select>
+                    <label class="field">Plattformen</label>
+                    <div class="chips"><label class="chip"><input type="checkbox" name="pf" value="standalonewindows" checked> PC</label><label class="chip"><input type="checkbox" name="pf" value="android" checked> Quest</label><label class="chip"><input type="checkbox" name="pf" value="ios"> iOS</label></div>
+                    <label class="field">Beschreibung</label><textarea name="description" rows="3" maxlength="2000"></textarea>
+                    <label class="vx-auto"><input type="checkbox" name="notify"> Gruppe benachrichtigen</label>
+                    <button class="btn btn-gold" style="margin-top: 10px;">Event anlegen</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <section class="vx-tab" data-pane="gallery" hidden>
+        <div class="vx-tools">
+            <div class="chips" id="galKinds"></div>
+            <button type="button" class="btn btn-sm" id="galRefresh">⟳ Aktualisieren</button>
+            <form id="galUpload" class="vx-inline" enctype="multipart/form-data">
+                <input type="file" name="file" accept="image/png,image/jpeg,image/gif,image/webp" required aria-label="Bilddatei">
+                <select name="anim" id="galAnim" aria-label="Emoji-Animation" hidden><option value="none">ohne Animation</option><option value="aura">Aura</option><option value="bats">Fledermäuse</option><option value="bees">Bienen</option>
+                    <option value="bounce">Hüpfen</option><option value="cloud">Wolke</option><option value="confetti">Konfetti</option><option value="crying">Tränen</option><option value="fire">Feuer</option><option value="idea">Idee</option>
+                    <option value="lasers">Laser</option><option value="magnet">Magnet</option><option value="money">Geld</option><option value="orbit">Orbit</option><option value="rain">Regen</option><option value="rotate">Drehen</option>
+                    <option value="shake">Wackeln</option><option value="snow">Schnee</option><option value="spin">Kreiseln</option><option value="splash">Platsch</option><option value="zzz">Zzz</option></select>
+                <button class="btn btn-sm btn-gold">⬆ Hochladen</button>
+            </form>
+        </div>
+        <div id="galBox"><div class="vx-empty">Lade …</div></div>
+    </section>
+
+    <section class="vx-tab" data-pane="news" hidden>
+        <div class="vx-tools"><div class="chips" id="newsKinds"></div><button type="button" class="btn btn-sm" id="newsRefresh" title="Neu laden">⟳</button></div>
+        <div id="newsBox"></div>
+    </section>
+
+    <section class="vx-tab" data-pane="favs" hidden>
+        <div class="vx-chips" id="favKinds"><button type="button" class="chip on" data-fk="friend">👥 Freunde</button><button type="button" class="chip" data-fk="world">🌐 Welten</button><button type="button" class="chip" data-fk="avatar">🎭 Avatare</button></div>
+        <div class="vx-favwrap"><aside class="vx-favside" id="favSide"></aside><div class="vx-favmain" id="favMain"></div></div>
+    </section>
+
+    <section class="vx-tab" data-pane="groups" hidden>
+        <div id="groupsBox"></div>
+    </section>
+
+    <section class="vx-tab" data-pane="notifs" hidden>
+        <div class="vx-bar nf-bar">
+            <span class="chips" id="nfView"><button type="button" class="chip on" data-view="open">Offen bei VRChat</button><button type="button" class="chip" data-view="all">Ganzer Verlauf</button></span>
+            <select id="nfType"><option value="">Alle Arten</option></select>
+            <input type="search" id="nfQ" placeholder="Von, Gruppe, Text …">
+            <button type="button" class="btn btn-sm" id="nfReload">⟳ Neu laden</button>
+            <button type="button" class="btn btn-sm btn-danger" id="nfClear" title="Einträge löschen, die es bei VRChat nicht mehr gibt">🧹 Verlauf leeren</button>
+        </div>
+        <div id="notifBox"></div>
+    </section>
+    <section class="vx-tab" data-pane="shop" hidden>
+        <div id="shopBox"></div>
+        <form class="vx-bar shop-browse" id="shopForm">
+            <b>🔎 Shop ansehen:</b>
+            <input type="text" name="target" placeholder="Profil-Link / usr_… eines Creators oder Store-ID esto_…" required>
+            <button class="btn btn-sm btn-gold">Anzeigen</button>
+        </form>
+        <div id="shopBrowse"></div>
+    </section>
+    <section class="vx-tab" data-pane="global" hidden>
+        <div id="globalBox"></div>
+        <div class="vx-sec"><h3>🔥 Gerade beliebte Welten</h3><div id="hotWorlds"></div></div>
+    </section>
+
+    <section class="vx-tab" data-pane="moderation" hidden>
+        <p class="vx-small">Hier siehst du, wen du in VRChat blockiert, stummgeschaltet oder dessen Avatar du ausgeblendet hast – und kannst es aufheben.</p>
+        <div id="modBox"></div>
+    </section>
+
+    <section class="vx-tab" data-pane="search" hidden>
+        <form class="vx-tools" id="searchForm">
+            <div class="chips" id="searchKinds"><button type="button" class="chip on" data-kind="users">👤 Benutzer</button><button type="button" class="chip" data-kind="worlds">🌐 Welten</button><button type="button" class="chip" data-kind="groups">🛡️ Gruppen</button></div>
+            <input type="search" id="userSearch" placeholder="Suchbegriff …" minlength="2" required aria-label="Suchbegriff"><button class="btn btn-gold">Suchen</button>
+        </form>
+        <div class="vx-results" id="searchBox"></div>
+    </section>
+
+    <section class="vx-tab" data-pane="client" hidden><div id="clientPane" class="nc"></div></section>
+    <section class="vx-tab" data-pane="account" hidden>
+        <div class="vx-cols">
+            <div class="panel">
+                <div class="panel-title">Mein Status</div>
+                <form id="statusForm" class="vx-status-form">
+                    <div class="vx-status-pick">
+                        {{STATUS_RADIOS}}
+                    </div>
+                    <label class="field" style="margin-top: 12px;">Statustext (max. 32 Zeichen)</label>
+                    <input type="text" name="desc" maxlength="32" list="statusHistory">
+                    <datalist id="statusHistory"></datalist>
+                    <div class="chips" id="statusPresets" style="margin-top: 8px;"></div>
+                    <button class="btn btn-gold" style="margin-top: 12px;">Status setzen</button>
+                    <button type="button" class="btn btn-sm" id="presetSave" style="margin-top: 12px;" title="Aktuelle Auswahl als Vorlage merken">＋ Als Vorlage</button>
+                </form>
+            </div>
+            <div class="panel">
+                <div class="panel-title">Mein Profil</div>
+                <form id="profileForm">
+                    <label class="field">Pronomen</label>
+                    <input type="text" name="pronouns" maxlength="32" placeholder="z. B. sie/ihr">
+                    <label class="field" style="margin-top: 10px;">Bio (max. 512 Zeichen)</label>
+                    <textarea name="bio" rows="5" maxlength="512"></textarea>
+                    <label class="field" style="margin-top: 10px;">Links (bis zu 3)</label>
+                    <input type="text" name="links[]" placeholder="https://…"><input type="text" name="links[]" placeholder="https://…" style="margin-top: 4px;"><input type="text" name="links[]" placeholder="https://…" style="margin-top: 4px;">
+                    <button class="btn btn-gold" style="margin-top: 12px;">Profil speichern</button>
+                </form>
+            </div>
+            <div class="panel">
+                <div class="panel-title">Benachrichtigungen &amp; Anzeige</div>
+                <form id="prefsForm" class="vx-prefs">
+                    <label class="field">Browser-Benachrichtigung, wenn jemand ins Spiel kommt</label>
+                    <select name="notify"><option value="off">Aus</option><option value="favorites">Nur ⭐ Favoriten</option><option value="vrcfav">⭐ Favoriten + VRChat-Favoriten</option><option value="all">Alle Freunde</option></select>
+                    <label class="vx-auto"><input type="checkbox" name="notify_offline"> auch beim Offline-Gehen</label>
+                    <label class="vx-auto"><input type="checkbox" name="notify_gps"> auch bei Ortswechsel (nur Favoriten)</label>
+                    <label class="vx-auto"><input type="checkbox" name="sound"> mit Ton</label>
+                    <label class="field" style="margin-top: 10px;">⚧ Gender-Modus (Texte gendern)</label>
+                    <select name="gender"><option value="off">Aus</option><option value="star">Sternchen – Freund*innen</option><option value="colon">Doppelpunkt – Freund:innen</option>
+                        <option value="gap">Unterstrich – Freund_innen</option><option value="dot">Mediopunkt – Freund·innen</option><option value="binnen">Binnen-I – FreundInnen</option></select>
+                    <label class="vx-auto"><input type="checkbox" name="clipwatch"> 📋 Zwischenablage beim Zurückkehren prüfen und erkannte IDs anbieten</label>
+                    <label class="field" style="margin-top: 10px;">Automatisch aktualisieren alle</label>
+                    <select name="interval"><option value="60">1 Minute</option><option value="120">2 Minuten</option><option value="300">5 Minuten</option><option value="600">10 Minuten</option></select>
+                    <button type="button" class="btn btn-sm" id="notifyTest" style="margin-top: 10px;">🔔 Test-Benachrichtigung</button>
+                </form>
+            </div>
+            <div class="panel">
+                <div class="panel-title">Verbindung &amp; Daten</div>
+                <p class="vx-small" id="connInfo"></p>
+                <p class="vx-small">Freunde werden höchstens alle {{SYNC_MIN}} Sekunden abgeglichen, offline Freunde alle {{OFFLINE_MIN}} Minuten.
+                   Verlauf und Statistik entstehen durch diese Abgleiche – solange VRC Nexus läuft (auch minimiert im Infobereich), wird aufgezeichnet. Der Verlauf wird {{FEED_DAYS}} Tage aufbewahrt.</p>
+                <p><a class="btn btn-sm" href="nexus.php?export=friends">⬇ Freunde (CSV)</a> <a class="btn btn-sm" href="nexus.php?export=feed">⬇ Verlauf (CSV)</a></p>
+                <button type="button" class="btn btn-danger" id="logoutBtn">VRChat abmelden &amp; trennen</button>
+            </div>
+            
+                <div class="panel">
+                    <div class="panel-title">Einstellungen (Admin)</div>
+                    <form id="settingsForm">
+                        <label class="field">User-Agent für VRChat</label>
+                        <input type="text" name="user_agent" value="{{UA}}" placeholder="{{UA_DEFAULT}}">
+                        <p class="vx-small">VRChat bittet darum, dass sich Programme mit Name, Version und einer Kontaktmöglichkeit ausweisen, z. B. <code>MeinDashboard/1.0 kontakt@example.org</code>.</p>
+                        <button class="btn btn-sm">Speichern</button>
+                    </form>
+                </div>
+        </div>
+        <p class="vx-small">Tastenkürzel: <kbd>Strg</kbd>+<kbd>K</kbd> Befehlspalette · <kbd>Strg</kbd>+<kbd>V</kbd> ID/Link öffnen · <kbd>/</kbd> Suche · <kbd>R</kbd> aktualisieren · <kbd>1</kbd>–<kbd>9</kbd>, <kbd>0</kbd> Reiter · <kbd>Esc</kbd> schließen</p>
+        <div class="panel"><div class="panel-title">📋 Direkt-Zugriff – was erkannt wird</div>
+            <p class="vx-small">Kopiere irgendwo eine VRChat-ID oder einen Link und drücke auf dieser Seite <kbd>Strg</kbd>+<kbd>V</kbd> (oder „📋 Direkt-Zugriff“). Erkannt werden:
+            Benutzer <code>usr_…</code>, Welten <code>wrld_…</code>, Avatare <code>avtr_…</code>, Gruppen <code>grp_…</code> oder Kürzel wie <code>FURRY.1234</code> / <code>vrc.group/FURRY.1234</code>,
+            Instanzen <code>wrld_…:12345~region(eu)</code> sowie Links von vrchat.com (Profile, Welten, Avatare, Gruppen, Einladungslinks) und <code>vrchat://launch</code>-Links.</p></div>
+    </section>
+
+    <div class="pm" id="groupModal" hidden role="dialog" aria-modal="true" aria-label="Gruppe">
+        <div class="pm-box vx-gbox"><button type="button" class="pm-x" data-gclose aria-label="Schließen">&times;</button><div id="groupDetail"></div></div>
+    </div>
+    <div class="pm" id="userModal" hidden role="dialog" aria-modal="true" aria-label="Details">
+        <div class="pm-box vx-user"><button type="button" class="pm-x" data-close aria-label="Schließen">&times;</button><div id="userBody">Lade …</div></div>
+    </div>
+{{END_CONNECTED}}
+</div>
+<script>
+    window.VRCX = {{VRCX_JSON}};
+</script>
+<script src="js/nexus.js"></script>
+<script src="js/nexus-client.js"></script>
+</body>
+</html>

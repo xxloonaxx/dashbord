@@ -1,0 +1,67 @@
+name: VRC Nexus App (Windows)
+
+on:
+  push:
+    paths:
+      - 'apps/vrc-nexus/**'
+      - '.github/workflows/vrc-nexus-app.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Abhängigkeiten
+        working-directory: apps/vrc-nexus
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+        run: npm ci
+      - name: Tests
+        working-directory: apps/vrc-nexus
+        run: npm test
+      # Windows kann dieses Repository nicht auschecken (Dateinamen wie „con.php“ sind dort reserviert) –
+      # darum reicht dieser Job nur den App-Ordner weiter.
+      - name: App-Quelltext weitergeben
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-src
+          path: |
+            apps/vrc-nexus/
+            !apps/vrc-nexus/node_modules/
+          retention-days: 1
+
+  build-windows:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - name: App-Quelltext holen
+        uses: actions/download-artifact@v4
+        with:
+          name: app-src
+          path: app
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Abhängigkeiten
+        working-directory: app
+        run: npm ci
+      - name: Tests (Windows)
+        working-directory: app
+        run: npm test
+      - name: EXE bauen (portabel + Installer)
+        working-directory: app
+        run: npx electron-builder --win portable nsis --x64 --publish never
+      - name: Artefakt hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: VRC-Nexus-Windows
+          path: |
+            app/dist/*.exe
+            app/README.md
