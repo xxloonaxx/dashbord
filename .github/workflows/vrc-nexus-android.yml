@@ -36,6 +36,7 @@ jobs:
           npx cap add android
           rm -rf android/app/src/main/res/mipmap-anydpi-v26
           cp -r resources/android/* android/app/src/main/res/
+          sh native/install.sh
           VER=$(node -p "require('./package.json').version")
           sed -i "s/versionName \"1.0\"/versionName \"$VER\"/" android/app/build.gradle
           npx cap sync android

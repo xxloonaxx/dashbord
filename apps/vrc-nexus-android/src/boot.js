@@ -6,7 +6,7 @@
  * - Die Datenbank liegt in IndexedDB (privater Speicher der App).
  * Ohne PC-Funktionen: Spiel-Log, OSC, Spielerliste, Stream Deck, Ordner, Registry, config.json …
  */
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
@@ -78,7 +78,14 @@ if (native) {
     document.addEventListener('visibilitychange', () => { if (document.hidden) { try { db.save(); } catch (e) { /* egal */ } fs.__flush().catch(() => {}); } });
     window.addEventListener('pagehide', () => { try { db.save(); } catch (e) { /* egal */ } });
 
-    window.NexusMobile = { download, imgFix };
+    // Homescreen-Widget mit einer Zusammenfassung versorgen (beim Start, jede Minute, beim Verlassen der App)
+    const NexusWidget = native ? registerPlugin('NexusWidget') : null;
+    const pushWidget = () => { if (!NexusWidget) return; try { NexusWidget.update({ data: JSON.stringify(app.home.summary()) }).catch(() => {}); } catch (e) { /* egal */ } };
+    setTimeout(pushWidget, 8000);
+    setInterval(pushWidget, 60000);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) pushWidget(); });
+
+    window.NexusMobile = { download, imgFix, pushWidget };
     status('Starte …');
     const r = await app.handle({ method: 'GET', query: new URLSearchParams() });
     document.open();

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:background="@drawable/nexus_widget_bg">
+    <TextView android:id="@+id/w_head" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:textColor="#F3C262" android:textSize="15sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" android:text="VRC Nexus" />
+    <TextView android:id="@+id/w_line" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:textColor="#38D5E6" android:textSize="13sp" android:layout_marginTop="2dp" android:maxLines="1" android:ellipsize="end" />
+    <TextView android:id="@+id/w_list" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+        android:textColor="#E2E8F0" android:textSize="12sp" android:layout_marginTop="6dp" android:lineSpacingExtra="2dp" android:ellipsize="end" />
+    <TextView android:id="@+id/w_foot" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:textColor="#7A8794" android:textSize="10sp" android:gravity="end" />
+</LinearLayout>
