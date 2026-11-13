@@ -49,6 +49,7 @@
                 <button type="button" class="chip" data-sub="cam">📷 Kamera</button>
                 <button type="button" class="chip" data-sub="macros">⚡ Makros</button>
                 <button type="button" class="chip" data-sub="auto">🤖 Automatik</button>
+                <button type="button" class="chip" data-sub="speech">🎙 Sprache</button>
                 <button type="button" class="chip" data-sub="log">📜 Spiel-Log</button>
                 <button type="button" class="chip" data-sub="people">🧑‍🤝‍🧑 Getroffen</button>
                 <button type="button" class="chip" data-sub="visits">🌐 Besuche</button>
@@ -155,6 +156,7 @@
                     </form>
                 </div>
             </div>
+            <div class="nc-pane" data-p="speech" hidden><div id="ncSpeech"></div></div>
             <div class="nc-pane" data-p="log" hidden>
                 <div class="nc-row nc-filter">
                     <select id="ncKind"><option value="">Alle Ereignisse</option></select>
@@ -316,6 +318,7 @@
         if (name === 'cam') loadCam();
         if (name === 'macros') loadMacros();
         if (name === 'auto') loadAuto();
+        if (name === 'speech' && window.NexusSpeech) window.NexusSpeech.open();
         if (name === 'people') loadPeople();
         if (name === 'visits') loadVisits();
     }

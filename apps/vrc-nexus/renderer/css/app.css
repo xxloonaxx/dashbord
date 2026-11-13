@@ -245,3 +245,7 @@ body.menu-icons .vx-menu .vx-tabbtn .vx-badge, body.mobile .vx-menu .vx-tabbtn .
 .hm-pre { white-space: pre-wrap; font-size: 0.85rem; border-left: 2px solid var(--accent-gold, #f3c262); padding-left: 8px; }
 body.mobile .hm-grid { grid-template-columns: 1fr; } body.mobile .hm-w.wide { grid-column: auto; }
 @media (max-width: 700px) { .hm-w.wide { grid-column: auto; } }
+
+.sp-meter { flex: 1; height: 8px; background: rgba(255,255,255,0.08); position: relative; min-width: 80px; }
+.sp-meter i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(90deg, #50fa7b, #f3c262, #ff5555); transition: width 0.08s; }
+.bad { color: #ff7070; }

@@ -4,7 +4,7 @@
  * Die Oberfläche läuft unter app://nexus/, alle Anfragen an „nexus.php“ beantwortet das eingebaute Backend (backend/app.js).
  * Läuft im Infobereich weiter (Verlauf, Statistik, Spiel-Log & OSC zeichnen dann weiter auf).
  */
-const { app, BrowserWindow, Menu, Tray, Notification, protocol, shell, safeStorage, nativeImage, dialog } = require('electron');
+const { app, BrowserWindow, Menu, Tray, Notification, protocol, shell, safeStorage, nativeImage, dialog, globalShortcut } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
@@ -80,6 +80,15 @@ const host = {
         }
         setTimeout(() => { quitting = true; app.quit(); }, 1200);
     },
+    /** Spracheingabe: Aufnahme in der Oberfläche starten/stoppen */
+    speechCmd: op => { if (win) win.webContents.executeJavaScript('window.NexusSpeech && NexusSpeech.cmd(' + JSON.stringify(op) + ')').catch(() => {}); },
+    /** globale Taste für die Spracheingabe (auch wenn VRChat im Vordergrund ist) */
+    applySpeech: cfg => {
+        if (host.speechKey) { try { globalShortcut.unregister(host.speechKey); } catch (e) { /* egal */ } host.speechKey = ''; }
+        if (!cfg || !cfg.enabled || !cfg.hotkey) return;
+        try { if (globalShortcut.register(cfg.hotkey, () => { try { nexus.speech.ptt('toggle'); } catch (e) { notify('VRC Nexus', e.message); } })) host.speechKey = cfg.hotkey; }
+        catch (e) { notify('VRC Nexus', 'Tastenkürzel „' + cfg.hotkey + '“ ungültig: ' + e.message); }
+    },
     applySettings: (changed, s) => {
         prefs = { 'sys.hw_accel': s['sys.hw_accel'], 'sys.close_to_tray': s['sys.close_to_tray'], 'sys.start_minimized': s['sys.start_minimized'], 'adv.devtools': s['adv.devtools'] };
         try { fs.writeFileSync(PREFS_FILE, JSON.stringify(prefs)); } catch (e) { /* egal */ }
@@ -144,6 +153,7 @@ app.whenReady().then(async () => {
     nexus.tools.start();
     nexus.link.start();
     nexus.updater.start();
+    host.applySpeech(nexus.speech.cfg());
     protocol.handle('app', async request => {
         const url = new URL(request.url);
         if (url.pathname === '/' || url.pathname === '/nexus.php' || url.pathname === '/index.html') {
