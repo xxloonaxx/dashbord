@@ -281,7 +281,7 @@ function vrc_hot_worlds(array &$acc): array {
 // Avatar-Suche über externe Datenbanken (VRCX-kompatible „Avatar Database Provider“)
 // =====================================================================
 
-const VRC_AVATAR_PROVIDERS_DEFAULT = ['https://api.avtrdb.com/v3/avatar/search/vrcx'];
+const VRC_AVATAR_PROVIDERS_DEFAULT = ['https://api.avtrdb.com/v3/avatar/search/vrcx', 'https://paw-api.amelia.fun/vrcx_search'];
 
 function vrc_avatar_providers(): array {
     $list = json_decode(setting('vrc_avatar_providers', ''), true);
