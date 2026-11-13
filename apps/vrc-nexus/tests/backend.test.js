@@ -365,6 +365,79 @@ test('Auto-Update: neueste Version finden, Windows installieren, Android öffnen
     delete process.env.NEXUS_UPDATE_API;
 });
 
+test('1.3: Parameter-Erkennung, Makros, Kamera, Automatik, Sprache, Rückblick', async () => {
+    const { NexusApp } = require('../backend/app');
+    const { parse } = require('../backend/macros');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nx13-'));
+    const U1 = 'usr_11111111-2222-3333-4444-555555555555', A = 'avtr_aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+    fs.mkdirSync(path.join(dir, 'OSC', U1, 'Avatars'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'OSC', U1, 'Avatars', A + '.json'), '﻿' + JSON.stringify({ id: A, name: 'Fuchs', parameters: [
+        { name: 'Ears', input: { type: 'Bool' }, output: { type: 'Bool' } }, { name: 'Outfit', input: { type: 'Int' }, output: { type: 'Int' } }, { name: 'VelocityX', output: { type: 'Float' } }] }));
+    process.env.NEXUS_VRCHAT_DIR = dir;
+    const db = await openDatabase(null);
+    const app = new NexusApp({ db, crypt: { encrypt: s => s, decrypt: s => s }, host: { userData: dir } });
+    app.game.osc.stopListen();
+    const sent = [];
+    app.game.osc.send = async (a, ...x) => { sent.push(a + ' ' + JSON.stringify(x)); };
+    app.game.osc.chatbox = async t => { sent.push('/chatbox/input ' + t); };
+    app.game.osc.avatarId = A;
+    app.game.osc.params = { Ears: true };
+    // Parameter
+    const pl = await app.post({ act: 'client_params' }, {});
+    assert.strictEqual(pl.avatar.name, 'Fuchs');
+    assert.deepStrictEqual(pl.params.map(p => p.name + ':' + p.type + ':' + p.builtin), ['Ears:bool:false', 'Outfit:int:false', 'VelocityX:float:true']);
+    await app.post({ act: 'client_param_fav', avatar: A, name: 'Outfit' }, {});
+    assert.strictEqual((await app.post({ act: 'client_params' }, {})).params[0].name, 'Outfit');
+    // Makros
+    assert.throws(() => parse('blub 1'), /Unbekannter Schritt/);
+    assert.strictEqual(parse('param Hue = 0,5\nwait 1,5')[1].s, 1.5);
+    await app.macros.run('param Ears = 0\ncam Zoom 80\ncam Capture\nchatbox Hallo {name}');
+    assert.ok(sent.includes('/avatar/parameters/Ears [false]') && sent.includes('/usercamera/Zoom [{"float":80}]') && sent.includes('/usercamera/Capture [true]'), sent.join(' | '));
+    // Kamera-Vorlage
+    app.game.osc.cam = { Zoom: 60, Pose: [1, 2, 3, 0, 90, 0] };
+    await app.post({ act: 'cam_preset_save', name: 'Porträt' }, {});
+    sent.length = 0;
+    await app.post({ act: 'cam_preset_load', name: 'Porträt' }, {});
+    assert.ok(sent.some(x => x.startsWith('/usercamera/Pose')), sent.join(' | '));
+    // Automatik: Begrüßung bei neuem Spieler
+    await app.post({ act: 'auto_save', name: 'Hallo', trigger: 'player_join', arg: 'all', script: 'chatbox Hi {spieler_name}!', cooldown: 0 }, {});
+    app.game.state.running = true;
+    sent.length = 0;
+    app.auto.onGameEvent({ ts: Math.floor(Date.now() / 1000), kind: 'player_join', player_id: 'usr_x', player_name: 'Neko' });
+    await U.sleep(50);
+    assert.ok(sent.includes('/chatbox/input Hi Neko!'), sent.join(' | '));
+    // AFK an/aus über OSC
+    await app.post({ act: 'auto_save', name: 'AFK', trigger: 'afk_on', script: 'chatbox AFK', cooldown: 0 }, {});
+    sent.length = 0;
+    app.auto.onOsc('/avatar/parameters/AFK', [true]);
+    await U.sleep(50);
+    assert.ok(sent.includes('/chatbox/input AFK'));
+    // Sprache: Ersatz-Programm statt whisper.cpp
+    const fake = path.join(dir, 'fakewhisper.js');
+    fs.writeFileSync(fake, '#!/usr/bin/env node\nconsole.log("[00:00:00.000 --> 00:00:01.000]  Hallo Welt");\n');
+    fs.chmodSync(fake, 0o755);
+    if (process.platform !== 'win32') {
+        process.env.NEXUS_WHISPER_BIN = fake;
+        app.speech.saveCfg({ enabled: '1', prefix: '' });
+        sent.length = 0;
+        const wav = Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(3000)]);
+        const r = await app.post({ act: 'speech_transcribe', audio: wav.toString('base64') }, {});
+        assert.strictEqual(r.text, 'Hallo Welt');
+        assert.ok(sent.includes('/chatbox/input Hallo Welt'), sent.join(' | '));
+        delete process.env.NEXUS_WHISPER_BIN;
+    }
+    // Rückblick & Startseite
+    const now = Math.floor(Date.now() / 1000);
+    app.game.store([{ ts: now - 3600, kind: 'world_join', world_id: 'wrld_1', world_name: 'Testwelt' }, { ts: now - 3000, kind: 'player_join', player_id: 'usr_y', player_name: 'Luna' }, { ts: now - 600, kind: 'world_leave' }]);
+    const rc = await app.post({ act: 'ins_recap', days: 7 }, {});
+    assert.strictEqual(rc.top_worlds[0].name, 'Testwelt');
+    assert.ok(rc.playtime >= 2900 && rc.top_people[0].name === 'Luna');
+    const home = await app.post({ act: 'home_data' }, {});
+    assert.ok(Array.isArray(home.macros) && home.friends && home.cam);
+    app.tools.stop();
+    delete process.env.NEXUS_VRCHAT_DIR;
+});
+
 (async () => {
     let ok = 0;
     for (const [name, fn] of tests) {

@@ -14,7 +14,7 @@ const SYNC_MIN = 45;
 const OFFLINE_SYNC = 900;
 const FEED_KEEP_DAYS = 180;
 const UID = 1;   // die App hat genau ein Konto
-const VERSION = '1.2.2';
+const VERSION = '1.3.0';
 
 class Vrc {
     /**

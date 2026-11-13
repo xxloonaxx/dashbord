@@ -20,6 +20,19 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.3
+- **🏠 Startseite mit Widgets** (Windows + Android): Status, Freunde im Spiel, Instanz, Chatbox, Makros, Benachrichtigungen, Heute, Spielt gerade, Kamera, Lieblings-Parameter, Uhr & Countdown, Notizzettel, Sprache, Overlay, Version – mit „✏️ Anpassen“ ein-/ausblenden, verschieben, breit/schmal.
+- **📱 Android-Homescreen-Widget:** Freunde im Spiel/online, ungelesene Benachrichtigungen, die ersten Freunde mit Welt; Tippen öffnet die App. (Aktualisiert sich, solange die App läuft bzw. beim Verlassen der App.)
+- **🎚 Parameter-Erkennung:** liest die OSC-Konfiguration jedes Avatars (`LocalLow\VRChat\VRChat\OSC\usr_…\Avatars\avtr_….json`) – Schalter, Regler, Zahlen, Suche, ★ Favoriten, VRChat-eigene ausblendbar.
+- **📷 Kamera-Werkzeuge** (VRChat-Kamera per OSC): Modi, Foto, Selbstauslöser, Serienbild, Zoom/Belichtung/Fokus/Blende/Farben, alle Schalter, Pose, Vorlagen.
+- **⚡ Makros:** Abläufe aus `chatbox`, `param`, `toggle`, `wait`, `input`, `cam`, `status`, `avatar`, `rotator`, `typing`, `speak`, `notify`, `webhook`.
+- **🤖 Automatik / Chat-Widgets:** „Wenn … dann Makro“ – Spieler kommt/geht, Welt, Avatar, AFK an/aus, Parameter = Wert, Uhrzeit, alle N Minuten, VRChat Start/Ende, Screenshot. Vorlagen: Begrüßung, AFK, Spielt gerade, Trinkpause, Gute-Nacht … Neue Platzhalter `{musik}` `{afk}` `{afk_zeit}` `{spieler_neu}`.
+- **🎙 Sprache → Chatbox mit Whisper:** lokal mit whisper.cpp (Programm + Modell Tiny/Base/Small/Medium/Large-v3-Turbo werden auf Knopfdruck geladen, läuft offline) oder OpenAI-Whisper mit eigenem Schlüssel (verschlüsselt). Tastenkürzel (Standard Alt+V), Sprechpausen-Erkennung, „tippt …“, Übersetzung.
+- **🥽 SteamVR-Overlay:** eigener Reiter im SteamVR-Dashboard und Fenster am Handgelenk oder frei im Raum, Bedienung mit dem Laser: Freunde (beitreten/einladen), Instanz, Hinweise, Chat (Sätze, Emojis, Sprache), Status, Makros, Parameter, Kamera. Einstellungen → VR.
+- **🎛 Stream Deck 1.3:** neue Tasten Kamera, Makro, Avatar wechseln, Freund (beitreten/einladen, leuchtet wenn im Spiel), Benachrichtigungs-Zähler, Overlay, Spracheingabe, Drehregler fürs Stream Deck + (Parameter, Zoom, Belichtung).
+- **🎁 Rückblick & Freunde-Pflege:** Woche/Monat/Jahr („VRChat Wrapped“), Top-Welten, mit wem am meisten Zeit, Avatare, wann du spielst, AFK-Verdacht; Freundschafts-Jahrestage, Geburtstage (aus der Notiz), lange nicht online, Namensverlauf.
+- **📅 Event-Erinnerungen** vor Gruppen-Events, **💛 Jahrestags-Meldungen**, **📺 OBS-Stream-Overlay** (`http://127.0.0.1:17865/obs?token=…`), **🏠 Webhooks** für Home Assistant & Co.
+
 ### Neu in 1.2.2 – Auto-Update
 
 - Sucht beim Start und alle 6 Stunden auf GitHub-Releases nach einer neuen Version (Einstellungen → System → Updates; Tray: „Nach Updates suchen“)
