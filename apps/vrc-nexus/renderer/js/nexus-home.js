@@ -63,7 +63,7 @@
         if (a === 'rotator') return done(api('client_cfg_save', { rotator_enabled: data.rotator && data.rotator.on ? '0' : '1' }));
         if (a === 'toggle') return done(api('client_osc', { kind: 'param', name: v, type: 'bool', value: b.dataset.on === '1' ? '' : '1' }));
         if (a === 'speech') return done(api('speech_ptt', { op: 'toggle' }));
-        if (a === 'overlay') return done(api('tools_overlay', { op: 'toggle' }));
+        if (a === 'overlay') return done(api('overlay_act', { action: 'overlay' }));
         if (a === 'tab') return UI.tab(v, b.dataset.sub || '');
     }
     function onSubmit(e) {

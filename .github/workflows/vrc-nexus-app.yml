@@ -58,6 +58,15 @@ jobs:
       - name: Stream-Deck-Plugin packen
         working-directory: app
         run: node streamdeck/tools/pack.js
+      - name: SteamVR-Overlay-Helfer bauen (OpenVR 2.12.14)
+        working-directory: app/overlay
+        shell: pwsh
+        run: |
+          $base = 'https://raw.githubusercontent.com/ValveSoftware/openvr/v2.12.14'
+          Invoke-WebRequest "$base/headers/openvr_api.cs" -OutFile openvr_api.cs
+          Invoke-WebRequest "$base/bin/win64/openvr_api.dll" -OutFile openvr_api.dll
+          dotnet build -c Release -nologo
+          Get-ChildItem bin/Release/net48
       - name: EXE bauen (portabel + Installer)
         working-directory: app
         run: npx electron-builder --win portable nsis --x64 --publish never

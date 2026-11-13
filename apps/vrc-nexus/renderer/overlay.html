@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>VRC Nexus Overlay</title>
+<link rel="stylesheet" href="css/overlay.css">
+</head>
+<body>
+<header class="ov-top">
+    <b class="ov-logo">VRC NEXUS</b>
+    <span id="ovClock" class="ov-clock"></span>
+    <span id="ovInfo" class="ov-info"></span>
+</header>
+<nav class="ov-tabs" id="ovTabs">
+    <button data-t="friends" class="on">🟢 Freunde</button>
+    <button data-t="players">👥 Instanz</button>
+    <button data-t="notifs">🔔 Hinweise <em id="ovNf"></em></button>
+    <button data-t="chat">💬 Chat</button>
+    <button data-t="quick">⚡ Schnell</button>
+    <button data-t="cam">📷 Kamera</button>
+</nav>
+<main id="ovMain"></main>
+<div id="ovToast" class="ov-toast" hidden></div>
+<script src="js/nexus-overlay.js"></script>
+</body>
+</html>

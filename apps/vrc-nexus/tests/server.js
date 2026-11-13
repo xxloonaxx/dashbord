@@ -10,7 +10,7 @@ const { openDatabase } = require('../backend/db');
 const { NexusApp, handleWebRequest } = require('../backend/app');
 
 const RENDERER = path.join(__dirname, '..', 'renderer');
-const MIME = { '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.png': 'image/png' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.png': 'image/png' };
 const port = +(process.argv[2] || 8110);
 const crypt = { encrypt: s => 'plain:' + Buffer.from(s).toString('base64'), decrypt: s => (s.startsWith('plain:') ? Buffer.from(s.slice(6), 'base64').toString() : '{}') };
 

@@ -551,6 +551,7 @@
             case 'number': return '<input type="number" data-k="' + k + '" value="' + esc(v) + '"' + (f.opts ? ' min="' + f.opts[0] + '" max="' + f.opts[1] + '"' : '') + '>';
             case 'color': return '<input type="color" data-k="' + k + '" value="' + esc(v) + '">';
             case 'time': return '<input type="time" data-k="' + k + '" value="' + esc(v) + '">';
+            case 'textarea': return '<textarea data-k="' + k + '" rows="5" style="width:100%">' + esc(v) + '</textarea>';
             case 'secret': return '<div class="nx-row" style="margin:0"><input type="text" readonly value="' + esc(v) + '" style="flex:1"><button type="button" class="btn btn-sm" data-act="token">♻ Neu</button></div>';
             default: return '<input type="text" data-k="' + k + '" value="' + esc(v) + '" placeholder="' + esc(f.def) + '">';
         }

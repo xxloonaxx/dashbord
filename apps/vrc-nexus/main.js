@@ -24,7 +24,8 @@ let prefs = {};
 try { prefs = JSON.parse(fs.readFileSync(PREFS_FILE, 'utf8')); } catch (e) { prefs = {}; }
 if (prefs['sys.hw_accel'] === false) app.disableHardwareAcceleration();
 
-let win = null, tray = null, nexus = null, db = null, quitting = false;
+let win = null, tray = null, nexus = null, db = null, quitting = false, vr = null;
+const { VrOverlay } = require('./vroverlay');
 
 /** Sitzungs-Cookie verschlüsseln: Windows-Schlüsselspeicher (DPAPI) über Electron safeStorage */
 const crypt = {
@@ -89,7 +90,10 @@ const host = {
         try { if (globalShortcut.register(cfg.hotkey, () => { try { nexus.speech.ptt('toggle'); } catch (e) { notify('VRC Nexus', e.message); } })) host.speechKey = cfg.hotkey; }
         catch (e) { notify('VRC Nexus', 'Tastenkürzel „' + cfg.hotkey + '“ ungültig: ' + e.message); }
     },
+    overlayState: () => (vr ? vr.state() : null),
+    overlayToggle: async on => { if (!vr) throw new Error('Overlay nicht verfügbar.'); return vr.toggle(on); },
     applySettings: (changed, s) => {
+        if (vr && (changed.includes('*') || changed.some(k => k.startsWith('vr.overlay')))) vr.apply(s);
         prefs = { 'sys.hw_accel': s['sys.hw_accel'], 'sys.close_to_tray': s['sys.close_to_tray'], 'sys.start_minimized': s['sys.start_minimized'], 'adv.devtools': s['adv.devtools'] };
         try { fs.writeFileSync(PREFS_FILE, JSON.stringify(prefs)); } catch (e) { /* egal */ }
         if (tray && changed.includes('sys.autostart')) tray.setContextMenu(trayMenu());
@@ -154,6 +158,12 @@ app.whenReady().then(async () => {
     nexus.link.start();
     nexus.updater.start();
     host.applySpeech(nexus.speech.cfg());
+    // SteamVR-Overlay: Vorschaubild muss als echte Datei vorliegen (nicht im asar-Archiv)
+    const ovIcon = path.join(app.getPath('userData'), 'overlay-icon.png');
+    try { fs.writeFileSync(ovIcon, fs.readFileSync(path.join(RENDERER, 'icon.png'))); } catch (e) { /* egal */ }
+    vr = new VrOverlay({ exe: app.isPackaged ? path.join(process.resourcesPath, 'overlay', 'NexusOverlay.exe') : path.join(__dirname, 'overlay', 'bin', 'Release', 'net48', 'NexusOverlay.exe'),
+        icon: ovIcon, url: 'app://nexus/overlay.html', notify });
+    vr.apply(nexus.settings.all());
     protocol.handle('app', async request => {
         const url = new URL(request.url);
         if (url.pathname === '/' || url.pathname === '/nexus.php' || url.pathname === '/index.html') {
@@ -172,5 +182,5 @@ app.whenReady().then(async () => {
     setInterval(sample, 15 * 60 * 1000);
 });
 
-app.on('before-quit', () => { quitting = true; try { if (nexus) { nexus.game.stop(); nexus.tools.stop(); } if (db) db.close(); } catch (e) { /* egal */ } });
+app.on('before-quit', () => { quitting = true; try { if (vr) vr.stop(); if (nexus) { nexus.game.stop(); nexus.tools.stop(); } if (db) db.close(); } catch (e) { /* egal */ } });
 app.on('window-all-closed', () => { /* läuft im Infobereich weiter */ });

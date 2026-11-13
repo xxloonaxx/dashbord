@@ -74,6 +74,16 @@ const FIELDS = [
     ['vr.chatbox', 'vr', 'Chatbox', 'bool', false, 'Benachrichtigungen auch in die VRChat-Chatbox schreiben', 'Andere Spieler sehen das!'],
     ['vr.chatbox_prefix', 'vr', 'Chatbox', 'text', '🔔', 'Vorangestelltes Zeichen', ''],
     ['vr.only_in_game', 'vr', 'Allgemein', 'bool', true, 'VR-Hinweise nur, wenn VRChat läuft', ''],
+    ['vr.overlay', 'vr', 'SteamVR-Overlay', 'bool', false, 'SteamVR-Overlay einschalten', 'Startet automatisch, sobald SteamVR läuft: eigener Reiter im SteamVR-Dashboard + optional am Handgelenk.'],
+    ['vr.overlay_mode', 'vr', 'SteamVR-Overlay', 'select', 'wrist', 'Zusätzliches Fenster', '', [['wrist', 'am Handgelenk'], ['front', 'frei vor mir (beim Einblenden)'], ['off', 'nur im SteamVR-Dashboard']]],
+    ['vr.overlay_hand', 'vr', 'SteamVR-Overlay', 'select', 'left', 'Handgelenk', '', [['left', 'links'], ['right', 'rechts']]],
+    ['vr.overlay_width', 'vr', 'SteamVR-Overlay', 'number', 30, 'Breite (cm)', '', [10, 300]],
+    ['vr.overlay_distance', 'vr', 'SteamVR-Overlay', 'number', 120, 'Abstand „frei vor mir“ (cm)', '', [40, 400]],
+    ['vr.overlay_alpha', 'vr', 'SteamVR-Overlay', 'number', 95, 'Deckkraft (%)', '', [10, 100]],
+    ['vr.overlay_fps', 'vr', 'SteamVR-Overlay', 'number', 10, 'Bilder pro Sekunde', 'Mehr = flüssiger, aber mehr CPU.', [1, 30]],
+    ['vr.overlay_show', 'vr', 'SteamVR-Overlay', 'bool', true, 'Handgelenk-/Freies Fenster beim Start zeigen', ''],
+    ['vr.overlay_phrases', 'vr', 'SteamVR-Overlay', 'textarea', 'Hallo!\nWie geht\'s?\nBin gleich zurück\nDanke!\nGute Nacht 🌙\nKomme rüber!\nLol 😂\nAFK, kurz Trinken', 'Schnell-Sätze im Overlay (eine Zeile = ein Knopf)', ''],
+    ['vr.overlay_translate', 'vr', 'SteamVR-Overlay', 'bool', false, 'Overlay-Chat übersetzen', 'Ziel wie bei der Übersetzung eingestellt.'],
     // ---------- Medien ----------
     ['media.photo_dir', 'media', 'Ordner', 'text', '', 'VRChat-Fotoordner', 'leer = Bilder\\VRChat'],
     ['media.steam_dir', 'media', 'Ordner', 'text', '', 'Steam-Screenshot-Ordner', 'leer = automatisch suchen'],
@@ -150,6 +160,7 @@ class Settings {
                 case 'select': v = (f[7] || []).some(o => o[0] === str(raw)) ? str(raw) : f[4]; break;
                 case 'color': v = /^#[0-9a-f]{6}$/i.test(str(raw)) ? str(raw).toLowerCase() : f[4]; break;
                 case 'time': v = /^([01]\d|2[0-3]):[0-5]\d$/.test(str(raw)) ? str(raw) : ''; break;
+                case 'textarea': v = cut(str(raw).replace(/\r/g, '').trim(), 4000); break;
                 default: v = cut(str(raw).trim(), 400);
             }
             if (k === 'adv.api_base' && v && !/^https?:\/\/[\w.-]+(:\d+)?(\/[\w./-]*)?$/.test(v)) throw new UserError('API-Adresse ungültig.');

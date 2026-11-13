@@ -29,12 +29,14 @@
     "copyright": "GHOST NODE",
     "files": [
       "main.js",
+      "vroverlay.js",
       "backend/**",
       "renderer/**",
       "package.json"
     ],
     "extraResources": [
-      { "from": "streamdeck/VRC-Nexus.streamDeckPlugin", "to": "VRC-Nexus.streamDeckPlugin" }
+      { "from": "streamdeck/VRC-Nexus.streamDeckPlugin", "to": "VRC-Nexus.streamDeckPlugin" },
+      { "from": "overlay/bin/Release/net48", "to": "overlay", "filter": ["NexusOverlay.exe", "NexusOverlay.exe.config", "openvr_api.dll"] }
     ],
     "directories": {
       "output": "dist",
