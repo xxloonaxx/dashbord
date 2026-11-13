@@ -126,7 +126,7 @@ class Tools {
             try { fr = this.app.vrc.friendList(); } catch (e) { fr = []; }
             const acc = this.acc(), me = acc ? acc.me || {} : {};
             const ST = { 'join me': 'Join Me', active: 'Online', 'ask me': 'Ask Me', busy: 'Beschäftigt' };
-            return { freunde: String(fr.filter(f => f.state === 'online').length), freunde_online: String(fr.filter(f => f.state !== 'offline').length), status: ST[me.status] || '', statustext: str(me.statusDescription) };
+            return Object.assign({ freunde: String(fr.filter(f => f.state === 'online').length), freunde_online: String(fr.filter(f => f.state !== 'offline').length), status: ST[me.status] || '', statustext: str(me.statusDescription) }, this.app.auto ? this.app.auto.vars() : {});
         };
     }
 
@@ -134,8 +134,9 @@ class Tools {
         this.applySettings(['*']);
         this.timer = setInterval(() => this.tick().catch(e => this.debug('tick', e)), 5000);
         if (this.timer.unref) this.timer.unref();
+        if (this.app.auto) this.app.auto.start();
     }
-    stop() { if (this.timer) clearInterval(this.timer); this.timer = null; this.api.stop(); this.rpc.close(); }
+    stop() { if (this.timer) clearInterval(this.timer); this.timer = null; if (this.app.auto) this.app.auto.stop(); this.api.stop(); this.rpc.close(); }
     applySettings(changed) {
         const all = changed.includes('*');
         if (all || changed.some(k => k.startsWith('int.api'))) this.api.apply();

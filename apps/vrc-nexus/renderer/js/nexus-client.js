@@ -48,6 +48,7 @@
                 <button type="button" class="chip" data-sub="params">🎚 Parameter</button>
                 <button type="button" class="chip" data-sub="cam">📷 Kamera</button>
                 <button type="button" class="chip" data-sub="macros">⚡ Makros</button>
+                <button type="button" class="chip" data-sub="auto">🤖 Automatik</button>
                 <button type="button" class="chip" data-sub="log">📜 Spiel-Log</button>
                 <button type="button" class="chip" data-sub="people">🧑‍🤝‍🧑 Getroffen</button>
                 <button type="button" class="chip" data-sub="visits">🌐 Besuche</button>
@@ -136,6 +137,24 @@
                     </form>
                 </div>
             </div>
+            <div class="nc-pane" data-p="auto" hidden>
+                <div class="muted small" id="ncAInfo"></div>
+                <div class="nc-grid">
+                    <div class="nc-card"><h4>🤖 Regeln</h4><div id="ncAList"></div>
+                        <h4 style="margin-top:12px">✨ Vorlagen (Chat-Widgets)</h4><div class="nc-presets" id="ncATpl"></div></div>
+                    <form class="nc-card" id="ncAForm"><h4>✏️ Regel</h4>
+                        <input type="hidden" name="id">
+                        <div class="nc-row"><input type="text" name="name" maxlength="50" placeholder="Name" style="flex:1"></div>
+                        <div class="nc-row"><b class="small">Wenn</b><select name="trigger" id="ncATrig"></select><input type="text" name="arg" placeholder="" style="flex:1"></div>
+                        <div class="nc-row"><b class="small">Dann</b><span class="muted small">(Makro-Schritte, eine Zeile pro Schritt)</span></div>
+                        <textarea name="script" rows="6" class="mono" placeholder="chatbox Willkommen {spieler_name}! 👋"></textarea>
+                        <div class="nc-row"><label class="small">Pause danach <input type="number" name="cooldown" value="30" min="0" style="width:70px"> s</label>
+                            <label class="check small"><input type="checkbox" name="only_game" checked> nur wenn VRChat läuft</label></div>
+                        <div class="nc-row"><button class="btn btn-sm btn-gold">💾 Speichern</button><button type="button" class="btn btn-sm" id="ncANew">＋ Neu</button></div>
+                        <p class="muted small">Zusätzliche Platzhalter: {spieler_name} {welt_name} {param_name} {param_wert} {afk_dauer} – und alle aus dem Rotator.</p>
+                    </form>
+                </div>
+            </div>
             <div class="nc-pane" data-p="log" hidden>
                 <div class="nc-row nc-filter">
                     <select id="ncKind"><option value="">Alle Ereignisse</option></select>
@@ -188,7 +207,7 @@
                             <select name="rotator_mode"><option value="seq">der Reihe nach</option><option value="random">zufällig</option></select></div>
                         <label class="check"><input type="checkbox" name="rotator_only_game"> nur wenn VRChat läuft</label>
                         <p class="muted small"><b>/n</b> = neue Zeile · Platzhalter: {zeit} {zeit_s} {uhr} {datum} {wochentag} {welt} {zugang} {region} {spieler} {avatar} {dauer} {name}
-                            {freunde} {freunde_online} {status} {statustext} {countdown:2026-12-24 18:00} {zufall:a|b|c}</p>
+                            {freunde} {freunde_online} {status} {statustext} {countdown:2026-12-24 18:00} {zufall:a|b|c} {musik} {afk} {afk_zeit} {spieler_neu}</p>
                         <div class="nc-row"><button type="button" class="btn btn-sm" id="ncRotPrev">👁 Vorschau</button><span class="small" id="ncRotOut" style="white-space: pre-wrap;"></span></div>
                         <button class="btn btn-sm btn-gold">💾 Speichern</button>
                     </div>
@@ -296,6 +315,7 @@
         if (name === 'params') loadParams();
         if (name === 'cam') loadCam();
         if (name === 'macros') loadMacros();
+        if (name === 'auto') loadAuto();
         if (name === 'people') loadPeople();
         if (name === 'visits') loadVisits();
     }
@@ -478,6 +498,66 @@
             return '<div class="nc-prow' + (p.builtin ? ' builtin' : '') + '"><button type="button" class="nc-star' + (p.fav ? ' on' : '') + '" data-pfav="' + esc(p.name) + '" title="Favorit">★</button>'
                 + '<span class="nc-pname" title="' + esc(p.name) + '">' + esc(p.name) + ' <small class="muted">' + ({ bool: 'An/Aus', int: 'Zahl', float: 'Komma' })[p.type] + (p.live_only ? ' · nur live' : '') + '</small></span><span class="nc-pctl">' + ctl + '</span></div>';
         }).join('') : '<div class="nc-empty">Keine Parameter' + (q ? ' für „' + esc(q) + '“' : '') + '. VRChat legt die Datei an, sobald du den Avatar mit eingeschaltetem OSC trägst.</div>';
+    }
+
+    // ---------- 🤖 Automatik / Chat-Widgets ----------
+    const AUTO_TPL = [
+        ['👋 Begrüßung', 'player_join', 'others', 'chatbox Willkommen {spieler_name}! 👋', 20],
+        ['💛 Freunde begrüßen', 'player_join', 'friends', 'chatbox Heyy {spieler_name}! 💛\ntoggle Wave', 20],
+        ['🚪 Abschied', 'player_leave', 'friends', 'chatbox Tschüss {spieler_name}! 👋', 20],
+        ['💤 AFK-Hinweis', 'afk_on', '', 'chatbox 💤 Bin kurz AFK – seit {zeit}', 0],
+        ['☀️ Zurück', 'afk_off', '', 'chatbox ☀️ Wieder da (war {afk_dauer} weg)', 0],
+        ['🎵 Spielt gerade', 'interval', '2', 'chatbox 🎵 {musik}', 0],
+        ['🌐 Neue Welt', 'world_join', '', 'wait 8\nchatbox 🌐 {welt_name} · 👥 {spieler}', 60],
+        ['💧 Trinkpause', 'interval', '60', 'chatbox 💧 Kurze Trinkpause!\nnotify 💧 Trink was!', 0],
+        ['🌙 Gute-Nacht', 'time', '23:30', 'chatbox 🌙 Gleich ist Schlafenszeit …\nstatus ask_me Bald weg', 0],
+        ['📸 Danke fürs Foto', 'screenshot', '', 'chatbox 📸 Klick!', 30],
+        ['🎭 Avatar-Info', 'avatar_change', '', 'wait 2\nchatbox 🎭 Neuer Look!', 30],
+    ];
+    let aData = null, aBound = false;
+    function loadAuto() {
+        if (!aBound) {
+            aBound = true;
+            const f = $('#ncAForm');
+            f.trigger.addEventListener('change', () => { f.arg.placeholder = ((aData && aData.triggers[f.trigger.value]) || [])[1] || ''; f.arg.hidden = !f.arg.placeholder; });
+            f.addEventListener('submit', e => {
+                e.preventDefault();
+                api('client_auto', { sub: 'auto_save', id: f.id.value, name: f.name.value, trigger: f.trigger.value, arg: f.arg.value, script: f.script.value, cooldown: f.cooldown.value, only_game: f.only_game.checked })
+                    .then(d => { aData.rules = d.rules; renderAuto(); toast(d.msg); }).catch(fail);
+            });
+            $('#ncANew').addEventListener('click', () => { f.reset(); f.id.value = ''; f.trigger.dispatchEvent(new Event('change')); });
+            $('#ncATpl').addEventListener('click', e => {
+                const b = e.target.closest('[data-tpl]');
+                if (!b) return;
+                const t = AUTO_TPL[+b.dataset.tpl];
+                f.reset(); f.id.value = ''; f.name.value = t[0]; f.trigger.value = t[1]; f.trigger.dispatchEvent(new Event('change')); f.arg.value = t[2]; f.script.value = t[3]; f.cooldown.value = t[4];
+                f.name.focus();
+            });
+            $('#ncAList').addEventListener('click', e => {
+                const b = e.target.closest('[data-a]');
+                if (!b) return;
+                const r = aData.rules.find(x => x.id === b.dataset.id);
+                if (b.dataset.a === 'edit') { f.id.value = r.id; f.name.value = r.name; f.trigger.value = r.trigger; f.trigger.dispatchEvent(new Event('change')); f.arg.value = r.arg; f.script.value = r.script; f.cooldown.value = r.cooldown; f.only_game.checked = r.only_game; return; }
+                if (b.dataset.a === 'delete' && !confirm('Regel „' + r.name + '“ löschen?')) return;
+                api('client_auto', { sub: 'auto_' + b.dataset.a, id: r.id }).then(d => { if (d.rules) { aData.rules = d.rules; renderAuto(); } if (d.msg) toast(d.msg); }).catch(fail);
+            });
+        }
+        return api('client_auto', { sub: 'auto_list' }).then(d => {
+            aData = d;
+            const sel = $('#ncATrig');
+            if (!sel.options.length) { sel.innerHTML = Object.entries(d.triggers).map(([k, v]) => '<option value="' + k + '">' + esc(v[0]) + '</option>').join(''); sel.dispatchEvent(new Event('change')); }
+            renderAuto();
+        }).catch(fail);
+    }
+    function renderAuto() {
+        const d = aData;
+        $('#ncAInfo').innerHTML = '🎵 Spielt gerade: <b>' + esc(d.music || '–') + '</b>' + (d.afk ? ' · 💤 AFK' : '') + ' · Regeln laufen im Hintergrund, solange VRC Nexus offen ist (auch im Infobereich).';
+        $('#ncATpl').innerHTML = AUTO_TPL.map((t, i) => '<button type="button" class="chip" data-tpl="' + i + '">' + esc(t[0]) + '</button>').join('');
+        $('#ncAList').innerHTML = d.rules.length ? d.rules.map(r => '<div class="nc-mrow' + (r.on ? '' : ' off') + '"><button type="button" class="chip' + (r.on ? ' on' : '') + '" data-a="toggle" data-id="' + esc(r.id) + '">' + (r.on ? 'an' : 'aus') + '</button>'
+            + '<b>' + esc(r.name) + '</b><span class="muted small">' + esc((d.triggers[r.trigger] || [r.trigger])[0]) + (r.arg ? ' · ' + esc(r.arg) : '') + '</span>'
+            + '<button type="button" class="nc-link" data-a="test" data-id="' + esc(r.id) + '">testen</button><button type="button" class="nc-link" data-a="edit" data-id="' + esc(r.id) + '">bearbeiten</button>'
+            + '<button type="button" class="nc-x" data-a="delete" data-id="' + esc(r.id) + '">✕</button></div>').join('')
+            : '<div class="muted small">Noch keine Regeln – nimm eine Vorlage unten.</div>';
     }
 
     // ---------- ⚡ Makros ----------

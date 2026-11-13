@@ -18,6 +18,7 @@ const { Updater } = require('./updater');
 const { AvatarParams } = require('./avatarparams');
 const { Camera } = require('./camera');
 const { Macros } = require('./macros');
+const { Automation } = require('./automation');
 
 const RENDERER = path.join(__dirname, '..', 'renderer');
 const truthy = v => v !== undefined && v !== null && v !== '' && v !== '0' && v !== false && v !== 'false';
@@ -32,7 +33,7 @@ class NexusApp {
         this.settings = new Settings(opts.db);
         this.vrc = new Vrc(opts.db, opts.crypt);
         this.x = new Extra(this.vrc);
-        this.game = new GameLog(opts.db, { onEvent: e => { if (this.tools) this.tools.onGameEvent(e); if (opts.onGameEvent) opts.onGameEvent(e); } });
+        this.game = new GameLog(opts.db, { onEvent: e => { if (this.tools) this.tools.onGameEvent(e); if (this.auto) this.auto.onGameEvent(e); if (opts.onGameEvent) opts.onGameEvent(e); } });
         this.tr = new Translator(opts.db, opts.crypt, this.settings);
         this.link = new DashLink(this);
         this.updater = new Updater(this);
@@ -40,6 +41,7 @@ class NexusApp {
         this.params = new AvatarParams(this);
         this.cam = new Camera(this);
         this.macros = new Macros(this);
+        this.auto = new Automation(this);
         this.vrc.onWatch = (name, world) => { if (this.settings.get('notify.watch')) this.tools.alert('🟢 ' + name + ' ist online', world ? 'in ' + world : 'gerade ins Spiel gekommen'); };
         this.notify = opts.notify || null;
         this.mobile = !!opts.mobile;
@@ -109,6 +111,7 @@ class NexusApp {
             if (act === 'cancel_login') { this.vrc.pending = null; return { ok: true }; }
             if (act.startsWith('client_')) return await this.client(act, input);
             if (act.startsWith('cam_')) return await this.cam.action(act, input);
+            if (act.startsWith('auto_')) return await this.auto.action(act, input);
             if (act.startsWith('tools_')) return await this.toolAction(act, input);
             if (['tr_status', 'tr_key', 'tr_prefs', 'translate', 'tr_test'].includes(act)) return await this.trAction(act, input);
             if (act === 'update_status') return this.updater.status();
@@ -149,6 +152,7 @@ class NexusApp {
             case 'client_macro_delete': return { macros: this.macros.remove(input.id) };
             case 'client_macro_run': { const r = await this.macros.run(str(input.id) || str(input.script)); return { msg: r.steps + ' Schritte ausgeführt.' }; }
             case 'client_macro_stop': this.macros.stop(); return { msg: 'Gestoppt.' };
+            case 'client_auto': { const sub = str(input.sub); if (!/^auto_[a-z]+$/.test(sub)) throw new UserError('Unbekannte Aktion.'); return await this.auto.action(sub, input); }
             case 'client_param_fav': return { favs: this.params.toggleFav(str(input.avatar), str(input.name)) };
         }
         throw new UserError('Unbekannte Aktion.');
