@@ -20,6 +20,10 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.3.2
+- **📸 Foto-Verlauf** (Diagramme → Rückblick → Foto-Verlauf): deine Screenshots nach Weltbesuch sortiert, mit wem du dort warst, Vorschaubilder, Klick öffnet das Foto.
+- **Beobachtete Freunde:** zusätzlich Meldung, wenn sie „Join Me“ setzen oder in eine öffentliche Instanz gehen (Einstellungen → Benachrichtigungen).
+
 ### Neu in 1.3.1
 - **🛡 Mod-Zentrale** (Sozial → Mod-Zentrale, für Gruppen mit Kick-Rechten): Beitrittsanfragen-Assistent mit Vertrauensstufe, Kontoalter, 18+, Freund?, schon getroffen?, Warnliste und Vorschlag (annehmen/ablehnen/ansehen); Warnliste mit Notizen; geplante Gruppen-Beiträge; Export von Gruppen-Protokoll + Warnliste als CSV.
 - **📚 Sammlungen** (Favoriten → Sammlungen): Welten und Avatare ohne VRChat-Begrenzung, mit Tags, Notiz, Suche und 🎲 Zufall aus einem Tag; Knopf „📚 Sammlung“ in jedem Welt-/Avatar-Fenster; Warnung bei „Very Poor“ auf Quest/Android.

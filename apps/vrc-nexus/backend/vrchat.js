@@ -14,7 +14,7 @@ const SYNC_MIN = 45;
 const OFFLINE_SYNC = 900;
 const FEED_KEEP_DAYS = 180;
 const UID = 1;   // die App hat genau ein Konto
-const VERSION = '1.3.1';
+const VERSION = '1.3.2';
 
 class Vrc {
     /**
@@ -215,7 +215,7 @@ class Vrc {
                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
         const log = (type, id, name, o = '', n = '') => { if (!first) feed.run(UID, t, type, id, name, str(o), str(n)); };
         const worlds = [];
-        const watchHits = [];
+        const watchHits = [], watchEvents = [];
         db.tx(() => {
             for (const [id, f] of Object.entries(fetched)) {
                 let loc = str(f.location);
@@ -239,7 +239,9 @@ class Vrc {
                     } else if (state === 'online' && o.location !== loc && !loc.startsWith('traveling')) {
                         log('gps', id, row.name, o.location, loc);
                         since = t;
+                        if (/^wrld_[^:]+:[^~]+(~region\([a-z]+\))?$/.test(loc)) watchEvents.push([id, 'public', loc]);
                     }
+                    if (row.status === 'join me' && o.status !== 'join me' && state !== 'offline') watchEvents.push([id, 'joinme', loc]);
                     const bothOn = o.state !== 'offline' && state !== 'offline';
                     if (o.status !== row.status && row.status !== 'offline' && o.status !== '' && bothOn) log('status', id, row.name, o.status + '|' + o.status_desc, row.status + '|' + row.sd);
                     else if (o.status_desc !== row.sd && bothOn) log('status', id, row.name, o.status + '|' + o.status_desc, row.status + '|' + row.sd);
@@ -286,6 +288,15 @@ class Vrc {
             try { await this.calendarRefresh(acc); } catch (e) { if (e instanceof VrcAuthError) throw e; }
         }
         await this.fetchWorlds(acc, worlds);
+        // Beobachtete Freunde: „Join Me“ gesetzt / öffentliche Instanz betreten
+        if (watchEvents.length && this.onWatchEvent) {
+            const w = this.db.prepare('SELECT vrc_id FROM notes WHERE user_id = ? AND watch = 1').column(UID);
+            for (const [id, kind, l] of watchEvents) if (w.includes(id)) {
+                const f = this.db.prepare('SELECT display_name FROM friends WHERE user_id = ? AND vrc_id = ?').get(UID, id);
+                const fl = U.location(l);
+                if (f) this.onWatchEvent(f.display_name, kind, fl.world ? (this.worlds([fl.world])[fl.world] || {}).name || '' : '', l);
+            }
+        }
         // Beobachtete Freunde: Desktop-Benachrichtigung
         if (watchHits.length && this.onWatch) {
             const w = this.db.prepare('SELECT vrc_id FROM notes WHERE user_id = ? AND watch = 1').column(UID);

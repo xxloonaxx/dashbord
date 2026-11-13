@@ -53,6 +53,11 @@ class NexusApp {
         this.mod = new ModTools(this);
         this.coll = new Collections(this);
         this.vrc.onWatch = (name, world) => { if (this.settings.get('notify.watch')) this.tools.alert('🟢 ' + name + ' ist online', world ? 'in ' + world : 'gerade ins Spiel gekommen'); };
+        this.vrc.onWatchEvent = (name, kind, world) => {
+            const s = this.settings;
+            if (kind === 'joinme' && s.get('notify.watch_joinme')) this.tools.alert('🔵 ' + name + ' ist jetzt „Join Me“', world ? 'in ' + world : '');
+            if (kind === 'public' && s.get('notify.watch_public')) this.tools.alert('🌍 ' + name + ' ist in einer öffentlichen Instanz', world || '');
+        };
         this.notify = opts.notify || null;
         this.mobile = !!opts.mobile;
         this.vrc.nativeCookies = this.mobile;

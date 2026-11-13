@@ -41,13 +41,21 @@
             + '</div>';
     }
     function load() {
-        box.innerHTML = '<div class="nx-row rc-bar"><span class="chips">' + [['recap', '🎁 Rückblick'], ['friends', '💛 Freunde-Pflege']].map(v => '<button type="button" class="chip' + (view === v[0] ? ' on' : '') + '" data-rv="' + v[0] + '">' + v[1] + '</button>').join('') + '</span>'
-            + (view === 'recap' ? '<span class="chips">' + [[7, 'Woche'], [30, 'Monat'], [365, 'Jahr']].map(v => '<button type="button" class="chip' + (days === v[0] ? ' on' : '') + '" data-rd="' + v[0] + '">' + v[1] + '</button>').join('') + '</span>' : '')
+        box.innerHTML = '<div class="nx-row rc-bar"><span class="chips">' + [['recap', '🎁 Rückblick'], ['photos', '📸 Foto-Verlauf'], ['friends', '💛 Freunde-Pflege']].map(v => '<button type="button" class="chip' + (view === v[0] ? ' on' : '') + '" data-rv="' + v[0] + '">' + v[1] + '</button>').join('') + '</span>'
+            + (view !== 'friends' ? '<span class="chips">' + [[7, 'Woche'], [30, 'Monat'], [365, 'Jahr']].map(v => '<button type="button" class="chip' + (days === v[0] ? ' on' : '') + '" data-rd="' + v[0] + '">' + v[1] + '</button>').join('') + '</span>' : '')
             + '</div><div id="rcBody"><div class="vx-loading">…</div></div>';
         const body = box.querySelector('#rcBody');
         if (view === 'recap') {
             if (MOBILE) { body.innerHTML = '<p class="muted">Der Rückblick braucht das Spiel-Log vom PC – in der Windows-App.</p>'; return; }
             UI.api('ins_recap', { days }).then(d => { body.innerHTML = renderRecap(d); }).catch(e => { body.innerHTML = '<div class="vx-error">⚠ ' + esc(e.message) + '</div>'; });
+        } else if (view === 'photos') {
+            if (MOBILE) { body.innerHTML = '<p class="muted">Die Fotos liegen auf dem PC – in der Windows-App.</p>'; return; }
+            UI.api('ins_photos', { days }).then(d => {
+                body.innerHTML = d.visits.length ? d.visits.map(v => '<section class="panel ph-visit"><h3>🌐 ' + esc(v.world) + ' <small class="muted">' + esc(UI.isoDT(v.start * 1000)) + ' · ' + v.photos.length + ' Fotos</small></h3>'
+                    + (v.people.length ? '<p class="small muted">mit ' + v.people.map(esc).join(', ') + '</p>' : '')
+                    + '<div class="ph-strip">' + v.photos.map(p => p.exists ? '<a href="nexus.php?shot=' + encodeURIComponent(p.rel) + '" target="_blank" title="' + esc(p.name) + '"><img loading="lazy" src="nexus.php?shot=' + encodeURIComponent(p.rel) + '&amp;t=1" alt=""></a>' : '<span class="ph-miss" title="' + esc(p.name) + '">📷 nicht mehr da</span>').join('') + '</div></section>').join('')
+                    : '<div class="nc-empty">Keine Screenshots im Zeitraum.</div>';
+            }).catch(e => { body.innerHTML = '<div class="vx-error">⚠ ' + esc(e.message) + '</div>'; });
         } else UI.api('ins_friends', { days: inactiveDays, q: nameQ }).then(d => { body.innerHTML = renderFriends(d); }).catch(e => { body.innerHTML = '<div class="vx-error">⚠ ' + esc(e.message) + '</div>'; });
     }
     box.addEventListener('click', e => {

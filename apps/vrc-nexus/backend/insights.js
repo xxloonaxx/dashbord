@@ -84,6 +84,28 @@ class Insights {
         } catch (e) { return []; }
     }
 
+    /** Foto-Verlauf: Screenshots je Weltbesuch (mit wem du dort warst) */
+    photos(days) {
+        days = Math.max(1, Math.min(3650, int(days) || 30));
+        const path = require('path'), fs = require('fs');
+        let base = '';
+        try { base = path.resolve(this.app.tools.photoDir()); } catch (e) { base = ''; }
+        const rows = this.db.prepare("SELECT ts, kind, world_id, world_name, player_name, detail FROM game_log WHERE user_id = ? AND ts >= ? AND kind IN ('world_join', 'player_join', 'screenshot') ORDER BY ts, id").all(UID, now() - days * 86400);
+        const visits = [];
+        let cur = null;
+        for (const r of rows) {
+            if (r.kind === 'world_join') { cur = { world: r.world_name || r.world_id, world_id: r.world_id, start: r.ts, people: new Set(), photos: [] }; visits.push(cur); continue; }
+            if (!cur) { if (r.kind !== 'screenshot') continue; cur = { world: r.world_name || 'Unbekannte Welt', world_id: r.world_id || '', start: r.ts, people: new Set(), photos: [] }; visits.push(cur); }
+            if (r.kind === 'player_join' && r.player_name) cur.people.add(r.player_name);
+            if (r.kind === 'screenshot') {
+                const f = path.resolve(str(r.detail));
+                const rel = base && f.startsWith(base + path.sep) ? path.relative(base, f) : '';
+                cur.photos.push({ ts: r.ts, rel, name: path.basename(f), exists: !!rel && fs.existsSync(f) });
+            }
+        }
+        return visits.filter(v => v.photos.length).reverse().slice(0, 100).map(v => Object.assign(v, { people: [...v.people].slice(0, 30) }));
+    }
+
     // ---------- Erinnerungen ----------
     tick() {
         if (this.app.mod) this.app.mod.tick().catch(() => {});
@@ -114,6 +136,7 @@ class Insights {
     action(act, input) {
         switch (act) {
             case 'ins_recap': return this.recap(input.days);
+            case 'ins_photos': return { visits: this.photos(input.days) };
             case 'ins_friends': return { anniversaries: this.anniversaries(int(input.ahead) || 30), inactive: this.inactive(input.days), names: this.names(str(input.q).trim()) };
         }
         throw new UserError('Unbekannte Aktion.');

@@ -74,6 +74,8 @@ const FIELDS = [
     ['vr.chatbox', 'vr', 'Chatbox', 'bool', false, 'Benachrichtigungen auch in die VRChat-Chatbox schreiben', 'Andere Spieler sehen das!'],
     ['vr.chatbox_prefix', 'vr', 'Chatbox', 'text', '🔔', 'Vorangestelltes Zeichen', ''],
     ['vr.only_in_game', 'vr', 'Allgemein', 'bool', true, 'VR-Hinweise nur, wenn VRChat läuft', ''],
+    ['notify.watch_joinme', 'notify', 'Beobachtete Freunde', 'bool', true, 'Melden, wenn ein beobachteter Freund „Join Me“ setzt', 'Beobachten: im Profil das 👁-Symbol.'],
+    ['notify.watch_public', 'notify', 'Beobachtete Freunde', 'bool', false, 'Melden, wenn ein beobachteter Freund in eine öffentliche Instanz geht', ''],
     ['notify.events', 'notify', 'Erinnerungen', 'bool', true, 'An Gruppen-Events erinnern', 'Aus dem Gruppen-Kalender (Mehr → Gruppen-Kalender).'],
     ['notify.event_minutes', 'notify', 'Erinnerungen', 'number', 15, 'Minuten vorher', '', [1, 240]],
     ['notify.anniversary', 'notify', 'Erinnerungen', 'bool', true, 'Freundschafts-Jahrestage & Geburtstage melden', 'Geburtstage aus der Notiz, z. B. „Geburtstag 24.12.“ oder „🎂 24.12.“.'],
