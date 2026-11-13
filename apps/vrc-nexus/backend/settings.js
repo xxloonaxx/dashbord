@@ -91,7 +91,8 @@ const FIELDS = [
     ['vr.overlay_distance', 'vr', 'SteamVR-Overlay', 'number', 120, 'Abstand „frei vor mir“ (cm)', '', [40, 400]],
     ['vr.overlay_alpha', 'vr', 'SteamVR-Overlay', 'number', 95, 'Deckkraft (%)', '', [10, 100]],
     ['vr.overlay_fps', 'vr', 'SteamVR-Overlay', 'number', 10, 'Bilder pro Sekunde', 'Mehr = flüssiger, aber mehr CPU.', [1, 30]],
-    ['vr.overlay_show', 'vr', 'SteamVR-Overlay', 'bool', true, 'Handgelenk-/Freies Fenster beim Start zeigen', ''],
+    ['vr.overlay_show', 'vr', 'SteamVR-Overlay', 'bool', false, 'Handgelenk-/Freies Fenster beim Start zeigen', 'Ein-/Ausblenden jederzeit mit dem Controller: linke obere Taste (B / Y / Menü) doppelt drücken – änderbar in SteamVR → Einstellungen → Controller → Belegung → VRC Nexus.'],
+    ['vr.overlay_gaze', 'vr', 'SteamVR-Overlay', 'bool', true, 'Nur bedienbar, wenn ich draufschaue', 'Sonst ist das Fenster halb durchsichtig und der Laser geht an VRChat – so bleibt VRChat bedienbar, während das Overlay offen ist.'],
     ['vr.overlay_phrases', 'vr', 'SteamVR-Overlay', 'textarea', 'Hallo!\nWie geht\'s?\nBin gleich zurück\nDanke!\nGute Nacht 🌙\nKomme rüber!\nLol 😂\nAFK, kurz Trinken', 'Schnell-Sätze im Overlay (eine Zeile = ein Knopf)', ''],
     ['vr.overlay_translate', 'vr', 'SteamVR-Overlay', 'bool', false, 'Overlay-Chat übersetzen', 'Ziel wie bei der Übersetzung eingestellt.'],
     // ---------- Medien ----------

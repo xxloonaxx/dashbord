@@ -32,7 +32,7 @@ class VrOverlay {
     state() {
         const li = this.lastInput;
         return { enabled: !!this.cfg['vr.overlay'], running: !!this.proc, visible: this.visible, mode: this.cfg['vr.overlay_mode'] || 'wrist',
-            status: this.status + (li ? ' · letzte Laser-Eingabe ' + li.t + ' bei ' + li.x + ',' + li.y + ' (' + Math.round((Date.now() - li.at) / 1000) + ' s her)' : this.proc ? ' · noch keine Laser-Eingabe empfangen' : '') };
+            status: this.status + (this.proc && this.inputMsg ? ' · ⚠ Controller-Taste nicht verfügbar (' + this.inputMsg + ')' : '') + (li ? ' · letzte Laser-Eingabe ' + li.t + ' bei ' + li.x + ',' + li.y + ' (' + Math.round((Date.now() - li.at) / 1000) + ' s her)' : this.proc ? ' · noch keine Laser-Eingabe empfangen' : '') };
     }
 
     apply(s) {
@@ -119,7 +119,7 @@ class VrOverlay {
     sendLayout() {
         const s = this.cfg;
         this.cmd({ cmd: 'mode', mode: s['vr.overlay_mode'] || 'wrist', hand: s['vr.overlay_hand'] || 'left', width: (Number(s['vr.overlay_width']) || 30) / 100,
-            alpha: (Number(s['vr.overlay_alpha']) || 95) / 100, distance: (Number(s['vr.overlay_distance']) || 120) / 100 });
+            alpha: (Number(s['vr.overlay_alpha']) || 95) / 100, distance: (Number(s['vr.overlay_distance']) || 120) / 100, gaze: s['vr.overlay_gaze'] === false ? 0 : 1 });
     }
     onEvent(line) {
         let m;
@@ -135,6 +135,8 @@ class VrOverlay {
                 break;
             case 'error': this.status = '⚠ ' + m.msg; break;
             case 'visible': this.visible = !!m.v; break;
+            case 'toggled': this.visible = !!m.v; break;
+            case 'input': this.inputMsg = m.ok ? '' : String(m.msg || ''); break;
             case 'quit': this.status = 'SteamVR beendet'; break;
             case 'mouse':
                 if (m.t !== 'move' || !this.lastInput || Date.now() - this.lastInput.at > 1000) this.lastInput = { t: m.t === 'move' ? 'Bewegung' : m.t === 'down' ? 'Klick' : 'Loslassen', x: m.x, y: m.y, at: Date.now() };

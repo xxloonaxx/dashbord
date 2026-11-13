@@ -1,0 +1,20 @@
+{
+  "controller_type": "holographic_controller",
+  "description": "VRC Nexus – Overlay ein/aus (Doppeldruck)",
+  "name": "VRC Nexus",
+  "bindings": {
+    "/actions/nexus": {
+      "sources": [
+        {
+          "path": "/user/hand/left/input/application_menu",
+          "mode": "button",
+          "inputs": {
+            "double": {
+              "output": "/actions/nexus/in/toggle"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

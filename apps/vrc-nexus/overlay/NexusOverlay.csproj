@@ -17,5 +17,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="openvr_api.dll" Condition="Exists('openvr_api.dll')" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="input\*.json" CopyToOutputDirectory="PreserveNewest" LinkBase="input" />
   </ItemGroup>
 </Project>

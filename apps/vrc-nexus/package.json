@@ -1,7 +1,7 @@
 {
   "name": "vrc-nexus-desktop",
   "productName": "VRC Nexus",
-  "version": "1.3.7",
+  "version": "1.3.8",
   "description": "VRC Nexus als eigenständige Windows-App: VRChat-Freunde, Verlauf, Statistik, Welten, Avatare, Gruppen, Kalender, Galerie, Benachrichtigungen, Shop, Spiel-Log & OSC – ohne Server.",
   "main": "main.js",
   "author": "GHOST NODE",
@@ -36,7 +36,7 @@
     ],
     "extraResources": [
       { "from": "streamdeck/VRC-Nexus.streamDeckPlugin", "to": "VRC-Nexus.streamDeckPlugin" },
-      { "from": "overlay/bin/Release/net48", "to": "overlay", "filter": ["NexusOverlay.exe", "NexusOverlay.exe.config", "openvr_api.dll"] }
+      { "from": "overlay/bin/Release/net48", "to": "overlay", "filter": ["NexusOverlay.exe", "NexusOverlay.exe.config", "openvr_api.dll", "input/*.json"] }
     ],
     "directories": {
       "output": "dist",

@@ -1,0 +1,45 @@
+{
+  "default_bindings": [
+    {
+      "controller_type": "knuckles",
+      "binding_url": "bindings_knuckles.json"
+    },
+    {
+      "controller_type": "oculus_touch",
+      "binding_url": "bindings_oculus_touch.json"
+    },
+    {
+      "controller_type": "vive_controller",
+      "binding_url": "bindings_vive_controller.json"
+    },
+    {
+      "controller_type": "holographic_controller",
+      "binding_url": "bindings_holographic_controller.json"
+    }
+  ],
+  "action_sets": [
+    {
+      "name": "/actions/nexus",
+      "usage": "leftright"
+    }
+  ],
+  "actions": [
+    {
+      "name": "/actions/nexus/in/toggle",
+      "type": "boolean",
+      "requirement": "optional"
+    }
+  ],
+  "localization": [
+    {
+      "language_tag": "de_DE",
+      "/actions/nexus": "VRC Nexus",
+      "/actions/nexus/in/toggle": "Overlay ein/aus"
+    },
+    {
+      "language_tag": "en_US",
+      "/actions/nexus": "VRC Nexus",
+      "/actions/nexus/in/toggle": "Toggle overlay"
+    }
+  ]
+}

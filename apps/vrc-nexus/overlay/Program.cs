@@ -24,6 +24,9 @@ namespace NexusOverlay
         static string mode = "wrist", hand = "left";
         static float width = 0.30f, alpha = 0.96f, distance = 1.2f;
         static uint curW = 1024, curH = 640;
+        static bool gaze = true, interactive = true;
+        static ulong actSet, actToggle;
+        static long lastGaze;
         static volatile bool running = true;
 
         static void Out(string json) { lock (Console.Out) { Console.Out.WriteLine(json); Console.Out.Flush(); } }
@@ -52,6 +55,7 @@ namespace NexusOverlay
             ov.SetOverlayFlag(hud, VROverlayFlags.MakeOverlaysInteractiveIfVisible, true);
             ov.SetOverlaySortOrder(hud, 10);
             ApplyLayout();
+            SetupInput();
             new Thread(ReadInput) { IsBackground = true }.Start();
             Out("{\"ev\":\"ready\"}");
 
@@ -71,11 +75,66 @@ namespace NexusOverlay
                     while (ov.PollNextOverlayEvent(h, ref ev, evSize)) HandleEvent(ev);
                 while (OpenVR.System.PollNextEvent(ref ev, evSize))
                     if (ev.eventType == (uint)EVREventType.VREvent_Quit) { Out("{\"ev\":\"quit\"}"); OpenVR.System.AcknowledgeQuit_Exiting(); running = false; }
-                if (hudVisible && mode == "front") { /* bleibt, wo es ist */ }
+                PollInput();
+                if (hudVisible && gaze && Environment.TickCount - lastGaze > 100) { lastGaze = Environment.TickCount; GazeCheck(); }
                 Thread.Sleep(11);
             }
             OpenVR.Shutdown();
             return 0;
+        }
+
+        // ---------- Controller: SteamVR-Eingabeaktion „Overlay ein/aus“ (in SteamVR → Controller-Belegung änderbar) ----------
+        static void SetupInput()
+        {
+            try
+            {
+                string manifest = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "input", "actions.json");
+                if (!File.Exists(manifest)) { Out("{\"ev\":\"input\",\"ok\":false,\"msg\":\"actions.json fehlt\"}"); return; }
+                var e1 = OpenVR.Input.SetActionManifestPath(manifest);
+                var e2 = OpenVR.Input.GetActionSetHandle("/actions/nexus", ref actSet);
+                var e3 = OpenVR.Input.GetActionHandle("/actions/nexus/in/toggle", ref actToggle);
+                Out("{\"ev\":\"input\",\"ok\":" + (e1 == EVRInputError.None && e2 == EVRInputError.None && e3 == EVRInputError.None ? "true" : "false") + ",\"msg\":" + Q(e1 + "/" + e2 + "/" + e3) + "}");
+            }
+            catch (Exception e) { Out("{\"ev\":\"input\",\"ok\":false,\"msg\":" + Q(e.Message) + "}"); }
+        }
+        static readonly VRActiveActionSet_t[] sets = new VRActiveActionSet_t[1];
+        static void PollInput()
+        {
+            if (actSet == 0 || actToggle == 0) return;
+            sets[0].ulActionSet = actSet;
+            if (OpenVR.Input.UpdateActionState(sets, (uint)Marshal.SizeOf(typeof(VRActiveActionSet_t))) != EVRInputError.None) return;
+            var d = new InputDigitalActionData_t();
+            if (OpenVR.Input.GetDigitalActionData(actToggle, ref d, (uint)Marshal.SizeOf(typeof(InputDigitalActionData_t)), OpenVR.k_ulInvalidInputValueHandle) != EVRInputError.None) return;
+            if (d.bActive && d.bChanged && d.bState)
+            {
+                if (mode == "off") mode = "wrist";
+                Command("{\"cmd\":\"toggle\"}");
+                Out("{\"ev\":\"toggled\",\"v\":" + (hudVisible ? "true" : "false") + "}");
+            }
+        }
+
+        // ---------- Nur bedienbar, wenn man draufschaut: sonst bekommt VRChat den Laser ----------
+        static void GazeCheck()
+        {
+            var poses = new TrackedDevicePose_t[1];
+            OpenVR.System.GetDeviceToAbsoluteTrackingPose(ETrackingUniverseOrigin.TrackingUniverseStanding, 0, poses);
+            var p = poses[0].mDeviceToAbsoluteTracking;
+            var prm = new VROverlayIntersectionParams_t
+            {
+                vSource = new HmdVector3_t { v0 = p.m3, v1 = p.m7, v2 = p.m11 },
+                vDirection = new HmdVector3_t { v0 = -p.m2, v1 = -p.m6, v2 = -p.m10 },
+                eOrigin = ETrackingUniverseOrigin.TrackingUniverseStanding,
+            };
+            var res = new VROverlayIntersectionResults_t();
+            bool look = OpenVR.Overlay.ComputeOverlayIntersection(hud, ref prm, ref res);
+            SetInteractive(look);
+        }
+        static void SetInteractive(bool on)
+        {
+            if (on == interactive) return;
+            interactive = on;
+            OpenVR.Overlay.SetOverlayFlag(hud, VROverlayFlags.MakeOverlaysInteractiveIfVisible, on);
+            OpenVR.Overlay.SetOverlayAlpha(hud, Math.Max(0.1f, Math.Min(1f, alpha)) * (on ? 1f : 0.55f));
         }
 
         static void HandleEvent(VREvent_t ev)
@@ -137,6 +196,8 @@ namespace NexusOverlay
                 width = Num(json, "width") ?? width;
                 alpha = Num(json, "alpha") ?? alpha;
                 distance = Num(json, "distance") ?? distance;
+                var g = Num(json, "gaze");
+                if (g.HasValue) { gaze = g.Value > 0; if (!gaze) { interactive = !interactive; SetInteractive(true); } }
                 ApplyLayout();
             }
             else if (cmd == "show" || (cmd == "toggle" && !hudVisible)) { hudVisible = mode != "off"; ApplyLayout(); if (hudVisible) ov.ShowOverlay(hud); }
@@ -152,7 +213,7 @@ namespace NexusOverlay
         {
             var ov = OpenVR.Overlay;
             ov.SetOverlayWidthInMeters(hud, Math.Max(0.1f, Math.Min(3f, width)));
-            ov.SetOverlayAlpha(hud, Math.Max(0.1f, Math.Min(1f, alpha)));
+            ov.SetOverlayAlpha(hud, Math.Max(0.1f, Math.Min(1f, alpha)) * (interactive ? 1f : 0.55f));
             ov.SetOverlayAlpha(dash, 1f);
             if (mode == "wrist")
             {
