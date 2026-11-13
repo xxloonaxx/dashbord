@@ -39,7 +39,20 @@ jobs:
           sh native/install.sh
           VER=$(node -p "require('./package.json').version")
           sed -i "s/versionName \"1.0\"/versionName \"$VER\"/" android/app/build.gradle
+          CODE=$(node -p "const [a,b,c]=require('./package.json').version.split('.').map(Number); a*10000+b*100+c")
+          sed -i "s/versionCode 1$/versionCode $CODE/" android/app/build.gradle
+          grep -n "versionCode\|versionName" android/app/build.gradle
           npx cap sync android
+      - name: Festen Signierschlüssel verwenden (Updates über die installierte App)
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            mkdir -p ~/.android && printf '%s' "$KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
+            echo "Fester Schlüssel aus dem Secret ANDROID_KEYSTORE_B64 wird verwendet."
+          else
+            echo "::warning::Secret ANDROID_KEYSTORE_B64 fehlt – die APK bekommt einen zufälligen Schlüssel und lässt sich nicht über eine ältere Version installieren."
+          fi
       - name: APK bauen
         working-directory: apps/vrc-nexus-android/android
         run: ./gradlew assembleDebug --no-daemon
