@@ -69,16 +69,32 @@ class Extra {
             }
             return items;
         }
+        // Gruppen-Zuordnung kommt verlässlich nur aus /favorites (tags) – /avatars/favorites bzw. /worlds/favorites liefert die Anzeige-Daten
+        const favs = await this.vrc.favoritesAll(acc, kind);
+        const map = new Map();
+        for (const f of favs) if (f && f.favoriteId) map.set(str(f.favoriteId), { group: str(arr(f.tags)[0]), fav_id: str(f.id) });
         const path = kind === 'world' ? '/worlds/favorites' : '/avatars/favorites';
-        for (let off = 0; off < 1000; off += 100) {
-            const page = arr(await this.vrc.call(acc, 'GET', path, { n: 100, offset: off }));
-            for (const x of page) {
-                if (!x || !x.id) continue;
-                items.push({ id: x.id, fav_id: str(x.favoriteId), group: str(x.favoriteGroup), name: str(x.name || '?'), image: str(x.thumbnailImageUrl || x.imageUrl),
-                    sub: str(x.authorName) + (kind === 'world' && x.occupants !== undefined ? ' (' + int(x.occupants) + ')' : ''), author_id: str(x.authorId),
-                    locked: (x.releaseStatus || 'public') !== 'public', occupants: int(x.occupants) });
+        const seen = new Set();
+        try {
+            for (let off = 0; off < 1000; off += 100) {
+                const page = arr(await this.vrc.call(acc, 'GET', path, { n: 100, offset: off }));
+                for (const x of page) {
+                    if (!x || !x.id || seen.has(x.id)) continue;
+                    seen.add(x.id);
+                    const m = map.get(x.id) || {};
+                    items.push({ id: x.id, fav_id: m.fav_id || str(x.favoriteId), group: m.group || str(x.favoriteGroup), name: str(x.name || '?'), image: str(x.thumbnailImageUrl || x.imageUrl),
+                        sub: str(x.authorName) + (kind === 'world' && x.occupants !== undefined ? ' (' + int(x.occupants) + ')' : ''), author_id: str(x.authorId),
+                        locked: (x.releaseStatus || 'public') !== 'public', occupants: int(x.occupants) });
+                }
+                if (page.length < 100) break;
             }
-            if (page.length < 100) break;
+        } catch (e) { if (e instanceof VrcAuthError) throw e; }
+        // Favoriten ohne Anzeige-Daten (privat geworden, gelöscht oder nicht abrufbar) trotzdem zeigen
+        for (const [id, m] of map) {
+            if (seen.has(id)) continue;
+            const h = this.db.prepare('SELECT name, image FROM vrc_history WHERE user_id = ? AND kind = ? AND vrc_id = ?').get(UID, kind, id) || (kind === 'world' ? this.vrc.worlds([id])[id] : null) || {};
+            items.push({ id, fav_id: m.fav_id, group: m.group, name: str(h.name) || (kind === 'world' ? 'Welt' : 'Avatar') + ' (nicht abrufbar)', image: str(h.image || h.thumb), sub: 'privat, gelöscht oder nicht verfügbar',
+                author_id: '', locked: true, occupants: 0, missing: true });
         }
         return items;
     }

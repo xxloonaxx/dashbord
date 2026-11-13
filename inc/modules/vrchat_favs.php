@@ -56,17 +56,37 @@ function vrc_fav_remote(array &$acc, string $kind): array {
         }
         return $items;
     }
+    // Gruppen-Zuordnung kommt verlässlich nur aus /favorites (tags) – /avatars/favorites bzw. /worlds/favorites liefert die Anzeige-Daten
+    $map = [];
+    foreach (vrc_favorites_all($acc, $kind) as $f) {
+        if (!empty($f['favoriteId'])) $map[(string)$f['favoriteId']] = ['group' => (string)(((array)($f['tags'] ?? []))[0] ?? ''), 'fav_id' => (string)($f['id'] ?? '')];
+    }
     $path = $kind === 'world' ? '/worlds/favorites' : '/avatars/favorites';
-    for ($off = 0; $off < 1000; $off += 100) {
-        $page = (array)vrc_call($acc, 'GET', $path, ['n' => 100, 'offset' => $off]);
-        foreach ($page as $x) {
-            if (!is_array($x) || empty($x['id'])) continue;
-            $items[] = ['id' => $x['id'], 'fav_id' => (string)($x['favoriteId'] ?? ''), 'group' => (string)($x['favoriteGroup'] ?? ''), 'name' => (string)($x['name'] ?? '?'),
-                        'image' => (string)($x['thumbnailImageUrl'] ?? $x['imageUrl'] ?? ''),
-                        'sub' => (string)($x['authorName'] ?? '') . ($kind === 'world' && isset($x['occupants']) ? ' (' . (int)$x['occupants'] . ')' : ''),
-                        'author_id' => (string)($x['authorId'] ?? ''), 'locked' => ($x['releaseStatus'] ?? 'public') !== 'public', 'occupants' => (int)($x['occupants'] ?? 0)];
+    $seen = [];
+    try {
+        for ($off = 0; $off < 1000; $off += 100) {
+            $page = (array)vrc_call($acc, 'GET', $path, ['n' => 100, 'offset' => $off]);
+            foreach ($page as $x) {
+                if (!is_array($x) || empty($x['id']) || isset($seen[$x['id']])) continue;
+                $seen[$x['id']] = true;
+                $m = $map[$x['id']] ?? [];
+                $items[] = ['id' => $x['id'], 'fav_id' => ($m['fav_id'] ?? '') ?: (string)($x['favoriteId'] ?? ''), 'group' => ($m['group'] ?? '') ?: (string)($x['favoriteGroup'] ?? ''), 'name' => (string)($x['name'] ?? '?'),
+                            'image' => (string)($x['thumbnailImageUrl'] ?? $x['imageUrl'] ?? ''),
+                            'sub' => (string)($x['authorName'] ?? '') . ($kind === 'world' && isset($x['occupants']) ? ' (' . (int)$x['occupants'] . ')' : ''),
+                            'author_id' => (string)($x['authorId'] ?? ''), 'locked' => ($x['releaseStatus'] ?? 'public') !== 'public', 'occupants' => (int)($x['occupants'] ?? 0)];
+            }
+            if (count($page) < 100) break;
         }
-        if (count($page) < 100) break;
+    } catch (VrcAuthError $e) { throw $e; } catch (Throwable $e) { /* Anzeige-Daten fehlen – Zuordnung unten reicht */ }
+    // Favoriten ohne Anzeige-Daten (privat geworden, gelöscht oder nicht abrufbar) trotzdem zeigen
+    $uid = (int)$acc['user_id'];
+    foreach ($map as $id => $m) {
+        if (isset($seen[$id])) continue;
+        $st = vrc_db()->prepare('SELECT name, image FROM vrc_history WHERE user_id = ? AND kind = ? AND vrc_id = ?');
+        $st->execute([$uid, $kind, $id]);
+        $h = $st->fetch() ?: [];
+        $items[] = ['id' => $id, 'fav_id' => $m['fav_id'], 'group' => $m['group'], 'name' => (string)($h['name'] ?? '') ?: ($kind === 'world' ? 'Welt' : 'Avatar') . ' (nicht abrufbar)',
+                    'image' => (string)($h['image'] ?? ''), 'sub' => 'privat, gelöscht oder nicht verfügbar', 'author_id' => '', 'locked' => true, 'occupants' => 0, 'missing' => true];
     }
     return $items;
 }
