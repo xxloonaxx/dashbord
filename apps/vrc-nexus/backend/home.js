@@ -26,6 +26,9 @@ class Home {
             notifs: acc ? safe(() => { const n = a.x.notifList({ view: 'open' }); return { unseen: n.unseen, items: n.items.slice(0, 6).map(i => ({ type: i.type, title: i.title || i.type, message: str(i.message).slice(0, 120), ts: i.ts || i.created || 0 })) }; }, null) : null,
             feed: acc ? safe(() => a.vrc.feed({ limit: 10 }).slice(0, 10), []) : [],
             update: safe(() => a.updater.status(), null),
+            events: acc ? safe(() => a.vrc.calendarList().slice(0, 8).map(e => ({ id: e.id, title: e.title, group: e.group_name, start: int(e.starts), end: int(e.ends), following: !!e.following, image: e.image })), []) : [],
+            anniv: acc && a.insights ? safe(() => a.insights.anniversaries(30).slice(0, 10), []) : [],
+            coll: a.coll ? safe(() => { const l = a.coll.all(); return { total: l.length, items: l.slice().sort((x, y) => y.added - x.added).slice(0, 12).map(x => ({ id: x.id, kind: x.kind, name: x.name, thumb: x.thumb, tags: x.tags.slice(0, 3) })) }; }, null) : null,
         };
         if (pc) Object.assign(out, {
             game: { running: st.running, world: st.worldName, world_id: st.worldId, instance: st.instance, since: st.since, players: [...st.players.values()].map(p => ({ id: p.id, name: p.name, since: p.since })).slice(0, 80), avatar: st.avatar },
@@ -38,8 +41,22 @@ class Home {
             cam: { mode: (g.osc.cam || {}).Mode ?? null, burst: !!a.cam.burstRun, presets: a.cam.presets().map(p => p.name).slice(0, 8) },
             overlay: a.tools.host.overlayState ? safe(() => a.tools.host.overlayState(), null) : null,
             speech: a.speech ? safe(() => a.speech.status(), null) : null,
+            week: safe(() => this.week(), null),
+            rules: safe(() => a.auto.rules().map(r => ({ id: r.id, name: r.name, trigger: r.trigger, on: r.on })), []),
+            osclog: a.osclog ? safe(() => a.osclog.buf.slice(-12).reverse().map(e => ({ t: e.t, d: e.d, c: e.c, a: e.a, v: e.v })), []) : [],
+            stream: a.stream ? safe(() => { const s = a.stream.status(); return { twitch: s.twitch, youtube: s.youtube, on: { twitch: !!s.cfg.twitch.on, youtube: !!s.cfg.youtube.on }, users: s.users, poll: s.poll,
+                chat: a.stream.buf.filter(e => e.kind === 'chat').slice(-6).map(e => ({ t: e.t, platform: e.platform, user: e.user, text: e.text })), top: a.stream.leaderboard('', 5) }; }, null) : null,
         });
         return out;
+    }
+    /** Wochenrückblick – teuer, daher 5 Minuten zwischengespeichert */
+    week() {
+        if (this.weekCache && Date.now() - this.weekCache.at < 300000) return this.weekCache.d;
+        const r = this.app.insights.recap(7);
+        const d = { playtime: r.playtime, sessions: r.sessions, worlds: r.worlds_count, people: r.people_count, shots: r.shots, best_day: r.best_day, by_day: r.by_day, by_hour: r.by_hour,
+            top_world: r.top_worlds[0] ? r.top_worlds[0].name : '', top_person: r.top_people[0] ? r.top_people[0].name : '' };
+        this.weekCache = { at: Date.now(), d };
+        return d;
     }
     /** kurze Zusammenfassung für das Android-Homescreen-Widget */
     summary() {

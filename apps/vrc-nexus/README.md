@@ -20,6 +20,13 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.6.0 – Startseite: Widget-Raster wie im Dashboard
+- **Raster mit 4 Spalten** (passt sich an: 3 / 2 / 1 Spalte je nach Breite, auch auf Android) im Mauerwerk-Stil: Widgets rutschen lückenlos nach oben, gleichmäßige Abstände.
+- **✏️ Anpassen:** sichtbares Raster mit Spalten-Hilfslinien, Widgets **per Ziehen** sortieren (oder ◀ ▶), **Größe S / M / L** und bei passenden Widgets **XL (ganze Breite)**; Widgets einklappen (▾); Hinzufügen als Kacheln mit Beschreibung und möglichen Größen.
+- Größere Widgets zeigen mehr (z. B. mehr Freunde, Stunden-Diagramm bei „Letzte 7 Tage“ ab L).
+- **8 neue Widgets:** 🚀 Schnellstart (VRChat starten, neu beitreten, Selbst-Einladung), 📈 Letzte 7 Tage (Spielzeit je Tag/Uhrzeit), 📅 Gruppen-Events, 🎂 Jahrestage, 🗂 Sammlung, 📺 Stream-Bot (Status, Chat, Punkte-Bestenliste, Umfrage), 📜 OSC-Live, 🤖 Automatik-Regeln an/aus.
+- Alte Anordnungen werden übernommen (breit → M).
+
 ### Neu in 1.5.0 – Stream-Bot: Befehls-Baukasten & viele neue Funktionen
 - **🧱 Befehls-Baukasten:** jeder Befehl kann eine **VRChat-Aktion** ausführen (Avatar-Parameter an/aus oder auf einen Wert, Chatbox, Kamera, Eingaben, Vorlesen, Webhook) – mit Werten aus dem Chat (`!farbe 3` → `param Color = {1}`), Rechten (alle / Abonnenten & Mitglieder / VIPs / Mods / nur ich), Kosten in Punkten, Pause gesamt und pro Person, Aliasen, Hilfetext, an/aus, Nutzungszähler, Vorlagen und „Ausprobieren“.
 - **⭐ Ereignisse:** Abo, Abo-Verlängerung, Geschenk-Abos, Raid, Bits (Twitch), Super Chat & neue Mitglieder (YouTube), „Erster im Chat“ – jeweils mit Chat-Antwort und VRChat-Aktion, Mindestmenge, Test-Knopf.

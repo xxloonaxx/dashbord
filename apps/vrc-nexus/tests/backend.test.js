@@ -434,6 +434,8 @@ test('1.3: Parameter-Erkennung, Makros, Kamera, Automatik, Sprache, Rückblick',
     assert.ok(rc.playtime >= 2900 && rc.top_people[0].name === 'Luna');
     const home = await app.post({ act: 'home_data' }, {});
     assert.ok(Array.isArray(home.macros) && home.friends && home.cam);
+    // 1.6: Daten der neuen Widgets
+    assert.ok(Array.isArray(home.events) && Array.isArray(home.anniv) && Array.isArray(home.rules) && Array.isArray(home.osclog) && home.coll && 'week' in home && 'stream' in home);
     // OSC-Log: Kategorien, nur Änderungen, Drosselung, Gesendetes
     const { category } = require('../backend/osclog');
     assert.deepStrictEqual(['/avatar/change', '/avatar/parameters/Ears', '/avatar/parameters/Outfit', '/avatar/parameters/Hue', '/avatar/parameters/VelocityX', '/avatar/parameters/GestureLeft', '/avatar/parameters/AFK', '/usercamera/Zoom', '/chatbox/input', '/input/Jump', '/foo']
