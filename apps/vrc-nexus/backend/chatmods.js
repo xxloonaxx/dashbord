@@ -45,6 +45,18 @@ const rate = n => n >= 1e6 ? (n / 1e6).toFixed(1) + ' MB/s' : Math.round(n / 1e3
 const run = (cmd, args, ms = 5000) => new Promise(res => execFile(cmd, args, { windowsHide: true, timeout: ms, maxBuffer: 1024 * 1024 }, (e, out) => res(e ? null : String(out))));
 const base = (env, def) => (process.env[env] || def).replace(/\/+$/, '');
 
+/** GPU-Werte ohne nvidia-smi (AMD/Intel): Auslastung|VRAM-Bytes|Name – Windows-Leistungsdaten über CIM (Klassennamen sind nicht übersetzt) */
+const GPU_PS = "$e=Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '*engtype_3D*' };"
+        + "$u=($e | Measure-Object -Property UtilizationPercentage -Sum).Sum;"
+        + "$m=(Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUAdapterMemory -ErrorAction SilentlyContinue | Measure-Object -Property DedicatedUsage -Sum).Sum;"
+        // echte Grafikkarte: am PCI-Bus, kein virtueller Adapter (Virtual Desktop, Parsec, Remote-Desktop, Spacedesk …), größter Grafikspeicher zuerst
+        + "$virt='Virtual|Basic|Remote|Parsec|Spacedesk|IddSample|Mirror|Meta Quest|Oculus|DisplayLink|Citrix|VMware|Hyper-V';"
+        + "$v=Get-CimInstance Win32_VideoController;"
+        + "$r=$v | Where-Object { $_.PNPDeviceID -like 'PCI\\*' -and $_.Name -notmatch $virt } | Sort-Object AdapterRAM -Descending | Select-Object -First 1;"
+        + "if(-not $r){$r=$v | Where-Object { $_.Name -notmatch $virt } | Select-Object -First 1};"
+        + "$n=$r.Name;"
+        + "[Console]::Out.WriteLine([string][math]::Round([double]$u) + '|' + [string][math]::Round([double]$m) + '|' + $n)";
+
 class ChatMods {
     constructor(app, crypt) {
         this.app = app;
@@ -155,12 +167,7 @@ class ChatMods {
     /** AMD/Intel (und NVIDIA ohne nvidia-smi): Windows-Leistungsdaten über CIM – Klassennamen sind (anders als Leistungsindikatoren) nicht übersetzt */
     async readGpuWin() {
         if (process.platform !== 'win32' && !process.env.NEXUS_GPU_WIN) return false;
-        const ps = "$e=Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '*engtype_3D*' };"
-            + "$u=($e | Measure-Object -Property UtilizationPercentage -Sum).Sum;"
-            + "$m=(Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUAdapterMemory -ErrorAction SilentlyContinue | Measure-Object -Property DedicatedUsage -Sum).Sum;"
-            + "$n=(Get-CimInstance Win32_VideoController | Where-Object { $_.Name -notlike '*Basic*' } | Select-Object -First 1).Name;"
-            + "[Console]::Out.WriteLine([string][math]::Round([double]$u) + '|' + [string][math]::Round([double]$m) + '|' + $n)";
-        const out = process.env.NEXUS_GPU_WIN !== undefined ? process.env.NEXUS_GPU_WIN : await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps], 8000);
+        const out = process.env.NEXUS_GPU_WIN !== undefined ? process.env.NEXUS_GPU_WIN : await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', GPU_PS], 8000);
         const m = /^(\d+)\|(\d*)\|(.*)$/m.exec(str(out).trim());
         if (!m || (!m[3] && !int(m[1]))) return false;
         this.gpuWin = true;
@@ -412,4 +419,4 @@ class ChatMods {
     }
 }
 
-module.exports = { ChatMods, MODULES, WMO };
+module.exports = { ChatMods, MODULES, WMO, GPU_PS };

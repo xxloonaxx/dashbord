@@ -1,5 +1,10 @@
 [
  {
+  "version": "2.3.1",
+  "title": "Fix: falsche Grafikkarte im Rechner-Modul",
+  "body": "- `{gpu_name}` zeigte „Virtual Desktop Monitor“ (der virtuelle Bildschirm-Treiber der VR-App *Virtual Desktop*). Jetzt zählen nur echte Grafikkarten am PCI-Bus – virtuelle Adapter (Virtual Desktop, Parsec, Remote-Desktop, Spacedesk, Hyper-V …) werden übersprungen, bei mehreren gewinnt die mit dem meisten Grafikspeicher.\n- Der Windows-Build prüft die GPU-Abfrage jetzt auf einem echten Windows."
+ },
+ {
   "version": "2.3.0",
   "title": "Sieben neue Stream-Deck-Tasten",
   "body": "- **🎵 Medien**: ⏯ / ⏭ / ⏮ für das, was Windows gerade abspielt (Spotify, Browser/YouTube …) – die Taste zeigt den Titel (oder Künstler) und leuchtet, solange etwas läuft.\n- **⚡ Schnelltext**: sendet einen gespeicherten Chatbox-Schnelltext – oder die letzte Nachricht erneut.\n- **🎬 Parameter-Szene**: setzt eine gespeicherte Avatar-Parameter-Szene mit einem Druck.\n- **⏺ Aufnahme**: Parameter-Aufnahme starten/stoppen (zeigt die Sekunden) oder eine Aufnahme abspielen (½× / 1× / 2×).\n- **🧩 Chatbox-Module**: alle Module oder ein einzelnes Modul an/aus – mit Zustandsanzeige.\n- **🔊 Vorlesen**: spricht einen Text über die Sprachausgabe, optional zusätzlich in die Chatbox.\n- **ℹ️ Info-Anzeige**: zeigt beliebige Platzhalter auf der Taste, z. B. `🕒 {zeit}/n📡 {ping} ms`, `{akku}%`, `{countdown_rest}`, `{musik_titel}` – die Einstellungsseite listet alle verfügbaren.\n- Lange Texte (Liedtitel, Namen) werden für die Taste sauber umgebrochen und gekürzt.\n- *Werkzeuge → Stream Deck* listet jetzt alle 25 Aktionen."

@@ -1060,6 +1060,17 @@ test('2.3: Stream-Deck-Schnittstelle – Schnelltext, Chatbox-Module, Aufnahme, 
     } finally { app.osctools.stopPlay(); app.tools.stop(); }
 });
 
+test('2.3.1: GPU-Abfrage ohne NVIDIA wählt keinen virtuellen Adapter (echt nur auf Windows)', async () => {
+    const { GPU_PS } = require('../backend/chatmods');
+    assert.ok(GPU_PS.includes("PNPDeviceID -like 'PCI\\*'") && /Virtual\|/.test(GPU_PS), 'Filter für echte Grafikkarten');
+    if (process.platform !== 'win32') return;
+    const out = require('child_process').execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', GPU_PS], { encoding: 'utf8', timeout: 30000 }).trim();
+    console.log('   GPU-Abfrage:', JSON.stringify(out));
+    const m = /^(\d+)\|(\d*)\|(.*)$/m.exec(out);
+    assert.ok(m, 'Ausgabeformat Auslastung|VRAM|Name: ' + out);
+    assert.ok(!/Virtual|Hyper-V|Basic|Remote/i.test(m[3]), 'virtueller Adapter gewählt: ' + m[3]);
+});
+
 test('1.7: Wörterbuch (EN/FR/JA) vollständig und Platzhalter stimmen', () => {
     const fs = require('fs'), path = require('path'), vm = require('vm');
     const file = path.join(__dirname, '..', 'renderer', 'js', 'i18n-dict.js');

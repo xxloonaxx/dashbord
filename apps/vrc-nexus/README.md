@@ -20,6 +20,10 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 2.3.1 – Fix: falsche Grafikkarte im Rechner-Modul
+- `{gpu_name}` zeigte „Virtual Desktop Monitor“ (der virtuelle Bildschirm-Treiber der VR-App *Virtual Desktop*). Jetzt zählen nur echte Grafikkarten am PCI-Bus – virtuelle Adapter (Virtual Desktop, Parsec, Remote-Desktop, Spacedesk, Hyper-V …) werden übersprungen, bei mehreren gewinnt die mit dem meisten Grafikspeicher.
+- Der Windows-Build prüft die GPU-Abfrage jetzt auf einem echten Windows.
+
 ### Neu in 2.3.0 – Sieben neue Stream-Deck-Tasten
 - **🎵 Medien**: ⏯ / ⏭ / ⏮ für das, was Windows gerade abspielt (Spotify, Browser/YouTube …) – die Taste zeigt den Titel (oder Künstler) und leuchtet, solange etwas läuft.
 - **⚡ Schnelltext**: sendet einen gespeicherten Chatbox-Schnelltext – oder die letzte Nachricht erneut.
