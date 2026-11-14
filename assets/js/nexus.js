@@ -1373,6 +1373,47 @@
     });
 
     // ---------- Konto ----------
+    // 🔔 Web-Push: Service Worker + Abo dieses Geräts
+    const pp = $('#pushPanel');
+    if (pp) {
+        const b64 = s => { const p = '='.repeat((4 - s.length % 4) % 4), raw = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(raw, c => c.charCodeAt(0)); };
+        let info = null, mine = '';
+        const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+        const show = d => {
+            info = d;
+            for (const k of ['watch', 'favorites', 'notifs', 'events']) pp[k].checked = !!d.prefs[k];
+            pp.events_min.value = d.prefs.events_min; pp.quiet_from.value = d.prefs.quiet_from; pp.quiet_to.value = d.prefs.quiet_to;
+            $('#pushDev').innerHTML = (!supported ? '⚠ Dieser Browser kann keine Push-Meldungen.' : Notification.permission === 'denied' ? '⚠ Benachrichtigungen sind für diese Seite im Browser blockiert.' : '')
+                + (d.subs.length ? '<div>' + d.subs.map(s => '📱 ' + esc(s.ua || 'Gerät') + ' · seit ' + new Date(s.created * 1000).toLocaleDateString('de-DE') + (s.last_ok ? ' · zuletzt zugestellt ' + new Date(s.last_ok * 1000).toLocaleString('de-DE') : '') + ' <a href="#" data-pushdel="' + s.id + '">abmelden</a>').join('<br>') + '</div>' : '<div>Noch kein Gerät angemeldet.</div>');
+            $('#pushOn').textContent = mine ? '✔ Auf diesem Gerät aktiv' : '🔔 Auf diesem Gerät aktivieren';
+            $('#pushTask').innerHTML = d.task_on ? '✔ Hintergrund-Prüfung läuft alle 15 min' + (d.tasks_mode === 'pseudo' ? ' – <b>aber nur, wenn jemand die Seite besucht</b>. Für Meldungen rund um die Uhr in Admin → System → Aufgaben einen echten Cron einrichten.' : '.') + (d.task_last ? ' Zuletzt: ' + new Date(d.task_last * 1000).toLocaleTimeString('de-DE') + '.' : '')
+                : '⚠ Die Aufgabe „VRC-Nexus-Push“ ist aus' + (d.is_admin ? ' – unter Admin → System → Aufgaben einschalten.' : ' – bitte einen Admin, sie einzuschalten.');
+        };
+        const load = () => api('push_info').then(show).catch(() => {});
+        if (supported) navigator.serviceWorker.getRegistration('nexus-sw.js').then(r => r && r.pushManager.getSubscription()).then(s => { mine = s ? s.endpoint : ''; load(); }).catch(load); else load();
+        $('#pushOn').addEventListener('click', async () => {
+            if (!supported) return toast('Dieser Browser kann keine Push-Meldungen.', true);
+            try {
+                if (await Notification.requestPermission() !== 'granted') return toast('Benachrichtigungen wurden nicht erlaubt.', true);
+                const reg = await navigator.serviceWorker.register('nexus-sw.js');
+                await navigator.serviceWorker.ready;
+                const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(info.key) });
+                mine = sub.endpoint;
+                const ua = /Android/.test(navigator.userAgent) ? 'Android' : /iPhone|iPad/.test(navigator.userAgent) ? 'iPhone/iPad' : /Windows/.test(navigator.userAgent) ? 'Windows' : /Mac/.test(navigator.userAgent) ? 'Mac' : 'Gerät';
+                const br = /Edg\//.test(navigator.userAgent) ? 'Edge' : /Firefox\//.test(navigator.userAgent) ? 'Firefox' : /Chrome\//.test(navigator.userAgent) ? 'Chrome' : /Safari\//.test(navigator.userAgent) ? 'Safari' : '';
+                const d = await api('push_sub', { sub: JSON.stringify(sub.toJSON()), ua: ua + (br ? ' · ' + br : '') });
+                toast(d.msg); show(d);
+            } catch (e) { toast('⚠ Push ging nicht: ' + e.message, true); }
+        });
+        $('#pushTest').addEventListener('click', () => api('push_test').then(d => { toast(d.msg, !/geschickt/.test(d.msg)); show(d); }).catch(x => toast(x.message, true)));
+        pp.addEventListener('click', e => { const a = e.target.closest('[data-pushdel]'); if (!a) return; e.preventDefault(); api('push_unsub', { id: a.dataset.pushdel }).then(d => { toast(d.msg); show(d); }).catch(x => toast(x.message, true)); });
+        pp.addEventListener('submit', e => {
+            e.preventDefault();
+            const data = { quiet_from: pp.quiet_from.value, quiet_to: pp.quiet_to.value, events_min: pp.events_min.value };
+            for (const k of ['watch', 'favorites', 'notifs', 'events']) data[k] = pp[k].checked ? 1 : '';
+            api('push_prefs', data).then(d => { toast(d.msg); show(d); }).catch(x => toast(x.message, true));
+        });
+    }
     // Discord „/online“ (nur mit Zugriff auf die Discord-Zentrale)
     const dco = $('#dcOnline');
     if (dco) {

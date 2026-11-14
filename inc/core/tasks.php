@@ -17,6 +17,7 @@ const TASKS = [
     'cleanup'   => ['🧹', 'Aufräumen', 'Alte Sitzungen, Login-Sperren, OSC-Befehle, Zähler & Protokolleinträge entfernen.', 1440, true],
     'backup'    => ['💾', 'Automatisches Backup', 'Datenbank & JSON-Daten nach data/backups sichern (ohne Bilder).', 1440, false],
     'linkcheck' => ['🔗', 'Link-Check', 'Alle Links der Link-Hubs prüfen.', 10080, false],
+    'vrcpush'   => ['🔔', 'VRC-Nexus-Push', 'VRChat abgleichen und Push-Benachrichtigungen schicken (beobachtete Freunde, Einladungen, Gruppen-Events) – für Handy-Meldungen am besten mit echtem Cron.', 15, true],
     'vrcstats'  => ['🌍', 'VRChat-Spielerzahl', 'Spieler online bei VRChat messen (öffentlich, ohne Anmeldung) – für die Kurve im Nexus.', 15, true],
 ];
 const TASK_INTERVALS = [15 => '15 min', 30 => '30 min', 60 => '1 Std.', 180 => '3 Std.', 360 => '6 Std.', 720 => '12 Std.', 1440 => 'täglich', 10080 => 'wöchentlich'];
@@ -61,6 +62,9 @@ function task_run(string $id): string {
             $r = backup_auto(max(1, (int)setting('backup_keep', '7')));
             if (!$r['ok']) throw new RuntimeException('Backup fehlgeschlagen (ZIP-Erweiterung vorhanden?)');
             return $r['name'] . ' · ' . round($r['size'] / 1024) . ' KB' . ($r['removed'] ? ' · ' . $r['removed'] . ' alte entfernt' : '');
+        case 'vrcpush':
+            require_once APP_ROOT . '/inc/modules/nexus_push.php';
+            return nx_push_run();
         case 'vrcstats':
             require_once APP_ROOT . '/inc/modules/vrchat_extra.php';
             $n = vrc_visits_sample(true);

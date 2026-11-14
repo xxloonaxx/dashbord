@@ -505,6 +505,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }, vrc_calendar_list($uid)), 'linked' => (bool)vrc_calendar_sub($uid, false), 'can_link' => can('calendar.edit') || can('calendar.subscriptions'),
                        'ics' => $base . '?ics=' . vrc_ics_token($uid), 'events_page' => $base . '?events=' . vrc_ics_token($uid), 'refreshed' => (int)setting('vrc_cal_refresh_' . $uid, '0'), 'error' => $err, 'can_create' => $can];
                     break;
+                case 'push_info': case 'push_sub': case 'push_unsub': case 'push_prefs': case 'push_test': {
+                    require_once __DIR__ . '/inc/modules/nexus_push.php';
+                    if ($act === 'push_sub') webpush_save($uid, (array)json_decode((string)($_POST['sub'] ?? ''), true), (string)($_POST['ua'] ?? ''));
+                    if ($act === 'push_unsub') webpush_delete($uid, (string)($_POST['endpoint'] ?? ''), (int)($_POST['id'] ?? 0));
+                    if ($act === 'push_prefs') nx_push_save_prefs($uid, $_POST);
+                    $sent = $act === 'push_test' ? webpush_send_user($uid, ['title' => '🔔 VRC Nexus', 'body' => 'Push funktioniert! So sehen Meldungen über Freunde, Einladungen und Events aus.', 'tag' => 'test', 'url' => 'nexus.php']) : null;
+                    require_once __DIR__ . '/inc/core/tasks.php';
+                    $tc = task_conf('vrcpush');
+                    $out = ['key' => webpush_public_key(), 'subs' => webpush_list($uid), 'prefs' => nx_push_prefs($uid), 'task_on' => $tc['on'], 'task_last' => $tc['last'], 'tasks_mode' => tasks_mode(), 'is_admin' => can('admin.access')];
+                    if ($act === 'push_test') $out['msg'] = $sent ? 'Test an ' . $sent . ' Gerät(e) geschickt.' : 'Kein Gerät hat die Meldung angenommen – Push auf diesem Gerät neu aktivieren.';
+                    if ($act === 'push_sub') $out['msg'] = 'Push auf diesem Gerät aktiviert.';
+                    if ($act === 'push_unsub') $out['msg'] = 'Gerät abgemeldet.';
+                    if ($act === 'push_prefs') $out['msg'] = 'Gespeichert.';
+                    break;
+                }
                 case 'discord_online': {
                     if (!can('discord.manage')) throw new RuntimeException('Dafür brauchst du Zugriff auf die Discord-Zentrale.');
                     $cur = json_decode(setting('discord_nexus', ''), true) ?: [];
@@ -1329,6 +1344,20 @@ session_write_close();
 
     <section class="vx-tab" data-pane="client" hidden><div id="clientPane" class="nc"></div></section>
     <section class="vx-tab" data-pane="account" hidden>
+        <form class="panel" id="pushPanel" style="margin-bottom: 16px;">
+            <div class="panel-title">🔔 Push-Benachrichtigungen (Handy &amp; PC)</div>
+            <p class="vx-small">Meldungen kommen auch, wenn VRC Nexus nicht offen ist – z. B. aufs Android-Handy über Chrome. Auf dem iPhone: Seite erst „Zum Home-Bildschirm“ hinzufügen.</p>
+            <div id="pushDev" class="vx-small"></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;"><button type="button" class="btn btn-sm btn-gold" id="pushOn">🔔 Auf diesem Gerät aktivieren</button><button type="button" class="btn btn-sm" id="pushTest">Test schicken</button></div>
+            <div style="display:flex;gap:14px;flex-wrap:wrap;">
+                <label class="check"><input type="checkbox" name="watch"> 🟢 beobachtete Freunde kommen ins Spiel</label>
+                <label class="check"><input type="checkbox" name="favorites"> ⭐ Lieblings-Freunde kommen ins Spiel</label>
+                <label class="check"><input type="checkbox" name="notifs"> 📨 Einladungen &amp; Anfragen</label>
+                <label class="check"><input type="checkbox" name="events"> 📅 Gruppen-Events <input type="number" name="events_min" min="5" max="240" style="width:60px"> min vorher</label>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:8px;" class="vx-small">🌙 Ruhezeit <input type="time" name="quiet_from"> bis <input type="time" name="quiet_to"> <button class="btn btn-sm">Speichern</button></div>
+            <p class="vx-small" id="pushTask"></p>
+        </form>
         <?php if (can('discord.manage')): ?>
         <form class="panel" id="dcOnline" style="margin-bottom: 16px;">
             <div class="panel-title">🤖 Discord „/online“ &amp; „/wo“</div>
