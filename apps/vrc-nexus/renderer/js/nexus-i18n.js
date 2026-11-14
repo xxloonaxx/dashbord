@@ -26,7 +26,7 @@
     const SKIP = 'script, style, textarea, code, pre, .fmt, [contenteditable], [data-no-i18n], .vx-feed-txt i, .hm-pre, .sb-msg, .hm-log';
 
     /** übersetzt einen Text (mit Emojis/Satzzeichen drumherum); null = unbekannt */
-    function tr(text) {
+    function tr(text, depth = 0) {
         const d = D();
         if (!d || !text) return null;
         const t = text.trim();
@@ -40,6 +40,14 @@
         const k = (core || t).replace(/\d+(?:[.,:]\d+)*/g, m => { nums.push(m); return '#'; });
         if (nums.length && d[k] !== undefined) { let i = 0; return (core ? h : '') + d[k].replace(/#/g, () => nums[i++] ?? '') + (core ? tl : ''); }
         for (const [re, rep] of RX()) { if (re.test(core)) return h + core.replace(re, rep) + tl; }
+        // zusammengesetzt: „5 Freunde · abgeglichen vor 3 min“ → Teile einzeln; „Gute Nacht, Luna“ → nur der bekannte Anfang
+        if (depth < 2 && core.includes(' · ')) {
+            let hit = false;
+            const parts = core.split(' · ').map(p => { const x = tr(p, depth + 1); if (x !== null) hit = true; return x === null ? p : x; });
+            if (hit) return h + parts.join(' · ') + tl;
+        }
+        const c = /^([^,]{2,40}), (.+)$/.exec(core);
+        if (depth < 2 && c) { const x = tr(c[1], depth + 1); if (x !== null) return h + x + ', ' + c[2] + tl; }
         return null;
     }
     window.t = s => (lang === 'de' ? s : tr(s) || s);

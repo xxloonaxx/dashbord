@@ -18,7 +18,6 @@ Offline zeigen	Show offline	Afficher hors ligne	オフラインを表示
 Offline-Freunde standardmäßig zeigen	Show offline friends by default	Afficher les amis hors ligne par défaut	オフラインのフレンドを既定で表示
 Oft gleichzeitig online mit	Often online at the same time as	Souvent en ligne en même temps que	よく同時にオンライン
 Ohne Ton	Without sound	Sans son	音なし
-Ohren	Ears	Oreilles	みみ
 Online	Online	En ligne	オンライン
 Online / Offline	Online / Offline	En ligne / Hors ligne	オンライン / オフライン
 Online auf der Website / App	Online on the website / app	En ligne sur le site / l'appli	ウェブ / アプリでオンライン
@@ -33,7 +32,6 @@ Original / Übersetzung	Original / translation	Original / traduction	原文 / �
 Original und Übersetzung in zwei Zeilen	Original and translation in two lines	Original et traduction sur deux lignes	原文と翻訳を2行で
 Orten	Places	Lieux	場所
 Ortswechsel	Location change	Changement de lieu	場所の移動
-Outfit	Outfit	Tenue	衣装
 Overlay ein-/ausblenden	Show/hide overlay	Afficher/masquer l'overlay	オーバーレイを表示/非表示
 Overlay-Chat übersetzen	Translate overlay chat	Traduire le chat de l'overlay	オーバーレイチャットを翻訳
 PC & Quest	PC & Quest	PC & Quest	PC & Quest
@@ -47,7 +45,6 @@ Parametername, z. B. Ears_Wiggle	Parameter name, e.g. Ears_Wiggle	Nom du paramè
 Passwort speichern	Save password	Enregistrer le mot de passe	パスワードを保存
 Pause	Pause	Pause	一時停止
 Pause danach	Cooldown afterwards	Pause ensuite	その後のクールダウン
-Platsch	Splash	Plouf	ポチャン
 Plattform	Platform	Plateforme	プラットフォーム
 Plattformen	Platforms	Plateformes	プラットフォーム
 Plattformen (zuletzt	Platforms (last	Plateformes (dernière	プラットフォーム (最終
@@ -82,7 +79,6 @@ Regel	Rule	Règle	ルール
 Regeln	Rules	Règles	ルール
 Regeln an/aus schalten	Toggle rules on/off	Activer/désactiver les règles	ルールのオン/オフ
 Regeln laufen im Hintergrund, solange VRC Nexus offen ist (auch im Infobereich	Rules run in the background while VRC Nexus is open (also in the tray	Les règles tournent en arrière-plan tant que VRC Nexus est ouvert (même dans la zone de notification	VRC Nexusが開いている間 (トレイ含む) ルールはバックグラウンドで動作
-Regen	Rain	Pluie	雨
 Region JP	Region JP	Région JP	リージョン JP
 Region US	Region US	Région US	リージョン US
 Regler (Float	Slider (float	Curseur (float	スライダー (float
@@ -109,7 +105,6 @@ Sammlungen mit Tags	Collections with tags	Collections avec tags	タグ付きコ�
 Samstag, #. November	Saturday, # November	Samedi # novembre	11月#日 土曜日
 Schalter	Switch	Interrupteur	スイッチ
 Schalter (Bool	Switch (bool	Interrupteur (bool	スイッチ (bool
-Schau mich an	Look at me	Regarde-moi	こっち見て
 Schlüssel einfügen	Paste key	Coller la clé	キーを貼り付け
 Schlüssel gespeichert	Key saved	Clé enregistrée	キーを保存しました
 Schlüssel speichern	Save key	Enregistrer la clé	キーを保存
@@ -236,11 +231,8 @@ Tage mit Aktivität	Days with activity	Jours avec activité	アクティブな�
 Tagesdateien	Daily files	Fichiers journaliers	日別ファイル
 Tags, mit Komma	Tags, comma-separated	Tags, séparés par des virgules	タグ (カンマ区切り)
 Tags/Notiz	Tags/note	Tags/note	タグ/メモ
-Tanz	Dance	Danse	ダンス
-Tanzabend	Dance night	Soirée dansante	ダンスナイト
 Tastenkürzel	Keyboard shortcuts	Raccourcis clavier	キーボードショートカット
 Teilrechte	Partial rights	Droits partiels	一部権限
-Test	Test	Test	テスト
 Test ↗	Test ↗	Test ↗	テスト ↗
 Test-Benachrichtigung	Test notification	Notification de test	テスト通知
 Test-Benachrichtigung (alle eingeschalteten Wege	Test notification (all enabled channels	Notification de test (tous les canaux activés	テスト通知 (有効なすべての経路
@@ -272,11 +264,8 @@ Ton von der Kamera	Camera sound	Son de la caméra	カメラの音
 Top Punkte	Top points	Meilleurs points	ポイント上位
 Top-Welten	Top worlds	Meilleurs mondes	トップワールド
 Tracking	Tracking	Tracking	トラッキング
-Treffen	Meetup	Rencontre	ミートアップ
-Trinkpause	Drink break	Pause boisson	水分補給
 Troll	Troll	Troll	荒らし
 Trusted User	Trusted User	Trusted User	Trusted User
-Tränen	Tears	Larmes	涙
 Tschechisch	Czech	Tchèque	チェコ語
 Twitch	Twitch	Twitch	Twitch
 Twitch/YouTube-Chat + Punkte-Einlösungen (Stream-Bot). z. B. # × #	Twitch/YouTube chat + point redemptions (stream bot). e.g. # × #	Chat Twitch/YouTube + échanges de points (bot de stream). p. ex. # × #	Twitch/YouTubeチャット + ポイント交換 (配信ボット)。例: # × #
@@ -298,7 +287,6 @@ Updates	Updates	Mises à jour	アップデート
 User	User	User	User
 User-Agent	User agent	User-Agent	ユーザーエージェント
 VIPs	VIPs	VIP	VIP
-VR Tanz	VR dance	Danse VR	VRダンス
 VR-Hinweise nur, wenn VRChat läuft	VR notices only while VRChat is running	Notifications VR seulement si VRChat tourne	VRChat起動中のみVR通知
 VRC Nexus	VRC Nexus	VRC Nexus	VRC Nexus
 VRC Nexus #	VRC Nexus #	VRC Nexus #	VRC Nexus #

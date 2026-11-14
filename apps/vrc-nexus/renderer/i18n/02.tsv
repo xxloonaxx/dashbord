@@ -1,4 +1,3 @@
-Fledermäuse	Bats	Chauves-souris	コウモリ
 Fliegen	Fly	Voler	飛行
 Fluggeschwindigkeit	Flight speed	Vitesse de vol	飛行速度
 Fokus anzeigen	Show focus	Afficher la mise au point	フォーカス表示
@@ -6,7 +5,6 @@ Fokus-Abstand	Focus distance	Distance de mise au point	フォーカス距離
 Fortschrittsbalken	Progress bar	Barre de progression	プログレスバー
 Foto	Photo	Photo	写真
 Foto-Verlauf	Photo history	Historique des photos	写真履歴
-Foto-Welt	Photo world	Monde photo	写真ワールド
 Fotorate	Photo rate	Fréquence photo	撮影レート
 Fotos	Photos	Photos	写真
 Fotos alle	Photos every	Photos toutes les	撮影間隔
@@ -14,7 +12,6 @@ Fr # Uhr: # Min. online (# Tage	Fri #:00: # min online (# days	Ven # h : # min e
 Fr # Uhr: # Std. online (# Tage	Fri #:00: # h online (# days	Ven # h : # h en ligne (# jours	金 # 時: # 時間オンライン (# 日
 Fr # Uhr: #× online gekommen	Fri #:00: came online #×	Ven # h : connecté #×	金 # 時: #回オンライン
 Fr: # h # min	Fri: # h # min	Ven : # h # min	金: # 時間 # 分
-Frag mich	Ask me	Demande-moi	聞いてね
 Frage	Question	Question	質問
 Französisch	French	Français	フランス語
 Français	Français	Français	Français
@@ -98,7 +95,6 @@ Gruppen-Einladungen	Group invites	Invitations de groupe	グループ招待
 Gruppen-Events	Group events	Événements de groupe	グループイベント
 Gruppen-Kalender	Group calendar	Calendrier des groupes	グループカレンダー
 Gruppen-Moderation	Group moderation	Modération de groupe	グループモデレーション
-Gute-Nacht	Good night	Bonne nuit	おやすみ
 Handgelenk	Wrist	Poignet	手首
 Handgelenk-/Freies Fenster beim Start zeigen	Show wrist/free window at start	Afficher la fenêtre poignet/libre au démarrage	起動時に手首/フリーウィンドウを表示
 Hardwarebeschleunigung	Hardware acceleration	Accélération matérielle	ハードウェアアクセラレーション
@@ -174,12 +170,10 @@ Knopf beim Markieren von Text (sonst nur Alt+T	Button when selecting text (other
 Knopf „Beitreten“ bei öffentlichen Instanzen	“Join” button for public instances	Bouton « Rejoindre » pour les instances publiques	パブリックインスタンスに「参加」ボタン
 Known User	Known User	Known User	Known User
 Komm auf unseren Discord! (Link in der Beschreibung	Join our Discord! (link in the description	Rejoins notre Discord ! (lien dans la description	Discordに来てね！(リンクは概要欄
-Komm vorbei	Come over	Passe me voir	遊びに来て
 Komma	Comma	Virgule	カンマ
 Kommazahl	Decimal	Décimal	小数
 Kompakte Freundesliste	Compact friend list	Liste d'amis compacte	コンパクトなフレンドリスト
 Kompletten Verlauf als CSV	Full history as CSV	Historique complet en CSV	全履歴をCSVで
-Konfetti	Confetti	Confettis	紙吹雪
 Konto & Status	Account & status	Compte & statut	アカウント & ステータス
 Kopiere irgendwo eine VRChat-ID oder einen Link und drücke auf dieser Seite	Copy a VRChat ID or link anywhere and press on this page	Copie un ID ou lien VRChat n'importe où et appuie sur cette page	どこかでVRChatのIDやリンクをコピーし、このページで押してください:
 Kopieren	Copy	Copier	コピー
@@ -196,7 +190,6 @@ Ladebildschirme	Loading screens	Écrans de chargement	ロード画面
 Lange nicht online	Not online for a long time	Pas en ligne depuis longtemps	長期間オフライン
 Large v# Turbo (# MB	Large v# Turbo (# MB	Large v# Turbo (# Mo	Large v# Turbo (# MB
 Large v# Turbo · # MB	Large v# Turbo · # MB	Large v# Turbo · # Mo	Large v# Turbo · # MB
-Laser	Laser	Laser	レーザー
 Laut	Loud	Fort	大音量
 Lautstärke (%	Volume (%	Volume (%	音量 (%
 Leistung	Performance	Performances	パフォーマンス
@@ -232,7 +225,6 @@ Lokale Schnittstelle für das Stream-Deck-Plugin	Local interface for the Stream 
 Lokale Schnittstelle: läuft auf # · Discord: aus	Local interface: running on # · Discord: off	Interface locale : active sur # · Discord : désactivé	ローカルインターフェース: # で稼働 · Discord: オフ
 Längste Sitzung	Longest session	Session la plus longue	最長セッション
 Löschen	Delete	Supprimer	削除
-Magnet	Magnet	Aimant	マグネット
 Makro bearbeiten	Edit macro	Modifier la macro	マクロを編集
 Makro-Schritte wie unter Spiel & OSC → Makros. Platzhalter im Makro: {user} {args} {kosten}	Macro steps as under Game & OSC → Macros. Placeholders in the macro: {user} {args} {kosten}	Étapes de macro comme dans Jeu & OSC → Macros. Variables : {user} {args} {kosten}	マクロのステップ (ゲーム & OSC → マクロ と同じ)。プレースホルダー: {user} {args} {kosten}
 Makros	Macros	Macros	マクロ
@@ -251,7 +243,6 @@ Meine Käufe	My purchases	Mes achats	購入履歴
 Meine Meldungen	My reports	Mes signalements	自分の通報
 Meine Notiz	My note	Ma note	自分のメモ
 Meine Orte	My places	Mes lieux	マイプレイス
-Meine Welt	My world	Mon monde	マイワールド
 Meine Welten	My worlds	Mes mondes	マイワールド
 Meine letzten Instanzen	My recent instances	Mes instances récentes	最近のインスタンス
 Meiste Mitglieder	Most members	Le plus de membres	メンバー数順
@@ -317,7 +308,6 @@ Neue Freunde	New friends	Nouveaux amis	新しいフレンド
 Neue Gruppe	New group	Nouveau groupe	新しいグループ
 Neue Screenshots zusätzlich kopieren	Also copy new screenshots	Copier aussi les nouvelles captures	新しいスクリーンショットもコピー
 Neue VRChat-Benachrichtigungen (Einladungen, Anfragen, Freundschaften	New VRChat notifications (invites, requests, friendships	Nouvelles notifications VRChat (invitations, demandes, amitiés	新しいVRChat通知 (招待、リクエスト、フレンド
-Neue Welt	New world	Nouveau monde	新しいワールド
 Neues Abo (Twitch	New sub (Twitch	Nouvel abonnement (Twitch	新規サブ (Twitch
 Neues Makro	New macro	Nouvelle macro	新しいマクロ
 Neues Mitglied (YouTube	New member (YouTube	Nouveau membre (YouTube	新規メンバー (YouTube
