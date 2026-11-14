@@ -16,7 +16,8 @@ const MODELS = { tiny: ['Tiny', 75], base: ['Base', 142], small: ['Small', 466],
 const LANGS = { de: 'Deutsch', en: 'Englisch', auto: 'automatisch', fr: 'Französisch', es: 'Spanisch', ja: 'Japanisch', nl: 'Niederländisch', pl: 'Polnisch', it: 'Italienisch', ru: 'Russisch', tr: 'Türkisch' };
 const FALLBACK_BIN = 'https://github.com/ggml-org/whisper.cpp/releases/download/v1.7.6/whisper-bin-x64.zip';
 const DEF = { enabled: false, engine: 'local', model: 'base', lang: 'de', translate: false, target: 'EN-US', whisper_en: false, prefix: '🎙 ', typing: true, sound: false,
-    hotkey: 'Alt+V', vad: true, silence: 1.2, max: 30, threads: 4, bin: '', mic: '', mic_label: '', gain: 100, threshold: 2 };
+    hotkey: 'Alt+V', vad: true, silence: 1.2, max: 30, threads: 4, bin: '', mic: '', mic_label: '', gain: 100, threshold: 2,
+    mode: 'ptt', voice_min: 0.5, voice_mute_only: false, voice_game_only: true, log: true };
 
 /** Datei herunterladen (mit Weiterleitungen), Fortschritt über onProgress(bytes, total) */
 function download(url, file, onProgress, depth = 0) {
@@ -93,6 +94,11 @@ class Speech {
             mic_label: c.mic_label !== undefined ? cut(str(c.mic_label), 200) : cur.mic_label,
             gain: c.gain !== undefined ? Math.max(25, Math.min(400, int(c.gain) || 100)) : cur.gain,
             threshold: c.threshold !== undefined ? Math.max(1, Math.min(20, int(c.threshold) || 2)) : cur.threshold,
+            mode: ['ptt', 'voice'].includes(str(c.mode)) ? str(c.mode) : cur.mode,
+            voice_min: c.voice_min !== undefined ? Math.max(0.2, Math.min(3, Number(c.voice_min) || 0.5)) : cur.voice_min,
+            voice_mute_only: c.voice_mute_only !== undefined ? b(c.voice_mute_only) : cur.voice_mute_only,
+            voice_game_only: c.voice_game_only !== undefined ? b(c.voice_game_only) : cur.voice_game_only,
+            log: c.log !== undefined ? b(c.log) : cur.log,
         });
         this.app.db.setSetting('speech_cfg', JSON.stringify(n));
         if (this.app.tools.host.applySpeech) this.app.tools.host.applySpeech(n);
@@ -123,6 +129,7 @@ class Speech {
         const ready = c.engine === 'openai' ? !!this.key() : !!bin && (models[c.model] || !!process.env.NEXUS_WHISPER_BIN);
         return { cfg: c, models: MODELS, langs: LANGS, have: models, bin, model: fs.existsSync(model) ? model : '', has_key: !!this.key(), ready, recording: this.recording, busy: this.busy,
             last: this.last, error: this.lastError, pending: this.pending, download: this.dl, windows: process.platform === 'win32',
+            muted: (this.app.game.osc.params || {}).MuteSelf === true, game: !!this.app.game.state.running, log_count: this.history().length,
             engine_label: c.engine === 'openai' ? 'OpenAI Whisper' : 'whisper.cpp ' + (MODELS[c.model] || [''])[0] };
     }
     /** whisper.cpp (Windows-Programm) + Modell herunterladen */
@@ -179,6 +186,9 @@ class Speech {
         if (c.typing && ((this.recording && !was) || (!this.recording && cancel))) await this.app.game.oscSend('typing', { on: this.recording ? '1' : '' }).catch(() => {});
     }
 
+    // ---------- Verlauf (gesprochen → erkannt → übersetzt) ----------
+    history() { try { return JSON.parse(this.app.db.setting('speech_log', '[]')) || []; } catch (e) { return []; } }
+    addLog(e) { const l = this.history(); l.unshift(e); this.app.db.setSetting('speech_log', JSON.stringify(l.slice(0, 500))); }
     /** WAV (16 kHz mono) → Text → (Übersetzung) → Chatbox */
     async transcribe(wav, opts = {}) {
         const c = this.cfg();
@@ -186,6 +196,7 @@ class Speech {
         if (wav.length > 25 * 1024 * 1024) throw new UserError('Aufnahme zu lang.');
         this.busy = true;
         this.lastError = '';
+        const t0 = Date.now();
         try {
             let text = c.engine === 'openai' ? await this.openai(wav, c) : await this.local(wav, c);
             text = text.replace(/\[(BLANK_AUDIO|Musik|Music|MUSIC|Applaus|Stille)\]|\((Musik|music|Stille)\)/gi, '').replace(/\s+/g, ' ').trim();
@@ -194,6 +205,7 @@ class Speech {
             let sent = text;
             if (c.translate && !c.whisper_en) sent = (await this.app.tr.chat(text, c.target)).text;
             if (!opts.noSend) await this.app.game.oscSend('chatbox', { text: (c.prefix || '') + sent, sound: c.sound ? '1' : '', split: '1', vars: false });
+            if (c.log) this.addLog({ t: Date.now(), text, sent: sent !== text ? sent : '', target: sent !== text ? c.target : '', lang: c.lang, engine: c.engine === 'openai' ? 'OpenAI' : 'whisper.cpp ' + ((MODELS[c.model] || [''])[0]), ms: Date.now() - t0, via: str(opts.via) || 'ptt', test: !!opts.noSend });
             return { text, sent };
         } catch (e) { this.lastError = e.message; throw e; }
         finally {
@@ -233,6 +245,20 @@ class Speech {
     async action(act, input) {
         switch (act) {
             case 'speech_status': return this.status();
+            case 'speech_log': {
+                const q = str(input.q).toLowerCase().trim();
+                const l = this.history().map((e, i) => Object.assign({ i }, e)).filter(e => !q || (e.text + ' ' + e.sent).toLowerCase().includes(q));
+                return { items: l.slice(0, Math.max(10, Math.min(500, int(input.limit) || 100))), total: this.history().length };
+            }
+            case 'speech_log_clear': this.app.db.setSetting('speech_log', '[]'); return { items: [], total: 0, msg: 'Verlauf geleert.' };
+            case 'speech_log_delete': { const l = this.history(); l.splice(int(input.i), 1); this.app.db.setSetting('speech_log', JSON.stringify(l)); return { msg: 'Gelöscht.' }; }
+            case 'speech_log_send': {
+                const e = this.history()[int(input.i)];
+                if (!e) throw new UserError('Eintrag nicht gefunden.');
+                const c = this.cfg();
+                await this.app.game.oscSend('chatbox', { text: (c.prefix || '') + (input.which === 'text' ? e.text : e.sent || e.text), sound: c.sound ? '1' : '', split: '1', vars: false });
+                return { msg: 'Erneut an die Chatbox gesendet.' };
+            }
             case 'speech_cfg': return Object.assign(this.status(), { cfg: this.saveCfg(input), msg: 'Gespeichert.' });
             case 'speech_key': this.setKey(input.key); return Object.assign(this.status(), { msg: input.key ? 'Schlüssel gespeichert (verschlüsselt).' : 'Schlüssel entfernt.' });
             case 'speech_install': return Object.assign({ msg: await this.install(str(input.what)) }, this.status());
@@ -241,7 +267,7 @@ class Speech {
             case 'speech_state': await this.state(input.recording === '1' || input.recording === true, input.cancel === '1'); return { ok: true };
             case 'speech_transcribe': {
                 const b64 = str(input.audio).replace(/^data:[^,]*,/, '');
-                const r = await this.transcribe(Buffer.from(b64, 'base64'), { noSend: input.test === '1' });
+                const r = await this.transcribe(Buffer.from(b64, 'base64'), { noSend: input.test === '1', via: str(input.via) });
                 return Object.assign(r, { msg: r.text ? '🎙 „' + r.text + '“' : 'Nichts verstanden.' });
             }
         }

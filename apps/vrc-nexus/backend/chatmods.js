@@ -129,14 +129,16 @@ class ChatMods {
         Object.assign(this.v, { ram: (used / 1073741824).toFixed(1) + '/' + Math.round(tot / 1073741824) + ' GB', ram_pct: String(Math.round(used / tot * 100)), cpu_name: str((os.cpus()[0] || {}).model).replace(/\s+/g, ' ').trim() });
     }
     async readGpu() {
-        const out = await run(process.env.NEXUS_NVIDIA_SMI || 'nvidia-smi', ['--query-gpu=utilization.gpu,temperature.gpu,memory.used,memory.total,power.draw,name', '--format=csv,noheader,nounits']);
+        const q = ['--query-gpu=utilization.gpu,temperature.gpu,memory.used,memory.total,power.draw,name', '--format=csv,noheader,nounits'];
+        const fake = process.env.NEXUS_NVIDIA_SMI;      // Test: Ersatzprogramm (JS-Datei, läuft überall)
+        const out = fake ? await run(process.execPath, [fake].concat(q)) : await run('nvidia-smi', q);
         if (!out) { this.gpuMissing = true; return; }
         const [u, temp, mu, mt, pw, name] = out.split('\n')[0].split(',').map(x => x.trim());
         Object.assign(this.v, { gpu: String(int(u)), gpu_temp: String(int(temp)), vram: (Number(mu) / 1024).toFixed(1) + '/' + Math.round(Number(mt) / 1024) + ' GB', gpu_watt: String(Math.round(Number(pw) || 0)), gpu_name: name || '' });
     }
     async readNet() {
         let rx = 0, tx = 0;
-        if (process.platform === 'win32') {
+        if (process.platform === 'win32' && !process.env.NEXUS_NETDEV) {
             const out = await run('netstat', ['-e']);
             const m = out && /(\d+)\s+(\d+)\s*$/m.exec(out.split('\n').find(l => /^\s*(Bytes|Byte|Octets)/i.test(l)) || '');
             if (!m) return;

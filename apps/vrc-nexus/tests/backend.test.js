@@ -568,8 +568,8 @@ test('1.8: Chatbox-Module (Status, Zeit, Wetter, Rechner, Netzwerk, Twitch, Puls
     Object.assign(process.env, { NEXUS_OPENMETEO_BASE: B, NEXUS_GEO_BASE: B, NEXUS_DECAPI_BASE: B, NEXUS_PULSOID_BASE: B, NEXUS_FAKE_VR: '0' });
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nxcm-'));
     // nvidia-smi + Netzwerkzähler nachbilden
-    const smi = path.join(dir, 'nvidia-smi');
-    fs.writeFileSync(smi, '#!/bin/sh\necho "57, 63, 6144, 12288, 180.5, NVIDIA GeForce RTX 4070"\n', { mode: 0o755 });
+    const smi = path.join(dir, 'nvidia-smi.js');
+    fs.writeFileSync(smi, 'console.log("57, 63, 6144, 12288, 180.5, NVIDIA GeForce RTX 4070");\n');
     process.env.NEXUS_NVIDIA_SMI = smi;
     const netdev = path.join(dir, 'netdev');
     const net = (rx, tx) => fs.writeFileSync(netdev, 'Inter-|   Receive\n face |bytes\n    lo: 999 0 0 0 0 0 0 0 999 0 0 0 0 0 0 0\n  eth0: ' + rx + ' 0 0 0 0 0 0 0 ' + tx + ' 0 0 0 0 0 0 0\n');

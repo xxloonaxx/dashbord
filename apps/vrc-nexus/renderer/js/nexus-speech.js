@@ -57,7 +57,7 @@
         const wav = encodeWav(resample(r.chunks, r.ctx.sampleRate || 16000, 16000), 16000);
         const b64 = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1]); fr.readAsDataURL(new Blob([wav], { type: 'audio/wav' })); });
         toast('⏳ Erkenne Sprache …');
-        api('speech_transcribe', { audio: b64 }).then(d => { toast(d.msg); refresh(); }).catch(e => { toast('⚠ ' + e.message, true); refresh(); });
+        api('speech_transcribe', { audio: b64, via: 'ptt' }).then(d => { toast(d.msg); refresh(); loadHist(); }).catch(e => { toast('⚠ ' + e.message, true); refresh(); });
     }
     /** gewähltes Mikrofon öffnen – fehlt es (abgesteckt, neue ID), per Name suchen, sonst Standard */
     async function openMic(c) {
@@ -142,16 +142,108 @@
     }
     function cmd(op) { if (op === 'start') start(); else if (op === 'stop') stop(); else if (rec) stop(); else start(); }
 
+    // ---------- Sprachaktivierung: Mikro bleibt offen, Sprache startet die Aufnahme, Pause beendet sie ----------
+    let lis = null, paused = false, queue = Promise.resolve();
+    function voiceGate(c) {
+        if (paused) return 'pausiert';
+        if (rec) return 'Taste aktiv';
+        if (c.voice_game_only && st && !st.game) return 'VRChat läuft nicht';
+        if (c.voice_mute_only && st && !st.muted) return 'nur wenn in VRChat stumm';
+        return '';
+    }
+    async function listenStart(c) {
+        if (lis) return;
+        let stream;
+        try { stream = await openMic(c); } catch (e) { toast('⚠ Kein Mikrofon: ' + e.message, true); return; }
+        let ctx;
+        try { ctx = new AudioContext({ sampleRate: 16000 }); } catch (e) { ctx = new AudioContext(); }
+        const src = ctx.createMediaStreamSource(stream), gain = ctx.createGain(), proc = ctx.createScriptProcessor(2048, 1, 1);
+        gain.gain.value = (Number(c.gain) || 100) / 100;
+        lis = { stream, ctx, src, gain, proc, pre: [], seg: null, level: 0, c };
+        const PRE = 0.4;
+        proc.onaudioprocess = e => {
+            if (!lis) return;
+            const cc = lis.c, d = new Float32Array(e.inputBuffer.getChannelData(0)), secs = d.length / ctx.sampleRate;
+            let sum = 0; for (let i = 0; i < d.length; i++) sum += d[i] * d[i];
+            const rms = Math.sqrt(sum / d.length), loud = rms > (Number(cc.threshold) || 2) / 100;
+            lis.level = rms;
+            if (!lis.seg) {
+                lis.pre.push(d);
+                while (lis.pre.length * secs > PRE) lis.pre.shift();
+                if (loud && !voiceGate(cc)) {
+                    lis.seg = { chunks: lis.pre.slice(), voiced: secs, quiet: 0, len: lis.pre.length * secs };
+                    lis.pre = [];
+                    api('speech_state', { recording: '1' }).catch(() => {});
+                    render();
+                }
+            } else {
+                const g = lis.seg;
+                g.chunks.push(d); g.len += secs;
+                if (loud) { g.voiced += secs; g.quiet = 0; } else g.quiet += secs;
+                if (g.quiet >= (Number(cc.silence) || 1.2) || g.len >= (Number(cc.max) || 30)) {
+                    lis.seg = null;
+                    const ok = g.voiced >= (Number(cc.voice_min) || 0.5);
+                    api('speech_state', { recording: '', cancel: ok ? '' : '1' }).catch(() => {});
+                    if (ok) send(g.chunks, ctx.sampleRate, 'voice');
+                    render();
+                }
+            }
+            const m = document.getElementById('spMeter');
+            if (m && !rec) { m.style.width = Math.min(100, Math.round(rms * 600)) + '%'; m.classList.toggle('hit', loud); }
+        };
+        src.connect(gain); gain.connect(proc); proc.connect(ctx.destination);
+        render();
+    }
+    function listenStop() {
+        if (!lis) return;
+        const l = lis; lis = null;
+        try { l.proc.disconnect(); l.gain.disconnect(); l.src.disconnect(); l.stream.getTracks().forEach(t => t.stop()); l.ctx.close(); } catch (e) { /* egal */ }
+        if (l.seg) api('speech_state', { recording: '', cancel: '1' }).catch(() => {});
+        render();
+    }
+    /** Aufnahme → WAV → Erkennung (nacheinander, damit nichts verloren geht) */
+    function send(chunks, rate, via) {
+        const wav = encodeWav(resample(chunks, rate, 16000), 16000);
+        queue = queue.then(async () => {
+            const b64 = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1]); fr.readAsDataURL(new Blob([wav], { type: 'audio/wav' })); });
+            try { const d = await api('speech_transcribe', { audio: b64, via }); if (d.text) toast(d.msg); } catch (e) { toast('⚠ ' + e.message, true); }
+            refresh(); loadHist();
+        });
+    }
+    function syncListen() {
+        const c = st && st.cfg;
+        const want = c && c.enabled && c.mode === 'voice' && st.ready;
+        if (want && !lis) listenStart(c);
+        else if (!want && lis) listenStop();
+        else if (lis && c) lis.c = c;
+    }
+
+
     // ---------- Befehle abholen (Stream Deck, Overlay, Tastenkürzel ohne direkten Weg) ----------
     function poll() {
         clearTimeout(pollT);
         api('speech_status').then(d => {
             st = d;
             if (d.pending && ((d.pending === 'start') !== !!rec)) cmd(d.pending);
+            syncListen();
             if (box() && !box().hidden) render();
         }).catch(() => {}).finally(() => { pollT = setTimeout(poll, st && st.cfg.enabled ? 1000 : 10000); });
     }
-    function refresh() { return api('speech_status').then(d => { st = d; render(); }).catch(() => {}); }
+    function refresh() { return api('speech_status').then(d => { st = d; syncListen(); render(); }).catch(() => {}); }
+    // ---------- Verlauf ----------
+    let hist = null, histQ = '';
+    function loadHist() { return api('speech_log', { q: histQ }).then(d => { hist = d; renderHist(); }).catch(() => {}); }
+    function fmtT(t) { const d = new Date(t), loc = window.nxLoc ? nxLoc() : 'de-DE'; return d.toLocaleDateString(loc, { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
+    function renderHist() {
+        const el = document.getElementById('spHist');
+        if (!el || !hist) return;
+        el.innerHTML = hist.items.length ? hist.items.map(e => '<div class="sp-h" data-i="' + e.i + '"><div class="sp-h-top"><span class="muted small">' + esc(fmtT(e.t)) + '</span>'
+            + '<span class="sp-h-tag">' + (e.via === 'voice' ? '👂' : '🎙') + ' ' + esc(e.engine || '') + (e.ms ? ' · ' + (e.ms / 1000).toFixed(1) + ' s' : '') + (e.test ? ' · Test' : '') + '</span>'
+            + '<span class="sp-h-btns"><button type="button" data-hs="text" title="Original erneut senden">↻</button>' + (e.sent ? '<button type="button" data-hs="sent" title="Übersetzung erneut senden">↻🌐</button>' : '') + '<button type="button" data-hc="1" title="kopieren">📋</button><button type="button" data-hd="1" title="löschen">✕</button></span></div>'
+            + '<div class="sp-h-text">„' + esc(e.text) + '“</div>' + (e.sent ? '<div class="sp-h-tr">🌐 ' + esc(e.target || '') + ': ' + esc(e.sent) + '</div>' : '') + '</div>').join('')
+            : '<div class="muted small">' + (histQ ? 'Keine Treffer.' : 'Noch nichts erkannt.') + '</div>';
+        const n = document.getElementById('spHistN'); if (n) n.textContent = hist.total;
+    }
 
     // ---------- Oberfläche (Spiel & OSC → 🎙 Sprache) ----------
     const box = () => document.getElementById('ncSpeech');
@@ -164,11 +256,14 @@
         const opt = (o, cur) => Object.entries(o).map(([k, v]) => '<option value="' + k + '"' + (k === cur ? ' selected' : '') + '>' + esc(Array.isArray(v) ? v[0] + ' (' + v[1] + ' MB)' : v) + '</option>').join('');
         b.innerHTML = '<div class="nc-grid">'
             + '<div class="nc-card"><h4>🎙 Sprechen</h4>'
+            + '<div class="sp-mode"><button type="button" data-mode="ptt" class="' + (c.mode !== 'voice' ? 'on' : '') + '">🎙 Taste / Knopf</button><button type="button" data-mode="voice" class="' + (c.mode === 'voice' ? 'on' : '') + '">👂 Sprachaktivierung</button></div>'
+            + (c.mode === 'voice' && c.enabled ? '<p class="small sp-listen">' + (lis ? (lis.seg ? '🔴 nimmt auf …' : voiceGate(c) ? '⏸ wartet – ' + esc(voiceGate(c)) : '👂 hört zu – einfach lossprechen') : st.ready ? '⏳ Mikrofon wird geöffnet …' : '') + (lis ? ' <button type="button" class="nc-link" id="spPause">' + (paused ? '▶ fortsetzen' : '⏸ pausieren') + '</button>' : '') + '</p>' : '')
             + '<div class="nc-row"><button type="button" class="btn ' + (rec ? 'btn-gold' : '') + '" id="spRec"' + (st.ready && c.enabled ? '' : ' disabled') + '>' + (rec ? '⏹ Stopp' : '🎙 Sprechen') + '</button>'
             + '<div class="sp-meter"><i id="spMeter"></i></div></div>'
             + '<p class="small">' + (!c.enabled ? '⚠ Erst unten einschalten.' : !st.ready ? '⚠ ' + (c.engine === 'openai' ? 'OpenAI-Schlüssel fehlt.' : 'whisper.cpp oder Modell fehlt.') : '✔ Bereit · ' + esc(st.engine_label) + (c.hotkey ? ' · Taste <b>' + esc(c.hotkey) + '</b>' : '')) + (st.busy ? ' · ⏳ erkenne …' : '') + '</p>'
             + (st.last ? '<div class="hm-pre">„' + esc(st.last) + '“</div>' : '') + (st.error ? '<p class="small bad">⚠ ' + esc(st.error) + '</p>' : '')
             + '<p class="muted small">Auch per Stream-Deck-Taste „Spracheingabe“, im SteamVR-Overlay und auf der Startseite.</p></div>'
+            + '<div class="nc-card sp-histcard"><h4>📜 Verlauf <small class="muted" id="spHistN"></small></h4><div class="nc-row"><input type="search" id="spHistQ" placeholder="Verlauf durchsuchen" value="' + esc(histQ) + '" style="flex:1"><button type="button" class="btn btn-sm" id="spHistClr">🗑 leeren</button></div><div class="sp-hist" id="spHist"></div></div>'
             + '<form class="nc-card" id="spCfg"><h4>⚙ Einstellungen</h4>'
             + '<label class="check"><input type="checkbox" name="enabled"' + (c.enabled ? ' checked' : '') + '> Spracheingabe an</label>'
             + '<div class="nc-row"><span class="small">Erkennung</span><select name="engine"><option value="local"' + (c.engine === 'local' ? ' selected' : '') + '>Lokal – whisper.cpp (offline, kostenlos)</option><option value="openai"' + (c.engine === 'openai' ? ' selected' : '') + '>OpenAI Whisper (eigener Schlüssel)</option></select></div>'
@@ -179,6 +274,9 @@
             + '<div class="nc-row"><button type="button" class="btn btn-sm" id="spTestBtn">🔊 Mikro testen</button><div class="sp-meter"><i id="spTest"></i></div><span class="small" id="spTestLbl">' + esc(testMsg) + '</span></div>'
             + '<div class="nc-row"><span class="small">Tastenkürzel</span><input type="text" name="hotkey" value="' + esc(c.hotkey) + '" placeholder="z. B. Alt+V" style="width:110px"><span class="small">Vorsatz</span><input type="text" name="prefix" value="' + esc(c.prefix) + '" style="width:60px"></div>'
             + '<div class="nc-row"><label class="check small"><input type="checkbox" name="vad"' + (c.vad ? ' checked' : '') + '> automatisch stoppen nach</label><input type="number" name="silence" value="' + c.silence + '" min="0.4" max="5" step="0.1" style="width:60px"><span class="small">s Stille · max.</span><input type="number" name="max" value="' + c.max + '" min="3" max="120" style="width:60px"><span class="small">s</span></div>'
+            + '<div class="nc-row"><span class="small">👂 Sprachaktivierung:</span><span class="small">mind.</span><input type="number" name="voice_min" value="' + (c.voice_min || 0.5) + '" min="0.2" max="3" step="0.1" style="width:60px"><span class="small">s Sprache</span>'
+            + '<label class="check small"><input type="checkbox" name="voice_mute_only"' + (c.voice_mute_only ? ' checked' : '') + '> nur wenn ich in VRChat stumm bin</label><label class="check small"><input type="checkbox" name="voice_game_only"' + (c.voice_game_only ? ' checked' : '') + '> nur wenn VRChat läuft</label></div>'
+            + '<div class="nc-row"><label class="check small"><input type="checkbox" name="log"' + (c.log ? ' checked' : '') + '> Verlauf speichern</label></div>'
             + '<div class="nc-row"><label class="check small"><input type="checkbox" name="typing"' + (c.typing ? ' checked' : '') + '> „tippt …“ beim Sprechen</label><label class="check small"><input type="checkbox" name="sound"' + (c.sound ? ' checked' : '') + '> Ton</label></div>'
             + '<div class="nc-row"><label class="check small"><input type="checkbox" name="translate"' + (c.translate ? ' checked' : '') + '> übersetzen nach</label><input type="text" name="target" value="' + esc(c.target) + '" style="width:70px" title="z. B. EN-US, JA, FR">'
             + '<label class="check small"><input type="checkbox" name="whisper_en"' + (c.whisper_en ? ' checked' : '') + '> Whisper übersetzt selbst ins Englische</label></div>'
@@ -191,10 +289,23 @@
             + '<p class="muted small">Tiny/Base sind schnell, Small/Medium genauer (brauchen mehr CPU). Modelle von huggingface.co/ggerganov/whisper.cpp, Programm von github.com/ggml-org/whisper.cpp.</p>'
             + '<h4 style="margin-top:10px">🔑 OpenAI-Schlüssel</h4><form class="nc-row" id="spKey"><input type="password" name="key" placeholder="' + (st.has_key ? '•••••• gespeichert' : 'sk-…') + '" style="flex:1" autocomplete="off"><button class="btn btn-sm">Speichern</button>' + (st.has_key ? '<button type="button" class="btn btn-sm" id="spKeyDel">Entfernen</button>' : '') + '</form></div>'
             + '</div>';
+        renderHist();
     }
     document.addEventListener('click', e => {
         if (!box() || !box().contains(e.target)) return;
         if (e.target.closest('#spRec')) return cmd('toggle');
+        const md = e.target.closest('[data-mode]');
+        if (md) return api('speech_cfg', { mode: md.dataset.mode }).then(x => { st = x; syncListen(); render(); toast(md.dataset.mode === 'voice' ? '👂 Sprachaktivierung an' : '🎙 Taste / Knopf'); }).catch(err => toast('⚠ ' + err.message, true));
+        if (e.target.closest('#spPause')) { paused = !paused; return render(); }
+        if (e.target.closest('#spHistClr')) { if (confirm('Den ganzen Sprach-Verlauf löschen?')) api('speech_log_clear').then(d => { toast(d.msg); loadHist(); }); return; }
+        const h = e.target.closest('.sp-h');
+        if (h) {
+            const i = h.dataset.i, b = e.target.closest('button');
+            if (!b) return;
+            if (b.dataset.hs) return api('speech_log_send', { i, which: b.dataset.hs }).then(d => toast(d.msg)).catch(err => toast('⚠ ' + err.message, true));
+            if (b.dataset.hd) return api('speech_log_delete', { i }).then(() => loadHist());
+            if (b.dataset.hc) { const it = hist.items.find(x => String(x.i) === i); navigator.clipboard.writeText(it.sent ? it.text + '\n' + it.sent : it.text).then(() => toast('📋 Kopiert')).catch(() => {}); }
+        }
         if (e.target.closest('#spMics')) return loadMics();
         if (e.target.closest('#spTestBtn')) return micTest();
         const d = e.target.closest('[data-sp]');
@@ -215,6 +326,7 @@
         if (f.id === 'spKey') { e.preventDefault(); api('speech_key', { key: f.key.value }).then(s => { st = s; toast(s.msg); render(); }).catch(err => toast('⚠ ' + err.message, true)); }
     });
 
-    window.NexusSpeech = { cmd, start, stop, open() { refresh(); if (!mics) loadMics(); }, get recording() { return !!rec; } };
+    document.addEventListener('input', e => { if (e.target.id === 'spHistQ') { histQ = e.target.value; clearTimeout(e.target._t); e.target._t = setTimeout(loadHist, 250); } });
+    window.NexusSpeech = { cmd, start, stop, open() { refresh(); loadHist(); if (!mics) loadMics(); }, get recording() { return !!rec; }, get listening() { return !!lis; } };
     poll();
 })();

@@ -20,6 +20,11 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.8.1 – Spracheingabe: Sprachaktivierung & Verlauf
+- **👂 Sprachaktivierung:** Mikro bleibt offen, sobald du sprichst wird aufgenommen (inkl. 0,4 s davor), nach der Pause erkannt und gesendet. Kurze Geräusche (unter „mind. … s Sprache“) werden ignoriert. Optional **nur wenn du in VRChat stumm bist** (ideal als Mute-Spieler) und nur wenn VRChat läuft; jederzeit pausierbar. Umschalten oben in der Karte: „🎙 Taste / Knopf“ ↔ „👂 Sprachaktivierung“.
+- **📜 Verlauf:** jede Erkennung mit Uhrzeit, Original und Übersetzung (+ Zielsprache), Modell und Dauer; durchsuchen, Original oder Übersetzung erneut senden, kopieren, löschen (bis 500 Einträge, abschaltbar).
+- Fix (Tests unter Windows): GPU-/Netzwerk-Nachbildung für die Chatbox-Module läuft jetzt auch im Windows-Build.
+
 ### Neu in 1.8.0 – 🧩 Chatbox-Module
 Unter **Spiel & OSC → 🧩 Chatbox-Module** setzt VRC Nexus die Chatbox aus Bausteinen zusammen (eigene Umsetzung, inspiriert von MagicChatbox):
 - **💬 Persönlicher Status** (Rotator-Texte, bei AFK „💤 AFK seit …“), **🪟 Fenster-Aktivität** (Vordergrund-Programm, Programme als privat markierbar, in VR „🥽 In VR“), **🎵 Musik**, **🌐 VRChat-Radar**, **🕒 Uhrzeit + Zone**,

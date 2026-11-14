@@ -420,3 +420,21 @@ body.mobile .vx-hbtn em { display: none; } body.mobile .vx-hbtn { min-width: 48p
 .cm-inl { min-width: 0 !important; display: flex; align-items: center; gap: 4px; }
 .cm-ph { display: flex; flex-wrap: wrap; gap: 4px; } .cm-ph .chip small { color: var(--accent-gold); font-size: 0.68rem; }
 @media (max-width: 760px) { .cm-row { grid-template-columns: 36px 1fr 46px; } .cm-ctl { grid-column: 2 / -1; align-items: flex-start; flex-direction: row; flex-wrap: wrap; } }
+
+/* 🎙 Sprache: Modus-Umschalter, Zuhör-Status, Verlauf */
+.sp-mode { display: flex; margin-bottom: 8px; }
+.sp-mode button { flex: 1; padding: 6px 10px; background: rgba(var(--shade-rgb), calc(0.25 * var(--shade-k))); border: 1px solid var(--line); color: var(--text-muted); font: inherit; font-size: 0.82rem; cursor: pointer; }
+.sp-mode button + button { border-left: 0; }
+.sp-mode button.on { background: rgba(var(--accent-rgb), 0.16); border-color: var(--accent-cyan); color: var(--text-strong); font-weight: 700; }
+.sp-listen { margin: 0 0 6px; }
+.sp-meter i.hit { background: var(--accent-green); }
+.sp-histcard { grid-column: 1 / -1; order: 9; }
+.sp-hist { display: flex; flex-direction: column; gap: 6px; max-height: 420px; overflow-y: auto; margin-top: 6px; }
+.sp-h { padding: 6px 10px; border-left: 2px solid var(--accent-cyan); background: rgba(var(--panel-rgb), 0.6); }
+.sp-h-top { display: flex; align-items: center; gap: 10px; }
+.sp-h-tag { font-size: 0.7rem; color: var(--text-muted); }
+.sp-h-btns { margin-left: auto; display: flex; gap: 3px; opacity: 0.55; transition: opacity 0.15s; }
+.sp-h:hover .sp-h-btns { opacity: 1; }
+.sp-h-btns button { background: none; border: 1px solid var(--line); color: var(--text-main); cursor: pointer; font-size: 0.75rem; padding: 0 6px; }
+.sp-h-text { font-size: 0.92rem; color: var(--text-strong); margin-top: 2px; }
+.sp-h-tr { font-size: 0.85rem; color: var(--accent-gold); margin-top: 1px; }
