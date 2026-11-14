@@ -67,10 +67,19 @@ function location(loc) {
 }
 
 /** Text von VRChat sicher als HTML: maskieren, Links klickbar, Zeilenumbrüche */
-function formatText(s) {
+function formatText(s, md) {
     s = str(s);
     const esc = x => x.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     let out = esc(s);
+    if (md) {   // leichtes Markdown (VRChat-Hilfe-Artikel): Überschriften, **fett**, *kursiv*, [Text](Link), „- “-Listen
+        out = out.replace(/\[([^\]\n]{1,200})\]\((https?:\/\/[^\s)<>"']+)\)/g, (m, t, u) => '<a href="' + u + '" target="_blank" rel="noopener noreferrer">' + t + '</a>');
+        out = out.replace(/^#{1,6} +(.+)$/gm, '<b class="md-h">$1</b>').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(^|[\s(])\*([^*\n]+)\*/g, '$1<i>$2</i>')
+            .replace(/^\s*[-*] +(.+)$/gm, '• $1');
+        return out.replace(/(^|[^"=>])\bhttps?:\/\/[^\s<>"']+/g, (m, pre) => {
+            const u = m.slice(pre.length), clean = u.replace(/[).,!?]+$/, '');
+            return pre + '<a href="' + clean + '" target="_blank" rel="noopener noreferrer">' + clean + '</a>' + u.slice(clean.length);
+        }).replace(/\r?\n/g, '<br>');
+    }
     out = out.replace(/\bhttps?:\/\/[^\s<>"']+/g, u => {
         const clean = u.replace(/[).,!?]+$/, '');
         return '<a href="' + clean + '" target="_blank" rel="noopener noreferrer">' + clean + '</a>' + u.slice(clean.length);

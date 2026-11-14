@@ -743,6 +743,44 @@ test('1.9.1: Über-Seite – Changelog aktuell (aus der README gebaut) und letzt
     app.tools.stop();
 });
 
+test('1.10: VRChat-Store (Store-ID aus /config, Regale, Restzeit, Artikelart), Meldungen mit Beschreibung, Artikel-Markdown', async () => {
+    const U = require('../backend/util');
+    const h = U.formatText('# Titel\n**fett** [Hilfe](https://help.vrchat.com/a) <b>x</b>\n- Punkt', true);
+    assert.ok(h.includes('<b class="md-h">Titel</b>') && h.includes('<b>fett</b>') && h.includes('href="https://help.vrchat.com/a"') && h.includes('&lt;b&gt;') && h.includes('• Punkt'), h);
+    assert.ok(!U.formatText('**a**').includes('<b>'), 'ohne md bleibt Text unverändert');
+    const { NexusApp } = require('../backend/app');
+    const db = await openDatabase(null);
+    const app = new NexusApp({ db, crypt: { encrypt: s => s, decrypt: s => s }, host: { userData: os.tmpdir() } });
+    app.game.osc.stopListen();
+    const SID = 'esto_11111111-2222-3333-4444-555555555555', end = new Date(Date.now() + 35.5 * 86400000).toISOString(), calls = [];
+    app.x.vrc.call = async (acc, m, p, q) => {
+        calls.push(p);
+        if (p === '/config') return { a: { vrchatStoreId: SID }, junk: 'esto_kaputt' };
+        if (p === '/economy/store') { assert.strictEqual(q.storeId, SID); return { displayName: 'VRChat Store', listings: [] }; }
+        if (p === '/economy/store/shelves') return [{ shelfTitle: 'Spookality', shelfBannerImageUrl: 'https://assets.vrchat.com/b.png', listings: [
+            { id: 'prod_1', displayName: 'Paket', priceTokens: 1000, vrcPlusDiscountPrice: 900, endDate: end, hydratedProducts: [{ inventoryItem: { itemType: 'portal' } }, { inventoryItem: { itemType: 'prop' } }] },
+            { id: 'prod_2', displayName: 'Hut', priceTokens: 300, hydratedProducts: [{ itemType: 'Accessory' }] }] }];
+        throw new Error('unerwartet ' + p);
+    };
+    const r = await app.x.shopStore({ vrc_id: 'usr_x' });
+    assert.ok(r.found && r.id === SID && r.title === 'VRChat Store');
+    const [a, b] = r.shelves[0].listings;
+    assert.strictEqual(r.shelves[0].banner, 'https://assets.vrchat.com/b.png');
+    assert.deepStrictEqual(a.items, ['bundle', 'portal', 'prop']); assert.strictEqual(a.ends, end); assert.strictEqual(a.vrcplus_price, 900);
+    assert.deepStrictEqual(b.items, ['accessory']); assert.strictEqual(b.ends, '');
+    await app.x.shopStore({ vrc_id: 'usr_x' });
+    assert.strictEqual(calls.filter(c => c === '/config').length, 1, '/config wird zwischengespeichert');
+    app.settings.save({ 'social.store_id': 'https://vrchat.com/home/store/esto_99999999-2222-3333-4444-555555555555' });
+    app.x.vrc.call = async (acc, m, p, q) => { if (p === '/config') throw new Error('nicht fragen'); return p === '/economy/store' ? { displayName: q.storeId } : []; };
+    assert.strictEqual((await app.x.shopStore({})).id, 'esto_99999999-2222-3333-4444-555555555555', 'Store-ID aus Einstellung');
+    // Meldungen
+    app.tools.call = async (m, p) => [{ id: 'modr_1', type: 'avatar', category: 'inappropriate', reason: 'sexual', contentId: 'avtr_1', contentName: 'A', created: '2026-11-01', status: 'open', description: 'Text  der Meldung' }];
+    app.tools.acc = () => ({ vrc_id: 'usr_x' });
+    const rep = (await app.tools.reports()).reports[0];
+    assert.strictEqual(rep.description, 'Text  der Meldung'); assert.strictEqual(rep.type, 'avatar'); assert.strictEqual(rep.image, '');
+    app.tools.stop();
+});
+
 test('1.7: Wörterbuch (EN/FR/JA) vollständig und Platzhalter stimmen', () => {
     const fs = require('fs'), path = require('path'), vm = require('vm');
     const file = path.join(__dirname, '..', 'renderer', 'js', 'i18n-dict.js');

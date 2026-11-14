@@ -343,10 +343,10 @@
         if (id.startsWith('f:')) return run('tools_folder', { which: id.slice(2) }).catch(() => {});
         if (id === 'x:friends') { dl('nexus.php?export=friends'); return; }
         if (id === 'x:avatars') { toast('Avatare werden abgefragt …'); dl('nexus.php?tools_export=avatars'); return; }
-        const jump = { inventory: ['gallery', 'inventory'], calendar: ['calendar'], shop: ['shop'], purchases: ['shop'], news: ['news'] }[id];
+        const jump = { inventory: ['gallery', 'inventory'], calendar: ['calendar'], shop: ['shop'], purchases: ['shop'], news: ['notifs', 'news'], reports: ['notifs', 'reports'] }[id];
         if (jump) { UI.tab(jump[0], jump[1]); if (id === 'purchases') setTimeout(() => { const p = $('#shopBox .sh-purch, #shopBox table'); if (p) p.scrollIntoView({ behavior: 'smooth' }); }, 1200); return; }
         ({ shots: toolShots, blocked: () => toolGroups('blocked'), ginvites: () => toolGroups('invites'), config: toolConfig, launch: toolLaunch, registry: toolRegistry, auto: toolAuto,
-            messages: () => toolMessages('message'), reports: toolReports, streamdeck: toolStreamDeck, discord: toolDiscord, memos: toolMemos })[id]();
+            messages: () => toolMessages('message'), streamdeck: toolStreamDeck, discord: toolDiscord, memos: toolMemos })[id]();
     }
 
     // --- Screenshot-Manager ---
@@ -505,18 +505,6 @@
                 const s = e.target.closest('[data-save]');
                 if (s) run('tools_message_save', { type, slot: s.dataset.save, message: body.querySelector('[data-slot="' + s.dataset.save + '"]').value }, () => toolMessages(type)).catch(() => {});
             };
-        }).catch(fail(body));
-    }
-
-    // --- Meldungen ---
-    function toolReports() {
-        const body = toolView('🚩 Meine Meldungen');
-        api('tools_reports').then(d => {
-            body.innerHTML = d.reports.length ? '<table class="nx-list"><thead><tr><th>Datum</th><th>Art</th><th>Gemeldet</th><th>Kategorie / Grund</th><th>Status</th><th></th></tr></thead><tbody>' + d.reports.map(r => '<tr><td>' + esc(UI.isoDT(r.created)) + '</td><td>' + esc(r.type)
-                + '</td><td>' + (r.target_id.startsWith('usr_') ? '<a href="#" data-user="' + esc(r.target_id) + '">' + esc(r.target) + '</a>' : r.target_id.startsWith('wrld_') ? '<a href="#" data-world="' + esc(r.target_id) + '">' + esc(r.target) + '</a>' : esc(r.target))
-                + '</td><td>' + esc(r.category) + ' · <span class="vx-small">' + esc(r.reason) + '</span></td><td>' + esc(r.status) + '</td><td><button type="button" class="btn btn-sm btn-danger" data-del="' + esc(r.id) + '">🗑</button></td></tr>').join('') + '</tbody></table>'
-                : '<div class="vx-empty">Du hast keine Meldungen eingereicht.</div>';
-            body.onclick = e => { const b = e.target.closest('[data-del]'); if (b && confirm('Meldung zurückziehen/löschen?')) run('tools_report_delete', { id: b.dataset.del }, () => toolReports()).catch(() => {}); };
         }).catch(fail(body));
     }
 

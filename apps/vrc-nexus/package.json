@@ -1,7 +1,7 @@
 {
   "name": "vrc-nexus-desktop",
   "productName": "VRC Nexus",
-  "version": "1.9.2",
+  "version": "1.10.0",
   "description": "VRC Nexus als eigenständige Windows-App: VRChat-Freunde, Verlauf, Statistik, Welten, Avatare, Gruppen, Kalender, Galerie, Benachrichtigungen, Shop, Spiel-Log & OSC – ohne Server.",
   "main": "main.js",
   "author": "GHOST NODE",

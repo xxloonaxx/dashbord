@@ -232,7 +232,50 @@ class Extra {
             vrcplus_price: l.vrcPlusDiscountPrice !== undefined && l.vrcPlusDiscountPrice !== null ? int(l.vrcPlusDiscountPrice) : null,
             image: U.https(l.imageUrl), image_id: /^file_[0-9a-f-]{36}$/i.test(str(l.imageId)) ? l.imageId : '', type: str(l.listingType), kinds, seller: str(l.sellerDisplayName),
             seller_id: str(l.sellerId), group: str(l.groupName), duration: l.duration === undefined ? null : l.duration, duration_type: str(l.durationType), active: !!l.active,
-            sold: int(l.purchaseCount), by_vrc: !!l.soldByVrc, permanent: !!l.permanent };
+            sold: int(l.purchaseCount), by_vrc: !!l.soldByVrc, permanent: !!l.permanent, ends: this.listingEnd(l), items: this.listingItems(l, kinds) };
+    }
+    listingEnd(l) {   // Verkaufsende (für „noch 35 Tage“) – VRChat nennt das Feld je nach Angebot unterschiedlich
+        for (const k of ['endDate', 'availableUntil', 'expires', 'expiresAt', 'saleEndDate', 'displayEndDate', 'endsAt']) {
+            const v = str(l[k]);
+            if (v && !isNaN(Date.parse(v))) return new Date(v).toISOString();
+        }
+        return '';
+    }
+    listingItems(l, kinds) {   // Art der Artikel: Portal, Prop, Bundle, Accessoire, Ladebildschirm …
+        const t = new Set();
+        for (const pr of arr(l.hydratedProducts || l.products)) {
+            if (!pr || typeof pr !== 'object') continue;
+            const it = pr.inventoryItem || pr.item || {};
+            const v = str(it.itemType || pr.itemType || pr.inventoryItemType || pr.productType);
+            if (v) t.add(v);
+        }
+        for (const v of arr(l.tags)) { const m = /^(?:item|type)_(\w+)$/i.exec(str(v)); if (m) t.add(m[1]); }
+        let out = [...t].map(v => v.toLowerCase());
+        if (out.length > 1 || arr(l.productIds).length > 1) out = ['bundle'].concat(out.filter(x => x !== 'bundle'));
+        return out.length ? out.slice(0, 4) : kinds.map(k => k.toLowerCase());
+    }
+    async officialStoreId(acc) {   // offizieller VRChat-Store: eigene Einstellung oder aus der öffentlichen /config
+        const set = str(this.settings && this.settings.get('social.store_id')).match(/esto_[0-9a-f-]{36}/i);
+        if (set) return set[0];
+        if (this._storeId !== undefined && this._storeIdAt > now() - 6 * 3600) return this._storeId;
+        let id = '';
+        try {
+            const cfg = await this.vrc.call(acc, 'GET', '/config');
+            const hits = [];
+            (function walk(o, key) {
+                if (typeof o === 'string') { const m = o.match(/^esto_[0-9a-f-]{36}$/i); if (m) hits.push([key, m[0]]); return; }
+                if (o && typeof o === 'object') for (const k of Object.keys(o)) walk(o[k], k);
+            })(cfg, '');
+            hits.sort((a, b) => (/vrc|house|official|economy/i.test(b[0]) ? 1 : 0) - (/vrc|house|official|economy/i.test(a[0]) ? 1 : 0));
+            id = hits.length ? hits[0][1] : '';
+        } catch (e) { if (e instanceof VrcAuthError) throw e; }
+        this._storeId = id; this._storeIdAt = now();
+        return id;
+    }
+    async shopStore(acc) {
+        const id = await this.officialStoreId(acc);
+        if (!id) return { found: false, shelves: [] };
+        return Object.assign({ found: true, id }, await this.shopBrowse(acc, id));
     }
     async shopOverview(acc) {
         const me = acc.vrc_id;
@@ -277,7 +320,8 @@ class Extra {
             if (arr(s.listings).length) shelves.push({ title: 'Angebote', desc: '', listings: arr(s.listings).map(l => this.listingSlim(l)) });
             try {
                 for (const sh of arr(await this.vrc.call(acc, 'GET', '/economy/store/shelves', { storeId: target, hydrateListings: 'true' }))) {
-                    if (sh) shelves.push({ title: str(sh.shelfTitle), desc: str(sh.shelfDescription), listings: arr(sh.listings).map(l => this.listingSlim(l)) });
+                    if (sh) shelves.push({ title: str(sh.shelfTitle || sh.title), desc: str(sh.shelfDescription || sh.description), layout: str(sh.shelfLayout),
+                        banner: U.https(sh.shelfBannerImageUrl || sh.bannerImageUrl || sh.bannerUrl || sh.imageUrl || sh.shelfImageUrl || ''), listings: arr(sh.listings).map(l => this.listingSlim(l)) });
                 }
             } catch (e) { if (e instanceof VrcAuthError) throw e; }
             return { title: str(s.displayName || 'Store'), seller: str(s.sellerDisplayName), shelves };

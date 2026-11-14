@@ -93,7 +93,6 @@
                 <button type="button" class="vx-tabbtn" data-tab="calendar"><span>📅</span><em>Gruppen-Kalender</em></button>
                 <button type="button" class="vx-tabbtn" data-tab="gallery"><span>🖼️</span><em>Galerie &amp; Inventar</em></button>
                 <button type="button" class="vx-tabbtn" data-tab="shop"><span>🛒</span><em>Shop &amp; Käufe</em></button>
-                <button type="button" class="vx-tabbtn" data-tab="news"><span>📰</span><em>Info-Push</em></button>
                 <button type="button" class="vx-tabbtn" data-tab="about"><span>ℹ️</span><em>Über VRC Nexus</em></button>
             </div></div>
         <button type="button" class="vx-direct" id="directBtn" title="ID oder Link aus der Zwischenablage öffnen"><span>🧭</span><em>Direkt-Zugriff</em><kbd>Strg</kbd><kbd>D</kbd></button>
@@ -238,11 +237,6 @@
         <div id="galBox"><div class="vx-empty">Lade …</div></div>
     </section>
 
-    <section class="vx-tab" data-pane="news" hidden>
-        <div class="vx-tools"><div class="chips" id="newsKinds"></div><button type="button" class="btn btn-sm" id="newsRefresh" title="Neu laden">⟳</button></div>
-        <div id="newsBox"></div>
-    </section>
-
     <section class="vx-tab" data-pane="favs" hidden>
         <div class="vx-chips" id="favKinds"><button type="button" class="chip on" data-fk="friend">👥 Freunde</button><button type="button" class="chip" data-fk="world">🌐 Welten</button><button type="button" class="chip" data-fk="avatar">🎭 Avatare</button></div>
         <div class="vx-favwrap"><aside class="vx-favside" id="favSide"></aside><div class="vx-favmain" id="favMain"></div></div>
@@ -254,14 +248,22 @@
 
     <section class="vx-tab" data-pane="notifs" hidden>
         <div class="vx-bar nf-bar">
-            <span class="chips" id="nfView"><button type="button" class="chip on" data-view="open">Offen bei VRChat</button><button type="button" class="chip" data-view="all">Ganzer Verlauf</button></span>
-            <select id="nfType"><option value="">Alle Arten</option></select>
+            <span class="chips" id="nfView"><button type="button" class="chip on" data-view="open">Offen bei VRChat</button><button type="button" class="chip" data-view="all">Ganzer Verlauf</button><button type="button" class="chip" data-view="news">📰 Info-Push</button><button type="button" class="chip" data-view="reports">🚩 Meine Meldungen</button></span>
+            <span class="nf-only" id="nfCtl"><select id="nfType"><option value="">Alle Arten</option></select>
             <input type="search" id="nfQ" placeholder="Von, Gruppe, Text …">
             <button type="button" class="btn btn-sm" id="nfReload">⟳ Neu laden</button>
             <button type="button" class="btn btn-sm" id="nfSeeAll" title="Alle offenen als gelesen markieren">👁 Alle gelesen</button>
-            <button type="button" class="btn btn-sm btn-danger" id="nfClear" title="Einträge löschen, die es bei VRChat nicht mehr gibt">🧹 Verlauf leeren</button>
+            <button type="button" class="btn btn-sm btn-danger" id="nfClear" title="Einträge löschen, die es bei VRChat nicht mehr gibt">🧹 Verlauf leeren</button></span>
         </div>
         <div id="notifBox"></div>
+        <div class="ip-pane" id="nfNews" hidden>
+            <div class="ip-bar"><div class="ip-seg" id="newsKinds"></div><button type="button" class="btn btn-sm" id="newsRefresh" title="Neu laden">⟳</button></div>
+            <div id="newsBox"></div>
+        </div>
+        <div class="ip-pane" id="nfReports" hidden>
+            <div class="ip-bar"><select id="repType"><option value="">Alle</option></select><span class="vx-small" id="repCount"></span><button type="button" class="btn btn-sm" id="repRefresh" title="Neu laden">⟳</button></div>
+            <div id="repBox"></div>
+        </div>
     </section>
     <section class="vx-tab" data-pane="shop" hidden>
         <div id="shopBox"></div>

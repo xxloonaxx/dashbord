@@ -781,7 +781,13 @@ class Tools {
     async reports() {
         const acc = this.acc();
         return { reports: arr(await this.call('GET', '/moderationReports', { reportingUserId: acc.vrc_id, n: 100 })).map(r => ({ id: str(r.id), type: str(r.type), category: str(r.category), reason: str(r.reason),
-            target: str(r.contentName), target_id: str(r.contentId), image: str(r.contentThumbnailImageUrl), created: str(r.created), status: str(r.status || r.reportStatus) })) };
+            target: str(r.contentName), target_id: str(r.contentId), image: str(r.contentThumbnailImageUrl) || this.reportImg(str(r.contentId)), created: str(r.created), status: str(r.status || r.reportStatus),
+            description: cut(str(r.description || (r.details && (r.details.description || r.details.text)) || ''), 1000) })) };
+    }
+    reportImg(id) {   // fehlt das Vorschaubild, eines aus dem Cache nehmen (nur bekannte Nutzer)
+        if (!/^usr_/.test(id)) return '';
+        const u = this.cached(id) || {};
+        return str(u.profilePicOverrideThumbnail || u.userIcon || u.currentAvatarThumbnailImageUrl || '');
     }
     async reportDelete(id) {
         if (!/^[\w-]{3,64}$/.test(str(id))) throw new UserError('Ungültige Meldung.');

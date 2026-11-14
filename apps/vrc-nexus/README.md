@@ -20,6 +20,14 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.10.0 – Info-Push & Meldungen in den Benachrichtigungen, Shop im Store-Stil
+- **🔔 Benachrichtigungen** haben jetzt vier Ansichten: *Offen bei VRChat*, *Ganzer Verlauf*, **📰 Info-Push** und **🚩 Meine Meldungen** (Info-Push ist aus „Mehr“ hierher umgezogen; alte Links/Kacheln führen automatisch hin).
+- **Info-Push** neu: Reiter *Hilfe-Artikel / Quick-Menü-Banner / Ladebildschirme* mit Anzahl, Zeilen mit 16:9-Vorschaubild, Titel, Untertitel und Datum – mit **›** direkt in der Liste aufklappen (Artikel mit Formatierung: Überschriften, **fett**, Links, Listen).
+- **Meine Meldungen** neu: Filter nach Art (Nutzer, Avatar, Welt, Gruppe, Sticker …) mit Anzahl, Vorschaubild, Name + Art-Kennzeichen, *Kategorie · Grund*, deine Beschreibung, Datum, Status und 🗑 Zurückziehen.
+- **🛒 Shop** im Stil des VRChat-Stores: große **Banner-Regale** und Artikelkarten mit **Restzeit** („Noch 35 Tage“), Art (Portal, Prop, Bundle, Accessoire, Ladebildschirm …), Preis **mit und ohne VRC+** und **Kaufen ↗** – öffnet die VRChat-Website, gekauft wird bewusst nicht in der App. Klick aufs Bild zeigt Details.
+- Der offizielle Store wird automatisch über die VRChat-Konfiguration gefunden; sonst Store-ID unter *Einstellungen → Soziales → Shop* eintragen. Auch „Shop ansehen“ (Creator/Store-ID) nutzt die neue Darstellung.
+- Übersetzung: „Nutzer (3)“-artige Texte mit Zahl in Klammern werden jetzt übersetzt; neue Texte in EN/FR/JA.
+
 ### Neu in 1.9.2
 - Spracheingabe: der **📜 Verlauf** steht jetzt rechts oben neben den anderen Karten (statt unten über die ganze Breite) und nutzt die volle Höhe.
 

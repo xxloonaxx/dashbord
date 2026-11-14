@@ -42,7 +42,7 @@ class NexusApp {
         this.db = opts.db;
         this.settings = new Settings(opts.db);
         this.vrc = new Vrc(opts.db, opts.crypt);
-        this.x = new Extra(this.vrc);
+        this.x = new Extra(this.vrc); this.x.settings = this.settings;
         this.game = new GameLog(opts.db, { onEvent: e => { if (this.tools) this.tools.onGameEvent(e); if (this.auto) this.auto.onGameEvent(e); if (opts.onGameEvent) opts.onGameEvent(e); } });
         this.tr = new Translator(opts.db, opts.crypt, this.settings);
         this.link = new DashLink(this);
@@ -377,6 +377,7 @@ class NexusApp {
                 await call('PUT', '/auth/user/notifications/' + enc(id) + '/hide');
                 return { ok: true };
             case 'shop': return await x.shopOverview(acc);
+            case 'shop_store': return await x.shopStore(acc);
             case 'shop_browse': return await x.shopBrowse(acc, str(input.target));
             case 'global_stats': {
                 const out = await x.globalStats(Math.max(1, Math.min(365, int(input.days) || 1)));
@@ -628,7 +629,7 @@ class NexusApp {
                     for (const p of arr((d.onPressed || {}).parameters)) if (typeof p === 'string' && /^https:\/\//.test(p)) link = p;
                     const art = (d.article || {}).content || {};
                     return { id: str(i.id), kind, title: str(d.name || i.name), desc: str(d.description), img: U.imgUrl(d.imageUrl), date: str(i.createdAt || i.startDate), priority: int(i.priority), link,
-                        article: U.formatText(art.text), article_img: U.imgUrl(art.imageUrl) }; }) };
+                        article: U.formatText(art.text, true), article_img: U.imgUrl(art.imageUrl) }; }) };
             }
 
             // ----- Avatare -----

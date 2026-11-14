@@ -1,5 +1,10 @@
 [
  {
+  "version": "1.10.0",
+  "title": "Info-Push & Meldungen in den Benachrichtigungen, Shop im Store-Stil",
+  "body": "- **🔔 Benachrichtigungen** haben jetzt vier Ansichten: *Offen bei VRChat*, *Ganzer Verlauf*, **📰 Info-Push** und **🚩 Meine Meldungen** (Info-Push ist aus „Mehr“ hierher umgezogen; alte Links/Kacheln führen automatisch hin).\n- **Info-Push** neu: Reiter *Hilfe-Artikel / Quick-Menü-Banner / Ladebildschirme* mit Anzahl, Zeilen mit 16:9-Vorschaubild, Titel, Untertitel und Datum – mit **›** direkt in der Liste aufklappen (Artikel mit Formatierung: Überschriften, **fett**, Links, Listen).\n- **Meine Meldungen** neu: Filter nach Art (Nutzer, Avatar, Welt, Gruppe, Sticker …) mit Anzahl, Vorschaubild, Name + Art-Kennzeichen, *Kategorie · Grund*, deine Beschreibung, Datum, Status und 🗑 Zurückziehen.\n- **🛒 Shop** im Stil des VRChat-Stores: große **Banner-Regale** und Artikelkarten mit **Restzeit** („Noch 35 Tage“), Art (Portal, Prop, Bundle, Accessoire, Ladebildschirm …), Preis **mit und ohne VRC+** und **Kaufen ↗** – öffnet die VRChat-Website, gekauft wird bewusst nicht in der App. Klick aufs Bild zeigt Details.\n- Der offizielle Store wird automatisch über die VRChat-Konfiguration gefunden; sonst Store-ID unter *Einstellungen → Soziales → Shop* eintragen. Auch „Shop ansehen“ (Creator/Store-ID) nutzt die neue Darstellung.\n- Übersetzung: „Nutzer (3)“-artige Texte mit Zahl in Klammern werden jetzt übersetzt; neue Texte in EN/FR/JA."
+ },
+ {
   "version": "1.9.2",
   "title": "",
   "body": "- Spracheingabe: der **📜 Verlauf** steht jetzt rechts oben neben den anderen Karten (statt unten über die ganze Breite) und nutzt die volle Höhe."

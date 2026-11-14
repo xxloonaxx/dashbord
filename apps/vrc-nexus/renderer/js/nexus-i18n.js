@@ -51,6 +51,8 @@
             const parts = core.split(/(?<=[.!?]) (?=\S)/);
             if (parts.length > 1) { const xs = parts.map(p => tr(p, depth + 1)); if (xs.every(x => x !== null)) return h + xs.join(' ') + tl; }
         }
+        const pc = /^(.+?) \((\d+(?:[.,]\d+)*)\)(\s*)$/.exec(rest);   // „Nutzer (3)“ → „User (3)“
+        if (depth < 2 && pc) { const x = tr(pc[1], depth + 1); if (x !== null) return h + x + ' (' + pc[2] + ')' + pc[3]; }
         const c = /^([^,]{2,40}), (.+)$/.exec(core);
         if (depth < 2 && c) { const x = tr(c[1], depth + 1); if (x !== null) return h + x + ', ' + c[2] + tl; }
         return null;

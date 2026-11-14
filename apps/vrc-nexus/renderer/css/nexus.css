@@ -633,3 +633,66 @@ span.vx-card-img { display: flex; align-items: center; justify-content: center; 
 .vx-av.xs { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; }
 .vx-badge.sm { font-size: 0.66rem; padding: 0 5px; }
 .vx-reroll { margin: 4px 0; }
+
+/* Info-Push & Meine Meldungen (Ansichten der Benachrichtigungen) */
+.nf-only { display: contents; }
+.nf-only[hidden] { display: none; }
+.ip-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 10px; }
+.ip-bar select { width: auto; margin: 0; padding: 5px 8px; min-width: 140px; }
+.ip-bar .btn { margin-left: auto; }
+.ip-seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line, rgba(var(--accent-rgb), 0.25)); border-radius: 8px; overflow: hidden; }
+.ip-seg button { background: transparent; border: 0; border-right: 1px solid var(--line, rgba(var(--accent-rgb), 0.25)); color: var(--text-main); font: inherit; font-size: 0.86rem; padding: 6px 14px; cursor: pointer; }
+.ip-seg button:last-child { border-right: 0; }
+.ip-seg button:hover { background: rgba(var(--accent-rgb), 0.08); }
+.ip-seg button.on { background: rgba(var(--accent-rgb), 0.18); color: var(--text-strong, var(--text-main)); font-weight: 600; }
+.ip-seg small { color: var(--text-muted); font-size: 0.78em; }
+.ip-list { display: flex; flex-direction: column; border: 1px solid rgba(var(--accent-rgb), 0.14); border-radius: 8px; overflow: hidden; background: var(--panel-bg); }
+.ip-row + .ip-row { border-top: 1px solid rgba(var(--accent-rgb), 0.1); }
+.ip-head { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; background: transparent; border: 0; color: var(--text-main); font: inherit; text-align: left; }
+button.ip-head { cursor: pointer; }
+button.ip-head:hover, .rep-row:hover { background: rgba(var(--accent-rgb), 0.05); }
+.ip-chev { flex: 0 0 auto; width: 14px; color: var(--text-muted); font-size: 1.2rem; transition: transform 0.15s; text-align: center; }
+.ip-row.open .ip-chev { transform: rotate(90deg); color: var(--accent-cyan); }
+.ip-thumb { flex: 0 0 auto; width: 112px; height: 63px; object-fit: cover; border-radius: 6px; background: rgba(var(--accent-rgb), 0.08); }
+.ip-txt { flex: 1 1 auto; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ip-txt b, .rep-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
+.ip-txt small { color: var(--text-muted); font-size: 0.8rem; }
+.ip-head time { flex: 0 0 auto; color: var(--text-muted); font-size: 0.8rem; white-space: nowrap; }
+.ip-body { padding: 0 14px 14px 150px; }
+.ip-body .ip-big { display: block; max-width: min(100%, 640px); border-radius: 8px; margin-bottom: 8px; }
+.rep-badge { display: inline-block; vertical-align: 1px; margin-left: 6px; padding: 1px 7px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; background: rgba(var(--accent-rgb), 0.16); color: var(--accent-cyan); }
+.rep-desc { font-size: 0.82rem; color: var(--text-main); opacity: 0.85; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
+.rep-side { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.rep-side time { color: var(--text-muted); font-size: 0.8rem; white-space: nowrap; }
+@media (max-width: 640px) {
+    .ip-thumb { width: 80px; height: 45px; }
+    .ip-body { padding-left: 14px; }
+    .ip-seg button { padding: 6px 9px; }
+}
+
+/* Shop im Stil des VRChat-Stores: Banner-Regale + Artikelkarten */
+.st-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 16px 0 8px; }
+.st-head h3 { margin: 0; }
+.st-head .nc-link { margin-left: auto; }
+.st-shelf { margin: 0 0 22px; }
+.st-banner { position: relative; display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; min-height: 120px; padding: 18px 20px; border-radius: 12px; overflow: hidden; margin-bottom: 12px;
+    background: linear-gradient(90deg, rgba(var(--shade-rgb, 0, 0, 0), 0.82) 0%, rgba(var(--shade-rgb, 0, 0, 0), 0.35) 60%, rgba(var(--shade-rgb, 0, 0, 0), 0.1) 100%), var(--st-bg, none) center / cover no-repeat, linear-gradient(120deg, rgba(var(--accent-rgb), 0.35), rgba(var(--gold-rgb, 255, 200, 80), 0.25)); }
+.st-banner h3 { margin: 0; font-size: 1.5rem; font-weight: 800; color: #fff; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6); }
+.st-banner p { margin: 4px 0 0; color: rgba(255, 255, 255, 0.85); font-size: 0.85rem; max-width: 60ch; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6); }
+.st-count { color: rgba(255, 255, 255, 0.8); font-size: 0.78rem; white-space: nowrap; }
+.st-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+.st-card { display: flex; flex-direction: column; border-radius: 10px; overflow: hidden; background: var(--panel-bg); border: 1px solid rgba(var(--accent-rgb), 0.14); transition: transform 0.12s, border-color 0.12s; }
+.st-card:hover { transform: translateY(-2px); border-color: var(--accent-cyan); }
+.st-card.off { opacity: 0.55; }
+.st-pic { position: relative; display: block; padding: 0; border: 0; background: rgba(var(--accent-rgb), 0.06); cursor: zoom-in; }
+.st-img { display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; font-size: 2.2rem; }
+.st-left { position: absolute; left: 8px; top: 8px; padding: 2px 8px; border-radius: 6px; background: rgba(0, 0, 0, 0.7); color: #fff; font-size: 0.72rem; font-weight: 600; }
+.st-info { display: flex; flex-direction: column; gap: 3px; padding: 10px 12px 12px; flex: 1; }
+.st-info b { font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.st-info small { color: var(--text-muted); font-size: 0.76rem; }
+.st-price { font-size: 0.85rem; margin-top: 2px; }
+.st-plus { color: var(--accent-purple); font-size: 0.8rem; }
+.st-buy { margin-top: auto; align-self: stretch; text-align: center; }
+.st-info .st-price + .st-buy { margin-top: 8px; }
+@media (max-width: 640px) { .st-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .st-banner { min-height: 90px; padding: 12px 14px; } .st-banner h3 { font-size: 1.15rem; } }
+.rep-name a { color: inherit; text-decoration: none; } .rep-name a:hover { color: var(--accent-cyan); text-decoration: underline; } .md-h { display: block; font-size: 1.05em; margin-top: 6px; }

@@ -139,6 +139,7 @@
     // ---------- Reiter ----------
     const TABS = [...new Set($$('#tabs [data-tab]').map(b => b.dataset.tab))];
     function tab(name, sub) {
+        if (name === 'news' || name === 'reports') { sub = name; name = 'notifs'; }   // Info-Push & Meldungen sind jetzt Ansichten der Benachrichtigungen
         if (!TABS.includes(name)) name = 'friends';
         sub = sub || '';
         let hit = false;
@@ -160,13 +161,12 @@
         if (name === 'avatars' && !loaded.avatars) loadAvatars('mine');
         if (name === 'groups' && !loaded.groups) loadGroups();
         if (name === 'favs' && (!loaded.favs || loaded.favsDirty)) { loaded.favs = true; loaded.favsDirty = false; loadFavs(); }
-        if (name === 'notifs') loadNotifs();
+        if (name === 'notifs') nfSet(NF_EXTRA.includes(sub) ? sub : (NF_EXTRA.includes(nfView) ? 'open' : nfView));
         if (name === 'shop' && !loaded.shop) loadShop();
         if (name === 'global') loadGlobal();
         if (name === 'moderation') loadModeration();
         if (name === 'calendar') loadCalendar(false);
         if (name === 'gallery' && !loaded.gallery) loadGallery(false);
-        if (name === 'news' && !loaded.news) loadNews();
         if (name === 'client' && window.NexusClient) window.NexusClient.open();
         if (name !== 'client' && window.NexusClient) window.NexusClient.close();
         if (window.NexusApp) window.NexusApp.open(name, sub);
@@ -1289,7 +1289,20 @@
             $('[data-tab=notifs]').innerHTML = '<span>🔔</span><em>Benachrichtigungen</em>' + (d.unseen ? ' <b class="vx-badge">' + d.unseen + '</b>' : '');
         }).catch(fail(box));
     }
-    $('#nfView').addEventListener('click', e => { const b = e.target.closest('[data-view]'); if (!b) return; nfView = b.dataset.view; $$('#nfView .chip').forEach(c => c.classList.toggle('on', c === b)); loadNotifs(true); });
+    const NF_EXTRA = ['news', 'reports'];
+    function nfSet(view, cached) {
+        nfView = view;
+        $$('#nfView .chip').forEach(c => c.classList.toggle('on', c.dataset.view === view));
+        const extra = NF_EXTRA.includes(view);
+        $('#nfCtl').hidden = extra;
+        $('#notifBox').hidden = extra;
+        $('#nfNews').hidden = view !== 'news';
+        $('#nfReports').hidden = view !== 'reports';
+        if (view === 'news') { if (!loaded.news) loadNews(); }
+        else if (view === 'reports') { if (!loaded.reports) loadReports(); }
+        else loadNotifs(cached);
+    }
+    $('#nfView').addEventListener('click', e => { const b = e.target.closest('[data-view]'); if (!b) return; nfSet(b.dataset.view, true); store.set('tabSub', NF_EXTRA.includes(b.dataset.view) ? b.dataset.view : ''); });
     $('#nfType').addEventListener('change', () => loadNotifs(true));
     $('#nfQ').addEventListener('input', () => { clearTimeout(nfTimer); nfTimer = setTimeout(() => loadNotifs(true), 300); });
     $('#nfReload').addEventListener('click', () => loadNotifs(false));
@@ -1321,6 +1334,56 @@
         + ' · ' + esc(LT[l.type] || l.type) + (l.duration ? ' · ' + esc(l.duration + ' ' + l.duration_type) : '') + (l.kinds.length ? ' · ' + esc(l.kinds.join(', ')) : '') + '</div>'
         + '<div class="sh-meta">' + (l.seller_id ? 'von <a href="#" data-user="' + esc(l.seller_id) + '">' + esc(l.seller) + '</a>' : esc(l.seller)) + (l.group ? ' · 🛡 ' + esc(l.group) : '') + (l.sold ? ' · ' + num(l.sold) + '× verkauft' : '') + (l.by_vrc ? ' · VRChat' : '') + '</div>'
         + (l.desc ? '<p class="sh-desc">' + esc(l.desc) + '</p>' : '') + '</div></div>';
+    // VRChat-Store-Ansicht: Banner-Regale + Artikelkarten (Kaufen bewusst nur in VRChat / auf der Website)
+    const ITEM = { portal: 'Portal', prop: 'Prop', bundle: 'Bundle', accessory: 'Accessoire', accessories: 'Accessoire', loadingscreen: 'Ladebildschirm', loading_screen: 'Ladebildschirm', emoji: 'Emoji', sticker: 'Sticker',
+        avatar: 'Avatar', udon: 'Welt-Inhalt', 'welt-inhalt': 'Welt-Inhalt', inventar: 'Inventar', inventory: 'Inventar', begleiter: 'Begleiter', companion: 'Begleiter', drone: 'Drohne', pen: 'Stift', effect: 'Effekt', print: 'Print' };
+    const itemLabel = l => (l.items && l.items.length ? l.items : (l.kinds || []).map(k => k.toLowerCase())).map(t => ITEM[t] || t.replace(/[_-]/g, ' ').replace(/^./, c => c.toUpperCase())).join(' · ') || (LT[l.type] || l.type);
+    function leftTxt(end) {
+        const ms = Date.parse(end) - Date.now();
+        if (!end || isNaN(ms) || ms <= 0) return '';
+        const d = Math.floor(ms / 86400000);
+        return d >= 1 ? 'Noch ' + d + ' Tage' : 'Noch ' + Math.max(1, Math.floor(ms / 3600000)) + ' Std.';
+    }
+    const STORE_WEB = 'https://vrchat.com/home/marketplace';
+    const buyUrl = l => l.seller_id && !l.by_vrc ? 'https://vrchat.com/home/user/' + encodeURIComponent(l.seller_id) : STORE_WEB;
+    const cssUrl = u => { try { return new URL(pic(u), location.href).href.replace(/["'()\\\s]/g, ''); } catch (e) { return ''; } };   // absolut, sonst löst CSS den Pfad relativ zur Stylesheet-Datei auf
+    let storeIdx = {};
+    const storeCard = l => {
+        storeIdx[l.id] = l;
+        const left = leftTxt(l.ends), plus = l.vrcplus_price !== null && l.vrcplus_price !== l.price;
+        return '<div class="st-card' + (l.active === false ? ' off' : '') + '"><button type="button" class="st-pic" data-stl="' + esc(l.id) + '" title="Details">' + (l.image ? img(l.image, 'st-img', '') : fileImg(l.image_id, 'st-img') || '<span class="st-img vx-noimg">🛒</span>')
+            + (left ? '<span class="st-left">⏱ ' + esc(left) + '</span>' : '') + '</button>'
+            + '<div class="st-info"><b data-no-i18n title="' + esc(l.name) + '">' + esc(l.name) + '</b><small>' + esc(itemLabel(l)) + '</small>'
+            + '<div class="st-price">' + credits(l.price) + (plus ? ' <span class="st-plus">· ' + num(l.vrcplus_price) + ' mit VRC+</span>' : '') + '</div>'
+            + '<a class="btn btn-sm btn-gold st-buy" href="' + esc(buyUrl(l)) + '" target="_blank" rel="noopener noreferrer" title="Kaufen geht nur in VRChat oder auf der VRChat-Website">Kaufen ↗</a></div></div>';
+    };
+    const storeShelf = s => '<section class="st-shelf">' + (s.title || s.banner ? '<div class="st-banner' + (s.banner ? ' pic' : '') + '"' + (s.banner || (s.listings[0] && s.listings[0].image) ? ' style="--st-bg:url(' + cssUrl(s.banner || s.listings[0].image) + ')"' : '') + '><div><h3>' + esc(s.title || 'Angebote') + '</h3>' + (s.desc ? '<p>' + esc(s.desc) + '</p>' : '') + '</div><span class="st-count">' + s.listings.length + ' Artikel</span></div>' : '')
+        + '<div class="st-grid">' + s.listings.map(storeCard).join('') + '</div></section>';
+    function loadStore() {
+        const box = $('#shopStore');
+        if (!box) return;
+        loading(box, 'Lade VRChat-Store …');
+        api('shop_store').then(d => {
+            const shelves = (d.shelves || []).filter(s => s.listings.length);
+            box.innerHTML = '<div class="st-head"><h3>🏬 ' + esc(d.found ? d.title || 'VRChat-Store' : 'VRChat-Store') + '</h3><button type="button" class="btn btn-sm" id="storeReload" title="Neu laden">⟳</button>'
+                + '<a class="nc-link" href="' + STORE_WEB + '" target="_blank" rel="noopener noreferrer">Store auf vrchat.com ↗</a></div>'
+                + (shelves.length ? shelves.map(storeShelf).join('')
+                    : '<div class="vx-empty">' + (d.found ? 'Im Store ist gerade nichts.' : 'Der offizielle Store wurde nicht gefunden. Trage die Store-ID (esto_…) unter Einstellungen → Soziales → Shop ein oder gib sie unten bei „Shop ansehen“ ein.') + '</div>');
+        }).catch(fail(box));
+    }
+    document.addEventListener('click', e => {
+        if (e.target.closest('#storeReload')) return loadStore();
+        const p = e.target.closest('[data-stl]');
+        if (!p) return;
+        const l = storeIdx[p.dataset.stl];
+        if (!l) return;
+        const left = leftTxt(l.ends);
+        openModal((l.image ? img(l.image, 'vx-zoom', '') : fileImg(l.image_id, 'vx-zoom')) + '<h2>' + esc(l.name) + '</h2>' + (l.subtitle ? '<p class="vx-small">' + esc(l.subtitle) + '</p>' : '')
+            + '<p>' + credits(l.price) + (l.vrcplus_price !== null && l.vrcplus_price !== l.price ? ' · <span class="st-plus">' + num(l.vrcplus_price) + ' mit VRC+</span>' : '') + ' · ' + esc(itemLabel(l)) + (left ? ' · ⏱ ' + esc(left) : '') + '</p>'
+            + (l.desc ? '<p class="sh-desc" style="max-height:none">' + esc(l.desc) + '</p>' : '')
+            + '<p class="vx-small">' + (l.seller ? 'von ' + (l.seller_id ? '<a href="#" data-user="' + esc(l.seller_id) + '">' + esc(l.seller) + '</a>' : esc(l.seller)) : '') + (l.by_vrc ? ' · VRChat' : '') + (l.sold ? ' · ' + num(l.sold) + '× verkauft' : '') + '</p>'
+            + '<p><a class="btn btn-sm btn-gold" href="' + esc(buyUrl(l)) + '" target="_blank" rel="noopener noreferrer">Kaufen ↗</a> <span class="vx-small">Kaufen geht bewusst nur in VRChat oder auf der VRChat-Website.</span></p>');
+    });
     function loadShop() {
         const box = $('#shopBox');
         loading(box, 'Lade Shop-Konto …');
@@ -1335,6 +1398,7 @@
                 + '<div class="sh-kpi"><span>🏷️</span><b>' + num(d.listings.length) + '</b><small>eigene Angebote</small></div></div>'
                 + (d.errors.length ? '<div class="vx-note small">ℹ Nicht verfügbar: ' + esc(d.errors.join(' · ')) + '</div>' : '')
                 + '<p class="muted small">Kaufen geht bewusst nur im <a href="https://vrchat.com/home/marketplace" target="_blank" rel="noopener noreferrer">VRChat-Marktplatz</a> – hier kannst du alles in Ruhe ansehen.</p>'
+                + '<div id="shopStore"></div>'
                 + (d.subs.length ? '<div class="vx-sec"><h3>💎 Abos</h3><div class="sh-list">' + d.subs.map(s => '<div class="sh-row"><b>' + esc(s.name) + '</b><span>' + (s.active ? '🟢 aktiv' : '⚪ ' + esc(s.status || 'beendet')) + '</span><span class="muted small">'
                     + esc([({ year: 'jährlich', month: 'monatlich' })[s.period] || s.period, s.store, s.gift ? 'Geschenk' : '', s.starts ? 'seit ' + isoDate(s.starts) : '', s.expires ? 'bis ' + isoDate(s.expires) : ''].filter(Boolean).join(' · ')) + '</span></div>').join('') + '</div></div>' : '')
                 + '<div class="vx-sec"><h3>🧾 Meine Käufe</h3>' + (d.purchases.length ? '<div class="sh-list">' + d.purchases.map(p => '<div class="sh-row">' + (fileImg(p.image_id, 'sh-thumb') || '<span class="sh-thumb vx-noimg">🛒</span>')
@@ -1342,6 +1406,7 @@
                     + (p.seller ? ' · von <a href="#" data-user="' + esc(p.seller_id) + '">' + esc(p.seller) + '</a>' : '') + (p.gift ? ' · 🎁 ' + esc(p.receiver ? 'an ' + p.receiver : 'Geschenk') : '')
                     + (p.end ? ' · bis ' + esc(isoDate(p.end)) : '') + (p.recurs ? ' · verlängert sich' : '') + (p.active ? '' : ' · abgelaufen') + '</span></div>').join('') + '</div>' : '<div class="vx-empty">Noch nichts gekauft.</div>') + '</div>'
                 + (d.listings.length ? '<div class="vx-sec"><h3>🏷️ Meine Angebote</h3><div class="sh-grid">' + d.listings.map(listingCard).join('') + '</div></div>' : '');
+            loadStore();
         }).catch(fail(box));
     }
     $('#shopForm').addEventListener('submit', e => {
@@ -1350,8 +1415,7 @@
         loading(box, 'Lade Angebote …');
         api('shop_browse', { target: e.target.target.value }).then(d => {
             box.innerHTML = '<div class="vx-sec"><h3>🛒 ' + esc(d.title) + (d.seller ? ' <small>von ' + esc(d.seller) + '</small>' : '') + '</h3>'
-                + (d.shelves.some(s => s.listings.length) ? d.shelves.filter(s => s.listings.length).map(s => (d.shelves.length > 1 ? '<h4 class="sh-shelf">' + esc(s.title) + (s.desc ? ' <small>' + esc(s.desc) + '</small>' : '') + '</h4>' : '')
-                    + '<div class="sh-grid">' + s.listings.map(listingCard).join('') + '</div>').join('') : '<div class="vx-empty">Keine Angebote gefunden.</div>') + '</div>';
+                + (d.shelves.some(s => s.listings.length) ? d.shelves.filter(s => s.listings.length).map(storeShelf).join('') : '<div class="vx-empty">Keine Angebote gefunden.</div>') + '</div>';
         }).catch(fail(box));
     });
 
@@ -1670,9 +1734,10 @@
             .catch(x => toast(x.message, true)).finally(() => { b.disabled = false; b.textContent = '⬆ Hochladen'; });
     });
 
-    // ---------- Info-Push (VRChat-Neuigkeiten) ----------
+    // ---------- Info-Push (VRChat-Neuigkeiten) – Ansicht in den Benachrichtigungen ----------
     let newsData = [], newsKind = 'help';
-    const NEWS = { help: '📘 Hilfe-Artikel', banner: '🪧 Quick-Menü-Banner', loading: '⏳ Ladebildschirme', other: '📦 Sonstiges' };
+    const NEWS = { help: 'Hilfe-Artikel', banner: 'Quick-Menü-Banner', loading: 'Ladebildschirme', other: 'Sonstiges' };
+    const dOnly = s => { const d = new Date(s); return isNaN(d) ? '' : d.toLocaleDateString(nxLoc(), { day: '2-digit', month: '2-digit', year: 'numeric' }); };
     function loadNews() {
         loaded.news = true;
         loading($('#newsBox'), 'Lade Neuigkeiten …');
@@ -1680,19 +1745,68 @@
     }
     function renderNews() {
         const cnt = k => newsData.filter(i => i.kind === k).length;
-        $('#newsKinds').innerHTML = Object.entries(NEWS).filter(([k]) => cnt(k) || k === 'help').map(([k, l]) => '<button type="button" class="chip' + (k === newsKind ? ' on' : '') + '" data-nk="' + k + '">' + l + ' <small>' + cnt(k) + '</small></button>').join('');
+        $('#newsKinds').innerHTML = Object.entries(NEWS).filter(([k]) => cnt(k) || k !== 'other').map(([k, l]) => '<button type="button" class="' + (k === newsKind ? 'on' : '') + '" data-nk="' + k + '">' + l + ' <small>(' + cnt(k) + ')</small></button>').join('');
         const list = newsData.filter(i => i.kind === newsKind);
-        $('#newsBox').innerHTML = list.length ? list.map((i, n) => '<button type="button" class="vx-news' + (newsKind === 'loading' || newsKind === 'banner' ? ' wide' : '') + '" data-news="' + esc(i.id) + '">' + (i.img ? '<img src="' + esc(i.img) + '" alt="" loading="lazy">' : '<span class="vx-noimg">📰</span>')
-            + '<span><b>' + esc(i.title) + '</b><small>' + esc(i.desc) + '</small></span><time>' + esc(isoDT(i.date)) + '</time></button>').join('') : '<div class="vx-empty">Nichts in dieser Kategorie.</div>';
+        $('#newsBox').innerHTML = list.length ? '<div class="ip-list">' + list.map(i => '<div class="ip-row" data-news="' + esc(i.id) + '"><button type="button" class="ip-head" aria-expanded="false">'
+            + '<span class="ip-chev">›</span>' + (i.img ? '<img class="ip-thumb" src="' + esc(pic(i.img)) + '" alt="" loading="lazy">' : '<span class="ip-thumb vx-noimg">📰</span>')
+            + '<span class="ip-txt"><b>' + esc(i.title) + '</b><small>' + esc(i.desc) + '</small></span><time>' + esc(dOnly(i.date)) + '</time></button><div class="ip-body" hidden></div></div>').join('') + '</div>'
+            : '<div class="vx-empty">Nichts in dieser Kategorie.</div>';
     }
     $('#newsRefresh').addEventListener('click', loadNews);
     $('#newsKinds').addEventListener('click', e => { const c = e.target.closest('[data-nk]'); if (c) { newsKind = c.dataset.nk; renderNews(); } });
     $('#newsBox').addEventListener('click', e => {
-        const b = e.target.closest('[data-news]');
-        if (!b) return;
-        const i = newsData.find(x => x.id === b.dataset.news);
-        openModal((i.article_img || i.img ? '<img class="vx-zoom" src="' + esc(i.article_img || i.img) + '" alt="">' : '') + '<h2>' + esc(i.title) + '</h2><p class="vx-small">' + esc(isoDT(i.date)) + '</p>'
-            + (i.article ? '<div class="fmt">' + i.article + '</div>' : '<p>' + esc(i.desc) + '</p>') + (i.link ? '<p><a class="btn btn-sm" href="' + esc(i.link) + '" target="_blank" rel="noopener noreferrer">↗ Mehr erfahren</a></p>' : ''));
+        const h = e.target.closest('.ip-head');
+        if (!h) return;
+        const row = h.parentNode, body = row.querySelector('.ip-body'), i = newsData.find(x => x.id === row.dataset.news);
+        const open = body.hidden;
+        if (open && !body.innerHTML) body.innerHTML = (i.article_img || i.img ? '<img class="ip-big" src="' + esc(pic(i.article_img || i.img)) + '" alt="">' : '')
+            + (i.article ? '<div class="fmt">' + i.article + '</div>' : i.desc ? '<p>' + esc(i.desc) + '</p>' : '')
+            + '<p class="vx-small">' + esc(isoDT(i.date)) + '</p>'
+            + (i.link ? '<p><a class="btn btn-sm" href="' + esc(i.link) + '" target="_blank" rel="noopener noreferrer">↗ Mehr erfahren</a></p>' : '');
+        body.hidden = !open;
+        row.classList.toggle('open', open);
+        h.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+
+    // ---------- Meine Meldungen – Ansicht in den Benachrichtigungen ----------
+    let repData = [];
+    const REP_TYPE = { user: 'Nutzer', avatar: 'Avatar', world: 'Welt', group: 'Gruppe', sticker: 'Sticker', emoji: 'Emoji', print: 'Print', prop: 'Prop', image: 'Bild', inventory: 'Inventar', instance: 'Instanz' };
+    const REP_WORD = { behavior: 'Verhalten', harassment: 'Belästigung', hateful: 'Hass', hate: 'Hass', inappropriate: 'Unangemessen', sexual: 'Sexuell', violence: 'Gewalt', spam: 'Spam', scam: 'Betrug', impersonation: 'Identitätsdiebstahl',
+        cheating: 'Cheaten', malicious: 'Schadhaft', crasher: 'Crasher', security: 'Sicherheit', selfharm: 'Selbstverletzung', underage: 'Minderjährig', other: 'Sonstiges', copyright: 'Urheberrecht', content: 'Inhalt', profile: 'Profil',
+        open: 'Offen', closed: 'Geschlossen', resolved: 'Erledigt', pending: 'Wartet' };
+    const repWord = w => { const k = String(w || '').replace(/[\s_-]/g, '').toLowerCase(); return REP_WORD[k] || String(w || '').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]/g, ' ').replace(/^./, c => c.toUpperCase()); };
+    function loadReports() {
+        loaded.reports = true;
+        loading($('#repBox'), 'Lade deine Meldungen …');
+        api('tools_reports').then(d => { repData = d.reports; renderReports(); }).catch(fail($('#repBox')));
+    }
+    function renderReports() {
+        repData.sort((a, b) => String(b.created).localeCompare(String(a.created)));
+        const sel = $('#repType'), cur = sel.value, types = {};
+        repData.forEach(r => { types[r.type] = (types[r.type] || 0) + 1; });
+        sel.innerHTML = '<option value="">Alle (' + repData.length + ')</option>' + Object.entries(types).map(([t, n]) => '<option value="' + esc(t) + '">' + esc(REP_TYPE[t] || repWord(t)) + ' (' + n + ')</option>').join('');
+        sel.value = types[cur] ? cur : '';
+        const list = repData.filter(r => !sel.value || r.type === sel.value);
+        $('#repBox').innerHTML = list.length ? '<div class="ip-list">' + list.map(r => {
+            const id = r.target_id || '', name = esc(r.target || id || '–');
+            const link = id.startsWith('usr_') ? ' data-user="' + esc(id) + '"' : id.startsWith('wrld_') ? ' data-world="' + esc(id) + '"' : id.startsWith('grp_') ? ' data-ngroup="' + esc(id) + '"' : '';
+            return '<div class="ip-row rep-row"><div class="ip-head">' + img(r.image, 'ip-thumb', '')
+                + '<span class="ip-txt"><span class="rep-name">' + (link ? '<a href="#" data-no-i18n' + link + '>' + name + '</a>' : '<b data-no-i18n>' + name + '</b>') + ' <span class="rep-badge">' + esc(REP_TYPE[r.type] || repWord(r.type)) + '</span></span>'
+                + '<small>' + esc([repWord(r.category), repWord(r.reason)].filter(Boolean).join(' · ')) + '</small>'
+                + (r.description ? '<span class="rep-desc" data-no-i18n>' + esc(r.description) + '</span>' : '') + '</span>'
+                + '<span class="rep-side"><time>' + esc(dOnly(r.created)) + '</time>' + (r.status ? '<span class="vx-small">' + esc(repWord(r.status)) + '</span>' : '')
+                + '<button type="button" class="nf-a" data-repdel="' + esc(r.id) + '" title="Meldung zurückziehen">🗑</button></span></div></div>';
+        }).join('') + '</div>' : '<div class="vx-empty">' + (repData.length ? 'Keine Meldungen dieser Art.' : 'Du hast keine Meldungen eingereicht.') + '</div>';
+    }
+    $('#repType').addEventListener('change', renderReports);
+    $('#repRefresh').addEventListener('click', loadReports);
+    $('#repBox').addEventListener('click', e => {
+        const g = e.target.closest('[data-ngroup]');
+        if (g) { e.preventDefault(); e.stopPropagation(); tab('groups'); openGroup(g.dataset.ngroup); return; }
+        const b = e.target.closest('[data-repdel]');
+        if (!b || !confirm('Meldung zurückziehen/löschen?')) return;
+        b.disabled = true;
+        api('tools_report_delete', { id: b.dataset.repdel }).then(d => { toast(d.msg); repData = d.reports; renderReports(); }).catch(x => { b.disabled = false; toast(x.message, true); });
     });
 
     // =============== Direkt-Zugriff (Zwischenablage, Einfügen, Befehlspalette) ===============

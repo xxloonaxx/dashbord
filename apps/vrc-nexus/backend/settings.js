@@ -44,6 +44,7 @@ const FIELDS = [
     ['social.show_offline', 'social', 'Freundesliste', 'bool', false, 'Offline-Freunde standardmäßig zeigen', ''],
     ['social.sort', 'social', 'Freundesliste', 'select', 'state', 'Standard-Sortierung', '', [['state', 'Nach Status'], ['name', 'Name A–Z'], ['since', 'Zuletzt geändert'], ['trust', 'Vertrauensstufe'], ['world', 'Nach Welt']]],
     ['social.loc_private', 'social', 'Freunde-Orte', 'bool', true, 'Private Instanzen zusammenfassen', 'Freunde in privaten Welten erscheinen unter „Privat“.'],
+    ['social.store_id', 'social', 'Shop', 'text', '', 'Store-ID des VRChat-Stores (esto_…)', 'leer = automatisch aus der VRChat-Konfiguration ermitteln'],
     ['social.loc_active', 'social', 'Freunde-Orte', 'bool', true, '„Online auf der Website/App“ mit anzeigen', ''],
     ['social.players_fetch', 'social', 'Spielerliste', 'bool', true, 'Profile der Mitspieler laden (VRC+, 18+, Rang, Sprache …)', 'Höchstens eine Abfrage pro Sekunde.'],
     ['social.players_cache', 'social', 'Spielerliste', 'number', 60, 'Profile zwischenspeichern (Minuten)', '', [5, 1440]],
