@@ -20,6 +20,9 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.7.3
+- Rückmeldungen und Fehlermeldungen (Toasts wie „Gespeichert.“, „Regel gespeichert.“) sind jetzt ebenfalls übersetzt – Wörterbuch über 1.500 Einträge.
+
 ### Neu in 1.7.2
 - Startseite: Widget „Freunde im Spiel“ zeigt in Größe L/XL Profilbilder.
 - Übersetzer ruht bei Deutsch (weniger Arbeit bei jedem Neuzeichnen).
