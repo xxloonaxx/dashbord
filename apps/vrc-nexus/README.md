@@ -20,6 +20,14 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.5.0 – Stream-Bot: Befehls-Baukasten & viele neue Funktionen
+- **🧱 Befehls-Baukasten:** jeder Befehl kann eine **VRChat-Aktion** ausführen (Avatar-Parameter an/aus oder auf einen Wert, Chatbox, Kamera, Eingaben, Vorlesen, Webhook) – mit Werten aus dem Chat (`!farbe 3` → `param Color = {1}`), Rechten (alle / Abonnenten & Mitglieder / VIPs / Mods / nur ich), Kosten in Punkten, Pause gesamt und pro Person, Aliasen, Hilfetext, an/aus, Nutzungszähler, Vorlagen und „Ausprobieren“.
+- **⭐ Ereignisse:** Abo, Abo-Verlängerung, Geschenk-Abos, Raid, Bits (Twitch), Super Chat & neue Mitglieder (YouTube), „Erster im Chat“ – jeweils mit Chat-Antwort und VRChat-Aktion, Mindestmenge, Test-Knopf.
+- **⏰ Timer-Nachrichten** (nur wenn der Chat aktiv ist).
+- **🎲 Spiele:** `!gamble`, `!münze`, `!slots`, `!duell`/`!annehmen` – Einsätze und Pausen einstellbar.
+- **📊 Umfragen** (`!umfrage`, `!stimme`, auch im OBS-Chat-Overlay), **🎁 Verlosungen** (Stichwort, Kosten, Gewinner ziehen), **📝 Zitate**, **🔢 Zähler** (z. B. `!tode`, Mods zählen hoch).
+- `!zuschauzeit`, `!uptime`, `!so` (Shoutout), `!addpunkte alle`, `!tts` (Vorlesen am PC gegen Punkte).
+
 ### Neu in 1.4.2
 - Fehler behoben: Das OBS-Chat-Overlay (`/chat`) konnte leer bleiben, wenn OBS einen Origin-Kopf mitschickt.
 - Neue automatische Tests für Stream-Bot (Twitch-Zeilen, Punkte, Mod-Rechte, Belohnungen), Cloud-Sicherung (Verschlüsselung, falsches Passwort, Manipulation) und OBS-Zugriff.

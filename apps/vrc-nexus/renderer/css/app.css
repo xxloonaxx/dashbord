@@ -324,3 +324,6 @@ body.mobile .hm-grid { grid-template-columns: 1fr; } body.mobile .hm-w.wide { gr
 .sb-m.p-youtube { border-left-color: #ff4e45; } .sb-m.k-bot { border-left-color: var(--accent-gold, #f3c262); opacity: 0.85; }
 .sb-m.k-reward, .sb-m.k-alert { border-left-color: #50fa7b; background: rgba(80,250,123,0.08); } .sb-m.k-system { border-left-color: #666; opacity: 0.7; }
 #stState .ok { color: #50fa7b; } #stState .bad { color: #ff7070; }
+
+.sb-evgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 10px; }
+.sb-ev textarea, .sb-ev input[type=text] { margin-top: 4px; }

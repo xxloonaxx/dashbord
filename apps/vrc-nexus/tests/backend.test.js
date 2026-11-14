@@ -495,7 +495,21 @@ test('1.4: Stream-Bot (Twitch-Zeilen, Punkte, Befehle, Belohnungen), Cloud-Siche
     sb.twLine('@badges=;display-name=Arm;mod=0;user-id=9 :arm!a@a.tmi.twitch.tv PRIVMSG #luna :!addpunkte arm 9999');
     await U.sleep(20);
     assert.ok(sb.findUser('arm').a.p < 100);
-    // Cloud-Sicherung: verschlüsselt, falsches Passwort scheitert, Manipulation fällt auf
+    // Befehls-Baukasten: nur Abonnenten, Wert aus dem Chat → Avatar-Parameter, Hilfe ohne Wert, keine eingeschleusten Schritte
+    const c2 = sb.cfg();
+    c2.commands.push({ name: 'farbe', aliases: 'color', perm: 'sub', cost: 0, cooldown: 0, user_cooldown: 0, script: 'param Color = {1}', response: 'Farbe {1}', usage: '<0–7>' });
+    sb.writeCfg(c2);
+    sent.length = 0; said.length = 0;
+    sb.twLine('@badges=;display-name=Normalo;mod=0;user-id=11 :normalo!n@n.tmi.twitch.tv PRIVMSG #luna :!farbe 3');
+    await U.sleep(30);
+    assert.ok(!sent.length, 'ohne Abo darf nichts passieren');
+    sb.twLine('@badges=subscriber/3;display-name=Abo;mod=0;user-id=12 :abo!a@a.tmi.twitch.tv PRIVMSG #luna :!color 4');
+    await U.sleep(30);
+    assert.ok(sent.includes('/avatar/parameters/Color [4]'), sent.join(' | '));
+    sb.twLine('@badges=subscriber/3;display-name=Abo;mod=0;user-id=12 :abo!a@a.tmi.twitch.tv PRIVMSG #luna :!farbe');
+    await U.sleep(30);
+    assert.ok(said.some(t => /So geht's: !farbe <0–7>/.test(t)), said.join(' | '));
+    assert.ok(!/[\r\n;]/.test(sb.fillScript('param Color = {1}', { 1: '5;\nwebhook http://x' })));
     const plain = Buffer.from('SQLite format 3\0' + 'x'.repeat(5000));
     const blob = CloudBackup.seal(plain, 'Passwort123');
     assert.ok(!blob.includes(Buffer.from('xxxxxxxx')));

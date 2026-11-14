@@ -93,8 +93,9 @@ html,body{margin:0;background:transparent;font:600 20px/1.35 "Segoe UI",system-u
 .m{background:rgba(6,10,16,.6);border-left:4px solid #38d5e6;border-radius:6px;padding:6px 10px;text-shadow:0 1px 3px #000;animation:in .3s ease-out;word-wrap:break-word}
 .m.youtube{border-color:#ff4e45}.m.bot{border-color:#f3c262;opacity:.9}.m.reward,.m.alert{border-color:#50fa7b;background:rgba(20,60,30,.75)}
 .u{color:#38d5e6;margin-right:6px}.youtube .u{color:#ff8a84}.bot .u{color:#f3c262}.reward .u,.alert .u{color:#50fa7b}.out{opacity:0;transition:opacity 1s}
+#p{position:fixed;left:8px;right:8px;top:8px;background:rgba(6,10,16,.75);border-left:4px solid #f3c262;border-radius:6px;padding:8px 12px;text-shadow:0 1px 3px #000}#p b{color:#f3c262}.po{display:flex;gap:8px;align-items:center;font-size:17px;margin-top:4px}.po i{display:block;height:10px;background:#f3c262;border-radius:3px}.po span{flex:1}
 body.light .m{background:rgba(255,255,255,.85);color:#111;text-shadow:none}@keyframes in{from{transform:translateX(-20px);opacity:0}}
-</style></head><body><div id="l"></div><script>
+</style></head><body><div id="p" hidden></div><div id="l"></div><script>
 const q=new URLSearchParams(location.search),l=document.getElementById('l'),keep=+(q.get('sekunden')||60)*1000,max=+(q.get('max')||12),hide=(q.get('hide')||'').split(',');
 if(q.get('theme')==='light')document.body.classList.add('light');let seen=0;
 const ic={twitch:'🟣',youtube:'🔴'};
@@ -102,7 +103,8 @@ async function tick(){try{const d=await(await fetch('/chat.json?token='+encodeUR
 for(const e of d.items){if(e.i<=seen)continue;seen=e.i;if(hide.includes(e.kind))continue;const m=document.createElement('div');m.className='m '+e.platform+' '+e.kind;
 const u=document.createElement('span');u.className='u';u.textContent=(e.kind==='reward'?'🎁 ':e.kind==='alert'?'⭐ ':(ic[e.platform]||'')+' ')+(e.user||'')+(e.kind==='chat'?':':'');
 m.append(u,document.createTextNode(e.text));l.append(m);setTimeout(()=>{m.classList.add('out');setTimeout(()=>m.remove(),1100)},keep);}
-while(l.children.length>max)l.firstChild.remove();}catch(e){}}tick();setInterval(tick,1000);
+while(l.children.length>max)l.firstChild.remove();
+const P=document.getElementById('p');if(d.poll&&!hide.includes('poll')){P.hidden=false;P.replaceChildren();const h=document.createElement('b');h.textContent='📊 '+d.poll.q;P.append(h);for(const [k,o] of d.poll.options.entries()){const r=document.createElement('div');r.className='po';const t=document.createElement('span');t.textContent=(k+1)+') '+o.text;const bar=document.createElement('i');bar.style.width=(d.poll.total?Math.round(o.votes/d.poll.total*120):0)+'px';const n=document.createElement('b');n.textContent=o.votes;r.append(t,bar,n);P.append(r);}}else P.hidden=true;}catch(e){}}tick();setInterval(tick,1000);
 </script></body></html>`;
 
 module.exports = { LocalApi, int };
