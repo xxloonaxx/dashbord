@@ -20,6 +20,10 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.10.5 – Shop ansehen als Popup
+- **🔎 Shop ansehen** steht jetzt ganz oben im Shop; das Ergebnis (Creator- oder Store-Shop) öffnet sich als **Popup** im Store-Stil.
+- Klick auf einen Artikel zeigt die Details – mit **← Zurück zum Shop** geht es zurück ins Popup.
+
 ### Neu in 1.10.4 – Fix: Info-Push und Meine Meldungen leer
 - **Meine Meldungen:** VRChat liefert die Liste seitenweise (`results`, `hasNext`) statt als einfache Liste – deshalb war sie leer. Jetzt werden bis zu 500 Meldungen geladen.
 - **Info-Push:** VRChat gibt nur Einträge zurück, deren Tags in `include` stehen; leer = nichts. Jetzt wird eine breite Tag-Liste in beiden Formaten abgefragt und zusammengeführt; die Ansicht springt zur ersten Kategorie mit Einträgen. Bleibt es leer, steht klein darunter, was VRChat auf jede Abfrage geantwortet hat.

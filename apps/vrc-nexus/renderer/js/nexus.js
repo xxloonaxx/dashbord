@@ -1395,12 +1395,13 @@
     document.addEventListener('change', e => { if (e.target.id === 'stSort') renderStore(); });
     document.addEventListener('click', e => {
         if (e.target.closest('#storeReload')) return loadStore();
+        if (e.target.closest('[data-stback]') && shopPopup) return openModal(shopPopup);
         const p = e.target.closest('[data-stl]');
         if (!p) return;
         const l = storeIdx[p.dataset.stl];
         if (!l) return;
-        const left = leftTxt(l.ends);
-        openModal((l.image ? img(l.image, 'vx-zoom', '') : fileImg(l.image_id, 'vx-zoom')) + '<h2>' + esc(l.name) + '</h2>' + (l.subtitle ? '<p class="vx-small">' + esc(l.subtitle) + '</p>' : '')
+        const left = leftTxt(l.ends), fromPop = !!p.closest('.st-pop');
+        openModal((fromPop ? '<button type="button" class="btn btn-sm" data-stback>← Zurück zum Shop</button>' : '') + (l.image ? img(l.image, 'vx-zoom', '') : fileImg(l.image_id, 'vx-zoom')) + '<h2>' + esc(l.name) + '</h2>' + (l.subtitle ? '<p class="vx-small">' + esc(l.subtitle) + '</p>' : '')
             + '<p>' + credits(l.price) + (l.vrcplus_price !== null && l.vrcplus_price !== l.price ? ' · <span class="st-plus">' + num(l.vrcplus_price) + ' mit VRC+</span>' : '') + ' · ' + esc(itemLabel(l)) + (left ? ' · ⏱ ' + esc(left) : '') + '</p>'
             + (l.desc ? '<p class="sh-desc" style="max-height:none">' + esc(l.desc) + '</p>' : '')
             + '<p class="vx-small">' + (l.seller ? 'von ' + (l.seller_id ? '<a href="#" data-user="' + esc(l.seller_id) + '">' + esc(l.seller) + '</a>' : esc(l.seller)) : '') + (l.by_vrc ? ' · VRChat' : '') + (l.sold ? ' · ' + num(l.sold) + '× verkauft' : '') + '</p>'
@@ -1431,14 +1432,17 @@
             loadStore();
         }).catch(fail(box));
     }
+    let shopPopup = '';   // Inhalt des Shop-Popups (für „← Zurück“ aus der Artikel-Ansicht)
     $('#shopForm').addEventListener('submit', e => {
         e.preventDefault();
-        const box = $('#shopBrowse');
-        loading(box, 'Lade Angebote …');
+        const btn = e.target.querySelector('button');
+        btn.disabled = true;
+        openModal('<div class="vx-loading">Lade Angebote …</div>');
         api('shop_browse', { target: e.target.target.value }).then(d => {
-            box.innerHTML = '<div class="vx-sec"><h3>🛒 ' + esc(d.title) + (d.seller ? ' <small>von ' + esc(d.seller) + '</small>' : '') + '</h3>'
+            shopPopup = '<div class="st-pop"><h2>🛒 ' + esc(d.title) + (d.seller ? ' <small class="vx-small">von ' + esc(d.seller) + '</small>' : '') + '</h2>'
                 + (d.shelves.some(s => s.listings.length) ? d.shelves.filter(s => s.listings.length).map(storeShelf).join('') : '<div class="vx-empty">Keine Angebote gefunden.</div>') + '</div>';
-        }).catch(fail(box));
+            openModal(shopPopup);
+        }).catch(x => openModal('<div class="vx-error">⚠ ' + esc(x.message) + '</div>')).finally(() => { btn.disabled = false; });
     });
 
     // ---------- VRChat weltweit ----------
