@@ -9,6 +9,8 @@
         time: ['zeit', 'zeit_s', 'zone', 'zeitzone', 'datum', 'wochentag'], weather: ['wetter_symbol', 'wetter', 'temp', 'temp_gefuehlt', 'wind', 'luftfeuchte', 'ort'],
         system: ['cpu', 'gpu', 'gpu_temp', 'gpu_watt', 'ram', 'ram_pct', 'vram', 'gpu_name'], network: ['netz_down', 'netz_up', 'netz_spitze_down', 'netz_spitze_up', 'netz_summe_down', 'netz_summe_up'],
         twitch: ['twitch_zuschauer', 'twitch_spiel', 'twitch_dauer', 'twitch_kanal'], heart: ['puls'],
+        countdown: ['countdown_name', 'countdown_rest', 'countdown_tage'], friends: ['freunde_im_spiel', 'freunde_online_web', 'freunde_gesamt'], marquee: ['laufschrift'], anim: ['animation'],
+        battery: ['akku', 'akku_symbol', 'akku_status'], ping: ['ping'],
     };
     const WHERE = [['both', 'Desktop + VR'], ['desktop', 'nur Desktop'], ['vr', 'nur VR']];
     let box = null, d = null, openMod = '', timer = null;
@@ -30,7 +32,8 @@
     }
     function row(k, i) {
         const m = d.modules[k], s = d.cfg.mods[k], open = openMod === k;
-        const note = { weather: d.cfg.place ? '📍 ' + d.cfg.place : 'Ort fehlt', twitch: d.cfg.twitch || d.twitch_default ? '📺 ' + (d.cfg.twitch || d.twitch_default) : 'Kanal fehlt', heart: d.has_hr ? (d.hr_error ? '⚠ ' + d.hr_error : 'verbunden') : 'kein Token', system: d.gpu ? '' : 'keine NVIDIA-GPU erkannt', window: d.windows ? '' : 'nur unter Windows' }[k] || '';
+        const note = { weather: d.cfg.place ? '📍 ' + d.cfg.place : 'Ort fehlt', twitch: d.cfg.twitch || d.twitch_default ? '📺 ' + (d.cfg.twitch || d.twitch_default) : 'Kanal fehlt', heart: d.has_hr ? (d.hr_error ? '⚠ ' + d.hr_error : 'verbunden') : 'kein Token', system: d.gpu ? (d.gpu_win ? 'GPU über Windows-Leistungsdaten' : '') : 'keine GPU-Werte gefunden', window: d.windows ? '' : 'nur unter Windows',
+            battery: d.battery ? '' : 'kein Akku gefunden', countdown: d.cfg.cd_at ? '📅 ' + new Date(d.cfg.cd_at).toLocaleString(window.nxLoc ? nxLoc() : 'de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Termin fehlt', marquee: d.cfg.mq_text ? '' : 'Text fehlt' }[k] || '';
         return '<section class="cm-row' + (s.on ? ' on' : '') + '" data-k="' + k + '"><span class="cm-ic">' + m[0] + '</span>'
             + '<div class="cm-txt"><b>' + esc(m[1]) + '</b>' + (note ? ' <small class="cm-note">' + esc(note) + '</small>' : '') + '<p>' + esc(m[2]) + '</p>'
             + (d.preview.per[k] ? '<code class="cm-val">' + esc(d.preview.per[k]).replace(/\n/g, ' ⏎ ') + '</code>' : '') + '</div>'
@@ -48,6 +51,10 @@
         if (k === 'twitch') extra = '<form class="cm-f" data-f="twitch"><label>Kanal</label><input name="twitch" value="' + esc(c.twitch) + '" placeholder="' + esc(d.twitch_default || 'deinkanal') + '"><button class="btn btn-sm">Speichern</button></form><div class="muted small">Ohne Eintrag wird der Kanal vom Stream-Bot genommen. Ist der Kanal offline, fällt das Modul weg.</div>';
         if (k === 'heart') extra = '<form class="cm-f" data-f="hr"><label>Pulsoid-Token</label><input name="token" type="password" placeholder="' + (d.has_hr ? '•••••• gespeichert – neu eingeben zum Ändern' : 'Token von pulsoid.net → Integrationen') + '" autocomplete="off"><button class="btn btn-sm">Speichern</button></form>'
             + '<form class="cm-f" data-f="hrosc"><label>Avatar-Parameter</label><input name="hr_param" value="' + esc(c.hr_param) + '"><label class="cm-inl"><input type="checkbox" name="hr_osc"' + (c.hr_osc ? ' checked' : '') + '> senden (Int + Float)</label><button class="btn btn-sm">Speichern</button></form>';
+        if (k === 'countdown') extra = '<form class="cm-f" data-f="cd"><label>Termin</label><input name="cd_name" value="' + esc(c.cd_name) + '" placeholder="Name, z. B. Stream" maxlength="40"><input name="cd_at" type="datetime-local" value="' + esc(c.cd_at) + '"><button class="btn btn-sm">Speichern</button></form>';
+        if (k === 'marquee') extra = '<form class="cm-f" data-f="mq"><label>Text</label><input name="mq_text" value="' + esc(c.mq_text) + '" maxlength="500" placeholder="Langer Text, der durchläuft …"><label>Breite</label><input name="mq_width" type="number" min="10" max="120" value="' + c.mq_width + '" style="width:70px"><button class="btn btn-sm">Speichern</button></form>';
+        if (k === 'anim') extra = '<form class="cm-f cm-col" data-f="an"><label>Bilder (eine Zeile = ein Bild)</label><textarea name="an_frames" rows="5">' + esc(c.an_frames) + '</textarea><button class="btn btn-sm">Speichern</button></form><div class="muted small">Mit jeder gesendeten Nachricht kommt das nächste Bild – bei „alle 10 s“ also alle 10 s.</div>';
+        if (k === 'ping') extra = '<div class="muted small">Misst alle 30 s, wie lange der Verbindungsaufbau zu api.vrchat.cloud dauert. Bei Verbindungsproblemen fällt das Modul weg.</div>';
         if (k === 'status') extra = '<div class="muted small">Die Texte kommen aus dem Chatbox-Rotator (Spiel & OSC → Live & OSC → Rotator). Bei AFK erscheint automatisch „💤 AFK seit … min“.</div>';
         return '<div class="cm-edit"><form class="cm-f" data-f="tpl"><label>Vorlage</label><input name="tpl" value="' + esc(s.tpl) + '" maxlength="200"><button class="btn btn-sm">Speichern</button><button type="button" class="nc-link" data-reset="1">Standard</button></form>'
             + '<div class="cm-ph">' + (PH[k] || []).map(p => '<button type="button" class="chip" data-ph="' + p + '" title="einfügen">{' + p + '}' + (v[p] !== undefined && v[p] !== '' ? ' <small>= ' + esc(String(v[p]).slice(0, 24)) + '</small>' : '') + '</button>').join('') + '</div>' + extra + '</div>';
@@ -94,6 +101,9 @@
             if (f.dataset.f === 'twitch') return save({ twitch: f.twitch.value });
             if (f.dataset.f === 'hr') return api('cm_hr_key', { token: f.token.value }).then(r => { toast(r.msg); f.token.value = ''; load(true); }).catch(er => toast('⚠ ' + er.message, true));
             if (f.dataset.f === 'hrosc') return save({ hr_param: f.hr_param.value, hr_osc: f.hr_osc.checked ? '1' : '0' });
+            if (f.dataset.f === 'cd') return save({ cd_name: f.cd_name.value, cd_at: f.cd_at.value });
+            if (f.dataset.f === 'mq') return save({ mq_text: f.mq_text.value, mq_width: f.mq_width.value });
+            if (f.dataset.f === 'an') return save({ an_frames: f.an_frames.value });
         });
     }
     window.NexusChatMods = {

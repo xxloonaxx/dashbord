@@ -32,6 +32,8 @@
         const t = text.trim().replace(/\s+/g, ' ');     // Zeilenumbrüche/Einrückung aus dem HTML zusammenfassen
         if (!t) return null;
         if (d[t] !== undefined) return d[t];
+        const tp = /^(.+?)([.!?])$/.exec(t);   // Schlüssel ohne Schlusspunkt (z. B. Text endet auf „…“.)
+        if (tp && d[tp[1]] !== undefined) return d[tp[1]] + tp[2];
         const h = (t.match(HEAD) || [''])[0], rest = t.slice(h.length);
         const tl = (rest.match(TAIL) || [''])[0], core = rest.slice(0, rest.length - tl.length);
         if (core && d[core] !== undefined) return h + d[core] + tl;

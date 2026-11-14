@@ -1,6 +1,7 @@
 'use strict';
 /*
- * Chatbox-Module: mehrere Bausteine (Status, Fenster, Musik, Zeit, Wetter, Rechner, Netzwerk, Twitch, Puls, VRChat)
+ * Chatbox-Module: mehrere Bausteine (Status, Fenster, Musik, Zeit, Wetter, Rechner, Netzwerk, Twitch, Puls, VRChat,
+ *   Countdown, Freunde, Laufschrift, Animation, Akku, Ping)
  * werden zu einer Chatbox-Nachricht zusammengesetzt und regelmäßig an VRChat geschickt.
  * Jedes Modul: an/aus, eigene Vorlage mit Platzhaltern, nur Desktop / nur VR / beides, Reihenfolge.
  * Alle Werte stehen zusätzlich als Platzhalter im Rotator, in Makros und in der Automatik zur Verfügung.
@@ -19,14 +20,21 @@ const MODULES = {
     vrchat: ['🌐', 'VRChat-Radar', 'Welt, Spieler und Zeit in der Instanz – aus dem Spiel-Log.', '🌐 {welt} · 👥 {spieler}', 'both'],
     time: ['🕒', 'Uhrzeit', 'Deine Uhrzeit und Zeitzone – Schluss mit „wie spät ist es bei dir?“.', '🕒 {zeit} {zone}', 'both'],
     weather: ['⛅', 'Wetter', 'Temperatur, gefühlt, Wind und Luftfeuchte an deinem Ort (Open-Meteo, ohne Konto).', '{wetter_symbol} {temp}°C · gefühlt {temp_gefuehlt}°C', 'both'],
-    system: ['🖥', 'Rechner', 'CPU, GPU, RAM und VRAM – Auslastung und GPU-Temperatur (NVIDIA über nvidia-smi).', '💻 CPU {cpu}% · GPU {gpu}% · RAM {ram}', 'both'],
+    system: ['🖥', 'Rechner', 'CPU, GPU, RAM und VRAM – Auslastung und GPU-Temperatur (NVIDIA über nvidia-smi, AMD/Intel über Windows).', '💻 CPU {cpu}% · GPU {gpu}% · RAM {ram}', 'both'],
     network: ['📶', 'Netzwerk', 'Download/Upload gerade, Spitze und Summe der Sitzung – Beweis, dass die Welt laggt, nicht du.', '📶 ↓{netz_down} ↑{netz_up}', 'desktop'],
     twitch: ['🟣', 'Twitch', 'Live-Status, Zuschauer und Kategorie deines Kanals (öffentliche Daten über decapi.me).', '🔴 LIVE · 👀 {twitch_zuschauer} · {twitch_spiel}', 'both'],
     heart: ['💓', 'Herzfrequenz', 'Dein Puls in der Chatbox und als Avatar-Parameter – über Pulsoid (eigenes Token).', '💓 {puls} bpm', 'both'],
+    countdown: ['⏳', 'Countdown', 'Zeit bis zu einem Termin, den du festlegst – Stream, Geburtstag, Event.', '⏳ {countdown_name} in {countdown_rest}', 'both'],
+    friends: ['👥', 'Freunde', 'Wie viele deiner Freunde gerade im Spiel und online sind.', '👥 {freunde_im_spiel} im Spiel · {freunde_online_web} online', 'both'],
+    marquee: ['📜', 'Laufschrift', 'Ein längerer Text läuft Stück für Stück durch – jede Nachricht zeigt den nächsten Ausschnitt.', '📜 {laufschrift}', 'both'],
+    anim: ['✨', 'Animation', 'Jede Nachricht zeigt das nächste „Bild“ – Emojis, Mini-Animationen oder Sprüche (eine Zeile = ein Bild).', '{animation}', 'both'],
+    battery: ['🔋', 'Akku', 'Akkustand deines Laptops mit Ladeanzeige (Windows).', '{akku_symbol} {akku}%', 'both'],
+    ping: ['📡', 'Ping', 'Antwortzeit zu den VRChat-Servern – zeigt, ob deine Verbindung gerade hakt.', '📡 {ping} ms', 'desktop'],
 };
 const ORDER = Object.keys(MODULES);
 const DEF = { on: false, seconds: 10, sep: 'line', only_game: true, order: ORDER, mods: { status: { on: true }, time: { on: true }, media: { on: true } },
-    city: '', lat: null, lon: null, place: '', private: 'discord, chrome, msedge, firefox, whatsapp, telegram, signal', twitch: '', hr_param: 'HeartRate', hr_osc: true };
+    city: '', lat: null, lon: null, place: '', private: 'discord, chrome, msedge, firefox, whatsapp, telegram, signal', twitch: '', hr_param: 'HeartRate', hr_osc: true,
+    cd_name: '', cd_at: '', mq_text: '', mq_width: 30, an_frames: '🌑\n🌒\n🌓\n🌔\n🌕\n🌖\n🌗\n🌘' };
 // WMO-Wettercodes (Open-Meteo) → Symbol + Text
 const WMO = { 0: ['☀️', 'klar'], 1: ['🌤', 'heiter'], 2: ['⛅', 'wolkig'], 3: ['☁️', 'bedeckt'], 45: ['🌫', 'Nebel'], 48: ['🌫', 'Reifnebel'], 51: ['🌦', 'Niesel'], 53: ['🌦', 'Niesel'], 55: ['🌧', 'Niesel'],
     61: ['🌧', 'Regen'], 63: ['🌧', 'Regen'], 65: ['🌧', 'Starkregen'], 66: ['🌧', 'Eisregen'], 67: ['🌧', 'Eisregen'], 71: ['🌨', 'Schnee'], 73: ['🌨', 'Schnee'], 75: ['❄️', 'Starker Schnee'], 77: ['🌨', 'Schneegriesel'],
@@ -42,7 +50,8 @@ class ChatMods {
         this.app = app;
         this.crypt = crypt;
         this.v = {};               // aktuelle Werte (Platzhalter)
-        this.last = { send: 0, text: '', sys: 0, net: 0, gpu: 0, weather: 0, twitch: 0, heart: 0, vr: 0 };
+        this.last = { send: 0, text: '', sys: 0, net: 0, gpu: 0, weather: 0, twitch: 0, heart: 0, vr: 0, bat: 0, ping: 0 };
+        this.mqPos = 0; this.anIdx = -1;
         this.cpuPrev = null;
         this.net = null;           // { rx, tx, at, peakDown, peakUp, rx0, tx0 }
         this.gpuMissing = false;
@@ -77,6 +86,11 @@ class ChatMods {
         if (input.twitch !== undefined) c.twitch = str(input.twitch).trim().replace(/^.*twitch\.tv\//i, '').replace(/[^\w]/g, '').slice(0, 30);
         if (input.hr_param !== undefined) c.hr_param = str(input.hr_param).replace(/[^\w/\-.]/g, '').slice(0, 64) || 'HeartRate';
         if (input.hr_osc !== undefined) c.hr_osc = b(input.hr_osc);
+        if (input.cd_name !== undefined) c.cd_name = cut(str(input.cd_name).trim(), 40);
+        if (input.cd_at !== undefined) { const v = str(input.cd_at).trim(); if (v && isNaN(Date.parse(v))) throw new UserError('Datum/Uhrzeit ungültig.'); c.cd_at = v; }
+        if (input.mq_text !== undefined) { c.mq_text = cut(str(input.mq_text).replace(/\s+/g, ' ').trim(), 500); this.mqPos = 0; }
+        if (input.mq_width !== undefined) c.mq_width = Math.max(10, Math.min(120, int(input.mq_width) || 30));
+        if (input.an_frames !== undefined) { c.an_frames = str(input.an_frames).replace(/\r/g, '').split('\n').map(x => x.trim()).filter(Boolean).slice(0, 60).map(x => cut(x, 140)).join('\n'); this.anIdx = -1; }
         if (input.order !== undefined) { const o = (Array.isArray(input.order) ? input.order : str(input.order).split(',')).filter(k => MODULES[k]); c.order = [...new Set(o.concat(ORDER))]; }
         if (input.mod && MODULES[input.mod]) {
             const m = c.mods[input.mod];
@@ -116,6 +130,8 @@ class ChatMods {
         if (on('weather') && c.lat !== null && t - this.last.weather >= 15 * 60000) { this.last.weather = t; jobs.push(this.readWeather(c)); }
         if (on('twitch') && (c.twitch || this.twitchChannel()) && t - this.last.twitch >= 60000) { this.last.twitch = t; jobs.push(this.readTwitch(c)); }
         if (on('heart') && t - this.last.heart >= 3000 && this.hrToken()) { this.last.heart = t; jobs.push(this.readHeart(c)); }
+        if (on('battery') && t - this.last.bat >= 60000) { this.last.bat = t; jobs.push(this.readBattery()); }
+        if (on('ping') && t - this.last.ping >= 30000) { this.last.ping = t; jobs.push(this.readPing()); }
         if (t - this.last.vr >= 15000) { this.last.vr = t; jobs.push(this.readVr()); }
         if (on('window') && process.platform === 'win32' && !this.win) this.startWin();
         await Promise.all(jobs.map(p => p.catch(() => {})));
@@ -131,10 +147,76 @@ class ChatMods {
     async readGpu() {
         const q = ['--query-gpu=utilization.gpu,temperature.gpu,memory.used,memory.total,power.draw,name', '--format=csv,noheader,nounits'];
         const fake = process.env.NEXUS_NVIDIA_SMI;      // Test: Ersatzprogramm (JS-Datei, läuft überall)
-        const out = fake ? await run(process.execPath, [fake].concat(q)) : await run('nvidia-smi', q);
-        if (!out) { this.gpuMissing = true; return; }
+        const out = this.gpuWin ? null : fake ? await run(process.execPath, [fake].concat(q)) : await run('nvidia-smi', q);
+        if (!out) { if (!fake && !await this.readGpuWin()) this.gpuMissing = true; return; }
         const [u, temp, mu, mt, pw, name] = out.split('\n')[0].split(',').map(x => x.trim());
         Object.assign(this.v, { gpu: String(int(u)), gpu_temp: String(int(temp)), vram: (Number(mu) / 1024).toFixed(1) + '/' + Math.round(Number(mt) / 1024) + ' GB', gpu_watt: String(Math.round(Number(pw) || 0)), gpu_name: name || '' });
+    }
+    /** AMD/Intel (und NVIDIA ohne nvidia-smi): Windows-Leistungsdaten über CIM – Klassennamen sind (anders als Leistungsindikatoren) nicht übersetzt */
+    async readGpuWin() {
+        if (process.platform !== 'win32' && !process.env.NEXUS_GPU_WIN) return false;
+        const ps = "$e=Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '*engtype_3D*' };"
+            + "$u=($e | Measure-Object -Property UtilizationPercentage -Sum).Sum;"
+            + "$m=(Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUAdapterMemory -ErrorAction SilentlyContinue | Measure-Object -Property DedicatedUsage -Sum).Sum;"
+            + "$n=(Get-CimInstance Win32_VideoController | Where-Object { $_.Name -notlike '*Basic*' } | Select-Object -First 1).Name;"
+            + "[Console]::Out.WriteLine([string][math]::Round([double]$u) + '|' + [string][math]::Round([double]$m) + '|' + $n)";
+        const out = process.env.NEXUS_GPU_WIN !== undefined ? process.env.NEXUS_GPU_WIN : await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps], 8000);
+        const m = /^(\d+)\|(\d*)\|(.*)$/m.exec(str(out).trim());
+        if (!m || (!m[3] && !int(m[1]))) return false;
+        this.gpuWin = true;
+        Object.assign(this.v, { gpu: String(Math.min(100, int(m[1]))), gpu_name: m[3].trim() });
+        if (int(m[2])) this.v.vram = (int(m[2]) / 1073741824).toFixed(1) + ' GB';
+        return true;
+    }
+    async readBattery() {
+        let pct = null, charging = false;
+        if (process.env.NEXUS_BATTERY !== undefined) { const [p, c] = process.env.NEXUS_BATTERY.split(','); pct = p === '' ? null : int(p); charging = c === '1'; }
+        else if (process.platform === 'win32') {
+            const out = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', '$b=Get-CimInstance Win32_Battery | Select-Object -First 1; if($b){[Console]::Out.WriteLine([string]$b.EstimatedChargeRemaining + "|" + [string]$b.BatteryStatus)}'], 8000);
+            const m = /^(\d+)\|(\d+)/.exec(str(out).trim());
+            if (m) { pct = int(m[1]); charging = [2, 6, 7, 8, 9].includes(int(m[2])); }   // 2 = Netzteil, 6–9 = lädt
+        } else {
+            try { const d = '/sys/class/power_supply/BAT0/'; pct = int(fs.readFileSync(d + 'capacity', 'utf8')); charging = /charg|full/i.test(fs.readFileSync(d + 'status', 'utf8')) && !/dis/i.test(fs.readFileSync(d + 'status', 'utf8')); } catch (e) { pct = null; }
+        }
+        if (pct === null) { delete this.v.akku; delete this.v.akku_symbol; return; }
+        Object.assign(this.v, { akku: String(Math.max(0, Math.min(100, pct))), akku_symbol: charging ? '🔌' : pct <= 20 ? '🪫' : '🔋', akku_status: charging ? 'lädt' : '' });
+    }
+    async readPing() {
+        const [host, port] = (process.env.NEXUS_PING_HOST || 'api.vrchat.cloud:443').split(':');
+        const t0 = Date.now();
+        const ok = await new Promise(res => {
+            const sock = require('net').connect({ host, port: int(port) || 443 });
+            const done = v => { try { sock.destroy(); } catch (e) { /* egal */ } res(v); };
+            sock.setTimeout(4000, () => done(false));
+            sock.once('connect', () => done(true));
+            sock.once('error', () => done(false));
+        });
+        if (ok) this.v.ping = String(Date.now() - t0); else delete this.v.ping;
+    }
+    /** Countdown, Freunde, Laufschrift, Animation – ohne externe Quelle */
+    localVars(c, advance) {
+        const out = {};
+        if (c.cd_at && !isNaN(Date.parse(c.cd_at))) {
+            const ms = Date.parse(c.cd_at) - Date.now(), mins = Math.max(0, Math.round(ms / 60000));
+            out.countdown_name = c.cd_name || 'Termin';
+            out.countdown_rest = ms <= 0 ? 'jetzt! 🎉' : mins >= 2880 ? Math.floor(mins / 1440) + ' T ' + Math.floor(mins % 1440 / 60) + ' h' : mins >= 60 ? Math.floor(mins / 60) + ' h ' + (mins % 60) + ' min' : mins + ' min';
+            out.countdown_tage = String(Math.max(0, Math.ceil(ms / 86400000)));
+        }
+        try {
+            const fr = this.app.vrc.friendList();
+            if (fr && fr.length) { out.freunde_im_spiel = String(fr.filter(f => f.state === 'online').length); out.freunde_online_web = String(fr.filter(f => f.state === 'active').length); out.freunde_gesamt = String(fr.length); }
+        } catch (e) { /* kein Konto */ }
+        if (c.mq_text) {
+            const txt = Array.from(c.mq_text + '   ·   '), w = Math.min(c.mq_width, txt.length);
+            if (advance) this.mqPos = (this.mqPos + Math.max(1, Math.round(w / 2))) % txt.length;
+            out.laufschrift = (txt.concat(txt)).slice(this.mqPos, this.mqPos + w).join('').trim();
+        }
+        const frames = str(c.an_frames).split('\n').filter(Boolean);
+        if (frames.length) {
+            if (advance || this.anIdx < 0) this.anIdx = (this.anIdx + 1) % frames.length;
+            out.animation = frames[this.anIdx % frames.length];
+        }
+        return out;
     }
     async readNet() {
         let rx = 0, tx = 0;
@@ -237,7 +319,7 @@ class ChatMods {
         const a = this.app.auto;
         const afk = a && a.afkSince ? Math.round((Date.now() - a.afkSince) / 60000) : 0;
         return Object.assign({ zone, zeitzone: (Intl.DateTimeFormat().resolvedOptions().timeZone || ''), modus: this.vr ? 'VR' : 'Desktop', vr: this.vr ? '🥽' : '🖥',
-            afk_text: a && a.afkSince ? '💤 AFK seit ' + afk + ' min' : '' }, this.v);
+            afk_text: a && a.afkSince ? '💤 AFK seit ' + afk + ' min' : '' }, (() => { try { return this.localVars(this.cfg(), false); } catch (e) { return {}; } })(), this.v);
     }
     statusText() {
         const a = this.app.auto;
@@ -252,6 +334,7 @@ class ChatMods {
     compose(c, advance = true) {
         c = c || this.cfg();
         const g = this.app.game, parts = [], per = {};
+        Object.assign(this.v, this.localVars(c, advance));
         for (const k of c.order) {
             const m = c.mods[k];
             if (!m.on || (m.where === 'vr' && !this.vr) || (m.where === 'desktop' && this.vr)) continue;
@@ -265,7 +348,8 @@ class ChatMods {
                 return a.concat(a.length ? [all[i - 1] || ' · ', x] : [x]);
             }, []).join('').trim();
             // Modul weglassen, wenn sein Hauptwert fehlt (z. B. keine Musik, Twitch offline)
-            const key = { media: 'musik', weather: 'temp', twitch: 'twitch_live', heart: 'puls', window: 'fenster', network: 'netz_down', system: 'cpu' }[k];
+            const key = { media: 'musik', weather: 'temp', twitch: 'twitch_live', heart: 'puls', window: 'fenster', network: 'netz_down', system: 'cpu',
+                countdown: 'countdown_rest', friends: 'freunde_im_spiel', marquee: 'laufschrift', anim: 'animation', battery: 'akku', ping: 'ping' }[k];
             const vars = Object.assign({}, g.vars ? g.vars() : {});
             if (key && k !== 'window' && (!vars[key] || vars[key] === '–')) continue;
             if (k === 'window' && !this.vr && !vars.fenster) continue;
@@ -301,7 +385,7 @@ class ChatMods {
                 const c = this.cfg();
                 await this.refresh(c, input.refresh === '1');
                 const prev = this.compose(c, false);
-                return { cfg: c, modules: MODULES, values: this.vars(), preview: prev, vr: this.vr, gpu: !this.gpuMissing, has_hr: !!this.hrToken(), hr_error: this.hrError || '',
+                return { cfg: c, modules: MODULES, values: this.vars(), preview: prev, vr: this.vr, gpu: !this.gpuMissing, gpu_win: !!this.gpuWin, battery: this.v.akku !== undefined, has_hr: !!this.hrToken(), hr_error: this.hrError || '',
                     twitch_default: this.twitchChannel(), windows: process.platform === 'win32', rotator_on: !!this.app.game.cfg().rotator_enabled };
             }
             case 'cm_save': { const c = this.save(input); return { cfg: c, msg: input.quiet ? '' : 'Gespeichert.' }; }

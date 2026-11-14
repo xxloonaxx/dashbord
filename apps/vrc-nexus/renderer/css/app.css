@@ -501,3 +501,6 @@ body.mobile .vx-hdirect kbd { display: none; }
 #otBox textarea { width: 100%; font-family: var(--mono, monospace); }
 #otBox .nc-row input[type=text] { flex: 1 1 140px; width: auto; margin: 0; }
 .ot-speed { width: auto; margin: 0; padding: 2px 4px; }
+
+.cm-f.cm-col { flex-direction: column; align-items: stretch; }
+.cm-f.cm-col textarea { width: 100%; font-family: inherit; }

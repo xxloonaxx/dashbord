@@ -20,6 +20,18 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 2.2.0 – Sechs neue Chatbox-Module, GPU für AMD/Intel
+- **Neue Chatbox-Module** (Spiel & OSC → Chatbox-Module), jeweils mit eigener Vorlage, Desktop/VR und Reihenfolge:
+  - **⏳ Countdown** bis zu einem Termin (Name + Datum/Uhrzeit) – `{countdown_name}` `{countdown_rest}` `{countdown_tage}`.
+  - **👥 Freunde**: wie viele gerade im Spiel und online sind – `{freunde_im_spiel}` `{freunde_online_web}` `{freunde_gesamt}`.
+  - **📜 Laufschrift**: ein langer Text läuft Stück für Stück durch (Breite einstellbar).
+  - **✨ Animation**: jede Nachricht zeigt das nächste „Bild“ (eine Zeile = ein Bild, z. B. Mondphasen 🌑🌒🌓…).
+  - **🔋 Akku** des Laptops mit Ladeanzeige (🔌 / 🪫) – fällt am Desktop-PC ohne Akku einfach weg.
+  - **📡 Ping** zu den VRChat-Servern alle 30 s.
+- **Rechner-Modul**: GPU-Auslastung, Name und VRAM jetzt auch für **AMD- und Intel-Grafikkarten** (Windows-Leistungsdaten) – vorher nur NVIDIA.
+- Countdown und Freunde stehen auch als Platzhalter im Rotator, in Makros und in der Automatik bereit.
+- Übersetzung: Modulbeschreibungen, die auf „…“.“ enden, wurden nicht übersetzt – behoben; „Wetter“ und die neuen Texte in EN/FR/JA.
+
 ### Neu in 2.1.0 – Chatbox-Extras, OSC-Werkzeuge, Profil vorbefüllt
 - **💬 Chatbox** (Spiel & OSC → Live & OSC):
   - **⚡ Schnelltexte** mit Platzhaltern – Klick sendet, Umschalt+Klick holt den Text ins Feld.

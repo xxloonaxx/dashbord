@@ -162,3 +162,31 @@ Noch keine Avatar-Parameter empfangen – OSC in VRChat einschalten und kurz war
 Erkennt alles aus der Windows-Mediensteuerung. Platzhalter	Detects everything from the Windows media controls. Placeholder	Détecte tout ce qui passe par les contrôles multimédias de Windows. Variable	Windowsのメディアコントロールからすべて検出。プレースホルダー
 für Rotator & Automatik.	for rotator & automation.	pour le rotateur & l'automatisation.	ローテーターと自動化用。
 Profil gespeichert.	Profile saved.	Profil enregistré.	プロフィールを保存しました。
+Was auf dem PC läuft – über die Windows-Mediensteuerung (Spotify, Browser/YouTube, Apple Music, TIDAL, VLC …). Platzhalter: {musik} {musik_titel} {musik_kuenstler} {musik_app} {musik_zeit}	What's playing on the PC – via Windows media controls (Spotify, browser/YouTube, Apple Music, TIDAL, VLC …). Placeholders: {musik} {musik_titel} {musik_kuenstler} {musik_app} {musik_zeit}	Ce qui joue sur le PC – via les contrôles multimédias de Windows (Spotify, navigateur/YouTube, Apple Music, TIDAL, VLC …). Variables : {musik} {musik_titel} {musik_kuenstler} {musik_app} {musik_zeit}	PCで再生中のもの（Windowsのメディアコントロール経由：Spotify、ブラウザ/YouTube、Apple Music、TIDAL、VLC など）。プレースホルダー：{musik} {musik_titel} {musik_kuenstler} {musik_app} {musik_zeit}
+Wetter	Weather	Météo	天気
+Twitch	Twitch	Twitch	Twitch
+CPU, GPU, RAM und VRAM – Auslastung und GPU-Temperatur (NVIDIA über nvidia-smi, AMD/Intel über Windows)	CPU, GPU, RAM and VRAM – load and GPU temperature (NVIDIA via nvidia-smi, AMD/Intel via Windows)	CPU, GPU, RAM et VRAM – charge et température GPU (NVIDIA via nvidia-smi, AMD/Intel via Windows)	CPU、GPU、RAM、VRAM – 使用率とGPU温度（NVIDIAはnvidia-smi、AMD/IntelはWindows経由）
+Countdown	Countdown	Compte à rebours	カウントダウン
+Zeit bis zu einem Termin, den du festlegst – Stream, Geburtstag, Event	Time until a date you set – stream, birthday, event	Temps restant jusqu'à une date que tu fixes – stream, anniversaire, événement	設定した日時までの残り時間 – 配信、誕生日、イベントなど
+Wie viele deiner Freunde gerade im Spiel und online sind	How many of your friends are in-game and online right now	Combien de tes amis sont en jeu et en ligne en ce moment	今ゲーム内・オンラインのフレンド数
+Laufschrift	Ticker	Texte défilant	スクロールテキスト
+Ein längerer Text läuft Stück für Stück durch – jede Nachricht zeigt den nächsten Ausschnitt	A longer text scrolls through piece by piece – each message shows the next part	Un texte plus long défile morceau par morceau – chaque message montre la suite	長いテキストを少しずつ流します。メッセージごとに次の部分を表示
+Animation	Animation	Animation	アニメーション
+Jede Nachricht zeigt das nächste „Bild“ – Emojis, Mini-Animationen oder Sprüche (eine Zeile = ein Bild)	Each message shows the next “frame” – emojis, mini animations or quotes (one line = one frame)	Chaque message affiche l'« image » suivante – emojis, mini-animations ou phrases (une ligne = une image)	メッセージごとに次の「コマ」を表示 – 絵文字、ミニアニメ、セリフなど（1行 = 1コマ）
+Akku	Battery	Batterie	バッテリー
+Akkustand deines Laptops mit Ladeanzeige (Windows)	Your laptop's battery level with charging indicator (Windows)	Niveau de batterie de ton portable avec indicateur de charge (Windows)	ノートPCのバッテリー残量と充電表示（Windows）
+Ping	Ping	Ping	Ping
+Antwortzeit zu den VRChat-Servern – zeigt, ob deine Verbindung gerade hakt	Response time to the VRChat servers – shows whether your connection is lagging	Temps de réponse vers les serveurs VRChat – montre si ta connexion rame	VRChatサーバーへの応答時間 – 回線が不安定かどうかが分かります
+keine GPU-Werte gefunden	no GPU values found	aucune valeur GPU trouvée	GPUの値が見つかりません
+GPU über Windows-Leistungsdaten	GPU via Windows performance data	GPU via les données de performance de Windows	Windowsのパフォーマンスデータ経由のGPU
+kein Akku gefunden	no battery found	aucune batterie trouvée	バッテリーが見つかりません
+Termin fehlt	date missing	date manquante	日時が未設定
+Text fehlt	text missing	texte manquant	テキストが未設定
+Termin	Date	Date	日時
+Breite	Width	Largeur	幅
+Bilder (eine Zeile = ein Bild)	Frames (one line = one frame)	Images (une ligne = une image)	コマ（1行 = 1コマ）
+Name, z. B. Stream	Name, e.g. stream	Nom, p. ex. stream	名前（例：配信）
+Langer Text, der durchläuft …	Long text that scrolls through …	Long texte qui défile …	流れる長いテキスト …
+Mit jeder gesendeten Nachricht kommt das nächste Bild – bei „alle 10 s“ also alle 10 s.	With every message sent comes the next frame – with “every 10 s” that's every 10 s.	À chaque message envoyé, l'image suivante – avec « toutes les 10 s », donc toutes les 10 s.	メッセージ送信ごとに次のコマへ。「10秒ごと」なら10秒ごとです。
+Misst alle 30 s, wie lange der Verbindungsaufbau zu api.vrchat.cloud dauert. Bei Verbindungsproblemen fällt das Modul weg.	Measures every 30 s how long connecting to api.vrchat.cloud takes. If the connection fails, the module is left out.	Mesure toutes les 30 s le temps de connexion à api.vrchat.cloud. En cas de problème, le module est omis.	30秒ごとにapi.vrchat.cloudへの接続時間を測定します。接続できない場合はモジュールが省略されます。
+Datum/Uhrzeit ungültig.	Invalid date/time.	Date/heure invalide.	日時が無効です。

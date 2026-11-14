@@ -972,6 +972,49 @@ test('2.1: Chatbox-Extras (Schnelltexte, Verlauf, Planen, Vorschau) & OSC-Werkze
     } finally { t.stop(); o.stopListen(); vr.close(); app.tools.stop(); }
 });
 
+test('2.2: neue Chatbox-Module (Countdown, Freunde, Laufschrift, Animation, Akku, Ping) + GPU ohne NVIDIA', async () => {
+    const net = require('net');
+    const srv = net.createServer(c => c.end());
+    await new Promise(r => srv.listen(0, '127.0.0.1', r));
+    Object.assign(process.env, { NEXUS_BATTERY: '15,0', NEXUS_GPU_WIN: '37|2147483648|AMD Radeon RX 7800 XT', NEXUS_PING_HOST: '127.0.0.1:' + srv.address().port });
+    const { NexusApp } = require('../backend/app');
+    const db = await openDatabase(null);
+    const app = new NexusApp({ db, crypt: { encrypt: s => s, decrypt: s => s }, host: { userData: os.tmpdir() } });
+    app.game.osc.stopListen();
+    try {
+        const cm = app.chatmods;
+        const soon = new Date(Date.now() + (2 * 86400 + 5 * 3600) * 1000 + 30000);
+        const loc = soon.getFullYear() + '-' + String(soon.getMonth() + 1).padStart(2, '0') + '-' + String(soon.getDate()).padStart(2, '0') + 'T' + String(soon.getHours()).padStart(2, '0') + ':' + String(soon.getMinutes()).padStart(2, '0');
+        cm.save({ cd_name: 'Stream', cd_at: loc, mq_text: 'Willkommen in meiner Welt, schön dass du da bist', mq_width: 12, an_frames: 'A\nB\nC' });
+        assert.throws(() => cm.save({ cd_at: 'morgen irgendwann' }), /ungültig/);
+        app.vrc.friendList = () => [{ state: 'online' }, { state: 'online' }, { state: 'active' }, { state: 'offline' }];
+        for (const k of ['status', 'time', 'media']) cm.save({ mod: k, mod_on: '0' });
+        for (const k of ['countdown', 'friends', 'marquee', 'anim', 'battery', 'ping', 'system']) cm.save({ mod: k, mod_on: '1' });
+        cm.readCpu();   // CPU-Auslastung braucht zwei Messungen
+        await cm.refresh(cm.cfg(), true);
+        const r1 = cm.compose(cm.cfg(), true), r2 = cm.compose(cm.cfg(), true);
+        assert.ok(/⏳ Stream in 2 T 5 h/.test(r1.per.countdown), r1.per.countdown);
+        assert.strictEqual(r1.per.friends, '👥 2 im Spiel · 1 online');
+        assert.ok(r1.per.marquee !== r2.per.marquee && Array.from(r1.per.marquee.replace('📜 ', '')).length <= 12, 'Laufschrift läuft weiter: ' + r1.per.marquee + ' / ' + r2.per.marquee);
+        assert.ok(r1.per.anim !== r2.per.anim && ['A', 'B', 'C'].includes(r2.per.anim), 'Animation wechselt');
+        assert.strictEqual(r1.per.battery, '🪫 15%');
+        assert.ok(/^📡 \d+ ms$/.test(r1.per.ping), r1.per.ping);
+        assert.ok(/GPU 37%/.test(r1.per.system), 'GPU ohne NVIDIA: ' + r1.per.system);
+        assert.strictEqual(cm.vars().gpu_name, 'AMD Radeon RX 7800 XT');
+        assert.strictEqual(app.game.vars().countdown_name, 'Stream', 'Countdown auch als Platzhalter für Rotator & Co.');
+        const g = await app.post({ act: 'cm_get' }, {});
+        assert.ok(g.gpu && g.gpu_win && g.battery && g.modules.countdown);
+        // ohne Akku / Ping-Ziel nicht erreichbar → Modul fällt weg
+        process.env.NEXUS_BATTERY = ','; process.env.NEXUS_PING_HOST = '127.0.0.1:1';
+        await cm.readBattery(); await cm.readPing();
+        const r3 = cm.compose(cm.cfg(), false);
+        assert.ok(!r3.per.battery && !r3.per.ping, JSON.stringify(r3.per));
+    } finally {
+        for (const k of ['NEXUS_BATTERY', 'NEXUS_GPU_WIN', 'NEXUS_PING_HOST']) delete process.env[k];
+        srv.close(); app.tools.stop();
+    }
+});
+
 test('1.7: Wörterbuch (EN/FR/JA) vollständig und Platzhalter stimmen', () => {
     const fs = require('fs'), path = require('path'), vm = require('vm');
     const file = path.join(__dirname, '..', 'renderer', 'js', 'i18n-dict.js');
