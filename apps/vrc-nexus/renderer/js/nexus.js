@@ -1757,7 +1757,7 @@
     });
 
     // ---------- Info-Push (VRChat-Neuigkeiten) – Ansicht in den Benachrichtigungen ----------
-    let newsData = [], newsKind = 'help', newsSeen = '';
+    let newsData = [], newsKind = 'help', newsSeen = '', newsTried = [];
     const NEWS = { help: 'Hilfe-Artikel', banner: 'Quick-Menü-Banner', loading: 'Ladebildschirme', other: 'Sonstiges' };
     const dOnly = s => { const d = new Date(s); return isNaN(d) ? '' : d.toLocaleDateString(nxLoc(), { day: '2-digit', month: '2-digit', year: 'numeric' }); };
     function loadNews() {
@@ -1765,6 +1765,8 @@
         loading($('#newsBox'), 'Lade Neuigkeiten …');
         api('infopush').then(d => {
             newsData = d.items.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+            newsTried = d.tried || [];
+            if (newsData.length && !newsData.some(i => i.kind === newsKind)) newsKind = newsData[0].kind;
             newsSeen = store.get('newsSeen') || '';
             const top = newsData.reduce((m, i) => String(i.date) > m ? String(i.date) : m, '');
             if (top) store.set('newsSeen', top);   // beim nächsten Öffnen gelten diese als gesehen
@@ -1781,7 +1783,7 @@
         $('#newsBox').innerHTML = list.length ? '<div class="ip-list">' + list.map(i => '<div class="ip-row" data-news="' + esc(i.id) + '"><button type="button" class="ip-head" aria-expanded="false">'
             + '<span class="ip-chev">›</span>' + (i.img ? '<img class="ip-thumb" src="' + esc(pic(i.img)) + '" alt="" loading="lazy">' : '<span class="ip-thumb vx-noimg">📰</span>')
             + '<span class="ip-txt"><b>' + (isNew(i) ? '<span class="ip-new">NEU</span> ' : '') + esc(i.title) + '</b><small>' + esc(i.desc) + '</small></span><time>' + esc(dOnly(i.date)) + '</time></button><div class="ip-body" hidden></div></div>').join('') + '</div>'
-            : '<div class="vx-empty">Nichts in dieser Kategorie.</div>';
+            : '<div class="vx-empty">Nichts in dieser Kategorie.' + (!newsData.length && newsTried.length ? '<br><small class="mono" data-no-i18n>VRChat: ' + esc(newsTried.map(t => t.q + ' → ' + (t.err ? '⚠ ' + t.err : t.n)).join(' · ')) + '</small>' : '') + '</div>';
     }
     $('#newsRefresh').addEventListener('click', loadNews);
     $('#newsKinds').addEventListener('click', e => { const c = e.target.closest('[data-nk]'); if (c) { newsKind = c.dataset.nk; renderNews(); } });

@@ -774,7 +774,7 @@ test('1.10: VRChat-Store (Store-ID aus /config, Regale, Restzeit, Artikelart), M
     app.x.vrc.call = async (acc, m, p, q) => { if (p === '/config') throw new Error('nicht fragen'); return p === '/economy/store' ? { displayName: q.storeId } : []; };
     assert.strictEqual((await app.x.shopStore({})).id, 'esto_99999999-2222-3333-4444-555555555555', 'Store-ID aus Einstellung');
     // Meldungen
-    app.tools.call = async (m, p) => [{ id: 'modr_1', type: 'avatar', category: 'inappropriate', reason: 'sexual', contentId: 'avtr_1', contentName: 'A', created: '2026-11-01', status: 'open', description: 'Text  der Meldung' }];
+    app.tools.call = async (m, p) => ({ hasNext: false, totalCount: 1, results: [{ id: 'modr_1', type: 'avatar', category: 'inappropriate', reason: 'sexual', contentId: 'avtr_1', contentName: 'A', created: '2026-11-01', status: 'open', description: 'Text  der Meldung' }] });
     app.tools.acc = () => ({ vrc_id: 'usr_x' });
     const rep = (await app.tools.reports()).reports[0];
     assert.strictEqual(rep.description, 'Text  der Meldung'); assert.strictEqual(rep.type, 'avatar'); assert.strictEqual(rep.image, '');

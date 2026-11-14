@@ -620,13 +620,24 @@ class NexusApp {
 
             // ----- Info-Push -----
             case 'infopush': {
-                let r = [];
-                const variants = [{ require: '[]', include: '[]' }, { require: [''], include: [''] }, {}];
-                for (let i = 0; i < variants.length; i++) {
-                    try { r = arr(await call('GET', '/infoPush', variants[i])); break; }
-                    catch (e) { if (i === variants.length - 1 || (!/require|include|400/i.test(e.message))) throw e; }
+                // „include“ = irgendeiner der Tags muss passen – leer liefert VRChat nichts. Die genauen Tags sind nicht dokumentiert,
+                // daher eine breite Liste in beiden üblichen Formaten (JSON-Liste und kommagetrennt); Ergebnisse werden zusammengeführt.
+                const TAGS = ['quickmenu', 'quick_menu', 'quickmenu_carousel', 'carousel', 'banner', 'help', 'help_article', 'helparticle', 'article', 'loadingscreen', 'loading_screen', 'loading',
+                    'launchpad', 'home', 'news', 'announcement', 'event', 'events', 'promo', 'promotion', 'store', 'vrcplus', 'safety', 'system', 'platform:standalonewindows', 'platform:android'];
+                const variants = [{ require: '[]', include: JSON.stringify(TAGS) }, { include: TAGS.join(',') }, { require: '[]', include: '[]' }];
+                const seen = new Map(), tried = [];
+                let lastErr = null;
+                for (const q of variants) {
+                    try {
+                        const got = await call('GET', '/infoPush', q);
+                        const l = Array.isArray(got) ? got : arr(got && (got.results || got.items || got.data));
+                        tried.push({ q: Object.keys(q).map(k => k + '=' + String(q[k]).slice(0, 30)).join('&') || '–', n: l.length });
+                        for (const i of l) if (i && typeof i === 'object' && i.id && !seen.has(i.id)) seen.set(i.id, i);
+                    } catch (e) { if (e instanceof U.VrcAuthError) throw e; lastErr = e; tried.push({ q: Object.keys(q).join('&'), err: cut(e.message, 120) }); }
                 }
-                return { items: r.filter(i => i && typeof i === 'object').map(i => {
+                if (!seen.size && lastErr && tried.every(t => t.err)) throw lastErr;
+                const r = [...seen.values()];
+                return { tried, items: r.map(i => {
                     const d = i.data || {}, tags = arr(i.tags).join(' ');
                     const kind = /loading/i.test(tags) ? 'loading' : /banner|quickmenu|carousel/i.test(tags) ? 'banner' : (/help|article/i.test(tags) || d.article) ? 'help' : 'other';
                     let link = '';

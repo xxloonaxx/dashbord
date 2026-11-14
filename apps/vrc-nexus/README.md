@@ -20,6 +20,11 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.10.4 – Fix: Info-Push und Meine Meldungen leer
+- **Meine Meldungen:** VRChat liefert die Liste seitenweise (`results`, `hasNext`) statt als einfache Liste – deshalb war sie leer. Jetzt werden bis zu 500 Meldungen geladen.
+- **Info-Push:** VRChat gibt nur Einträge zurück, deren Tags in `include` stehen; leer = nichts. Jetzt wird eine breite Tag-Liste in beiden Formaten abgefragt und zusammengeführt; die Ansicht springt zur ersten Kategorie mit Einträgen. Bleibt es leer, steht klein darunter, was VRChat auf jede Abfrage geantwortet hat.
+- Chips (z. B. *Ganzer Verlauf*): Überfahren mit der Maus sieht nicht mehr aus wie „ausgewählt“.
+
 ### Neu in 1.10.3 – Fix: „Spielt gerade“ erkennt jetzt wirklich, was läuft
 - Fix: Die Windows-Mediensteuerung meldete nie, was gerade spielt (nur ⏮ ⏯ ⏭ gingen). Ursache: Windows PowerShell wartete beim Lesen der Befehle blockierend – jetzt kommen Befehle über eine kleine Datei im Temp-Ordner, die Erkennung läuft durchgehend (z. B. YouTube Music in Brave/Chrome/Edge/Firefox, Spotify …).
 - Startet die Mediensteuerung noch oder meldet einen Fehler, zeigt die Kachel das jetzt an.

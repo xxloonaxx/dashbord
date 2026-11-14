@@ -782,7 +782,15 @@ class Tools {
     }
     async reports() {
         const acc = this.acc();
-        return { reports: arr(await this.call('GET', '/moderationReports', { reportingUserId: acc.vrc_id, n: 100 })).map(r => ({ id: str(r.id), type: str(r.type), category: str(r.category), reason: str(r.reason),
+        // Antwort ist eine Seite { results, hasNext, totalCount } (ältere Antworten: direkt eine Liste)
+        const list = [];
+        for (let off = 0; off < 500; off += 100) {
+            const d = await this.call('GET', '/moderationReports', { reportingUserId: acc.vrc_id, n: 100, offset: off });
+            const page = Array.isArray(d) ? d : arr(d && d.results);
+            list.push(...page);
+            if (Array.isArray(d) || !d || !d.hasNext || page.length < 100) break;
+        }
+        return { reports: list.filter(r => r && typeof r === 'object').map(r => ({ id: str(r.id), type: str(r.type), category: str(r.category), reason: str(r.reason),
             target: str(r.contentName), target_id: str(r.contentId), image: str(r.contentThumbnailImageUrl) || this.reportImg(str(r.contentId)), created: str(r.created), status: str(r.status || r.reportStatus),
             description: cut(str(r.description || (r.details && (r.details.description || r.details.text)) || ''), 1000) })) };
     }
