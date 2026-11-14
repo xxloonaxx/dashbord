@@ -50,6 +50,8 @@
         if (depth < 2 && c) { const x = tr(c[1], depth + 1); if (x !== null) return h + x + ', ' + c[2] + tl; }
         return null;
     }
+    // Datums-/Zahlenformat der gewählten Sprache (für toLocaleString & Co.)
+    window.nxLoc = () => LANGS[lang][1];
     window.t = s => (lang === 'de' ? s : tr(s) || s);
 
     const ORIG = new WeakMap();          // Textknoten → deutscher Originaltext
@@ -131,6 +133,7 @@
     // ---------- Ecke unten rechts: Flaggen + Theme ----------
     let box = null;
     function corner() {
+        if (document.body.hasAttribute('data-i18n-nocorner')) return;   // z. B. SteamVR-Overlay
         if (!box) {
             box = document.createElement('div');
             box.className = 'i18n-corner';
@@ -166,9 +169,12 @@
     }
 
     function start() {
+        if (ui['ui.lang']) { try { localStorage.setItem('nexusLang', lang); } catch (e) { /* egal */ } }   // für Fenster ohne Einstellungen (Overlay)
         apply();
         obs.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ATTR.concat(['value']) });
         corner();
+        // Sprache im Hauptfenster gewechselt → andere Fenster (SteamVR-Overlay) ziehen nach
+        window.addEventListener('storage', e => { if (e.key === 'nexusLang' && LANGS[e.newValue] && e.newValue !== lang) setLang(e.newValue, false); });
         // Theme-Liste kommt aus nexus-app.js (lädt später)
         setTimeout(corner, 0);
     }

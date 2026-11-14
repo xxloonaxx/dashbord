@@ -5,12 +5,12 @@
     const $ = (s, r) => (r || root).querySelector(s);
     const $$ = (s, r) => [...(r || root).querySelectorAll(s)];
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const num = n => Number(n || 0).toLocaleString('de-DE');
+    const num = n => Number(n || 0).toLocaleString(nxLoc());
     const now = () => Date.now() / 1000;
     const hm = sec => { sec = Math.max(0, Math.round(sec)); const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60); return h ? h + ' h ' + m + ' min' : m + ' min'; };
     const ago = ts => { if (!ts) return 'nie'; const d = Math.max(0, now() - ts); if (d < 60) return 'gerade eben'; if (d < 3600) return 'vor ' + Math.floor(d / 60) + ' min'; if (d < 86400) return 'vor ' + Math.floor(d / 3600) + ' Std.'; return 'vor ' + Math.floor(d / 86400) + ' Tg.'; };
-    const dt = ts => new Date(ts * 1000).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const day = ts => new Date(ts * 1000).toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+    const dt = ts => new Date(ts * 1000).toLocaleString(nxLoc(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const day = ts => new Date(ts * 1000).toLocaleDateString(nxLoc(), { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
     const store = { get(k, d) { try { const v = localStorage.getItem('nc-' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem('nc-' + k, JSON.stringify(v)); } catch (e) { /* egal */ } } };
 
     function api(act, data) {
@@ -382,7 +382,7 @@
         }));
         const st = data.stats, t = st.today;
         $('#ncKpis').innerHTML = [['🌐', t.worlds, 'Welten heute'], ['👋', t.players, 'Begegnungen heute'], ['⏱️', hm(t.playtime), 'Spielzeit heute'], ['📸', t.screenshots, 'Screenshots heute'],
-            ['🧑‍🤝‍🧑', num(st.people), 'Leute insgesamt'], ['📜', num(st.total), 'Log-Einträge' + (st.since ? ' seit ' + new Date(st.since * 1000).toLocaleDateString('de-DE') : '')]]
+            ['🧑‍🤝‍🧑', num(st.people), 'Leute insgesamt'], ['📜', num(st.total), 'Log-Einträge' + (st.since ? ' seit ' + new Date(st.since * 1000).toLocaleDateString(nxLoc()) : '')]]
             .map(([i, v, l]) => '<div class="nc-kpi"><span>' + i + '</span><b>' + esc(String(v)) + '</b><small>' + esc(l) + '</small></div>').join('');
     }
 
@@ -618,7 +618,7 @@
         $('#olInfo').textContent = num(d.total) + ' Einträge' + (d.items.length < d.total ? ' (die neuesten ' + d.items.length + ' angezeigt)' : '') + (d.cfg.on ? '' : ' · ⚠ Mitschreiben ist aus (Einstellungen → VR → OSC-Log)') + (d.osc_active ? '' : ' · ⚠ gerade kein OSC von VRChat');
         $('#olRows').innerHTML = d.items.length ? '<table class="ol-tab"><tbody>' + d.items.map(e => {
             const name = e.a.replace(/^\/avatar\/parameters\//, '');
-            return '<tr class="c-' + e.c + '"><td class="mono small">' + new Date(e.t).toLocaleTimeString('de-DE') + (d.cfg && $('#olRange').value !== 'live' && $('#olRange').value !== 'today' ? '<br><span class="muted">' + new Date(e.t).toLocaleDateString('de-DE') + '</span>' : '') + '</td>'
+            return '<tr class="c-' + e.c + '"><td class="mono small">' + new Date(e.t).toLocaleTimeString(nxLoc()) + (d.cfg && $('#olRange').value !== 'live' && $('#olRange').value !== 'today' ? '<br><span class="muted">' + new Date(e.t).toLocaleDateString(nxLoc()) + '</span>' : '') + '</td>'
                 + '<td title="' + esc(d.cats[e.c] ? d.cats[e.c][1] : e.c) + '">' + (d.cats[e.c] || ['❔'])[0] + '</td><td>' + (e.d === 'in' ? '⬅' : '<span class="ol-out">➡</span>') + '</td>'
                 + '<td class="ol-name" title="' + esc(e.a) + '">' + esc(e.c === 'avatar' ? (d.avatars[e.v] || e.v) : name) + '</td>'
                 + '<td class="mono small">' + (e.p !== null && e.c !== 'avatar' ? '<span class="muted">' + esc(olVal(e.p)) + ' → </span>' : '') + '<b>' + esc(e.c === 'avatar' ? 'Avatar gewechselt' : olVal(e.v)) + '</b></td>'

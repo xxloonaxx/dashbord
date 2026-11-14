@@ -180,7 +180,7 @@
     }
     const N = (z, a, b, c, d) => ({ s: a, m: b, l: c, x: d })[z] || a;
     const R = {
-        clock: () => { const d = new Date(), cd = UI.store.get('homeCd', { t: '', l: '' }); return '<div class="hm-clock" id="hmClock"><b>' + d.toLocaleTimeString('de-DE') + '</b><small>' + d.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + '</small></div><div id="hmCdBox">' + countdown() + '</div>'
+        clock: () => { const d = new Date(), cd = UI.store.get('homeCd', { t: '', l: '' }); return '<div class="hm-clock" id="hmClock"><b>' + d.toLocaleTimeString(nxLoc()) + '</b><small>' + d.toLocaleDateString(nxLoc(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + '</small></div><div id="hmCdBox">' + countdown() + '</div>'
             + '<details class="small"><summary>Countdown einstellen</summary><form id="hmCd" class="nx-row"><input type="text" name="l" placeholder="Name" value="' + esc(cd.l) + '" style="width:110px"><input type="datetime-local" name="t" value="' + esc(cd.t) + '"><button class="btn btn-sm">OK</button></form></details>'; },
         me: () => !data.me ? empty('Nicht angemeldet.') : '<div class="hm-me"><b>' + esc(data.me.name) + '</b><span>' + (STATUS[data.me.status] || ['⚪', data.me.status]).join(' ') + (data.me.desc ? ' · ' + esc(data.me.desc) : '') + '</span></div>'
             + '<div class="hm-btns">' + Object.entries(STATUS).map(([k, v]) => '<button type="button" class="chip' + (data.me.status === k ? ' on' : '') + '" data-h="status" data-v="' + k + '">' + v[0] + ' ' + v[1] + '</button>').join('') + '</div>',
@@ -225,7 +225,7 @@
             const l = (data.events || []).slice(0, N(z, 3, 5, 8, 8));
             if (!l.length) return empty('Keine anstehenden Gruppen-Events.') + '<button type="button" class="nc-link" data-h="tab" data-v="calendar">Kalender →</button>';
             const nowS = Date.now() / 1000;
-            return l.map(e => '<div class="hm-ev' + (e.start <= nowS && e.end > nowS ? ' live' : '') + '"><span class="hm-evd"><b>' + new Date(e.start * 1000).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }) + '</b><small>' + new Date(e.start * 1000).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + '</small></span>'
+            return l.map(e => '<div class="hm-ev' + (e.start <= nowS && e.end > nowS ? ' live' : '') + '"><span class="hm-evd"><b>' + new Date(e.start * 1000).toLocaleDateString(nxLoc(), { day: '2-digit', month: '2-digit' }) + '</b><small>' + new Date(e.start * 1000).toLocaleTimeString(nxLoc(), { hour: '2-digit', minute: '2-digit' }) + '</small></span>'
                 + '<span class="hm-evt"><b>' + (e.following ? '⭐ ' : '') + esc(e.title) + '</b><small class="muted">' + (e.start <= nowS && e.end > nowS ? '🔴 läuft gerade · ' : '') + esc(e.group || '') + '</small></span></div>').join('')
                 + '<button type="button" class="nc-link" data-h="tab" data-v="calendar">Kalender →</button>';
         },
@@ -256,7 +256,7 @@
         osclog: z => {
             const l = (data.osclog || []).slice(0, N(z, 6, 8, 12, 12));
             if (!l.length) return empty(data.osc && data.osc.active ? 'Noch keine Änderungen.' : 'OSC ist nicht aktiv.') + '<button type="button" class="nc-link" data-h="tab" data-v="client" data-sub="osclog">OSC-Log →</button>';
-            return '<div class="hm-log">' + l.map(e => '<div><span class="muted">' + new Date(e.t).toLocaleTimeString('de-DE') + '</span> ' + (e.d === 'out' ? '↗' : '↘') + ' <code>' + esc(e.a.replace(/^\/avatar\/parameters\//, '')) + '</code> = <b>' + esc(JSON.stringify(e.v).slice(0, 40)) + '</b></div>').join('') + '</div>'
+            return '<div class="hm-log">' + l.map(e => '<div><span class="muted">' + new Date(e.t).toLocaleTimeString(nxLoc()) + '</span> ' + (e.d === 'out' ? '↗' : '↘') + ' <code>' + esc(e.a.replace(/^\/avatar\/parameters\//, '')) + '</code> = <b>' + esc(JSON.stringify(e.v).slice(0, 40)) + '</b></div>').join('') + '</div>'
                 + '<button type="button" class="nc-link" data-h="tab" data-v="client" data-sub="osclog">OSC-Log →</button>';
         },
         rules: () => (data.rules || []).length ? '<div class="hm-btns">' + data.rules.map(r => '<button type="button" class="chip' + (r.on ? ' on' : '') + '" data-h="rule" data-v="' + esc(r.id) + '" title="' + (r.on ? 'aktiv – klicken zum Ausschalten' : 'aus – klicken zum Einschalten') + '">' + (r.on ? '●' : '○') + ' ' + esc(r.name) + '</button>').join('') + '</div>'
@@ -305,7 +305,7 @@
             if (!box.firstChild) shell();
             load();
             clearInterval(timer); timer = setInterval(() => { if (!document.hidden) load(); }, 10000);
-            clearInterval(clockTimer); clockTimer = setInterval(() => { const c = $('#hmClock b'); if (c) c.textContent = new Date().toLocaleTimeString('de-DE'); const cd = $('#hmCdBox'); if (cd) cd.innerHTML = countdown(); }, 1000);
+            clearInterval(clockTimer); clockTimer = setInterval(() => { const c = $('#hmClock b'); if (c) c.textContent = new Date().toLocaleTimeString(nxLoc()); const cd = $('#hmCdBox'); if (cd) cd.innerHTML = countdown(); }, 1000);
         },
         close() { clearInterval(timer); clearInterval(clockTimer); },
     };

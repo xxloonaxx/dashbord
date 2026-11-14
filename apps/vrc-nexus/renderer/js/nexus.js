@@ -42,10 +42,10 @@
     };
     const hm = sec => { sec = Math.max(0, Math.round(sec)); const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60); return h ? h + ' h ' + m + ' min' : m + ' min'; };
     const dur = ts => ts ? hm(now() - ts) : '';
-    const clock = ts => new Date(ts * 1000).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-    const isoDate = s => { const d = new Date(s); return isNaN(d) ? '' : d.toLocaleDateString('de-DE'); };
-    const isoDT = s => { const d = new Date(s); return isNaN(d) ? '' : d.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); };
-    const num = n => Number(n || 0).toLocaleString('de-DE');
+    const clock = ts => new Date(ts * 1000).toLocaleString(nxLoc(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const isoDate = s => { const d = new Date(s); return isNaN(d) ? '' : d.toLocaleDateString(nxLoc()); };
+    const isoDT = s => { const d = new Date(s); return isNaN(d) ? '' : d.toLocaleString(nxLoc(), { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); };
+    const num = n => Number(n || 0).toLocaleString(nxLoc());
     const launch = loc => 'vrchat://launch?ref=vrc-nexus&id=' + encodeURIComponent(loc);
     const joinable = l => l && l.kind === 'world' && l.access !== 'Invite';
 
@@ -202,7 +202,7 @@
             $('#syncInfo').innerHTML = '<b>' + d.friends.filter(f => f.state === 'online').length + '</b> im Spiel · <b>' + d.friends.filter(f => f.state === 'active').length
                 + '</b> online · ' + d.friends.length + ' Freunde · abgeglichen ' + (d.last_sync ? ago(d.last_sync) : 'noch nie')
                 + (refresh && !s.synced && s.wait ? ' <span class="vx-small">(nächster Abgleich in ' + s.wait + ' s möglich)</span>' : '');
-            $('#connInfo').innerHTML = 'Verbunden als <b>' + esc(d.me.name) + '</b> seit ' + esc(new Date(d.connected_at * 1000).toLocaleString('de-DE')) + '.<br>Letzter Abgleich: ' + (d.last_sync ? esc(new Date(d.last_sync * 1000).toLocaleTimeString('de-DE')) : '–');
+            $('#connInfo').innerHTML = 'Verbunden als <b>' + esc(d.me.name) + '</b> seit ' + esc(new Date(d.connected_at * 1000).toLocaleString(nxLoc())) + '.<br>Letzter Abgleich: ' + (d.last_sync ? esc(new Date(d.last_sync * 1000).toLocaleTimeString(nxLoc())) : '–');
             fillProfile();
             if (!$('[data-pane=feed]').hidden && refresh) loadFeed(true);
             if (refresh && !loaded.spark) loadSpark();
@@ -410,7 +410,7 @@
         }
         h += '<div class="vx-kpis sm"><div><b>' + hm(s.week || 0) + '</b><span>im Spiel (7 Tage)</span></div><div><b>' + hm(s.month || 0) + '</b><span>im Spiel (30 Tage)</span></div>'
             + '<div><b>' + (s.sessions || 0) + '</b><span>Sitzungen (30 Tage)</span></div><div><b>' + (l.kind && l.kind !== 'offline' ? 'jetzt online' : s.last_seen ? esc(ago(s.last_seen)) : '–') + '</b><span>zuletzt gesehen</span></div>'
-            + '<div><b>' + (s.friend_since ? esc(new Date(s.friend_since * 1000).toLocaleDateString('de-DE')) : '–') + '</b><span>Freund seit (aufgezeichnet)</span></div></div>';
+            + '<div><b>' + (s.friend_since ? esc(new Date(s.friend_since * 1000).toLocaleDateString(nxLoc())) : '–') + '</b><span>Freund seit (aufgezeichnet)</span></div></div>';
         if (s.together) h += '<div class="vx-together">🤝 <b>Mit dir zusammen:</b> ' + hm(s.together.seconds) + ' in ' + s.together.instances + ' Instanz' + (s.together.instances === 1 ? '' : 'en') + ' (30 Tage) · zuletzt ' + esc(ago(s.together.last)) + ' in <a href="#" data-world="' + esc(s.together.world) + '">' + esc(s.together.world_name) + '</a></div>';
         if (s.heat && s.heat.flat().some(v => v > 0)) {
             const DN = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
@@ -729,7 +729,7 @@
         if (it.type === 'bio') extra = '<small>' + esc(it.new.slice(0, 120)) + (it.new.length > 120 ? ' …' : '') + '</small>';
         if (it.type === 'self') extra = it.new_loc ? locTxt(it.new_loc) : esc(it.new === 'offline' ? 'offline' : it.new);
         const who = it.type === 'self' ? '<b>Du</b>' : '<a href="#" data-user="' + esc(it.vrc_id) + '">' + esc(it.name) + '</a>';
-        return '<div class="vx-feed-row t-' + esc(it.type) + '"><time title="' + esc(new Date(it.ts * 1000).toLocaleString('de-DE')) + '">' + esc(clock(it.ts)) + '</time><span class="vx-feed-ic">' + ic + '</span>'
+        return '<div class="vx-feed-row t-' + esc(it.type) + '"><time title="' + esc(new Date(it.ts * 1000).toLocaleString(nxLoc())) + '">' + esc(clock(it.ts)) + '</time><span class="vx-feed-ic">' + ic + '</span>'
             + '<span class="vx-feed-txt">' + who + ' ' + txt + (extra ? ' <span class="vx-feed-x">' + extra + '</span>' : '') + '</span></div>';
     }
     let feedTimer = null;
@@ -740,7 +740,7 @@
             feedItems = reset ? d.items : feedItems.concat(d.items);
             let last = '', html = '';
             feedItems.forEach(it => {
-                const day = new Date(it.ts * 1000).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long' });
+                const day = new Date(it.ts * 1000).toLocaleDateString(nxLoc(), { weekday: 'long', day: '2-digit', month: 'long' });
                 if (day !== last) { html += '<div class="vx-day">' + esc(day) + '</div>'; last = day; }
                 html += feedRow(it);
             });
@@ -767,7 +767,7 @@
         let grid = '';
         for (let i = 0; i <= 4; i++) { const v = Math.round(max * i / 4); grid += '<line x1="30" x2="' + (W - 10) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" class="g"/><text x="24" y="' + (+Y(v) + 3) + '" text-anchor="end">' + v + '</text>'; }
         let days = '';
-        for (let t = Math.ceil(t0 / 86400) * 86400; t < t1; t += 86400) days += '<line x1="' + X(t) + '" x2="' + X(t) + '" y1="10" y2="' + (H - 20) + '" class="g"/><text x="' + X(t) + '" y="' + (H - 6) + '" text-anchor="middle">' + new Date(t * 1000).toLocaleDateString('de-DE', { weekday: 'short' }) + '</text>';
+        for (let t = Math.ceil(t0 / 86400) * 86400; t < t1; t += 86400) days += '<line x1="' + X(t) + '" x2="' + X(t) + '" y1="10" y2="' + (H - 20) + '" class="g"/><text x="' + X(t) + '" y="' + (H - 6) + '" text-anchor="middle">' + new Date(t * 1000).toLocaleDateString(nxLoc(), { weekday: 'short' }) + '</text>';
         return '<svg class="vx-chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Freunde online, letzte 7 Tage">' + grid + days
             + '<polyline points="' + line('active') + '" class="l2"/><polyline points="' + line('online') + '" class="l1"/></svg>'
             + '<div class="vx-legend"><span><i class="l1"></i> im Spiel</span><span><i class="l2"></i> Website / App</span></div>';
@@ -798,7 +798,7 @@
                 + '<div><b>' + (s.state.online || 0) + '</b><span>gerade im Spiel</span></div><div><b>' + s.peak + '</b><span>Spitze (7 Tage, Ø/Std.)</span></div>'
                 + '<div><b>' + hm(s.total_play) + '</b><span>Spielzeit Top-Freunde (30 T.)</span></div><div><b>' + num(t.online || 0) + '</b><span>Logins (30 T.)</span></div>'
                 + '<div><b>' + num(t.gps || 0) + '</b><span>Weltwechsel (30 T.)</span></div><div><b>' + ((t.friend_add || 0) + ' / ' + (t.friend_remove || 0)) + '</b><span>Freunde + / −</span></div>'
-                + '<div><b>' + (s.recording_since ? esc(new Date(s.recording_since * 1000).toLocaleDateString('de-DE')) : '–') + '</b><span>Aufzeichnung seit</span></div></div>'
+                + '<div><b>' + (s.recording_since ? esc(new Date(s.recording_since * 1000).toLocaleDateString(nxLoc())) : '–') + '</b><span>Aufzeichnung seit</span></div></div>'
                 + '<div class="panel"><div class="panel-title">Freunde online – letzte 7 Tage</div>' + lineChart(s.history) + '</div>'
                 + '<div class="panel" id="tlPanel"><div class="panel-title">📊 Zeitleiste – wer war wann online? <span class="chips" id="tlDays"><button type="button" class="chip on" data-day="0">Heute</button><button type="button" class="chip" data-day="1">Gestern</button><button type="button" class="chip" data-day="2">Vorgestern</button></span></div><div id="tlBox"><div class="vx-loading">Lade …</div></div></div>'
                 + '<div class="vx-cols">'
@@ -822,7 +822,7 @@
         api('timeline', { day }).then(t => {
             if (!t.rows.length) { box.innerHTML = '<div class="vx-empty">Für diesen Tag ist nichts aufgezeichnet.</div>'; return; }
             const span = t.end - t.start, pct = x => ((x - t.start) / span * 100).toFixed(2) + '%';
-            const hh = new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' });
+            const hh = new Intl.DateTimeFormat(nxLoc(), { hour: '2-digit', minute: '2-digit' });
             box.innerHTML = '<div class="vx-tl"><div class="vx-tl-row head"><span></span><div class="vx-tl-track">' + [0, 3, 6, 9, 12, 15, 18, 21].map(h => '<i style="left:' + (h / 24 * 100) + '%">' + h + '</i>').join('') + '</div></div>'
                 + t.rows.map(r => '<div class="vx-tl-row"><a href="#" data-user="' + esc(r.id) + '" class="vx-tl-name">' + img(r.image, 'vx-av xs', r.name) + '<span>' + esc(r.name) + '</span></a><div class="vx-tl-track">'
                     + r.seg.map(([a, b]) => '<span class="vx-tl-seg" style="left:' + pct(a) + ';width:' + ((b - a) / span * 100).toFixed(2) + '%" title="' + hh.format(a * 1000) + '–' + hh.format(b * 1000) + ' (' + hm(b - a) + ')"></span>').join('')
@@ -854,7 +854,7 @@
         return '<div class="panel"><div class="panel-title">🎂 Freundschafts-Jahrestage <small>(nächste 30 Tage)</small></div>'
             + (list.length ? '<div class="vx-members">' + list.map(x => '<div class="vx-member">' + img(x.f.image, 'vx-av sm', x.f.name) + '<a href="#" data-user="' + esc(x.f.id) + '">' + esc(x.f.name) + '</a><small>' + (x.days === 0 ? '🎉 <b>heute</b>' : 'in ' + x.days + ' Tag' + (x.days === 1 ? '' : 'en')) + ' · ' + x.years + ' Jahr' + (x.years === 1 ? '' : 'e') + ' befreundet</small></div>').join('') + '</div>'
                 : '<div class="vx-empty">Keine Jahrestage in den nächsten 30 Tagen' + (state.friends.some(f => f.friend_since > 0) ? '.' : ' – Freundschaften werden ab Beginn der Aufzeichnung gezählt.') + '</div>')
-            + (newest.length ? '<h4 class="vx-sub">🆕 Neueste Freunde</h4><div class="vx-members">' + newest.map(f => '<div class="vx-member">' + img(f.image, 'vx-av sm', f.name) + '<a href="#" data-user="' + esc(f.id) + '">' + esc(f.name) + '</a><small>seit ' + esc(new Date(f.friend_since * 1000).toLocaleDateString('de-DE')) + '</small></div>').join('') + '</div>' : '')
+            + (newest.length ? '<h4 class="vx-sub">🆕 Neueste Freunde</h4><div class="vx-members">' + newest.map(f => '<div class="vx-member">' + img(f.image, 'vx-av sm', f.name) + '<a href="#" data-user="' + esc(f.id) + '">' + esc(f.name) + '</a><small>seit ' + esc(new Date(f.friend_since * 1000).toLocaleDateString(nxLoc())) + '</small></div>').join('') + '</div>' : '')
             + '</div>';
     }
 
@@ -1064,12 +1064,12 @@
         const sorter = (a, b) => gPrefs.sort === 'members' ? b.members - a.members : gPrefs.sort === 'short' ? String(a.short).localeCompare(String(b.short), 'de') : a.name.localeCompare(b.name, 'de');
         const list = all.filter(g => !q || (g.name + ' ' + g.short).toLowerCase().includes(q));
         const tile = g => '<button type="button" class="vx-gtile' + (g.mod ? ' mod' : '') + '" data-group="' + esc(g.id) + '">' + (pic(g.banner) ? '<span class="vx-gtile-ban" style="background-image:url(\'' + esc(pic(g.banner).replace(/['"()\\\s]/g, encodeURIComponent)) + '\')"></span>' : '<span class="vx-gtile-ban none"></span>')
-            + img(g.icon, 'vx-g-icon', '') + '<b>' + esc(g.name) + '</b><small>' + esc(g.short) + ' · 👥 ' + Number(g.members).toLocaleString('de-DE') + '</small>'
+            + img(g.icon, 'vx-g-icon', '') + '<b>' + esc(g.name) + '</b><small>' + esc(g.short) + ' · 👥 ' + Number(g.members).toLocaleString(nxLoc()) + '</small>'
             + '<span class="vx-grow-b">' + (g.owner ? '<span class="vx-pill" style="--pc:#f3c262">👑 Besitzer</span>' : g.mod ? '<span class="vx-pill" style="--pc:#50fa7b">🛡️ Mod</span>' : g.staff ? '<span class="vx-pill" style="--pc:#8be9fd" title="Moderationsrechte ohne Kick">🔧 Teilrechte</span>' : '') + (g.rep ? '<span class="vx-pill rep">★</span>' : '') + '</span></button>';
         const row = g => gPrefs.view === 'grid' ? tile(g) : '<button type="button" class="vx-grow' + (g.mod ? ' mod' : '') + '" data-group="' + esc(g.id) + '">' + img(g.icon, 'vx-g-icon', '')
             + '<span class="vx-grow-n"><b>' + esc(g.name) + '</b><small>' + esc(g.short) + '</small></span>'
             + '<span class="vx-grow-b">' + (g.owner ? '<span class="vx-pill" style="--pc:#f3c262">👑 Besitzer</span>' : g.mod ? '<span class="vx-pill" style="--pc:#50fa7b" title="' + esc(g.perms.join(', ')) + '">🛡️ Mod</span>' : g.staff ? '<span class="vx-pill" style="--pc:#8be9fd" title="' + esc(g.perms.join(', ')) + '">🔧 Teilrechte</span>' : '')
-            + (g.rep ? '<span class="vx-pill rep">★</span>' : '') + '</span><span class="vx-grow-m">👥 ' + Number(g.members).toLocaleString('de-DE') + '</span><span class="vx-grow-c">›</span></button>';
+            + (g.rep ? '<span class="vx-pill rep">★</span>' : '') + '</span><span class="vx-grow-m">👥 ' + Number(g.members).toLocaleString(nxLoc()) + '</span><span class="vx-grow-c">›</span></button>';
         const sec = (key, title, items) => items.length ? '<div class="vx-gstack' + (gPrefs.closed[key] ? ' closed' : '') + '" data-gsec="' + key + '"><button type="button" class="vx-gstack-h">' + title + ' <small>' + items.length + '</small></button><div class="vx-gstack-b' + (gPrefs.view === 'grid' ? ' grid' : '') + '"' + (gPrefs.view === 'grid' && gPrefs.cols !== 'auto' ? ' style="grid-template-columns:repeat(' + (+gPrefs.cols) + ',minmax(0,1fr))"' : '') + '>' + items.map(row).join('') + '</div></div>' : '';
         const owned = list.filter(g => g.owner).sort(sorter), mod = list.filter(g => g.mod && !g.owner).sort(sorter), rest = list.filter(g => !g.mod).sort(sorter);
         $('#groupsBox').innerHTML = '<div class="vx-tools vx-gtools"><input type="search" id="gFilter" placeholder="Gruppen filtern …" value="' + esc(gPrefs.q) + '" aria-label="Gruppen filtern">'
@@ -1205,7 +1205,7 @@
         }
         if (name === 'audit') {
             api('group_audit', { id: g.id }).then(d => {
-                pane.innerHTML = d.items.length ? '<div class="vx-feed">' + d.items.map(l => '<div class="vx-feed-row"><time>' + esc(new Date(l.ts).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })) + '</time><span class="vx-feed-ic">📋</span><span class="vx-feed-txt"><b>' + esc(l.actor) + '</b> ' + esc(l.desc || l.type) + ' <small class="muted">' + esc(l.type) + '</small></span></div>').join('') + '</div>'
+                pane.innerHTML = d.items.length ? '<div class="vx-feed">' + d.items.map(l => '<div class="vx-feed-row"><time>' + esc(new Date(l.ts).toLocaleString(nxLoc(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })) + '</time><span class="vx-feed-ic">📋</span><span class="vx-feed-txt"><b>' + esc(l.actor) + '</b> ' + esc(l.desc || l.type) + ' <small class="muted">' + esc(l.type) + '</small></span></div>').join('') + '</div>'
                     : '<div class="vx-empty">Keine Einträge.</div>';
             }).catch(fail(pane));
             return;
@@ -1249,7 +1249,7 @@
     // ---------- Benachrichtigungen (alte API + V2, mit Verlauf) ----------
     let nfView = 'open', nfLabels = {}, nfTimer = null;
     const fileImg = (id, cls) => /^file_[0-9a-f-]{36}$/i.test(id || '') ? '<img class="' + cls + '" src="nexus.php?img=' + encodeURIComponent(id) + '" alt="" loading="lazy">' : '';
-    const ago2 = ts => ts ? new Date(ts * 1000).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+    const ago2 = ts => ts ? new Date(ts * 1000).toLocaleString(nxLoc(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
     function loadNotifs(cached) {
         const box = $('#notifBox');
         if (!cached) loading(box, 'Hole Benachrichtigungen von VRChat …');
@@ -1377,7 +1377,7 @@
                     + '<div class="gl-axis"><span>' + ago2(d.series[0][0]) + '</span><span>' + d.samples + ' Messpunkte</span><span>' + ago2(d.series[d.series.length - 1][0]) + '</span></div>'
                     : '<div class="vx-empty">Noch zu wenige Messpunkte – ' + (window.VRCX.app ? 'VRC Nexus misst alle 15 Minuten, solange die App läuft.' : 'das Dashboard misst alle 10–15 Minuten (Aufgabenplaner „VRChat-Spielerzahl“).') + ' Morgen gibt es hier eine Kurve.</div>')
                 + '</div>'
-                + (hv.length > 5 ? '<div class="vx-sec"><h3>⌀ Spieler je Wochentag & Uhrzeit <small>seit ' + new Date(d.since * 1000).toLocaleDateString('de-DE') + '</small></h3><div class="gl-heat"><span></span>'
+                + (hv.length > 5 ? '<div class="vx-sec"><h3>⌀ Spieler je Wochentag & Uhrzeit <small>seit ' + new Date(d.since * 1000).toLocaleDateString(nxLoc()) + '</small></h3><div class="gl-heat"><span></span>'
                     + Array.from({ length: 24 }, (_, h) => '<span class="gl-h">' + (h % 3 ? '' : h) + '</span>').join('')
                     + d.heat.map((row, i) => '<span class="gl-d">' + days[i] + '</span>' + row.map((v, h) => '<i title="' + days[i] + ' ' + h + ' Uhr: ' + (v === null ? 'keine Daten' : num(v)) + '" style="opacity:' + (v === null ? 0.06 : (0.15 + 0.85 * (v - hmin) / Math.max(1, hmax - hmin)).toFixed(2)) + '"></i>').join('')).join('')
                     + '</div></div>' : '');
@@ -1573,12 +1573,12 @@
         const canDel = new Set(calData.can_create.map(x => x.id));
         let last = '', h = '';
         list.forEach(e => {
-            const day = new Date(e.start * 1000).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long' });
+            const day = new Date(e.start * 1000).toLocaleDateString(nxLoc(), { weekday: 'long', day: '2-digit', month: 'long' });
             if (day !== last) { h += '<div class="vx-day">' + esc(day) + '</div>'; last = day; }
             const now = Date.now() / 1000, live = e.start <= now && e.end > now;
             h += '<div class="vx-cal' + (e.following ? ' fav' : '') + (live ? ' live' : '') + '">' + (e.image ? img(e.image, 'vx-cal-img', '') : '<span class="vx-cal-img vx-noimg">📅</span>')
                 + '<div class="vx-cal-main"><b>' + esc(e.title) + (live ? ' <span class="vx-pill" style="--pc:#50fa7b">läuft gerade</span>' : '') + '</b>'
-                + '<small>🕐 ' + esc(new Date(e.start * 1000).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })) + '–' + esc(new Date(e.end * 1000).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }))
+                + '<small>🕐 ' + esc(new Date(e.start * 1000).toLocaleTimeString(nxLoc(), { hour: '2-digit', minute: '2-digit' })) + '–' + esc(new Date(e.end * 1000).toLocaleTimeString(nxLoc(), { hour: '2-digit', minute: '2-digit' }))
                 + ' · <a href="#" data-opengroup="' + esc(e.group) + '">' + esc(e.group_name || 'Gruppe') + '</a> · ' + esc(CAT[e.category] || e.category || '') + (e.access === 'public' ? ' · 🌍 öffentlich' : ' · 🔒 Gruppe')
                 + ' · ⭐ ' + e.interested + (e.platforms.length ? ' · ' + e.platforms.map(p => ({ standalonewindows: 'PC', android: 'Quest', ios: 'iOS' }[p] || p)).join('/') : '') + '</small>'
                 + (e.html ? '<details><summary>Beschreibung</summary><div class="fmt">' + e.html + '</div></details>' : '') + '</div>'

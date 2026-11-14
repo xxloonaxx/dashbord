@@ -65,10 +65,10 @@
             }).catch(e => { body.innerHTML = '<div class="vx-error">⚠ ' + esc(e.message) + '</div>'; });
         } else if (view === 'myworlds') {
             UI.api('ins_myworlds').then(d => {
-                const dv = (x, k) => x ? '<span class="' + (x[k] > 0 ? 'ok' : 'muted') + '">' + (x[k] > 0 ? '+' : '') + x[k].toLocaleString('de-DE') + '</span>' : '<span class="muted">–</span>';
+                const dv = (x, k) => x ? '<span class="' + (x[k] > 0 ? 'ok' : 'muted') + '">' + (x[k] > 0 ? '+' : '') + x[k].toLocaleString(nxLoc()) + '</span>' : '<span class="muted">–</span>';
                 body.innerHTML = d.worlds.length ? '<p class="muted small">Veränderungen werden ab dem ersten Öffnen dieser Seite täglich mitgeschrieben (seit ' + esc(d.since) + ').</p><div class="rc-grid">' + d.worlds.map(w => '<section class="panel mw"><div class="mw-head" data-world="' + esc(w.id) + '"' + (UI.pic(w.thumb) ? ' style="background-image:url(\'' + esc(UI.pic(w.thumb).replace(/['"()\\\s]/g, encodeURIComponent)) + '\')"' : '') + '><b>' + esc(w.name) + '</b><span class="vx-pill">' + esc(w.status) + '</span></div>'
-                    + '<table class="mw-tab"><tr><th></th><th>gesamt</th><th>seit gestern</th><th>7 Tage</th></tr><tr><td>👣 Besuche</td><td>' + w.visits.toLocaleString('de-DE') + '</td><td>' + dv(w.d1, 'v') + '</td><td>' + dv(w.d7, 'v') + '</td></tr>'
-                    + '<tr><td>⭐ Favoriten</td><td>' + w.favorites.toLocaleString('de-DE') + '</td><td>' + dv(w.d1, 'f') + '</td><td>' + dv(w.d7, 'f') + '</td></tr></table>'
+                    + '<table class="mw-tab"><tr><th></th><th>gesamt</th><th>seit gestern</th><th>7 Tage</th></tr><tr><td>👣 Besuche</td><td>' + w.visits.toLocaleString(nxLoc()) + '</td><td>' + dv(w.d1, 'v') + '</td><td>' + dv(w.d7, 'v') + '</td></tr>'
+                    + '<tr><td>⭐ Favoriten</td><td>' + w.favorites.toLocaleString(nxLoc()) + '</td><td>' + dv(w.d1, 'f') + '</td><td>' + dv(w.d7, 'f') + '</td></tr></table>'
                     + '<div class="small">👥 gerade ' + w.occupants + (w.capacity ? ' / ' + w.capacity : '') + ' · 🔥 ' + w.heat + ' · Beliebtheit ' + w.popularity + '</div>' + spark(w.history) + '</section>').join('') + '</div>'
                     : '<div class="nc-empty">Du hast keine eigenen Welten hochgeladen.</div>';
             }).catch(e => { body.innerHTML = '<div class="vx-error">⚠ ' + esc(e.message) + '</div>'; });
@@ -98,12 +98,12 @@
             for (const [t, n] of d.points) { path += ' L' + x(t) + ',' + y(last) + ' L' + x(t) + ',' + y(n); last = n; }
             path += ' L' + W + ',' + y(last);
             b.innerHTML = '<div class="rc-hero"><h2>📈 ' + esc(d.name || 'Instanz') + '</h2><div class="rc-kpis">'
-                + [['👥', d.peak, 'Höchststand' + (d.peak_at ? ' um ' + new Date(d.peak_at * 1000).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : '')], ['➗', String(d.avg).replace('.', ','), 'im Schnitt'], ['🧑‍🤝‍🧑', d.unique, 'verschiedene Leute'], ['⏱', hm(d.end - d.start), 'Dauer']]
+                + [['👥', d.peak, 'Höchststand' + (d.peak_at ? ' um ' + new Date(d.peak_at * 1000).toLocaleTimeString(nxLoc(), { hour: '2-digit', minute: '2-digit' }) : '')], ['➗', String(d.avg).replace('.', ','), 'im Schnitt'], ['🧑‍🤝‍🧑', d.unique, 'verschiedene Leute'], ['⏱', hm(d.end - d.start), 'Dauer']]
                     .map(k => '<div><span>' + k[0] + '</span><b>' + esc(String(k[1])) + '</b><small>' + k[2] + '</small></div>').join('') + '</div></div>'
                 + '<section class="panel"><svg class="in-chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="Spielerzahl über die Zeit"><path d="' + path + '" class="in-line"/></svg>'
-                + '<div class="in-axis"><span>' + new Date(t0 * 1000).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + '</span><span>' + new Date(t1 * 1000).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + '</span></div></section>'
+                + '<div class="in-axis"><span>' + new Date(t0 * 1000).toLocaleTimeString(nxLoc(), { hour: '2-digit', minute: '2-digit' }) + '</span><span>' + new Date(t1 * 1000).toLocaleTimeString(nxLoc(), { hour: '2-digit', minute: '2-digit' }) + '</span></div></section>'
                 + '<section class="panel"><h3>Kommen & Gehen</h3>' + (d.events.length ? d.events.slice().reverse().map(e => '<div class="rc-row"' + (e.id ? ' data-user="' + esc(e.id) + '"' : '') + '>' + (e.kind === 'player_join' ? '➡' : '⬅') + ' ' + esc(e.name)
-                    + '<span>' + new Date(e.ts * 1000).toLocaleTimeString('de-DE') + ' · ' + e.count + ' da</span></div>').join('') : '<p class="muted">Niemand kam oder ging.</p>') + '</section>';
+                    + '<span>' + new Date(e.ts * 1000).toLocaleTimeString(nxLoc()) + ' · ' + e.count + ' da</span></div>').join('') : '<p class="muted">Niemand kam oder ging.</p>') + '</section>';
         }).catch(e => { b.innerHTML = '<div class="vx-error">⚠ ' + esc(e.message) + '</div>'; });
     }
     box.addEventListener('change', e => { if (e.target.id === 'rcInst') instLoad(e.target.value); });

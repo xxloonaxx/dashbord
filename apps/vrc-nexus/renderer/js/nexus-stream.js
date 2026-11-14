@@ -33,7 +33,7 @@
         return (c.twitch.on ? '🟣 Twitch: <span class="' + STATE(st.twitch.state) + '">' + esc(st.twitch.state) + '</span>' + (st.twitch.error ? ' (' + esc(st.twitch.error) + ')' : '') : '🟣 Twitch aus')
             + ' · ' + (c.youtube.on ? '🔴 YouTube: <span class="' + STATE(st.youtube.state) + '">' + esc(st.youtube.state) + '</span>' + (st.youtube.error ? ' (' + esc(st.youtube.error) + ')' : '') : '🔴 YouTube aus');
     }
-    const line = e => '<div class="sb-m k-' + e.kind + ' p-' + e.platform + '"><span class="muted small">' + new Date(e.t).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + '</span> '
+    const line = e => '<div class="sb-m k-' + e.kind + ' p-' + e.platform + '"><span class="muted small">' + new Date(e.t).toLocaleTimeString(nxLoc(), { hour: '2-digit', minute: '2-digit' }) + '</span> '
         + (e.kind === 'reward' ? '🎁 ' : e.kind === 'alert' ? '⭐ ' : e.kind === 'system' ? 'ℹ️ ' : ICON[e.platform] + ' ') + '<b' + (e.color ? ' style="color:' + esc(e.color) + '"' : '') + '>' + esc(e.user) + (e.mod ? ' 🛡' : '') + '</b> ' + esc(e.text) + '</div>';
 
     function render() {
@@ -51,7 +51,7 @@
             const f = $('#sbFeed'), atEnd = f.scrollTop + f.clientHeight >= f.scrollHeight - 30;
             f.innerHTML = feed.length ? feed.map(line).join('') : '<div class="muted small">Noch keine Nachrichten. Verbinde Twitch/YouTube unter „Verbindung“ – oder schick unten eine Testnachricht.</div>';
             if (atEnd) f.scrollTop = f.scrollHeight;
-            $('#sbTop').innerHTML = (st.top || []).map((u, i) => '<div class="rc-row">' + (i + 1) + '. ' + ICON[u.platform] + ' ' + esc(u.name) + '<span>' + u.p.toLocaleString('de-DE') + '</span></div>').join('') || '<span class="muted small">–</span>';
+            $('#sbTop').innerHTML = (st.top || []).map((u, i) => '<div class="rc-row">' + (i + 1) + '. ' + ICON[u.platform] + ' ' + esc(u.name) + '<span>' + u.p.toLocaleString(nxLoc()) + '</span></div>').join('') || '<span class="muted small">–</span>';
         }
         if (view === 'points') {
             b.innerHTML = '<div class="nx-row"><input type="search" id="sbPQ" placeholder="🔎 Zuschauer suchen" value="' + esc(plQ) + '"></div><div id="sbPL"><div class="vx-loading">…</div></div>';
@@ -159,7 +159,7 @@
         api('stream_points', { q: plQ }).then(d => {
             const l = $('#sbPL');
             if (!l) return;
-            l.innerHTML = d.list.length ? '<table class="ol-tab"><tbody>' + d.list.map((u, i) => '<tr><td>' + (i + 1) + '.</td><td>' + ICON[u.platform] + ' ' + esc(u.name) + '</td><td><b>' + u.p.toLocaleString('de-DE') + '</b> ' + esc(d.name) + '</td><td class="muted small">' + u.msgs + ' Nachrichten · ' + (u.last ? UI.ago(u.last) : '–') + '</td>'
+            l.innerHTML = d.list.length ? '<table class="ol-tab"><tbody>' + d.list.map((u, i) => '<tr><td>' + (i + 1) + '.</td><td>' + ICON[u.platform] + ' ' + esc(u.name) + '</td><td><b>' + u.p.toLocaleString(nxLoc()) + '</b> ' + esc(d.name) + '</td><td class="muted small">' + u.msgs + ' Nachrichten · ' + (u.last ? UI.ago(u.last) : '–') + '</td>'
                 + '<td><button type="button" class="chip" data-padd="' + esc(u.key) + '" data-n="100">+100</button><button type="button" class="chip" data-padd="' + esc(u.key) + '" data-n="-100">−100</button><button type="button" class="chip" data-pset="' + esc(u.key) + '">setzen …</button></td></tr>').join('') + '</tbody></table>'
                 : '<div class="nc-empty">Noch keine Zuschauer.</div>';
         }).catch(fail);
