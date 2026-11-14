@@ -333,6 +333,7 @@ test('Auto-Update: neueste Version finden, Windows installieren, Android öffnen
     const asset = (n, sz) => ({ name: n, size: sz, browser_download_url: 'https://github.com/x/releases/download/t/' + n });
     const releases = [
         { tag_name: 'vrc-nexus-v99.0.1', draft: false, prerelease: true, assets: [] },                       // Vorabversion → ignorieren
+        { tag_name: 'vrc-nexus-v9.2.0', draft: false, prerelease: false, assets: [asset('VRC-Nexus-9.2.0-android.apk', 13)] },     // Windows-Setup noch nicht hochgeladen
         { tag_name: 'anderes-v100.0.0', draft: false, prerelease: false, assets: [] },                         // anderes Projekt → ignorieren
         { tag_name: 'vrc-nexus-v9.1.0', draft: false, prerelease: false, body: '## Neu\n**Mehr**', html_url: 'https://github.com/x/releases/tag/vrc-nexus-v9.1.0',
           published_at: '2026-11-13T10:00:00Z', assets: [asset('VRC-Nexus-9.1.0-Setup.exe', 10), asset('VRC-Nexus-9.1.0-portable.exe', 11), asset('VRC-Nexus-9.1.0-android.apk', 12)] },
@@ -347,7 +348,7 @@ test('Auto-Update: neueste Version finden, Windows installieren, Android öffnen
     const app = new NexusApp({ db, crypt: { encrypt: s => s, decrypt: s => s }, host: { userData: os.tmpdir(), installUpdate: async (a, p) => { p('50 %'); calls.push(a.setup.name); } } });
     app.game.osc.stopListen();
     const st = await app.updater.check();
-    assert.strictEqual(st.version, '9.1.0');
+    assert.strictEqual(st.version, '9.1.0');           // 9.2.0 hat noch kein Setup → Windows bekommt 9.1.0 (kein „Datei fehlt“)
     assert.ok(st.available && st.assets.setup && st.assets.apk && st.assets.portable);
     assert.ok((await app.post({ act: 'update_check' }, {})).msg.includes('9.1.0'));
     const r = await app.post({ act: 'update_install' }, {});
@@ -359,8 +360,9 @@ test('Auto-Update: neueste Version finden, Windows installieren, Android öffnen
     mob.game.osc.stopListen();
     await mob.updater.check();
     assert.strictEqual(mob.updater.status().platform, 'android');
+    assert.strictEqual(mob.updater.status().version, '9.2.0');     // Android hat seine APK schon
     await mob.updater.install();
-    assert.ok(opened[0].endsWith('VRC-Nexus-9.1.0-android.apk'));
+    assert.ok(opened[0].endsWith('VRC-Nexus-9.2.0-android.apk'));
     srv.close(); app.tools.stop(); mob.tools.stop();
     delete process.env.NEXUS_UPDATE_API;
 });

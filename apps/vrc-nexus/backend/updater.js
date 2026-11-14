@@ -32,11 +32,15 @@ class Updater {
         if (res.status === 403 || res.status === 429) throw new UserError('GitHub hat die Anfrage gerade begrenzt – später noch einmal versuchen.');
         if (!res.ok) throw new UserError('GitHub antwortet mit HTTP ' + res.status + '.');
         const list = (await res.json()) || [];
+        // Nur Releases, die die Datei für DIESES Gerät schon haben: Android- und Windows-Build laden ihre Dateien
+        // nacheinander hoch – sonst meldet die App ein Update, bevor das Setup da ist („Im Release fehlt die passende Datei“).
+        const need = this.app.mobile ? /\.apk$/i : process.env.PORTABLE_EXECUTABLE_FILE ? /-portable\.exe$/i : /-Setup\.exe$/i;
         let best = null;
         for (const r of list) {
             if (!r || r.draft || r.prerelease || !str(r.tag_name).startsWith(TAG_PREFIX)) continue;
             const v = str(r.tag_name).slice(TAG_PREFIX.length);
             if (!/^\d+\.\d+\.\d+$/.test(v)) continue;
+            if (!(r.assets || []).some(x => need.test(str(x.name)) && (x.state === undefined || x.state === 'uploaded'))) continue;
             if (!best || newer(v, best.v)) best = { v, r };
         }
         const out = { available: false, current: VERSION, version: VERSION, notes: '', published: '', page: '', assets: {}, checked: now() };
