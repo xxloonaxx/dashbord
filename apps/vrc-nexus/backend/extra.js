@@ -254,6 +254,41 @@ class Extra {
         if (out.length > 1 || arr(l.productIds).length > 1) out = ['bundle'].concat(out.filter(x => x !== 'bundle'));
         return out.length ? out.slice(0, 4) : kinds.map(k => k.toLowerCase());
     }
+    // ---------- Gemerkt (Artikel & Shops, lokal in der App-Datenbank) ----------
+    saved() {
+        let d;
+        try { d = JSON.parse(this.db.setting('shop_saved', '{}')) || {}; } catch (e) { d = {}; }
+        return { items: arr(d.items), shops: arr(d.shops) };
+    }
+    saveToggle(kind, data) {
+        const d = this.saved();
+        data = data && typeof data === 'object' ? data : {};
+        if (kind === 'shop') {
+            const target = str(data.target).match(/^(usr|esto)_[0-9a-f-]{36}$/i) ? str(data.target) : '';
+            if (!target) throw new UserError('Ungültiger Shop.');
+            const i = d.shops.findIndex(x => x.target === target);
+            if (i >= 0) d.shops.splice(i, 1);
+            else d.shops.unshift({ target, title: cut(str(data.title), 80) || target, at: now() });
+            d.shops = d.shops.slice(0, 50);
+            this.db.setSetting('shop_saved', JSON.stringify(d));
+            return Object.assign(this.saved(), { saved: i < 0, msg: i < 0 ? '★ Shop gemerkt.' : 'Shop nicht mehr gemerkt.' });
+        }
+        if (kind !== 'item') throw new UserError('Unbekannte Art.');
+        const id = str(data.id);
+        if (!/^prod_[0-9a-f-]{36}$/i.test(id)) throw new UserError('Ungültiger Artikel.');
+        const i = d.items.findIndex(x => x.id === id);
+        if (i >= 0) d.items.splice(i, 1);
+        else {   // Momentaufnahme des Artikels (nur bekannte Felder, gekürzt)
+            const keep = { id, name: cut(str(data.name), 120), subtitle: cut(str(data.subtitle), 120), desc: cut(str(data.desc), 600), price: int(data.price),
+                vrcplus_price: data.vrcplus_price === null || data.vrcplus_price === undefined ? null : int(data.vrcplus_price), image: U.https(data.image), image_id: /^file_[0-9a-f-]{36}$/i.test(str(data.image_id)) ? data.image_id : '',
+                type: cut(str(data.type), 30), kinds: arr(data.kinds).map(x => cut(str(x), 30)).slice(0, 6), items: arr(data.items).map(x => cut(str(x), 30)).slice(0, 6), seller: cut(str(data.seller), 80),
+                seller_id: /^usr_[0-9a-f-]{36}$/i.test(str(data.seller_id)) ? data.seller_id : '', by_vrc: !!data.by_vrc, ends: str(data.ends).slice(0, 40), active: data.active !== false, shop: cut(str(data.shop), 80), at: now() };
+            d.items.unshift(keep);
+        }
+        d.items = d.items.slice(0, 200);
+        this.db.setSetting('shop_saved', JSON.stringify(d));
+        return Object.assign(this.saved(), { saved: i < 0, msg: i < 0 ? '★ Gemerkt.' : 'Nicht mehr gemerkt.' });
+    }
     async officialStoreId(acc) {   // offizieller VRChat-Store: eigene Einstellung oder aus der öffentlichen /config
         const set = str(this.settings && this.settings.get('social.store_id')).match(/esto_[0-9a-f-]{36}/i);
         if (set) return set[0];
@@ -312,7 +347,7 @@ class Extra {
                 for (const l of page) if (l) list.push(this.listingSlim(l));
                 if (page.length < 100) break;
             }
-            return { title: 'Shop von ' + (u.displayName || target), shelves: [{ title: 'Angebote', desc: '', listings: list }] };
+            return { target, title: 'Shop von ' + (u.displayName || target), shelves: [{ title: 'Angebote', desc: '', listings: list }] };
         }
         if (target.startsWith('esto_')) {
             const s = await this.vrc.call(acc, 'GET', '/economy/store', { storeId: target, hydrateListings: 'true' });
@@ -324,7 +359,7 @@ class Extra {
                         banner: U.https(sh.shelfBannerImageUrl || sh.bannerImageUrl || sh.bannerUrl || sh.imageUrl || sh.shelfImageUrl || ''), listings: arr(sh.listings).map(l => this.listingSlim(l)) });
                 }
             } catch (e) { if (e instanceof VrcAuthError) throw e; }
-            return { title: str(s.displayName || 'Store'), seller: str(s.sellerDisplayName), shelves };
+            return { target, title: str(s.displayName || 'Store'), seller: str(s.sellerDisplayName), shelves };
         }
         throw new UserError('Bitte eine Benutzer-ID (usr_…), einen Profil-Link oder eine Store-ID (esto_…) angeben.');
     }

@@ -382,6 +382,8 @@ class NexusApp {
                 return { ok: true };
             case 'shop': return await x.shopOverview(acc);
             case 'shop_store': return await x.shopStore(acc);
+            case 'shop_saved': return x.saved();
+            case 'shop_save': return x.saveToggle(str(input.kind), typeof input.data === 'string' ? (() => { try { return JSON.parse(input.data); } catch (e) { return {}; } })() : input.data);
             case 'shop_browse': return await x.shopBrowse(acc, str(input.target));
             case 'global_stats': {
                 const out = await x.globalStats(Math.max(1, Math.min(365, int(input.days) || 1)));

@@ -62,3 +62,14 @@ Erkennt alles aus der Windows-Mediensteuerung	Detects everything from the Window
 Erkennt alles, was Windows im Medien-Popup zeigt (Spotify, Browser/YouTube, Apple Music, TIDAL …) und erlaubt ⏮ ⏯ ⏭. Aus = nur Fenstertitel bekannter Player	Detects everything Windows shows in its media pop-up (Spotify, browser/YouTube, Apple Music, TIDAL …) and allows ⏮ ⏯ ⏭. Off = only window titles of known players	Détecte tout ce que Windows affiche dans sa fenêtre multimédia (Spotify, navigateur/YouTube, Apple Music, TIDAL …) et permet ⏮ ⏯ ⏭. Désactivé = seulement les titres de fenêtre des lecteurs connus	Windowsのメディアポップアップに表示されるすべて（Spotify、ブラウザ/YouTube、Apple Music、TIDAL …）を検出し、⏮ ⏯ ⏭ が使えます。オフ = 既知のプレーヤーのウィンドウタイトルのみ
 Windows-Mediensteuerung startet …	Windows media controls are starting …	Les contrôles multimédias de Windows démarrent …	Windowsのメディアコントロールを起動中 …
 Zurück zum Shop	Back to shop	Retour à la boutique	ショップに戻る
+Gemerkt	Saved	Enregistré	保存済み
+★ Gemerkt	★ Saved	★ Enregistré	★ 保存済み
+☆ Shop merken	☆ Save shop	☆ Enregistrer la boutique	☆ ショップを保存
+Merken	Save	Enregistrer	保存
+Nicht mehr merken	Remove from saved	Retirer des favoris	保存を解除
+★ Gemerkt.	★ Saved.	★ Enregistré.	★ 保存しました。
+Nicht mehr gemerkt.	Removed from saved.	Retiré des favoris.	保存を解除しました。
+★ Shop gemerkt.	★ Shop saved.	★ Boutique enregistrée.	★ ショップを保存しました。
+Shop nicht mehr gemerkt.	Shop removed from saved.	Boutique retirée des favoris.	ショップの保存を解除しました。
+# Artikel · # Shops	# items · # shops	# articles · # boutiques	#件の商品 · #件のショップ
+Shops	Shops	Boutiques	ショップ

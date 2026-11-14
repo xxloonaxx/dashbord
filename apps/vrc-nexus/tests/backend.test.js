@@ -773,6 +773,17 @@ test('1.10: VRChat-Store (Store-ID aus /config, Regale, Restzeit, Artikelart), M
     app.settings.save({ 'social.store_id': 'https://vrchat.com/home/store/esto_99999999-2222-3333-4444-555555555555' });
     app.x.vrc.call = async (acc, m, p, q) => { if (p === '/config') throw new Error('nicht fragen'); return p === '/economy/store' ? { displayName: q.storeId } : []; };
     assert.strictEqual((await app.x.shopStore({})).id, 'esto_99999999-2222-3333-4444-555555555555', 'Store-ID aus Einstellung');
+    // Merken (Artikel & Shops)
+    const P = 'prod_00000001-1111-2222-3333-444444444444', S = 'usr_00000001-1111-2222-3333-444444444444';
+    let sv = app.x.saveToggle('item', { id: P, name: 'Hut', price: 300, vrcplus_price: 270, image: 'https://assets.vrchat.com/h.png', evil: '<script>' });
+    assert.ok(sv.saved && sv.items.length === 1 && sv.items[0].name === 'Hut' && sv.items[0].evil === undefined, 'Artikel gemerkt (nur bekannte Felder)');
+    sv = app.x.saveToggle('shop', { target: S, title: 'Shop von Fuchs' });
+    assert.strictEqual(sv.shops[0].target, S);
+    assert.deepStrictEqual(app.x.saved().items.map(x => x.id), [P], 'bleibt gespeichert');
+    sv = app.x.saveToggle('item', { id: P });
+    assert.ok(!sv.saved && !sv.items.length, 'zweites Mal = entfernen');
+    assert.throws(() => app.x.saveToggle('item', { id: '../x' }));
+    assert.throws(() => app.x.saveToggle('shop', { target: 'javascript:1' }));
     // Meldungen
     app.tools.call = async (m, p) => ({ hasNext: false, totalCount: 1, results: [{ id: 'modr_1', type: 'avatar', category: 'inappropriate', reason: 'sexual', contentId: 'avtr_1', contentName: 'A', created: '2026-11-01', status: 'open', description: 'Text  der Meldung' }] });
     app.tools.acc = () => ({ vrc_id: 'usr_x' });

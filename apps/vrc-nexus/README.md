@@ -20,6 +20,12 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.10.6 – Merken im Shop
+- **☆ Merken** an jeder Artikelkarte (VRChat-Store und Creator-Shops) – ★ zeigt, was gemerkt ist; nochmal klicken = nicht mehr merken.
+- **☆ Shop merken** im Shop-Popup.
+- Neuer Bereich **★ Gemerkt** oben im Shop: gemerkte Shops als Schnellzugriff (Klick öffnet das Popup, ✕ entfernt), gemerkte Artikel als Karten mit Preis, Restzeit und Kaufen-Link.
+- Gespeichert wird nur lokal in der App (bis zu 200 Artikel und 50 Shops) – nichts geht an VRChat.
+
 ### Neu in 1.10.5 – Shop ansehen als Popup
 - **🔎 Shop ansehen** steht jetzt ganz oben im Shop; das Ergebnis (Creator- oder Store-Shop) öffnet sich als **Popup** im Store-Stil.
 - Klick auf einen Artikel zeigt die Details – mit **← Zurück zum Shop** geht es zurück ins Popup.

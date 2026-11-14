@@ -703,3 +703,15 @@ button.ip-head:hover, .rep-row:hover { background: rgba(var(--accent-rgb), 0.05)
 .st-head select { width: auto; margin: 0; padding: 5px 8px; }
 .ip-new { display: inline-block; vertical-align: 1px; padding: 0 6px; border-radius: 4px; font-size: 0.66rem; font-weight: 700; background: var(--accent-gold); color: #000; }
 .ip-dot { display: inline-block; min-width: 16px; padding: 0 4px; border-radius: 8px; font-size: 0.68rem; background: var(--accent-gold); color: #000; text-align: center; }
+/* Shop: Merken */
+.st-card { position: relative; }
+.st-fav { position: absolute; right: 8px; top: 8px; z-index: 2; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(0, 0, 0, 0.6); color: #fff; font-size: 1rem; line-height: 30px; padding: 0; cursor: pointer; transition: transform 0.12s; }
+.st-fav:hover { transform: scale(1.12); }
+.st-fav.on { color: var(--accent-gold); }
+.st-shops { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.st-shopchip { display: inline-flex; align-items: stretch; }
+.st-shopchip .chip { border-right: 0; }
+.st-x { background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); cursor: pointer; padding: 0 7px; font-size: 0.7rem; }
+.st-x:hover { color: var(--accent-red); border-color: var(--accent-red); }
+.st-favshop { vertical-align: middle; margin-left: 8px; }
+#shopSaved:not(:empty) { margin-bottom: 18px; }

@@ -1,5 +1,10 @@
 [
  {
+  "version": "1.10.6",
+  "title": "Merken im Shop",
+  "body": "- **☆ Merken** an jeder Artikelkarte (VRChat-Store und Creator-Shops) – ★ zeigt, was gemerkt ist; nochmal klicken = nicht mehr merken.\n- **☆ Shop merken** im Shop-Popup.\n- Neuer Bereich **★ Gemerkt** oben im Shop: gemerkte Shops als Schnellzugriff (Klick öffnet das Popup, ✕ entfernt), gemerkte Artikel als Karten mit Preis, Restzeit und Kaufen-Link.\n- Gespeichert wird nur lokal in der App (bis zu 200 Artikel und 50 Shops) – nichts geht an VRChat."
+ },
+ {
   "version": "1.10.5",
   "title": "Shop ansehen als Popup",
   "body": "- **🔎 Shop ansehen** steht jetzt ganz oben im Shop; das Ergebnis (Creator- oder Store-Shop) öffnet sich als **Popup** im Store-Stil.\n- Klick auf einen Artikel zeigt die Details – mit **← Zurück zum Shop** geht es zurück ins Popup."

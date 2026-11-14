@@ -1347,11 +1347,47 @@
     const STORE_WEB = 'https://vrchat.com/home/marketplace';
     const buyUrl = l => l.seller_id && !l.by_vrc ? 'https://vrchat.com/home/user/' + encodeURIComponent(l.seller_id) : STORE_WEB;
     const cssUrl = u => { try { return new URL(pic(u), location.href).href.replace(/["'()\\\s]/g, ''); } catch (e) { return ''; } };   // absolut, sonst löst CSS den Pfad relativ zur Stylesheet-Datei auf
-    let storeIdx = {};
+    let storeIdx = {}, savedData = { items: [], shops: [] };
+    const savedIds = { items: new Set(), shops: new Set() };
+    function setSaved(d) {
+        savedData = { items: d.items || [], shops: d.shops || [] };
+        savedIds.items = new Set(savedData.items.map(x => x.id)); savedIds.shops = new Set(savedData.shops.map(x => x.target));
+        renderSaved();
+    }
+    function loadSaved() { return api('shop_saved').then(setSaved).catch(() => {}); }
+    function renderSaved() {
+        const box = $('#shopSaved');
+        if (!box) return;
+        const { items, shops } = savedData;
+        box.innerHTML = items.length || shops.length ? '<div class="st-head"><h3>★ Gemerkt</h3><span class="vx-small">' + items.length + ' Artikel · ' + shops.length + ' Shops</span></div>'
+            + (shops.length ? '<div class="st-shops">' + shops.map(x => '<span class="st-shopchip"><button type="button" class="chip" data-stshop="' + esc(x.target) + '">🛒 ' + esc(x.title) + '</button><button type="button" class="st-x" data-stunshop="' + esc(x.target) + '" title="Nicht mehr merken">✕</button></span>').join('') + '</div>' : '')
+            + (items.length ? '<div class="st-grid">' + items.map(storeCard).join('') + '</div>' : '') : '';
+    }
+    function openShop(target) {
+        openModal('<div class="vx-loading">Lade Angebote …</div>');
+        return api('shop_browse', { target }).then(d => {
+            const fav = savedIds.shops.has(d.target);
+            shopPopup = '<div class="st-pop" data-sttarget="' + esc(d.target || '') + '" data-sttitle="' + esc(d.title) + '"><h2>🛒 ' + esc(d.title) + (d.seller ? ' <small class="vx-small">von ' + esc(d.seller) + '</small>' : '')
+                + (d.target ? ' <button type="button" class="btn btn-sm st-favshop' + (fav ? ' btn-gold' : '') + '" data-stsaveshop>' + (fav ? '★ Gemerkt' : '☆ Shop merken') + '</button>' : '') + '</h2>'
+                + (d.shelves.some(s => s.listings.length) ? d.shelves.filter(s => s.listings.length).map(sh => storeShelf(Object.assign({}, sh, { listings: sh.listings.map(l => Object.assign({ shop: d.title }, l)) }))).join('') : '<div class="vx-empty">Keine Angebote gefunden.</div>') + '</div>';
+            openModal(shopPopup);
+        }).catch(x => openModal('<div class="vx-error">⚠ ' + esc(x.message) + '</div>'));
+    }
+    function toggleSave(kind, data, btn) {
+        if (btn) btn.disabled = true;
+        return api('shop_save', { kind, data: JSON.stringify(data) }).then(d => {
+            toast(d.msg); setSaved(d);
+            // Knöpfe überall (Store, Gemerkt, Popup) auf den neuen Stand bringen
+            $$('[data-stfav]').forEach(b => { const on = savedIds.items.has(b.dataset.stfav); b.classList.toggle('on', on); b.textContent = on ? '★' : '☆'; b.title = on ? 'Nicht mehr merken' : 'Merken'; });
+            const pop = document.querySelector('.st-pop');
+            if (pop) { const on = savedIds.shops.has(pop.dataset.sttarget), b = pop.querySelector('[data-stsaveshop]'); if (b) { b.classList.toggle('btn-gold', on); b.textContent = on ? '★ Gemerkt' : '☆ Shop merken'; } shopPopup = pop.parentNode ? pop.outerHTML : shopPopup; }
+        }).catch(x => toast(x.message, true)).finally(() => { if (btn) btn.disabled = false; });
+    }
     const storeCard = l => {
         storeIdx[l.id] = l;
         const left = leftTxt(l.ends), plus = l.vrcplus_price !== null && l.vrcplus_price !== l.price;
-        return '<div class="st-card' + (l.active === false ? ' off' : '') + '"><button type="button" class="st-pic" data-stl="' + esc(l.id) + '" title="Details">' + (l.image ? img(l.image, 'st-img', '') : fileImg(l.image_id, 'st-img') || '<span class="st-img vx-noimg">🛒</span>')
+        const fav = savedIds.items.has(l.id);
+        return '<div class="st-card' + (l.active === false ? ' off' : '') + '"><button type="button" class="st-fav' + (fav ? ' on' : '') + '" data-stfav="' + esc(l.id) + '" title="' + (fav ? 'Nicht mehr merken' : 'Merken') + '">' + (fav ? '★' : '☆') + '</button><button type="button" class="st-pic" data-stl="' + esc(l.id) + '" title="Details">' + (l.image ? img(l.image, 'st-img', '') : fileImg(l.image_id, 'st-img') || '<span class="st-img vx-noimg">🛒</span>')
             + (left ? '<span class="st-left">⏱ ' + esc(left) + '</span>' : '') + '</button>'
             + '<div class="st-info"><b data-no-i18n title="' + esc(l.name) + '">' + esc(l.name) + '</b><small>' + esc(itemLabel(l)) + '</small>'
             + '<div class="st-price">' + credits(l.price) + (plus ? ' <span class="st-plus">· ' + num(l.vrcplus_price) + ' mit VRC+</span>' : '') + '</div>'
@@ -1395,6 +1431,13 @@
     document.addEventListener('change', e => { if (e.target.id === 'stSort') renderStore(); });
     document.addEventListener('click', e => {
         if (e.target.closest('#storeReload')) return loadStore();
+        const fv = e.target.closest('[data-stfav]');
+        if (fv) { const l = storeIdx[fv.dataset.stfav] || savedData.items.find(x => x.id === fv.dataset.stfav); if (l) toggleSave('item', Object.assign({ shop: l.shop || (l.by_vrc ? 'VRChat Store' : l.seller) }, l), fv); return; }
+        if (e.target.closest('[data-stsaveshop]')) { const pop = e.target.closest('.st-pop'); return toggleSave('shop', { target: pop.dataset.sttarget, title: pop.dataset.sttitle }, e.target.closest('button')); }
+        const so = e.target.closest('[data-stshop]');
+        if (so) return openShop(so.dataset.stshop);
+        const su = e.target.closest('[data-stunshop]');
+        if (su) { const x = savedData.shops.find(y => y.target === su.dataset.stunshop); return toggleSave('shop', { target: su.dataset.stunshop, title: x ? x.title : '' }, su); }
         if (e.target.closest('[data-stback]') && shopPopup) return openModal(shopPopup);
         const p = e.target.closest('[data-stl]');
         if (!p) return;
@@ -1421,7 +1464,7 @@
                 + '<div class="sh-kpi"><span>🏷️</span><b>' + num(d.listings.length) + '</b><small>eigene Angebote</small></div></div>'
                 + (d.errors.length ? '<div class="vx-note small">ℹ Nicht verfügbar: ' + esc(d.errors.join(' · ')) + '</div>' : '')
                 + '<p class="muted small">Kaufen geht bewusst nur im <a href="https://vrchat.com/home/marketplace" target="_blank" rel="noopener noreferrer">VRChat-Marktplatz</a> – hier kannst du alles in Ruhe ansehen.</p>'
-                + '<div id="shopStore"></div>'
+                + '<div id="shopSaved"></div><div id="shopStore"></div>'
                 + (d.subs.length ? '<div class="vx-sec"><h3>💎 Abos</h3><div class="sh-list">' + d.subs.map(s => '<div class="sh-row"><b>' + esc(s.name) + '</b><span>' + (s.active ? '🟢 aktiv' : '⚪ ' + esc(s.status || 'beendet')) + '</span><span class="muted small">'
                     + esc([({ year: 'jährlich', month: 'monatlich' })[s.period] || s.period, s.store, s.gift ? 'Geschenk' : '', s.starts ? 'seit ' + isoDate(s.starts) : '', s.expires ? 'bis ' + isoDate(s.expires) : ''].filter(Boolean).join(' · ')) + '</span></div>').join('') + '</div></div>' : '')
                 + '<div class="vx-sec"><h3>🧾 Meine Käufe</h3>' + (d.purchases.length ? '<div class="sh-list">' + d.purchases.map(p => '<div class="sh-row">' + (fileImg(p.image_id, 'sh-thumb') || '<span class="sh-thumb vx-noimg">🛒</span>')
@@ -1429,7 +1472,7 @@
                     + (p.seller ? ' · von <a href="#" data-user="' + esc(p.seller_id) + '">' + esc(p.seller) + '</a>' : '') + (p.gift ? ' · 🎁 ' + esc(p.receiver ? 'an ' + p.receiver : 'Geschenk') : '')
                     + (p.end ? ' · bis ' + esc(isoDate(p.end)) : '') + (p.recurs ? ' · verlängert sich' : '') + (p.active ? '' : ' · abgelaufen') + '</span></div>').join('') + '</div>' : '<div class="vx-empty">Noch nichts gekauft.</div>') + '</div>'
                 + (d.listings.length ? '<div class="vx-sec"><h3>🏷️ Meine Angebote</h3><div class="sh-grid">' + d.listings.map(listingCard).join('') + '</div></div>' : '');
-            loadStore();
+            renderSaved(); loadSaved().then(loadStore);
         }).catch(fail(box));
     }
     let shopPopup = '';   // Inhalt des Shop-Popups (für „← Zurück“ aus der Artikel-Ansicht)
@@ -1437,12 +1480,7 @@
         e.preventDefault();
         const btn = e.target.querySelector('button');
         btn.disabled = true;
-        openModal('<div class="vx-loading">Lade Angebote …</div>');
-        api('shop_browse', { target: e.target.target.value }).then(d => {
-            shopPopup = '<div class="st-pop"><h2>🛒 ' + esc(d.title) + (d.seller ? ' <small class="vx-small">von ' + esc(d.seller) + '</small>' : '') + '</h2>'
-                + (d.shelves.some(s => s.listings.length) ? d.shelves.filter(s => s.listings.length).map(storeShelf).join('') : '<div class="vx-empty">Keine Angebote gefunden.</div>') + '</div>';
-            openModal(shopPopup);
-        }).catch(x => openModal('<div class="vx-error">⚠ ' + esc(x.message) + '</div>')).finally(() => { btn.disabled = false; });
+        openShop(e.target.target.value).finally(() => { btn.disabled = false; });
     });
 
     // ---------- VRChat weltweit ----------
