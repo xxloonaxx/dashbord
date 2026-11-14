@@ -1,0 +1,142 @@
+[
+ {
+  "version": "1.9.1",
+  "title": "ℹ️ Über-Seite mit Changelog",
+  "body": "- Neu unter **Mehr → ℹ️ Über VRC Nexus**: installierte Version, System, Update-Status (mit „Nach Updates suchen“), **Changelog der letzten 2 Versionen** (ältere auf Knopfdruck, alle Releases auf GitHub), Datenordner und Danksagungen.\n- Der Changelog kommt aus dieser README (`node scripts/changelog-build.js` → `backend/changelog.json`); ein Test prüft, dass er zur Version passt."
+ },
+ {
+  "version": "1.9.0",
+  "title": "🔊 Sprachausgabe (TTS) – in VRChat sprechen",
+  "body": "Unter **Spiel & OSC → 🔊 Sprachausgabe**. Die Stimme wird auf einem wählbaren **Ausgabegerät** abgespielt – mit einem virtuellen Audiokabel (z. B. VB-Audio Virtual Cable: hier „CABLE Input“, in VRChat „CABLE Output“ als Mikrofon) hört VRChat sie wie dein Mikrofon. Optional **mithören**.\n- **Anbieter:** 🪟 Windows-Stimmen (offline), 🐦 **Piper** (offline, neuronal, Programm + Stimmen per Knopf: Thorsten, Kerstin, Eva, Amy, Alba, Siwis …, eigene .onnx möglich), 🔵 Google Cloud TTS, 🟦 Microsoft Azure, 🎙 ElevenLabs, ⚪ OpenAI – Schlüssel verschlüsselt; Google/OpenAI nutzen auf Wunsch die schon hinterlegten Schlüssel von Übersetzer bzw. Spracheingabe.\n- **Wann:** nach der Spracheingabe (Übersetzung, nur Original oder beides – z. B. Deutsch sprechen → Englisch in VRChat hören lassen), bei getippten Chatbox-Nachrichten, per Makro-Schritt `speak Text`, oder direkt über das Textfeld (optional auch in die Chatbox).\n- Stimme, Tempo und Lautstärke einstellbar; Stimmenliste kommt live vom Anbieter."
+ },
+ {
+  "version": "1.8.1",
+  "title": "Spracheingabe: Sprachaktivierung & Verlauf",
+  "body": "- **👂 Sprachaktivierung:** Mikro bleibt offen, sobald du sprichst wird aufgenommen (inkl. 0,4 s davor), nach der Pause erkannt und gesendet. Kurze Geräusche (unter „mind. … s Sprache“) werden ignoriert. Optional **nur wenn du in VRChat stumm bist** (ideal als Mute-Spieler) und nur wenn VRChat läuft; jederzeit pausierbar. Umschalten oben in der Karte: „🎙 Taste / Knopf“ ↔ „👂 Sprachaktivierung“.\n- **📜 Verlauf:** jede Erkennung mit Uhrzeit, Original und Übersetzung (+ Zielsprache), Modell und Dauer; durchsuchen, Original oder Übersetzung erneut senden, kopieren, löschen (bis 500 Einträge, abschaltbar).\n- Fix (Tests unter Windows): GPU-/Netzwerk-Nachbildung für die Chatbox-Module läuft jetzt auch im Windows-Build."
+ },
+ {
+  "version": "1.8.0",
+  "title": "🧩 Chatbox-Module",
+  "body": "Unter **Spiel & OSC → 🧩 Chatbox-Module** setzt VRC Nexus die Chatbox aus Bausteinen zusammen (eigene Umsetzung, inspiriert von MagicChatbox):\n- **💬 Persönlicher Status** (Rotator-Texte, bei AFK „💤 AFK seit …“), **🪟 Fenster-Aktivität** (Vordergrund-Programm, Programme als privat markierbar, in VR „🥽 In VR“), **🎵 Musik**, **🌐 VRChat-Radar**, **🕒 Uhrzeit + Zone**,\n  **⛅ Wetter** (Open-Meteo, Ort suchen, ohne Konto), **🖥 Rechner** (CPU, RAM, GPU/VRAM/Temperatur über nvidia-smi), **📶 Netzwerk** (↓/↑, Spitze, Summe), **🟣 Twitch** (Live, Zuschauer, Spiel), **💓 Puls** (Pulsoid-Token verschlüsselt, Puls auch als Avatar-Parameter).\n- Jedes Modul: an/aus, eigene Vorlage mit Platzhalter-Knöpfen (zeigen den aktuellen Wert), **Desktop + VR / nur Desktop / nur VR** (SteamVR wird erkannt), Reihenfolge ▲▼.\n- **Live-Vorschau** im Chatbox-Stil mit Zeichenzähler; wird es länger als 144 Zeichen, fallen ganze Module am Ende weg (statt mitten im Text abzuschneiden). Module ohne Wert (keine Musik, Twitch offline, keine NVIDIA-Karte) verschwinden automatisch.\n- Senden alle N Sekunden (Trennung: neue Zeile, ·, |), optional nur wenn VRChat läuft; der Rotator pausiert solange. Alle Werte gibt es auch als Platzhalter in Rotator, Makros und Automatik (`{temp}`, `{cpu}`, `{puls}`, `{netz_down}`, `{fenster}` …).\n- Fix: Beim Öffnen einer Unterseite ohne eigenen Menüeintrag wird im Menü der richtige Bereich markiert."
+ },
+ {
+  "version": "1.7.9",
+  "title": "Stream Deck: Freund-Taste",
+  "body": "- **Kurz drücken:** beitreten – oder, wenn die Instanz privat ist, automatisch eine Einladung anfragen (einstellbar: beitreten, anfragen, zu mir einladen, Selbst-Einladung, Profil öffnen).\n- **Gedrückt halten (½ s):** zu mir einladen (ebenfalls einstellbar).\n- **Symbol = Profilbild** des Freundes mit Statusring (grün = im Spiel, blau = Website/App, grau = offline, dann auch Bild in Grau) und Status-Punkt (Join Me / Online / Ask Me / Beschäftigt); Titel wählbar (Name + Welt, nur Name, kein Text)."
+ },
+ {
+  "version": "1.7.8",
+  "title": "",
+  "body": "- **Übersetzung vervollständigt:** Welt-, Avatar-, Instanz- und Gruppen-Fenster, Verlauf, Spielerliste, Hinweise und Leer-Meldungen sind jetzt übersetzt (Wörterbuch fast 2.000 Einträge, alle Texte aus dem Quellcode abgeglichen).\n- **Fix Update:** „Im Release fehlt die passende Datei (Setup)“ – die App bietet ein Update erst an, wenn die Datei für dein Gerät wirklich hochgeladen ist (Android und Windows werden nacheinander gebaut)."
+ },
+ {
+  "version": "1.7.7",
+  "title": "",
+  "body": "- ⚙ **Einstellungen** sind jetzt ein eigener Knopf oben rechts neben der Profilkarte (statt im Mehr-Menü); leuchtet, solange die Einstellungen offen sind."
+ },
+ {
+  "version": "1.7.6",
+  "title": "",
+  "body": "- Spracheingabe robuster: Lehnt das Audiosystem 16 kHz ab, wird mit der Standardrate aufgenommen und für whisper.cpp auf 16 kHz umgerechnet (vorher: Aufnahme startete nicht bzw. verzerrte Audio)."
+ },
+ {
+  "version": "1.7.5",
+  "title": "",
+  "body": "- **Fix Spracheingabe (whisper.cpp):** Neuere whisper.cpp-Pakete enthalten ein veraltetes `main.exe`, das nur eine Warnung ausgibt und mit Fehler endet – VRC Nexus nahm es statt `whisper-cli.exe` („Command failed …“). Jetzt wird immer `whisper-cli.exe` genommen (auch wenn in den Einstellungen noch `main.exe` steht), und Fehlermeldungen nennen die eigentliche Ursache (veraltet, fehlende DLL, zu langsam, …)."
+ },
+ {
+  "version": "1.7.4",
+  "title": "",
+  "body": "- Android-Homescreen-Widget zeigt „im Spiel / online / Stand“ in der gewählten App-Sprache."
+ },
+ {
+  "version": "1.7.3",
+  "title": "",
+  "body": "- Rückmeldungen und Fehlermeldungen (Toasts wie „Gespeichert.“, „Regel gespeichert.“) sind jetzt ebenfalls übersetzt – Wörterbuch über 1.500 Einträge."
+ },
+ {
+  "version": "1.7.2",
+  "title": "",
+  "body": "- Startseite: Widget „Freunde im Spiel“ zeigt in Größe L/XL Profilbilder.\n- Übersetzer ruht bei Deutsch (weniger Arbeit bei jedem Neuzeichnen)."
+ },
+ {
+  "version": "1.7.1",
+  "title": "",
+  "body": "- 🌗 Theme **Automatisch**: hell/dunkel wie Windows bzw. Android, wechselt live mit.\n- Daten und Zahlen im Format der gewählten Sprache; SteamVR-Overlay ist mit übersetzt und folgt dem Hauptfenster.\n- Wörterbuch erweitert (über 1.400 Einträge), mehrzeilige und mehrsätzige Texte werden erkannt; Test prüft das Wörterbuch.\n- Barrierefreiheit: deutlich sichtbarer Tastatur-Fokus, ARIA-Angaben am Sprach-/Theme-Menü, weniger Bewegung bei „Bewegung reduzieren“."
+ },
+ {
+  "version": "1.7.0",
+  "title": "Sprachen, Themes, Bilder",
+  "body": "- **🌐 Sprachen:** Deutsch, English, Français, 日本語 – umschalten über die **Flagge unten rechts** (oder Einstellungen → Oberfläche). Übersetzt die ganze Oberfläche, auch alles, was später nachgeladen wird; Namen, Chats und Bios bleiben unverändert. Wörterbuch: `renderer/i18n/*.tsv` (eine Zeile pro Text, `#` = Zahl), daraus baut `node scripts/i18n-build.js` die Datei `renderer/js/i18n-dict.js`.\n- **🎨 Themes:** 🌃 Neon (Standard), 🌌 Mitternacht (dunkel, violett), ❄️ Schnee (hell), 🌸 Sakura (hell) – über 🎨 unten rechts oder in den Einstellungen. Eigene Akzentfarbe geht weiterhin.\n- **🖼 Bilder repariert:** Profil-, Avatar- und Weltbilder von VRChat werden jetzt mit deiner Anmeldung über die App geladen (mit Zwischenspeicher) – vorher erschien oft nur der 🦊-Platzhalter. Gleicher Fix im Dashboard.\n- Fehler behoben: Die Seite konnte bei ungewöhnlichen Bildadressen einfrieren (z. B. in der Sammlung)."
+ },
+ {
+  "version": "1.6.0",
+  "title": "Startseite: Widget-Raster wie im Dashboard",
+  "body": "- **Raster mit 4 Spalten** (passt sich an: 3 / 2 / 1 Spalte je nach Breite, auch auf Android) im Mauerwerk-Stil: Widgets rutschen lückenlos nach oben, gleichmäßige Abstände.\n- **✏️ Anpassen:** sichtbares Raster mit Spalten-Hilfslinien, Widgets **per Ziehen** sortieren (oder ◀ ▶), **Größe S / M / L** und bei passenden Widgets **XL (ganze Breite)**; Widgets einklappen (▾); Hinzufügen als Kacheln mit Beschreibung und möglichen Größen.\n- Größere Widgets zeigen mehr (z. B. mehr Freunde, Stunden-Diagramm bei „Letzte 7 Tage“ ab L).\n- **8 neue Widgets:** 🚀 Schnellstart (VRChat starten, neu beitreten, Selbst-Einladung), 📈 Letzte 7 Tage (Spielzeit je Tag/Uhrzeit), 📅 Gruppen-Events, 🎂 Jahrestage, 🗂 Sammlung, 📺 Stream-Bot (Status, Chat, Punkte-Bestenliste, Umfrage), 📜 OSC-Live, 🤖 Automatik-Regeln an/aus.\n- Alte Anordnungen werden übernommen (breit → M)."
+ },
+ {
+  "version": "1.5.0",
+  "title": "Stream-Bot: Befehls-Baukasten & viele neue Funktionen",
+  "body": "- **🧱 Befehls-Baukasten:** jeder Befehl kann eine **VRChat-Aktion** ausführen (Avatar-Parameter an/aus oder auf einen Wert, Chatbox, Kamera, Eingaben, Vorlesen, Webhook) – mit Werten aus dem Chat (`!farbe 3` → `param Color = {1}`), Rechten (alle / Abonnenten & Mitglieder / VIPs / Mods / nur ich), Kosten in Punkten, Pause gesamt und pro Person, Aliasen, Hilfetext, an/aus, Nutzungszähler, Vorlagen und „Ausprobieren“.\n- **⭐ Ereignisse:** Abo, Abo-Verlängerung, Geschenk-Abos, Raid, Bits (Twitch), Super Chat & neue Mitglieder (YouTube), „Erster im Chat“ – jeweils mit Chat-Antwort und VRChat-Aktion, Mindestmenge, Test-Knopf.\n- **⏰ Timer-Nachrichten** (nur wenn der Chat aktiv ist).\n- **🎲 Spiele:** `!gamble`, `!münze`, `!slots`, `!duell`/`!annehmen` – Einsätze und Pausen einstellbar.\n- **📊 Umfragen** (`!umfrage`, `!stimme`, auch im OBS-Chat-Overlay), **🎁 Verlosungen** (Stichwort, Kosten, Gewinner ziehen), **📝 Zitate**, **🔢 Zähler** (z. B. `!tode`, Mods zählen hoch).\n- `!zuschauzeit`, `!uptime`, `!so` (Shoutout), `!addpunkte alle`, `!tts` (Vorlesen am PC gegen Punkte)."
+ },
+ {
+  "version": "1.4.2",
+  "title": "",
+  "body": "- Fehler behoben: Das OBS-Chat-Overlay (`/chat`) konnte leer bleiben, wenn OBS einen Origin-Kopf mitschickt.\n- Neue automatische Tests für Stream-Bot (Twitch-Zeilen, Punkte, Mod-Rechte, Belohnungen), Cloud-Sicherung (Verschlüsselung, falsches Passwort, Manipulation) und OBS-Zugriff."
+ },
+ {
+  "version": "1.4.1",
+  "title": "",
+  "body": "- **☁ Cloud-Sicherung ins eigene Dashboard** (Einstellungen → Dashboard): App-Daten werden gepackt und mit **AES-256 verschlüsselt** (Schlüssel aus deinem Sicherungs-Passwort) und in Stücken hochgeladen – der Server sieht nur unlesbare Daten. Automatisch täglich möglich, die letzten N Sicherungen bleiben. „Wiederherstellen“ prüft die Sicherung und spielt sie beim nächsten Start ein (die alte Datei bleibt als Reserve)."
+ },
+ {
+  "version": "1.4.0",
+  "title": "Stream-Bot für Twitch & YouTube",
+  "body": "- **📺 Stream-Bot** (Menü → Stream-Bot): verbindet Twitch-Chat (lesen + schreiben, OAuth-Token) und YouTube-Livechat (lesen, API-Schlüssel) – Schlüssel verschlüsselt gespeichert.\n- **🏆 Punkte** pro Nachricht (mit Abklingzeit) und fürs Zuschauen; `!punkte`, `!top`, `!geben`, Mods: `!addpunkte`, `!setpunkte`; Rangliste mit +/−/setzen.\n- **⌨️ Befehle:** `!welt`, `!spieler`, `!avatar`, `!song`, `!befehle`, `!belohnungen` + eigene Befehle mit Platzhaltern, Abklingzeit, „nur Mods“.\n- **🎁 Belohnungen:** Zuschauer lösen mit Punkten **VRChat-Aktionen** aus – Avatar-Parameter, Chatbox, Kamera, Eingaben, Webhooks (Makro-Schritte), mit Vorlagen.\n- Begrüßung neuer Zuschauer, Stream-Chat optional in die VRChat-Chatbox, **OBS-Chat-Overlay** (`/chat`).\n- **OBS-Overlay repariert:** läuft jetzt auch ohne Stream-Deck-Schnittstelle und mit dem OBS-Browser; fertige Adressen mit Kopier-Knopf unter Einstellungen → Integrationen."
+ },
+ {
+  "version": "1.3.9",
+  "title": "",
+  "body": "- **🎤 Mikrofon-Auswahl für die Spracheingabe** (Spiel & OSC → Sprache): alle Mikrofone zur Auswahl (z. B. das vom VR-Headset), Verstärkung, Empfindlichkeit und „🔊 Mikro testen“ mit Pegelbalken. Ist das gewählte Mikro gerade nicht da, wird es am Namen wiedergefunden – sonst das Windows-Standardmikrofon."
+ },
+ {
+  "version": "1.3.8",
+  "title": "",
+  "body": "- **SteamVR-Overlay blockiert VRChat nicht mehr:** Das Fenster am Handgelenk/im Raum ist nur noch bedienbar, wenn du es **direkt anschaust** – sonst wird es halb durchsichtig und der Laser geht an VRChat (abschaltbar: Einstellungen → VR).\n- **Controller-Toggle:** linke obere Taste (Index: B, Quest/Rift: Y, Vive/WMR: Menü) **doppelt drücken** blendet das Overlay ein/aus. Umbelegen in SteamVR → Einstellungen → Controller → Controller-Belegung verwalten → „VRC Nexus“.\n- Das Fenster startet jetzt standardmäßig ausgeblendet."
+ },
+ {
+  "version": "1.3.7",
+  "title": "",
+  "body": "- **Fehler behoben: SteamVR-Overlay ließ sich nicht mit dem Controller bedienen.** Die Laser-Position kam als 0…1 statt in Pixeln an – jeder Klick landete in der Ecke. Zusätzlich zeigt der Overlay-Status jetzt die letzte Laser-Eingabe (Startseite → Widget „SteamVR-Overlay“), damit man sieht, ob Klicks ankommen."
+ },
+ {
+  "version": "1.3.6",
+  "title": "",
+  "body": "- **📈 Instanz-Verlauf** (Diagramme → Rückblick): Spielerzahl einer Instanz über die Zeit als Diagramm, Höchststand, Schnitt, verschiedene Leute, wer wann kam und ging – für jeden Weltbesuch der letzten 30 Tage.\n- **🌍 Meine Welten:** Besuche, Favoriten, Spieler gerade, Heat/Beliebtheit deiner hochgeladenen Welten – mit „seit gestern“, „7 Tage“ und Verlaufslinie (täglich mitgeschrieben, sobald du die Seite öffnest)."
+ },
+ {
+  "version": "1.3.5",
+  "title": "",
+  "body": "- **Update mit Fortschrittsbalken:** Prozent, MB, Geschwindigkeit und Restzeit im Banner oben und unter Einstellungen → System; danach „wird installiert“. Unter Windows zusätzlich am Taskleisten-Symbol.\n- **Android lädt Updates selbst** (mit Balken) und öffnet danach direkt die Installation. Beim ersten Mal fragt Android, ob VRC Nexus „unbekannte Apps installieren“ darf. Klappt das nicht, öffnet sich wie bisher der Browser-Download."
+ },
+ {
+  "version": "1.3.4",
+  "title": "",
+  "body": "- **📜 OSC-Log** (Spiel & OSC → OSC-Log): schreibt **alles** mit, was über OSC von VRChat kommt und an VRChat geht – jede Änderung mit Zeit, Avatar, altem → neuem Wert.\n  Kategorien zum An-/Abwählen: Avatarwechsel, Schalter, Zahlen, Regler, Gesten & Stimme, Bewegung & Haltung, Status (AFK, Stumm …), Kamera, Chatbox, Eingaben, Tracking, Sonstiges.\n  Live-Ansicht, Zeitraum (Heute / 7 / 30 Tage / alles), Richtung, Avatar, Suche, „Am häufigsten“, CSV-Export. Gespeichert als Tagesdateien im Datenordner (`osc-log`), Aufbewahrung und Drosselung für Dauer-Werte unter Einstellungen → VR → OSC-Log.\n- Android-APK mit festem Signierschlüssel: Updates lassen sich über die installierte App installieren (einmalig alte Version deinstallieren)."
+ },
+ {
+  "version": "1.3.2",
+  "title": "",
+  "body": "- **📸 Foto-Verlauf** (Diagramme → Rückblick → Foto-Verlauf): deine Screenshots nach Weltbesuch sortiert, mit wem du dort warst, Vorschaubilder, Klick öffnet das Foto.\n- **Beobachtete Freunde:** zusätzlich Meldung, wenn sie „Join Me“ setzen oder in eine öffentliche Instanz gehen (Einstellungen → Benachrichtigungen)."
+ },
+ {
+  "version": "1.3.1",
+  "title": "",
+  "body": "- **🛡 Mod-Zentrale** (Sozial → Mod-Zentrale, für Gruppen mit Kick-Rechten): Beitrittsanfragen-Assistent mit Vertrauensstufe, Kontoalter, 18+, Freund?, schon getroffen?, Warnliste und Vorschlag (annehmen/ablehnen/ansehen); Warnliste mit Notizen; geplante Gruppen-Beiträge; Export von Gruppen-Protokoll + Warnliste als CSV.\n- **📚 Sammlungen** (Favoriten → Sammlungen): Welten und Avatare ohne VRChat-Begrenzung, mit Tags, Notiz, Suche und 🎲 Zufall aus einem Tag; Knopf „📚 Sammlung“ in jedem Welt-/Avatar-Fenster; Warnung bei „Very Poor“ auf Quest/Android.\n- Datumsanzeige im Rückblick korrigiert."
+ },
+ {
+  "version": "1.2.2",
+  "title": "Auto-Update",
+  "body": "- Sucht beim Start und alle 6 Stunden auf GitHub-Releases nach einer neuen Version (Einstellungen → System → Updates; Tray: „Nach Updates suchen“)\n- Windows-Installer-Version: lädt das Update, installiert still und startet neu · portable EXE: ersetzt sich selbst und startet neu\n- Wahlweise nur Bescheid geben (Banner oben) oder automatisch installieren (nur wenn VRChat gerade nicht läuft)\n- Android: Banner „Update verfügbar“ öffnet den Download der neuen APK (installieren muss man selbst bestätigen)"
+ }
+]

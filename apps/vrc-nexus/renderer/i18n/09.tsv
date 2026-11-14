@@ -368,3 +368,16 @@ Kein Text	No text	Pas de texte	テキストがありません
 Stimme löschen	Delete voice	Supprimer la voix	音声を削除
 Download gestartet	Download started	Téléchargement lancé	ダウンロードを開始しました
 Die Sprachausgabe gibt es nur in der Windows-App	Speech output is only available in the Windows app	La synthèse vocale n'existe que dans l'appli Windows	音声出力はWindowsアプリのみ
+Über VRC Nexus	About VRC Nexus	À propos de VRC Nexus	VRC Nexusについて
+Was ist neu	What's new	Nouveautés	新機能
+Über die App	About the app	À propos de l'appli	アプリについて
+Danke an	Thanks to	Merci à	謝辞
+installiert	installed	installé	インストール済み
+Du hast die neueste Version	You have the latest version	Tu as la dernière version	最新バージョンです
+jetzt aktualisieren	update now	mettre à jour maintenant	今すぐアップデート
+Ältere Versionen anzeigen (#	Show older versions (#	Afficher les versions plus anciennes (#	古いバージョンを表示 (#
+Alle Releases auf GitHub ↗	All releases on GitHub ↗	Toutes les versions sur GitHub ↗	GitHubのすべてのリリース ↗
+VRC Nexus ist ein Begleit-Programm für VRChat: Freunde & Orte, Spiel-Log, OSC-Steuerung, Chatbox, Spracheingabe & -ausgabe, Stream-Bot, Stream-Deck und mehr – Teil des GHOST-NODE-Dashboards	VRC Nexus is a companion app for VRChat: friends & locations, game log, OSC control, chatbox, voice input & output, stream bot, Stream Deck and more – part of the GHOST NODE dashboard	VRC Nexus est une appli compagnon pour VRChat : amis & lieux, journal de jeu, contrôle OSC, chatbox, saisie & synthèse vocale, bot de stream, Stream Deck et plus – partie du tableau de bord GHOST NODE	VRC NexusはVRChatのコンパニオンアプリです: フレンド & 場所、ゲームログ、OSC操作、チャットボックス、音声入力 & 出力、配信ボット、Stream Deckなど – GHOST NODEダッシュボードの一部
+Nicht offiziell mit VRChat Inc. verbunden. Die App nutzt die inoffizielle VRChat-API sparsam und speichert dein Passwort nie – nur das Sitzungs-Cookie, verschlüsselt	Not officially affiliated with VRChat Inc. The app uses the unofficial VRChat API sparingly and never stores your password – only the session cookie, encrypted	Non affilié officiellement à VRChat Inc. L'appli utilise l'API VRChat non officielle avec modération et n'enregistre jamais ton mot de passe – seulement le cookie de session, chiffré	VRChat Inc.とは公式に関係ありません。非公式のVRChat APIを控えめに使い、パスワードは保存しません – 暗号化したセッションCookieのみ
+Datenordner	Data folder	Dossier de données	データフォルダー
+Version	Version	Version	バージョン

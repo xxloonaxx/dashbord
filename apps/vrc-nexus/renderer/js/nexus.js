@@ -171,6 +171,7 @@
         if (name !== 'client' && window.NexusClient) window.NexusClient.close();
         if (window.NexusApp) window.NexusApp.open(name, sub);
         if (name === 'recap' && window.NexusRecap) window.NexusRecap.open();
+        if (name === 'about' && window.NexusAbout) window.NexusAbout.open();
         if (name === 'mod' && window.NexusMod) window.NexusMod.open();
         if (name === 'stream' && window.NexusStream) window.NexusStream.open();
         if (name === 'coll' && window.NexusColl) window.NexusColl.open();

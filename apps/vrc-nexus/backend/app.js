@@ -158,6 +158,7 @@ class NexusApp {
             if (act.startsWith('ins_')) return await this.insights.action(act, input);
             if (act.startsWith('mod_')) return await this.mod.action(act, input);
             if (act.startsWith('coll_')) return await this.coll.action(act, input);
+            if (act === 'about') return this.about(input);
             if (act.startsWith('tts_')) { if (!this.tts) throw new UserError('Die Sprachausgabe gibt es nur in der Windows-App.'); return await this.tts.action(act, input); }
             if (act.startsWith('cm_')) { if (!this.chatmods) throw new UserError('Chatbox-Module gibt es nur in der Windows-App.'); return await this.chatmods.action(act, input); }
             if (act.startsWith('backup_')) return await this.backup.action(act, input);
@@ -876,6 +877,18 @@ class NexusApp {
             }
         }
         throw new UserError('Unbekannte Aktion.');
+    }
+    /** Seite „Über VRC Nexus“: Version, System, Changelog (aus backend/changelog.json, gebaut aus der README) */
+    about(input = {}) {
+        let log = [];
+        try { log = require('./changelog.json'); } catch (e) { log = []; }
+        const n = Math.max(1, Math.min(50, int(input.n) || 2));
+        const up = (() => { try { return this.updater.status(); } catch (e) { return null; } })();
+        const pv = typeof process !== 'undefined' && process.versions ? process.versions : {};
+        return { version: VERSION, platform: this.mobile ? 'Android' : process.platform === 'win32' ? 'Windows' : process.platform,
+            runtime: { electron: pv.electron || '', chrome: pv.chrome || '', node: pv.node || '' }, data: this.tools && this.tools.userData ? this.tools.userData : '',
+            update: up ? { available: !!up.available, version: up.version || '', checked: up.checked || 0, page: up.page || '' } : null,
+            changelog: log.slice(0, n), total: log.length, repo: 'https://github.com/xxloonaxx/dashbord/releases' };
     }
 }
 

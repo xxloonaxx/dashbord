@@ -728,6 +728,21 @@ test('1.9: Sprachausgabe (Windows, Piper, Google, Azure, ElevenLabs, OpenAI) + n
     for (const k of ['NEXUS_GTTS_BASE', 'NEXUS_AZURE_BASE', 'NEXUS_EL_BASE', 'NEXUS_OPENAI_BASE', 'NEXUS_FAKE_SAPI', 'NEXUS_PIPER_BIN']) delete process.env[k];
 });
 
+test('1.9.1: Über-Seite – Changelog aktuell (aus der README gebaut) und letzte 2 Versionen', async () => {
+    const { build } = require('../scripts/changelog-build');
+    const fresh = build(), saved = require('../backend/changelog.json');
+    assert.deepStrictEqual(saved, fresh, 'backend/changelog.json ist veraltet – node scripts/changelog-build.js ausführen');
+    const { VERSION } = require('../backend/vrchat');
+    assert.strictEqual(fresh[0].version, VERSION, 'README hat keinen Abschnitt „### Neu in ' + VERSION + '“');
+    const { NexusApp } = require('../backend/app');
+    const db = await openDatabase(null);
+    const app = new NexusApp({ db, crypt: { encrypt: s => s, decrypt: s => s }, host: { userData: os.tmpdir() } });
+    app.game.osc.stopListen();
+    const r = await app.post({ act: 'about' }, {});
+    assert.strictEqual(r.changelog.length, 2); assert.strictEqual(r.version, VERSION); assert.ok(r.changelog[0].body.length > 20);
+    app.tools.stop();
+});
+
 test('1.7: Wörterbuch (EN/FR/JA) vollständig und Platzhalter stimmen', () => {
     const fs = require('fs'), path = require('path'), vm = require('vm');
     const file = path.join(__dirname, '..', 'renderer', 'js', 'i18n-dict.js');

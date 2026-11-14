@@ -20,6 +20,10 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.9.1 – ℹ️ Über-Seite mit Changelog
+- Neu unter **Mehr → ℹ️ Über VRC Nexus**: installierte Version, System, Update-Status (mit „Nach Updates suchen“), **Changelog der letzten 2 Versionen** (ältere auf Knopfdruck, alle Releases auf GitHub), Datenordner und Danksagungen.
+- Der Changelog kommt aus dieser README (`node scripts/changelog-build.js` → `backend/changelog.json`); ein Test prüft, dass er zur Version passt.
+
 ### Neu in 1.9.0 – 🔊 Sprachausgabe (TTS) – in VRChat sprechen
 Unter **Spiel & OSC → 🔊 Sprachausgabe**. Die Stimme wird auf einem wählbaren **Ausgabegerät** abgespielt – mit einem virtuellen Audiokabel (z. B. VB-Audio Virtual Cable: hier „CABLE Input“, in VRChat „CABLE Output“ als Mikrofon) hört VRChat sie wie dein Mikrofon. Optional **mithören**.
 - **Anbieter:** 🪟 Windows-Stimmen (offline), 🐦 **Piper** (offline, neuronal, Programm + Stimmen per Knopf: Thorsten, Kerstin, Eva, Amy, Alba, Siwis …, eigene .onnx möglich), 🔵 Google Cloud TTS, 🟦 Microsoft Azure, 🎙 ElevenLabs, ⚪ OpenAI – Schlüssel verschlüsselt; Google/OpenAI nutzen auf Wunsch die schon hinterlegten Schlüssel von Übersetzer bzw. Spracheingabe.
