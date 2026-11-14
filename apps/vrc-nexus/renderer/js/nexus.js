@@ -1808,9 +1808,9 @@
         if (!list.length) { box.innerHTML = '<div class="vx-empty">Hier ist noch nichts.</div>'; return; }
         box.innerHTML = '<div class="vx-gal' + (galKind === 'emojis' || galKind === 'stickers' || galKind === 'icons' ? ' sm' : '') + '">' + list.map(f => galKind === 'prints'
             ? '<figure class="vx-gitem"><img src="' + esc(f.img) + '" alt="" loading="lazy" data-zoom="' + esc(f.img) + '"><figcaption><b>' + esc(f.note || 'Print') + '</b><small>' + (f.world_id ? '<a href="#" data-world="' + esc(f.world_id) + '">' + esc(f.world) + '</a> · ' : esc(f.world) + ' · ') + esc(isoDT(f.created)) + '</small></figcaption>'
-                + '<span class="vx-gacts"><button type="button" class="bad" data-gdel="' + esc(f.id) + '" data-print="1" title="Löschen">🗑</button></span></figure>'
+                + '<span class="vx-gacts"><button type="button" data-setbg="' + esc(f.img) + '" title="Als App-Hintergrund">🖼</button><button type="button" class="bad" data-gdel="' + esc(f.id) + '" data-print="1" title="Löschen">🗑</button></span></figure>'
             : '<figure class="vx-gitem"><img src="' + esc(f.img) + '" alt="" loading="lazy" data-zoom="' + esc(f.img) + '">' + (f.anim ? '<figcaption><small>✨ ' + esc(f.anim) + '</small></figcaption>' : '')
-                + '<span class="vx-gacts">' + (galKind === 'icons' ? '<button type="button" data-seticon="' + esc(f.id) + '" data-v="' + f.v + '" title="Als Profil-Icon verwenden">👤</button>' : '')
+                + '<span class="vx-gacts">' + (galKind === 'photos' ? '<button type="button" data-setbg="' + esc(f.img) + '" title="Als App-Hintergrund">🖼</button>' : '') + (galKind === 'icons' ? '<button type="button" data-seticon="' + esc(f.id) + '" data-v="' + f.v + '" title="Als Profil-Icon verwenden">👤</button>' : '')
                 + '<button type="button" data-copy="' + esc(f.id) + '" title="Datei-ID kopieren">⧉</button><button type="button" class="bad" data-gdel="' + esc(f.id) + '" title="Löschen">🗑</button></span></figure>').join('') + '</div>';
     }
     function loadInventory(more) {
@@ -1833,6 +1833,8 @@
     $('#galRefresh').addEventListener('click', () => { invItems = []; loadGallery(true); });
     $('#galBox').addEventListener('click', e => {
         const z = e.target.closest('[data-zoom]'), del = e.target.closest('[data-gdel]'), ic = e.target.closest('[data-seticon]');
+        const sb = e.target.closest('[data-setbg]');
+        if (sb) { if (window.NexusBg) window.NexusBg.set(sb.dataset.setbg); return; }
         if (z) { openModal('<img class="vx-zoom" src="' + esc(z.dataset.zoom) + '" alt="">'); return; }
         if (del && confirm('Wirklich löschen? Das lässt sich nicht rückgängig machen.')) api(del.dataset.print ? 'print_delete' : 'file_delete', { id: del.dataset.gdel }).then(r => { toast(r.msg); loadGallery(true); }).catch(x => toast(x.message, true));
         if (ic) api('set_icon', { id: ic.dataset.seticon, v: ic.dataset.v }).then(r => toast(r.msg)).catch(x => toast(x.message, true));

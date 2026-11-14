@@ -82,6 +82,8 @@ class NexusApp {
         const q = req.query || new URLSearchParams();
         try {
             if (req.method === 'POST') return json(await this.post(req.form || {}, req.files || {}));
+            if (q.has('bgimg')) { const b = this.db.setting('ui_bg_file', ''); const m = /^data:(image\/(png|jpeg|gif|webp));base64,(.+)$/.exec(b);
+                return m ? { status: 200, headers: { 'Content-Type': m[1], 'Cache-Control': 'private, max-age=31536000' }, body: Buffer.from(m[3], 'base64') } : { status: 404, headers: {}, body: '' }; }
             if (q.has('img')) return await this.image(q.get('img'), int(q.get('v')) || 1, int(q.get('s')));
             if (q.has('export')) return download(this.vrc.exportCsv(q.get('export') === 'feed' ? 'feed' : 'friends'), 'text/csv; charset=utf-8', 'vrc-nexus_' + (q.get('export') === 'feed' ? 'verlauf' : 'freunde') + '_' + new Date().toISOString().slice(0, 10) + '.csv');
             if (q.has('client_export')) return download(this.game.exportCsv(), 'text/csv; charset=utf-8', 'vrchat-spiellog_' + new Date().toISOString().slice(0, 10) + '.csv');
@@ -152,6 +154,7 @@ class NexusApp {
                 this.vrc.saveAccount(u, p.cookies);
                 return { ok: true };
             }
+            if (act === 'ui_bg_upload') return this.bgUpload(files);
             if (act === 'cancel_login') { this.vrc.pending = null; return { ok: true }; }
             if (act.startsWith('client_')) return await this.client(act, input);
             if (act.startsWith('cam_')) return await this.cam.action(act, input);
@@ -223,6 +226,19 @@ class NexusApp {
     }
 
     // ---------------- Werkzeuge, Einstellungen, Spielerliste (tools.js) ----------------
+    /** eigenes Hintergrundbild – bleibt nur in der App-Datenbank auf diesem Gerät */
+    bgUpload(files) {
+        const f = files.file;
+        if (!f || !f.buffer || !f.buffer.length) throw new UserError('Keine Datei gewählt.');
+        if (f.buffer.length > 8 * 1048576) throw new UserError('Bild zu groß (max. 8 MB).');
+        const b = f.buffer;
+        const mime = b[0] === 0x89 && b[1] === 0x50 ? 'image/png' : b[0] === 0xff && b[1] === 0xd8 ? 'image/jpeg' : b.subarray(0, 3).toString() === 'GIF' ? 'image/gif'
+            : b.subarray(0, 4).toString() === 'RIFF' && b.subarray(8, 12).toString() === 'WEBP' ? 'image/webp' : '';
+        if (!mime) throw new UserError('Bitte ein Bild (PNG, JPG, GIF oder WebP) wählen.');
+        this.db.setSetting('ui_bg_file', 'data:' + mime + ';base64,' + b.toString('base64'));
+        return Object.assign(this.settings.save({ 'ui.bg_image': 'local:' + Date.now() }), { msg: 'Hintergrundbild gesetzt.' });
+    }
+
     async toolsExport(kind) {
         const t = this.tools, day = new Date().toISOString().slice(0, 10);
         if (kind === 'discord') return download(t.csv('discord', t.discordNames()), 'text/csv; charset=utf-8', 'vrchat-discord-namen_' + day + '.csv');

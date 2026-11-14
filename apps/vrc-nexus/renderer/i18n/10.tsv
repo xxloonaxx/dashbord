@@ -239,3 +239,27 @@ Gerade hat keine deiner Gruppen eine offene Instanz.	None of your groups has an 
 Menü ein-/ausklappen	Collapse/expand menu	Réduire/agrandir le menu	メニューの折りたたみ
 Leiste ein-/ausklappen	Collapse/expand sidebar	Réduire/agrandir la barre	バーの折りたたみ
 Breite ziehen	Drag to resize	Glisser pour redimensionner	ドラッグで幅を変更
+Hintergrundbild	Background image	Image de fond	背景画像
+Bild	Image	Image	画像
+Aus deiner VRChat-Galerie, als Datei vom PC oder als https-Adresse.	From your VRChat gallery, as a file from your PC or as an https address.	Depuis ta galerie VRChat, un fichier du PC ou une adresse https.	VRChatギャラリー、PCのファイル、またはhttpsアドレスから。
+Deckkraft (%)	Opacity (%)	Opacité (%)	不透明度 (%)
+0 = unsichtbar, 100 = voll sichtbar	0 = invisible, 100 = fully visible	0 = invisible, 100 = entièrement visible	0 = 非表示、100 = 完全に表示
+Weichzeichnen (px)	Blur (px)	Flou (px)	ぼかし (px)
+Anpassen	Fit	Ajustement	フィット
+Ausfüllen	Fill	Remplir	塗りつぶし
+Ganz zeigen	Show whole	Afficher en entier	全体を表示
+Kacheln	Tile	Mosaïque	タイル
+Mittig (Originalgröße)	Centered (original size)	Centré (taille d'origine)	中央（元のサイズ）
+🖼 Aus Galerie	🖼 From gallery	🖼 Depuis la galerie	🖼 ギャラリーから
+📁 Datei …	📁 File …	📁 Fichier …	📁 ファイル …
+🔗 Adresse	🔗 Address	🔗 Adresse	🔗 アドレス
+✕ Entfernen	✕ Remove	✕ Retirer	✕ 削除
+🖼 Hintergrund aus der Galerie	🖼 Background from gallery	🖼 Fond depuis la galerie	🖼 ギャラリーから背景
+Als Hintergrund verwenden	Use as background	Utiliser comme fond	背景として使用
+Als App-Hintergrund	As app background	Comme fond de l'app	アプリの背景にする
+Als Hintergrund gesetzt.	Set as background.	Défini comme fond.	背景に設定しました。
+Hintergrundbild gesetzt.	Background image set.	Image de fond définie.	背景画像を設定しました。
+Bildadresse (https://…):	Image address (https://…):	Adresse de l'image (https://…) :	画像アドレス (https://…):
+Bild zu groß (max. 8 MB).	Image too large (max. 8 MB).	Image trop grande (max. 8 Mo).	画像が大きすぎます（最大8 MB）。
+Bildadresse ungültig (nur https, Galerie oder eigene Datei).	Invalid image address (https, gallery or own file only).	Adresse d'image invalide (https, galerie ou fichier uniquement).	画像アドレスが無効です（https、ギャラリー、またはファイルのみ）。
+In deiner Galerie sind keine Fotos. Lade eins unter Galerie hoch oder wähle eine Datei vom PC.	There are no photos in your gallery. Upload one under Gallery or pick a file from your PC.	Aucune photo dans ta galerie. Ajoute-en une sous Galerie ou choisis un fichier du PC.	ギャラリーに写真がありません。ギャラリーでアップロードするか、PCのファイルを選んでください。

@@ -20,6 +20,14 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 2.6.0 – Hintergrundbild
+
+- **Einstellungen → Oberfläche → Hintergrundbild**: eigenes Bild hinter der ganzen App.
+- Bild wählen **aus der VRChat-Galerie** (Fotos & Prints), **als Datei vom PC** (PNG/JPG/GIF/WebP, max. 8 MB – bleibt nur lokal in der App-Datenbank) oder per **https-Adresse**.
+- Regler für **Deckkraft** (0–100 %) und **Weichzeichnen**, dazu „Anpassen“: Ausfüllen, ganz zeigen, kacheln oder mittig.
+- In der Galerie hat jedes Foto/Print einen 🖼-Knopf „Als App-Hintergrund“.
+- Funktioniert in der Windows- und der Android-App.
+
 ### Neu in 2.5.2 – Info-Push: echte Tag-Abfrage
 
 - VRChat verlangt `require` und `include` als JSON-Liste – die kommagetrennte Variante (Fehler 400) ist raus.

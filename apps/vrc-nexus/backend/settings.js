@@ -39,6 +39,10 @@ const FIELDS = [
     ['ui.font', 'ui', 'Aussehen', 'select', 'default', 'Schrift', '', [['default', 'Standard'], ['system', 'Windows-Systemschrift'], ['mono', 'Monospace']]],
     ['ui.animations', 'ui', 'Aussehen', 'bool', true, 'Animationen', ''],
     ['ui.background', 'ui', 'Aussehen', 'bool', true, 'Hintergrund-Raster & Leuchten', ''],
+    ['ui.bg_image', 'ui', 'Hintergrundbild', 'bgimg', '', 'Bild', 'Aus deiner VRChat-Galerie, als Datei vom PC oder als https-Adresse.'],
+    ['ui.bg_opacity', 'ui', 'Hintergrundbild', 'range', 35, 'Deckkraft (%)', '0 = unsichtbar, 100 = voll sichtbar', [0, 100]],
+    ['ui.bg_blur', 'ui', 'Hintergrundbild', 'range', 0, 'Weichzeichnen (px)', '', [0, 30]],
+    ['ui.bg_fit', 'ui', 'Hintergrundbild', 'select', 'cover', 'Anpassen', '', [['cover', 'Ausfüllen'], ['contain', 'Ganz zeigen'], ['tile', 'Kacheln'], ['center', 'Mittig (Originalgröße)']]],
     ['ui.show_images', 'ui', 'Aussehen', 'bool', true, 'Bilder (Avatare, Welten) anzeigen', 'Aus spart Datenvolumen.'],
     ['ui.compact', 'ui', 'Aussehen', 'bool', false, 'Kompakte Freundesliste', ''],
     ['ui.nav', 'ui', 'Menü', 'select', 'side', 'Hauptmenü', 'Links: Menü als Seitenleiste, oben stehen die Unterpunkte der aktuellen Seite.', [['side', 'links (Seitenleiste)'], ['top', 'oben']]],
@@ -178,6 +182,7 @@ class Settings {
             let v;
             switch (f[3]) {
                 case 'bool': v = raw === true || raw === 1 || ['1', 'true', 'on', 'yes'].includes(str(raw)); break;
+                case 'range':
                 case 'number': { v = int(raw); const [lo, hi] = f[7] || [-1e9, 1e9]; if (str(raw).trim() === '' || isNaN(Number(raw))) v = f[4]; v = Math.max(lo, Math.min(hi, v)); break; }
                 case 'select': v = (f[7] || []).some(o => o[0] === str(raw)) ? str(raw) : f[4]; break;
                 case 'color': v = /^#[0-9a-f]{6}$/i.test(str(raw)) ? str(raw).toLowerCase() : f[4]; break;
@@ -185,6 +190,7 @@ class Settings {
                 case 'textarea': v = cut(str(raw).replace(/\r/g, '').trim(), 4000); break;
                 default: v = cut(str(raw).trim(), 400);
             }
+            if (k === 'ui.bg_image' && v && !/^(https:\/\/\S+|nexus\.php\?img=file_[0-9a-f-]{36}&v=\d+|local:\d+)$/i.test(v)) throw new UserError('Bildadresse ungültig (nur https, Galerie oder eigene Datei).');
             if (k === 'adv.api_base' && v && !/^https?:\/\/[\w.-]+(:\d+)?(\/[\w./-]*)?$/.test(v)) throw new UserError('API-Adresse ungültig.');
             if (k === 'int.webhook' && v && !/^https:\/\/(discord(app)?\.com|ptb\.discord\.com|canary\.discord\.com)\/api\/webhooks\/\d+\/[\w-]+$/.test(v)) throw new UserError('Das ist keine Discord-Webhook-URL.');
             if (k === 'int.rpc_client' && v && !/^\d{15,22}$/.test(v)) throw new UserError('Die Discord Client-ID besteht nur aus Ziffern.');

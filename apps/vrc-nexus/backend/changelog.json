@@ -1,5 +1,10 @@
 [
  {
+  "version": "2.6.0",
+  "title": "Hintergrundbild",
+  "body": "- **Einstellungen → Oberfläche → Hintergrundbild**: eigenes Bild hinter der ganzen App.\n- Bild wählen **aus der VRChat-Galerie** (Fotos & Prints), **als Datei vom PC** (PNG/JPG/GIF/WebP, max. 8 MB – bleibt nur lokal in der App-Datenbank) oder per **https-Adresse**.\n- Regler für **Deckkraft** (0–100 %) und **Weichzeichnen**, dazu „Anpassen“: Ausfüllen, ganz zeigen, kacheln oder mittig.\n- In der Galerie hat jedes Foto/Print einen 🖼-Knopf „Als App-Hintergrund“.\n- Funktioniert in der Windows- und der Android-App."
+ },
+ {
   "version": "2.5.2",
   "title": "Info-Push: echte Tag-Abfrage",
   "body": "- VRChat verlangt `require` und `include` als JSON-Liste – die kommagetrennte Variante (Fehler 400) ist raus.\n- Abgefragt werden jetzt vier Tag-Gruppen (u. a. `user-all`, `high-priority`, Plattform-Tags, Quick-Menü/Launchpad/Hilfe); Ergebnisse werden zusammengeführt.\n- Einträge ohne erkennbaren Tag landen nach Inhalt in der richtigen Kategorie (Artikel → Hilfe, Bild → Banner).\n- Bleibt die Liste leer, zeigt die Diagnosezeile pro Gruppe, was VRChat geantwortet hat."

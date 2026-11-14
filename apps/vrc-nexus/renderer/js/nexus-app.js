@@ -59,6 +59,23 @@
             r.setProperty('--border-color', 'rgba(' + rgb + ', 0.3)'); r.setProperty('--accent-glow', 'rgba(' + rgb + ', 0.3)');
         } else ['--accent-cyan', '--accent-rgb', '--border-color', '--accent-glow'].forEach(k => r.removeProperty(k));
         document.body.style.zoom = (Math.max(70, Math.min(150, +s['ui.zoom'] || 100)) / 100).toString();
+        applyBg(s);
+    }
+    /** Hintergrundbild hinter allem (Deckkraft, Weichzeichnen, Anpassen) */
+    function bgUrl(v) { v = String(v || ''); return /^local:(\d+)$/.test(v) ? 'nexus.php?bgimg=' + v.slice(6) : /^(https:\/\/\S+|nexus\.php\?img=file_[0-9a-f-]{36}&v=\d+)$/i.test(v) ? v : ''; }
+    function applyBg(s) {
+        let el = document.getElementById('vxBgImg');
+        const u = bgUrl(s['ui.bg_image']);
+        document.body.classList.toggle('has-bgimg', !!u);
+        if (!u) { if (el) el.remove(); return; }
+        if (!el) { el = document.createElement('div'); el.id = 'vxBgImg'; el.setAttribute('aria-hidden', 'true'); document.body.prepend(el); }
+        const fit = s['ui.bg_fit'] || 'cover', blur = Math.max(0, Math.min(30, +s['ui.bg_blur'] || 0));
+        el.style.backgroundImage = 'url("' + u.replace(/["\\]/g, '') + '")';
+        el.style.backgroundSize = fit === 'tile' || fit === 'center' ? 'auto' : fit;
+        el.style.backgroundRepeat = fit === 'tile' ? 'repeat' : 'no-repeat';
+        el.style.opacity = String(Math.max(0, Math.min(100, s['ui.bg_opacity'] === undefined ? 35 : +s['ui.bg_opacity'])) / 100);
+        el.style.filter = blur ? 'blur(' + blur + 'px)' : '';
+        el.style.inset = blur ? (-blur * 2) + 'px' : '0';
     }
     applyUi(window.VRCX.ui || {});
     if (MOBILE) {
@@ -571,6 +588,10 @@
             case 'select': return '<select data-k="' + k + '">' + f.opts.map(o => '<option value="' + esc(o[0]) + '"' + (String(v) === String(o[0]) ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('') + '</select>';
             case 'number': return '<input type="number" data-k="' + k + '" value="' + esc(v) + '"' + (f.opts ? ' min="' + f.opts[0] + '" max="' + f.opts[1] + '"' : '') + '>';
             case 'color': return '<input type="color" data-k="' + k + '" value="' + esc(v) + '">';
+            case 'range': return '<span class="set-range"><input type="range" data-k="' + k + '" value="' + esc(v) + '" min="' + f.opts[0] + '" max="' + f.opts[1] + '"><output>' + esc(v) + '</output></span>';
+            case 'bgimg': { const u = bgUrl(v); return '<div class="set-bg">' + (u ? '<span class="set-bgprev" style="background-image:url(&quot;' + esc(u) + '&quot;)"></span>' : '<span class="set-bgprev none">–</span>')
+                + '<div class="set-bgbtns"><button type="button" class="btn btn-sm" data-act="bg:gal">🖼 Aus Galerie</button><label class="btn btn-sm">📁 Datei …<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" id="bgFile" hidden></label>'
+                + '<button type="button" class="btn btn-sm" data-act="bg:url">🔗 Adresse</button>' + (u ? '<button type="button" class="btn btn-sm btn-danger" data-act="bg:off">✕ Entfernen</button>' : '') + '</div></div>'; }
             case 'time': return '<input type="time" data-k="' + k + '" value="' + esc(v) + '">';
             case 'textarea': return '<textarea data-k="' + k + '" rows="5" style="width:100%">' + esc(v) + '</textarea>';
             case 'secret': return '<div class="nx-row" style="margin:0"><input type="text" readonly value="' + esc(v) + '" style="flex:1"><button type="button" class="btn btn-sm" data-act="token">♻ Neu</button></div>';
@@ -666,12 +687,62 @@
         if (!a) return;
         const act = a.dataset.act;
         if (act.startsWith('f:')) return run('tools_folder', { which: act.slice(2) }).catch(() => {});
+        if (act === 'bg:off') return saveSet({ 'ui.bg_image': '' });
+        if (act === 'bg:url') { const u = prompt('Bildadresse (https://…):', /^https:/.test(setData.settings['ui.bg_image'] || '') ? setData.settings['ui.bg_image'] : ''); if (u !== null) saveSet({ 'ui.bg_image': u.trim() }); return; }
+        if (act === 'bg:gal') return bgPicker();
         if (act === 'cleanup') { if (!confirm('Alte Einträge gemäß den eingestellten Zeiträumen jetzt löschen?')) return; a.disabled = true; return api('tools_cleanup').then(d => { toast(d.msg); dbRender(d); }).catch(x => toast(x.message, true)).finally(() => { a.disabled = false; }); }
         if (act === 'reset' && !confirm('Alle Einstellungen auf Standard zurücksetzen?')) return;
         if (act === 'token' && !confirm('Neuen Zugangsschlüssel erzeugen?')) return;
         run({ backup: 'tools_backup', test: 'tools_test_notify', cache: 'tools_cache_clear', vacuum: 'tools_vacuum', reset: 'tools_settings_reset', token: 'tools_token' }[act], {}, () => { if (['reset', 'token'].includes(act)) loadSettings(); }).catch(() => {});
     });
+    function saveSet(data, quiet) {
+        return api('tools_settings_save', { data: JSON.stringify(data) }).then(r => {
+            setData.settings = r.settings;
+            window.VRCX.ui = Object.assign(window.VRCX.ui || {}, r.settings);
+            applyUi(r.settings);
+            if (!quiet) { toast('Gespeichert.'); renderSettings(); }
+        }).catch(x => toast(x.message, true));
+    }
+    /** Bild aus der VRChat-Galerie (Fotos, Prints) als Hintergrund wählen */
+    function bgPicker() {
+        const box = document.createElement('div');
+        box.className = 'nx-bgpick';
+        box.innerHTML = '<div class="nx-bgpick-in"><div class="nx-row" style="justify-content:space-between;margin:0 0 10px"><b>🖼 Hintergrund aus der Galerie</b><button type="button" class="nc-x" data-bgx>✕</button></div><div class="nx-bgpick-list"><div class="vx-loading">Lade Galerie …</div></div></div>';
+        document.body.appendChild(box);
+        const close = () => box.remove();
+        box.addEventListener('click', e => {
+            if (e.target === box || e.target.closest('[data-bgx]')) return close();
+            const p = e.target.closest('[data-bgpick]');
+            if (p) { close(); saveSet({ 'ui.bg_image': p.dataset.bgpick }); }
+        });
+        api('gallery').then(d => {
+            const g = d.gallery || {}, list = [];
+            for (const f of Array.isArray(g.photos) ? g.photos : []) list.push({ img: f.img, t: 'Foto' });
+            for (const f of Array.isArray(g.prints) ? g.prints : []) if (/^nexus\.php\?img=file_[0-9a-f-]{36}&v=\d+$|^https:\/\//i.test(f.img || '')) list.push({ img: f.img, t: f.note || 'Print' });
+            const el = box.querySelector('.nx-bgpick-list');
+            el.innerHTML = list.length ? '<div class="vx-gal">' + list.map(f => '<figure class="vx-gitem" data-bgpick="' + esc(f.img) + '" title="Als Hintergrund verwenden"><img src="' + esc(f.img) + '" alt="" loading="lazy"><figcaption><small>' + esc(f.t) + '</small></figcaption></figure>').join('') + '</div>'
+                : '<div class="vx-empty">In deiner Galerie sind keine Fotos. Lade eins unter Galerie hoch oder wähle eine Datei vom PC.</div>';
+        }).catch(x => { box.querySelector('.nx-bgpick-list').innerHTML = '<div class="vx-error">⚠ ' + esc(x.message) + '</div>'; });
+    }
+    window.NexusBg = { pick: bgPicker, set: v => saveSet({ 'ui.bg_image': v }, true).then(() => toast('Als Hintergrund gesetzt.')) };
+    // Regler live anzeigen (gespeichert wird beim Loslassen)
+    $('#setBox').addEventListener('input', e => {
+        const el = e.target.closest('input[type=range][data-k]');
+        if (!el) return;
+        const o = el.parentNode.querySelector('output'); if (o) o.textContent = el.value;
+        if (el.dataset.k.startsWith('ui.bg_')) applyBg(Object.assign({}, setData.settings, { [el.dataset.k]: +el.value }));
+    });
     $('#setBox').addEventListener('change', e => {
+        if (e.target.id === 'bgFile') {
+            const f = e.target.files[0];
+            if (!f) return;
+            const body = new FormData(); body.append('act', 'ui_bg_upload'); body.append('file', f);
+            fetch('nexus.php', { method: 'POST', credentials: 'same-origin', body }).then(r => r.json()).then(d => {
+                if (d.error) throw new Error(d.error);
+                setData.settings = d.settings; window.VRCX.ui = Object.assign(window.VRCX.ui || {}, d.settings); applyUi(d.settings); toast(d.msg); renderSettings();
+            }).catch(x => toast(x.message, true));
+            return;
+        }
         if (e.target.id === 'setImport') {
             const f = e.target.files[0];
             if (f) f.text().then(t => run('tools_settings_save', { data: t }, r => { setData.settings = r.settings; applyUi(r.settings); renderSettings(); })).catch(() => toast('Datei ungültig.', true));
