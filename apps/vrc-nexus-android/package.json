@@ -1,6 +1,6 @@
 {
   "name": "vrc-nexus-android",
-  "version": "1.7.5",
+  "version": "1.7.6",
   "private": true,
   "description": "VRC Nexus für Android (ohne PC-Funktionen wie Spiel-Log, OSC, Stream Deck)",
   "scripts": {

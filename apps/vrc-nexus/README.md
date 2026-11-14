@@ -20,6 +20,9 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.7.6
+- Spracheingabe robuster: Lehnt das Audiosystem 16 kHz ab, wird mit der Standardrate aufgenommen und für whisper.cpp auf 16 kHz umgerechnet (vorher: Aufnahme startete nicht bzw. verzerrte Audio).
+
 ### Neu in 1.7.5
 - **Fix Spracheingabe (whisper.cpp):** Neuere whisper.cpp-Pakete enthalten ein veraltetes `main.exe`, das nur eine Warnung ausgibt und mit Fehler endet – VRC Nexus nahm es statt `whisper-cli.exe` („Command failed …“). Jetzt wird immer `whisper-cli.exe` genommen (auch wenn in den Einstellungen noch `main.exe` steht), und Fehlermeldungen nennen die eigentliche Ursache (veraltet, fehlende DLL, zu langsam, …).
 

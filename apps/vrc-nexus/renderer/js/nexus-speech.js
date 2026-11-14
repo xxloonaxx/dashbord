@@ -18,7 +18,9 @@
         let stream;
         try { stream = await openMic(c); }
         catch (e) { toast('⚠ Kein Mikrofon: ' + e.message, true); return; }
-        const ctx = new AudioContext({ sampleRate: 16000 });
+        // whisper.cpp braucht 16 kHz – manche Geräte/Treiber lehnen das ab → Standardrate nehmen und beim Speichern umrechnen
+        let ctx;
+        try { ctx = new AudioContext({ sampleRate: 16000 }); } catch (e) { ctx = new AudioContext(); }
         const src = ctx.createMediaStreamSource(stream);
         const gain = ctx.createGain();
         gain.gain.value = (Number(c.gain) || 100) / 100;
@@ -52,7 +54,7 @@
         api('speech_state', { recording: '', cancel: r.voiced ? '' : '1' }).catch(() => {});
         render();
         if (!r.voiced) { toast('🎙 Nichts gehört.'); return; }
-        const wav = encodeWav(r.chunks, 16000);
+        const wav = encodeWav(resample(r.chunks, r.ctx.sampleRate || 16000, 16000), 16000);
         const b64 = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1]); fr.readAsDataURL(new Blob([wav], { type: 'audio/wav' })); });
         toast('⏳ Erkenne Sprache …');
         api('speech_transcribe', { audio: b64 }).then(d => { toast(d.msg); refresh(); }).catch(e => { toast('⚠ ' + e.message, true); refresh(); });
@@ -115,6 +117,19 @@
         return { mic: sel ? sel.value : '', mic_label: sel && sel.selectedOptions[0] ? sel.selectedOptions[0].dataset.label || '' : '', gain: f.gain ? f.gain.value : 100, threshold: f.threshold ? f.threshold.value : 2 };
     }
 
+    /** auf 16 kHz umrechnen (lineare Interpolation) – nur nötig, wenn das Audiosystem eine andere Rate liefert */
+    function resample(chunks, from, to) {
+        if (!from || from === to) return chunks;
+        const n = chunks.reduce((a, c) => a + c.length, 0);
+        const all = new Float32Array(n);
+        let o = 0;
+        for (const c of chunks) { all.set(c, o); o += c.length; }
+        const out = new Float32Array(Math.floor(n * to / from));
+        const k = from / to;
+        for (let i = 0; i < out.length; i++) { const x = i * k, j = Math.floor(x), f = x - j; out[i] = all[j] * (1 - f) + (all[Math.min(j + 1, n - 1)] || 0) * f; }
+        return [out];
+    }
+    window.NexusSpeechResample = resample;     // für Tests
     function encodeWav(chunks, rate) {
         const n = chunks.reduce((a, c) => a + c.length, 0);
         const buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
