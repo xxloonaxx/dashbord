@@ -876,6 +876,33 @@ test('1.10.7: Datenbank aufräumen – Vorgabe löscht nichts, Zeiträume greife
     app.tools.stop();
 });
 
+test('2.0.0: Updater findet 1.10.x, obwohl GitHub die Releases als Text sortiert (Seitenweise)', async () => {
+    const http = require('http');
+    const { Updater, newer } = require('../backend/updater');
+    assert.ok(newer('1.10.0', '1.9.2') && newer('1.10.10', '1.10.9') && !newer('1.9.9', '1.10.0'));
+    // wie GitHub: Textsortierung absteigend → 1.9.x, 1.8.x … zuerst, 1.10.x hinten
+    const vers = []; for (let mi = 4; mi <= 9; mi++) for (let pa = 0; pa <= 4; pa++) vers.push('1.' + mi + '.' + pa); for (let pa = 0; pa <= 8; pa++) vers.push('1.10.' + pa);
+    const all = vers.sort().reverse().map(v => ({ tag_name: 'vrc-nexus-v' + v, draft: false, prerelease: false, body: v, html_url: 'https://github.com/x/' + v,
+        assets: [{ name: 'VRC-Nexus-' + v + '-Setup.exe', size: 1, browser_download_url: 'https://github.com/x/' + v + '/s.exe', state: 'uploaded' }, { name: 'VRC-Nexus-' + v + '-android.apk', size: 1, browser_download_url: 'https://github.com/x/' + v + '/a.apk', state: 'uploaded' }] }));
+    assert.ok(all.findIndex(r => r.tag_name.endsWith('1.10.8')) >= 20, 'Testaufbau: 1.10.x liegt hinter den ersten 20');
+    const pages = [];
+    const srv = http.createServer((req, res) => {
+        const u = new URL(req.url, 'http://x'), per = Math.min(100, +u.searchParams.get('per_page') || 30), pg = +u.searchParams.get('page') || 1;
+        pages.push(per + '/' + pg);
+        res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(all.slice((pg - 1) * per, pg * per)));
+    });
+    await new Promise(r => srv.listen(0, '127.0.0.1', r));
+    process.env.NEXUS_UPDATE_API = 'http://127.0.0.1:' + srv.address().port;
+    try {
+        const db = await openDatabase(null);
+        const fake = { mobile: false, settings: { get: () => true }, db, tools: { host: {} } };
+        const st = await new Updater(fake).check();
+        assert.strictEqual(st.version, '1.10.8', 'höchste Version gefunden (nicht 1.9.4)');
+        const mob = await new Updater(Object.assign({}, fake, { mobile: true })).check();
+        assert.strictEqual(mob.version, '1.10.8', 'auch auf Android');
+    } finally { delete process.env.NEXUS_UPDATE_API; srv.close(); }
+});
+
 test('1.7: Wörterbuch (EN/FR/JA) vollständig und Platzhalter stimmen', () => {
     const fs = require('fs'), path = require('path'), vm = require('vm');
     const file = path.join(__dirname, '..', 'renderer', 'js', 'i18n-dict.js');

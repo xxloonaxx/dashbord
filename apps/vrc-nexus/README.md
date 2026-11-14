@@ -20,6 +20,11 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 2.0.0 – Fix: Updater fand keine 1.10-Versionen
+- **Fix Auto-Update:** GitHub liefert die Release-Liste nach Text sortiert (1.9.2 vor 1.10.0) – der Updater las nur die ersten 20 Einträge und sah 1.10.x deshalb nie. Jetzt werden alle Seiten geladen und die höchste Versionsnummer gesucht.
+- Deshalb der Sprung auf **2.0.0**: „2.0.0“ steht auch in GitHubs Textsortierung ganz oben – so finden auch ältere Versionen mit dem alten Updater dieses Update von selbst.
+- Enthält alles aus 1.10.x (Datenbank aufräumen, Merken im Shop, Spielt gerade über die Windows-Mediensteuerung, Info-Push & Meldungen in den Benachrichtigungen, Shop im Store-Stil …).
+
 ### Neu in 1.10.7 – Datenbank aufräumen
 - *Einstellungen → System → Aufräumen*: wie lange Freunde-Verlauf, Spiel-Log, Diagramm-Messwerte, Benachrichtigungs-Verlauf und Profil-Zwischenspeicher behalten werden (30 Tage … 2 Jahre oder **für immer**).
 - Vorgabe ist **für immer** – es wird nichts gelöscht, solange du keinen Zeitraum wählst. Nur der Profil-Zwischenspeicher (lädt sich bei Bedarf neu) wird nach 30 Tagen geleert. Offene Benachrichtigungen bei VRChat bleiben immer.

@@ -1,5 +1,10 @@
 [
  {
+  "version": "2.0.0",
+  "title": "Fix: Updater fand keine 1.10-Versionen",
+  "body": "- **Fix Auto-Update:** GitHub liefert die Release-Liste nach Text sortiert (1.9.2 vor 1.10.0) – der Updater las nur die ersten 20 Einträge und sah 1.10.x deshalb nie. Jetzt werden alle Seiten geladen und die höchste Versionsnummer gesucht.\n- Deshalb der Sprung auf **2.0.0**: „2.0.0“ steht auch in GitHubs Textsortierung ganz oben – so finden auch ältere Versionen mit dem alten Updater dieses Update von selbst.\n- Enthält alles aus 1.10.x (Datenbank aufräumen, Merken im Shop, Spielt gerade über die Windows-Mediensteuerung, Info-Push & Meldungen in den Benachrichtigungen, Shop im Store-Stil …)."
+ },
+ {
   "version": "1.10.7",
   "title": "Datenbank aufräumen",
   "body": "- *Einstellungen → System → Aufräumen*: wie lange Freunde-Verlauf, Spiel-Log, Diagramm-Messwerte, Benachrichtigungs-Verlauf und Profil-Zwischenspeicher behalten werden (30 Tage … 2 Jahre oder **für immer**).\n- Vorgabe ist **für immer** – es wird nichts gelöscht, solange du keinen Zeitraum wählst. Nur der Profil-Zwischenspeicher (lädt sich bei Bedarf neu) wird nach 30 Tagen geleert. Offene Benachrichtigungen bei VRChat bleiben immer.\n- Neuer Bereich **🗄 Datenbank**: Dateigröße, Einträge und ältester Eintrag je Bereich, **🧹 Jetzt aufräumen** (danach wird die Datei verkleinert). Sonst läuft das Aufräumen automatisch einmal am Tag."

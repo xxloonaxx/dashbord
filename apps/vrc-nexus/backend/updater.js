@@ -24,14 +24,22 @@ class Updater {
 
     /** Neueste Version auf GitHub suchen → { available, current, version, notes, published, page, assets } */
     async check() {
-        let res;
-        try {
-            res = await fetch(this.api() + '/repos/' + REPO + '/releases?per_page=20', { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'VRC-Nexus-Updater/' + VERSION }, signal: AbortSignal.timeout(15000) });
-        } catch (e) { throw new UserError('GitHub nicht erreichbar (' + (e.cause && e.cause.code || e.message) + ').'); }
-        if (res.status === 404) throw new UserError('Keine Releases gefunden (ist das Repository privat?).');
-        if (res.status === 403 || res.status === 429) throw new UserError('GitHub hat die Anfrage gerade begrenzt – später noch einmal versuchen.');
-        if (!res.ok) throw new UserError('GitHub antwortet mit HTTP ' + res.status + '.');
-        const list = (await res.json()) || [];
+        // GitHub sortiert die Release-Liste NICHT nach Datum oder Versionsnummer (1.9.2 kam vor 1.10.0 – Textsortierung),
+        // daher alle Seiten holen (max. 5 × 100) und selbst die höchste Version suchen.
+        const list = [];
+        for (let page = 1; page <= 5; page++) {
+            let res;
+            try {
+                res = await fetch(this.api() + '/repos/' + REPO + '/releases?per_page=100&page=' + page, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'VRC-Nexus-Updater/' + VERSION }, signal: AbortSignal.timeout(15000) });
+            } catch (e) { throw new UserError('GitHub nicht erreichbar (' + (e.cause && e.cause.code || e.message) + ').'); }
+            if (res.status === 404) throw new UserError('Keine Releases gefunden (ist das Repository privat?).');
+            if (res.status === 403 || res.status === 429) throw new UserError('GitHub hat die Anfrage gerade begrenzt – später noch einmal versuchen.');
+            if (!res.ok) throw new UserError('GitHub antwortet mit HTTP ' + res.status + '.');
+            const got = (await res.json()) || [];
+            if (!Array.isArray(got)) break;
+            list.push(...got);
+            if (got.length < 100) break;
+        }
         // Nur Releases, die die Datei für DIESES Gerät schon haben: Android- und Windows-Build laden ihre Dateien
         // nacheinander hoch – sonst meldet die App ein Update, bevor das Setup da ist („Im Release fehlt die passende Datei“).
         const need = this.app.mobile ? /\.apk$/i : process.env.PORTABLE_EXECUTABLE_FILE ? /-portable\.exe$/i : /-Setup\.exe$/i;
