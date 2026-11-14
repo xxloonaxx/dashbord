@@ -33,6 +33,8 @@
         b.classList.toggle('no-img', s['ui.show_images'] === false);
         b.classList.toggle('sticky-menu', s['ui.sticky_menu'] !== false);
         b.classList.toggle('wide', !!s['ui.wide']);
+        b.classList.toggle('nav-side', !MOBILE && s['ui.nav'] !== 'top');
+        if (window.NexusUI && window.NexusUI.subnav) window.NexusUI.subnav();
         b.classList.remove('menu-icons', 'menu-text', 'font-system', 'font-mono');
         if (s['ui.menu_style'] === 'icons') b.classList.add('menu-icons');
         if (s['ui.menu_style'] === 'text') b.classList.add('menu-text');

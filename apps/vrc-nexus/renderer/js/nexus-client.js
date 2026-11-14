@@ -241,6 +241,7 @@
                 </form>
             </div>`;
         $('#ncSub').addEventListener('click', e => { const b = e.target.closest('[data-sub]'); if (b) showSub(b.dataset.sub); });
+        if (window.NexusUI && window.NexusUI.subnav) window.NexusUI.subnav();   // Menü links: Reiter nach oben holen
         // Chatbox
         const chat = $('#ncChat');
         chat.text.addEventListener('input', () => { $('#ncChatN').textContent = chat.text.value.length + ' / 144'; });

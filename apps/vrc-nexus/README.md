@@ -20,6 +20,11 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 2.4.0 – Menü links, Unterpunkte oben
+- **Hauptmenü als Seitenleiste links** (Windows-App): alle Seiten untereinander, Gruppen wie *Favoriten*, *Sozial*, *Diagramme* und *Mehr* klappen als Unterpunkte auf – die aktuelle Gruppe ist automatisch offen.
+- **Oben stehen die Unterpunkte der aktuellen Seite**: bei Gruppen deren Einträge (z. B. Sozial → Freundes-Log, Freundesliste, Gruppen, Moderation, Mod-Zentrale), bei *Spiel & OSC* dessen Reiter (Live & OSC, Parameter, OSC-Log, OSC-Werkzeuge, Chatbox-Module …), bei *Benachrichtigungen* die vier Ansichten.
+- Umschaltbar unter *Einstellungen → Oberfläche → Menü → Hauptmenü* („links“ oder wie bisher „oben“). Bei schmalem Fenster wird die Seitenleiste zur Symbolleiste; die Android-App bleibt wie sie ist.
+
 ### Neu in 2.3.1 – Fix: falsche Grafikkarte im Rechner-Modul
 - `{gpu_name}` zeigte „Virtual Desktop Monitor“ (der virtuelle Bildschirm-Treiber der VR-App *Virtual Desktop*). Jetzt zählen nur echte Grafikkarten am PCI-Bus – virtuelle Adapter (Virtual Desktop, Parsec, Remote-Desktop, Spacedesk, Hyper-V …) werden übersprungen, bei mehreren gewinnt die mit dem meisten Grafikspeicher.
 - Der Windows-Build prüft die GPU-Abfrage jetzt auf einem echten Windows.

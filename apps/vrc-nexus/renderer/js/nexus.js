@@ -176,7 +176,31 @@
         if (name === 'stream' && window.NexusStream) window.NexusStream.open();
         if (name === 'coll' && window.NexusColl) window.NexusColl.open();
         if (window.NexusHome) { if (name === 'home') window.NexusHome.open(); else window.NexusHome.close(); }
+        syncSubNav(name);
     }
+    // ---------- Unterpunkte oben (bei Menü links): Gruppen-Einträge oder die eigenen Reiter der Seite ----------
+    const SUBNAV = { client: '#ncSub', notifs: '#nfView' };   // Seiten mit eigenen Unterreitern
+    const subHomes = new Map();                                // verschobenes Element → ursprünglicher Platz
+    function syncSubNav(name) {
+        const bar = $('#subNav');
+        if (!bar) return;
+        name = name || store.get('tab') || 'home';
+        for (const [el, h] of subHomes) if (el.parentNode === bar) h.parent.insertBefore(el, h.next && h.next.parentNode === h.parent ? h.next : null);
+        subHomes.clear();
+        bar.innerHTML = '';
+        bar.hidden = true;
+        if (!document.body.classList.contains('nav-side')) return;
+        const own = SUBNAV[name] && $(SUBNAV[name]);
+        if (own) { subHomes.set(own, { parent: own.parentNode, next: own.nextSibling }); bar.appendChild(own); bar.hidden = false; return; }
+        const btn = $$('#tabs [data-tab="' + name + '"]').find(b => b.closest('.vx-mgroup'));
+        const g = btn && btn.closest('.vx-mgroup');
+        if (!g) return;
+        const sub = store.get('tabSub') || '';
+        bar.innerHTML = '<span class="vx-subhead">' + g.querySelector('.vx-mtop').innerHTML.replace(/<i>.*?<\/i>/, '') + '</span>'
+            + $$('.vx-mdrop .vx-tabbtn', g).filter(b => !b.hidden).map(b => '<button type="button" class="chip' + (b.dataset.tab === name && (b.dataset.msub || '') === sub ? ' on' : '') + '" data-tab="' + b.dataset.tab + '"' + (b.dataset.msub ? ' data-msub="' + b.dataset.msub + '"' : '') + '>' + b.innerHTML + '</button>').join('');
+        bar.hidden = false;
+    }
+    $('#subNav') && $('#subNav').addEventListener('click', e => { const b = e.target.closest('.chip[data-tab]'); if (b) tab(b.dataset.tab, b.dataset.msub); });
     $('#tabs').addEventListener('click', e => {
         const top = e.target.closest('.vx-mtop');
         if (top) { const g = top.parentNode, was = g.classList.contains('open'); $$('#tabs .vx-mgroup').forEach(x => x.classList.remove('open')); g.classList.toggle('open', !was); return; }
@@ -2156,7 +2180,7 @@
 
     // Start
     load(false).then(() => load(true)).finally(schedule);
-    window.NexusUI = { pic, popMenu, renderUser, feedRow, tab, api, toast, esc, img, ago, hm, dur, clock, num, launch, openUser, openWorld, openAvatar, openInstance, openModal, closeModal, load, readClipboard,
+    window.NexusUI = { subnav: () => syncSubNav(), pic, popMenu, renderUser, feedRow, tab, api, toast, esc, img, ago, hm, dur, clock, num, launch, openUser, openWorld, openAvatar, openInstance, openModal, closeModal, load, readClipboard,
         state: () => state, statusDot, isoDT, renderFriends, store };
     { const st = (window.VRCX.ui || {})['ui.start_tab']; if (st && st !== 'last') tab(st); else tab(store.get('tab', 'home'), store.get('tabSub', '')); }
     setInterval(() => { if (state && !$('[data-pane=friends]').hidden) renderFriends(); }, 60000);
