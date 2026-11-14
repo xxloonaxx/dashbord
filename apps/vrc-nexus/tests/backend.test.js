@@ -533,6 +533,23 @@ test('1.4: Stream-Bot (Twitch-Zeilen, Punkte, Befehle, Belohnungen), Cloud-Siche
     app.tools.api.stop(); sb.stop(); app.tools.stop();
 });
 
+test('1.7: Wörterbuch (EN/FR/JA) vollständig und Platzhalter stimmen', () => {
+    const fs = require('fs'), path = require('path'), vm = require('vm');
+    const file = path.join(__dirname, '..', 'renderer', 'js', 'i18n-dict.js');
+    const box = { window: {} };
+    vm.runInNewContext(fs.readFileSync(file, 'utf8'), box);
+    const d = box.window.NexusDict;
+    assert.ok(d && d.en && d.fr && d.ja, 'Wörterbuch fehlt');
+    const keys = Object.keys(d.en);
+    assert.ok(keys.length > 1000, 'zu wenige Einträge: ' + keys.length);
+    for (const l of ['fr', 'ja']) assert.deepStrictEqual(Object.keys(d[l]).sort(), keys.slice().sort(), l + ': Einträge fehlen');
+    const n = s => (s.match(/#/g) || []).length;
+    for (const k of keys) for (const l of ['en', 'fr', 'ja']) assert.strictEqual(n(d[l][k]), n(k), l + ': Platzhalter in „' + k + '“');
+    // Datei ist aktuell gebaut (tsv neuer als js → vergessen zu bauen)
+    const tsv = fs.readdirSync(path.join(__dirname, '..', 'renderer', 'i18n')).map(f => fs.statSync(path.join(__dirname, '..', 'renderer', 'i18n', f)).mtimeMs);
+    if (!process.env.CI) assert.ok(Math.max(...tsv) <= fs.statSync(file).mtimeMs + 1000, 'i18n-dict.js ist veraltet – node scripts/i18n-build.js ausführen');
+});
+
 (async () => {
     let ok = 0;
     for (const [name, fn] of tests) {

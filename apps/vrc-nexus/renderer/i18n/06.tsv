@@ -1,0 +1,55 @@
+Alles mitschreiben, was über OSC kommt und geht	Log everything that comes and goes via OSC	Journaliser tout ce qui passe par OSC	OSCで送受信されるすべてを記録
+Aufheben	Undo	Annuler	解除
+Avatar	Avatar	Avatar	アバター
+Avatar ausblenden	Hide avatar	Masquer l'avatar	アバターを非表示
+Avatar gewechselt	Avatar changed	Avatar changé	アバター変更
+Avatar-Info	Avatar info	Infos avatar	アバター情報
+Avatar-Parameter	Avatar parameters	Paramètres d'avatar	アバターパラメーター
+Avatar-Parameter von VRChat mitlesen	Read avatar parameters from VRChat	Lire les paramètres d'avatar de VRChat	VRChatのアバターパラメーターを読み取る
+Avatar-Suche	Avatar search	Recherche d'avatars	アバター検索
+Avatar-Zubehör	Avatar accessories	Accessoires d'avatar	アバターアクセサリー
+Avatare	Avatars	Avatars	アバター
+Avatare filtern (Name, Autor	Filter avatars (name, author	Filtrer les avatars (nom, auteur	アバターを絞り込む (名前、作者
+Avatarwechsel	Avatar changes	Changements d'avatar	アバター変更
+Bann aufheben	Unban	Débannir	BAN解除
+Benachrichtigungen auch in die VRChat-Chatbox schreiben	Also write notifications into the VRChat chatbox	Écrire aussi les notifications dans la chatbox VRChat	通知をVRChatのチャットボックスにも書き込む
+Beste Zeit: Samstag & Freitag, meist um # Uhr, # Uhr, # Uhr	Best time: Saturday & Friday, mostly at #:00, #:00, #:00	Meilleur moment : samedi & vendredi, surtout à # h, # h, # h	ベストタイム: 土曜 & 金曜、主に # 時、# 時、# 時
+Bilder (Avatare, Welten) anzeigen	Show images (avatars, worlds)	Afficher les images (avatars, mondes)	画像を表示 (アバター、ワールド)
+Blockierte Gruppen ansehen und freigeben	View and unblock blocked groups	Voir et débloquer les groupes bloqués	ブロックしたグループを表示・解除
+Deine Avatare als CSV	Your avatars as CSV	Tes avatars en CSV	アバター一覧をCSVで
+Eigene Avatare exportieren	Export own avatars	Exporter mes avatars	自分のアバターをエクスポート
+Eingaben	Inputs	Entrées	入力
+Erst oben die Dashboard-Verbindung einrichten (Adresse + Geräte-Token	Set up the dashboard connection above first (address + device token	Configure d'abord la connexion au tableau de bord ci-dessus (adresse + jeton d'appareil	先に上でダッシュボード接続を設定してください (アドレス + デバイストークン
+Favorit (oben in der Liste, eigene Benachrichtigungen	Favourite (top of the list, own notifications	Favori (en haut de la liste, notifications dédiées	お気に入り (リストの上部、専用通知
+Fehlerprotokoll schreiben (nexus.log	Write error log (nexus.log	Écrire un journal d'erreurs (nexus.log	エラーログを書き込む (nexus.log
+Fragt für jeden Freund bei VRChat ab, welche deiner Freunde er auch kennt (langsam, etwa #–# Freunde pro Sekunde; Ergebnisse werden gespeichert). Linien = kennen sich. Ziehen zum Verschieben, Mausrad zum Zoomen, Klick öffnet das Profil	Asks VRChat for each friend which of your friends they also know (slow, about #–# friends per second; results are saved). Lines = know each other. Drag to move, mouse wheel to zoom, click opens the profile	Demande à VRChat, pour chaque ami, lesquels de tes amis il connaît aussi (lent, environ #–# amis par seconde ; résultats enregistrés). Lignes = se connaissent. Glisser pour déplacer, molette pour zoomer, clic pour ouvrir le profil	各フレンドについて、あなたのフレンドの誰を知っているかVRChatに問い合わせます (低速、毎秒約 #–# 人、結果は保存)。線 = 知り合い。ドラッグで移動、ホイールでズーム、クリックでプロフィール
+Freunde werden höchstens alle # Sekunden abgeglichen, offline Freunde alle # Minuten	Friends are synced at most every # seconds, offline friends every # minutes	Les amis sont synchronisés au plus toutes les # secondes, hors ligne toutes les # minutes	フレンドの同期は最短 # 秒ごと、オフラインは # 分ごと
+Freunde werden höchstens alle # Sekunden abgeglichen, offline Freunde alle # Minuten.	Friends are synced at most every # seconds, offline friends every # minutes.	Les amis sont synchronisés au plus toutes les # secondes, hors ligne toutes les # minutes.	フレンドの同期は最短 # 秒ごと、オフラインは # 分ごと。
+Haben die Instanz verlassen	Have left the instance	Ont quitté l'instance	インスタンスから退出した人
+Hier siehst du, wen du in VRChat blockiert, stummgeschaltet oder dessen Avatar du ausgeblendet hast – und kannst es aufheben	Here you see whom you blocked, muted or whose avatar you hid in VRChat – and can undo it	Ici tu vois qui tu as bloqué, mis en sourdine ou dont tu as masqué l'avatar dans VRChat – et tu peux l'annuler	VRChatでブロック・ミュート・アバター非表示にした人を確認し、解除できます
+Keine Avatarwechsel im Log	No avatar changes in the log	Aucun changement d'avatar dans le journal	ログにアバター変更はありません
+Lieblings-Avatare	Favourite avatars	Avatars favoris	お気に入りアバター
+Log-Einträge seit #/#/#	Log entries since #/#/#	Entrées du journal depuis le #/#/#	#/#/# 以降のログ
+Logs mitlesen (Welten, Spieler, Avatare, Videos, Screenshots, Einladungen	Read logs (worlds, players, avatars, videos, screenshots, invites	Lire les logs (mondes, joueurs, avatars, vidéos, captures, invitations	ログを読み取る (ワールド、プレイヤー、アバター、動画、スクショ、招待
+Menü beim Scrollen oben festhalten	Keep the menu at the top while scrolling	Garder le menu en haut au défilement	スクロール時もメニューを上部に固定
+Mitglied seit #/#/#	Member since #/#/#	Membre depuis le #/#/#	#/#/# からメンバー
+Noch keine Nachrichten. Verbinde Twitch/YouTube unter „Verbindung“ – oder schick unten eine Testnachricht	No messages yet. Connect Twitch/YouTube under “Connection” – or send a test message below	Pas encore de messages. Connecte Twitch/YouTube sous « Connexion » – ou envoie un message de test ci-dessous	まだメッセージはありません。「接続」でTwitch/YouTubeを接続するか、下からテストメッセージを送ってください
+Platzhalter: {user} {#} {#} … (Wörter nach dem Befehl) {args} (alles danach) {punkte} {punkte_name} {welt} {spieler} {avatar} {musik} {zeit} {plattform}. Übergaben werden bereinigt (keine Zeilenumbrüche). Kostet der Befehl Punkte und die Aktion schlägt fehl, gibt es die Punkte zurück	Placeholders: {user} {#} {#} … (words after the command) {args} (everything after) {punkte} {punkte_name} {welt} {spieler} {avatar} {musik} {zeit} {plattform}. Inputs are sanitised (no line breaks). If the command costs points and the action fails, the points are refunded	Variables : {user} {#} {#} … (mots après la commande) {args} (tout le reste) {punkte} {punkte_name} {welt} {spieler} {avatar} {musik} {zeit} {plattform}. Les entrées sont nettoyées (pas de retours à la ligne). Si la commande coûte des points et que l'action échoue, ils sont remboursés	プレースホルダー: {user} {#} {#} … (コマンド後の単語) {args} (以降すべて) {punkte} {punkte_name} {welt} {spieler} {avatar} {musik} {zeit} {plattform}。入力は整形されます (改行なし)。ポイントが必要なコマンドでアクションが失敗した場合、ポイントは返却されます
+Region EU	Region EU	Région EU	リージョン EU
+Rekord · #/#, #	Record · #/#, #	Record · #/#, #	記録 · #/#, #
+Tipp-Anzeige beim Schreiben	Typing indicator while writing	Indicateur de saisie pendant l'écriture	入力中表示
+Welt & Mitspieler in neue Screenshots schreiben	Write world & players into new screenshots	Inscrire monde & joueurs dans les nouvelles captures	新しいスクショにワールド & プレイヤーを書き込む
+Werden regelmäßig in den Chat geschrieben – aber nur, wenn seitdem genug geschrieben wurde (kein Spam in leeren Chats	Posted to chat regularly – but only if enough has been written since (no spam in empty chats	Écrits régulièrement dans le chat – seulement si assez de messages depuis (pas de spam dans un chat vide	定期的にチャットへ投稿 – ただし前回以降に十分な書き込みがある場合のみ (空のチャットにスパムしない
+YouTube: Chat lesen, Punkte, Befehle und Belohnungen gehen. Antworten des Bots erscheinen im OBS-Chat-Overlay und hier – in den YouTube-Chat schreiben bräuchte eine Google-Anmeldung (OAuth). Kostenloses Kontingent: alle # s reicht für ~# h Stream	YouTube: reading chat, points, commands and rewards work. Bot replies appear in the OBS chat overlay and here – writing into YouTube chat would need a Google sign-in (OAuth). Free quota: every # s lasts for ~# h of stream	YouTube : lecture du chat, points, commandes et récompenses fonctionnent. Les réponses du bot apparaissent dans l'overlay OBS et ici – écrire dans le chat YouTube nécessiterait une connexion Google (OAuth). Quota gratuit : toutes les # s suffit pour ~# h de stream	YouTube: チャット読み取り、ポイント、コマンド、報酬が使えます。ボットの返信はOBSチャットオーバーレイとここに表示 – YouTubeチャットへの書き込みにはGoogleログイン (OAuth) が必要。無料枠: # 秒ごとで約 # 時間の配信に対応
+Zufälligen Avatar aus der (gefilterten) Liste anziehen	Wear a random avatar from the (filtered) list	Porter un avatar au hasard de la liste (filtrée)	(絞り込んだ) リストからランダムなアバターを着用
+Zuletzt gesammelte Welten & Avatare	Recently collected worlds & avatars	Mondes & avatars récemment collectés	最近集めたワールド & アバター
+Zusammen unterwegs	Out together	Sortis ensemble	一緒に行動
+Zuschauer lösen sie mit !Name im Chat ein – die Punkte werden abgezogen und das Makro läuft in VRChat (Avatar-Parameter, Chatbox, Kamera, Webhook	Viewers redeem them with !Name in chat – the points are deducted and the macro runs in VRChat (avatar parameters, chatbox, camera, webhook	Les spectateurs les échangent avec !Nom dans le chat – les points sont déduits et la macro s'exécute dans VRChat (paramètres d'avatar, chatbox, caméra, webhook	視聴者はチャットで !名前 と打って交換 – ポイントが引かれ、VRChatでマクロが実行されます (アバターパラメーター、チャットボックス、カメラ、Webhook
+aktualisiert gerade eben	updated just now	mis à jour à l'instant	たった今更新
+alle Avatare	all avatars	tous les avatars	すべてのアバター
+automatisch Status in die Chatbox schreiben	automatically write status into the chatbox	écrire automatiquement le statut dans la chatbox	ステータスを自動でチャットボックスに書き込む
+du bist hier	you are here	tu es ici	現在地
+fehler	error	erreur	エラー
+hat den Avatar gewechselt	changed avatar	a changé d'avatar	がアバターを変更
+min (wer in den letzten # min geschrieben hat	min (who wrote in the last # min	min (qui a écrit dans les # dernières min	分 (直近 # 分に書き込んだ人
+aktualisiert vor # min	updated # min ago	mis à jour il y a # min	# 分前に更新

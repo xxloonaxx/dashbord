@@ -20,6 +20,12 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.7.1
+- 🌗 Theme **Automatisch**: hell/dunkel wie Windows bzw. Android, wechselt live mit.
+- Daten und Zahlen im Format der gewählten Sprache; SteamVR-Overlay ist mit übersetzt und folgt dem Hauptfenster.
+- Wörterbuch erweitert (über 1.400 Einträge), mehrzeilige und mehrsätzige Texte werden erkannt; Test prüft das Wörterbuch.
+- Barrierefreiheit: deutlich sichtbarer Tastatur-Fokus, ARIA-Angaben am Sprach-/Theme-Menü, weniger Bewegung bei „Bewegung reduzieren“.
+
 ### Neu in 1.7.0 – Sprachen, Themes, Bilder
 - **🌐 Sprachen:** Deutsch, English, Français, 日本語 – umschalten über die **Flagge unten rechts** (oder Einstellungen → Oberfläche). Übersetzt die ganze Oberfläche, auch alles, was später nachgeladen wird; Namen, Chats und Bios bleiben unverändert. Wörterbuch: `renderer/i18n/*.tsv` (eine Zeile pro Text, `#` = Zahl), daraus baut `node scripts/i18n-build.js` die Datei `renderer/js/i18n-dict.js`.
 - **🎨 Themes:** 🌃 Neon (Standard), 🌌 Mitternacht (dunkel, violett), ❄️ Schnee (hell), 🌸 Sakura (hell) – über 🎨 unten rechts oder in den Einstellungen. Eigene Akzentfarbe geht weiterhin.
