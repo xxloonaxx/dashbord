@@ -15,6 +15,13 @@
     const run = (act, data, after) => api(act, data).then(r => { if (r.msg) toast(r.msg); if (after) after(r); return r; }).catch(x => { toast(x.message, true); throw x; });
 
     // ======================= Aussehen aus den Einstellungen =======================
+    /* Themes: [Name, hell/dunkel, Vorschaufarben] */
+    const THEMES = {
+        neon: ['🌃 Neon', 'dark', ['#040609', '#0a1018', '#38d5e6', '#f3c262']],
+        midnight: ['🌌 Mitternacht', 'dark', ['#08050f', '#140d22', '#b794ff', '#ff8fc7']],
+        snow: ['❄️ Schnee', 'light', ['#edf1f7', '#ffffff', '#0b7fa3', '#b26a00']],
+        sakura: ['🌸 Sakura', 'light', ['#fbf0f3', '#fffcfd', '#c2255c', '#b45309']],
+    };
     function applyUi(s) {
         const b = document.body;
         b.classList.toggle('no-anim', s['ui.animations'] === false);
@@ -27,12 +34,18 @@
         if (s['ui.menu_style'] === 'text') b.classList.add('menu-text');
         if (s['ui.font'] === 'system') b.classList.add('font-system');
         if (s['ui.font'] === 'mono') b.classList.add('font-mono');
+        const theme = THEMES[s['ui.theme']] ? s['ui.theme'] : 'neon';
+        const html = document.documentElement;
+        html.dataset.theme = theme;
+        html.dataset.scheme = THEMES[theme][1];
         const a = /^#[0-9a-f]{6}$/i.test(s['ui.accent'] || '') ? s['ui.accent'] : '#38d5e6';
-        const rgb = [1, 3, 5].map(i => parseInt(a.slice(i, i + 2), 16)).join(', ');
-        const r = document.documentElement.style;
-        r.setProperty('--accent-cyan', a);
-        r.setProperty('--border-color', 'rgba(' + rgb + ', 0.3)');
-        r.setProperty('--accent-glow', 'rgba(' + rgb + ', 0.3)');
+        const r = html.style;
+        // eigene Akzentfarbe nur, wenn vom Standard abweichend – sonst bringt jedes Theme seine eigene mit
+        if (a.toLowerCase() !== '#38d5e6') {
+            const rgb = [1, 3, 5].map(i => parseInt(a.slice(i, i + 2), 16)).join(', ');
+            r.setProperty('--accent-cyan', a); r.setProperty('--accent-rgb', rgb);
+            r.setProperty('--border-color', 'rgba(' + rgb + ', 0.3)'); r.setProperty('--accent-glow', 'rgba(' + rgb + ', 0.3)');
+        } else ['--accent-cyan', '--accent-rgb', '--border-color', '--accent-glow'].forEach(k => r.removeProperty(k));
         document.body.style.zoom = (Math.max(70, Math.min(150, +s['ui.zoom'] || 100)) / 100).toString();
     }
     applyUi(window.VRCX.ui || {});
@@ -936,7 +949,7 @@
     setTimeout(() => api('update_status').then(updBanner).catch(() => {}), 1500);
     setInterval(() => api('update_status').then(updBanner).catch(() => {}), 10 * 60 * 1000);
 
-    window.NexusApp = { open, applyUi, userExtra, groupExtra, menu };
+    window.NexusApp = { THEMES, open, applyUi, userExtra, groupExtra, menu };
     // Seite war vor dem Laden dieses Skripts schon offen?
     const vis = $$('.vx-tab').find(p => !p.hidden);
     if (vis) open(vis.dataset.pane, UI.store.get('tabSub', ''));

@@ -237,7 +237,7 @@
         coll: z => {
             const c = data.coll;
             if (!c || !c.items.length) return empty('Noch nichts gesammelt.') + '<button type="button" class="nc-link" data-h="tab" data-v="coll">Sammlung →</button>';
-            return '<div class="hm-thumbs">' + c.items.slice(0, N(z, 4, 6, 9, 12)).map(x => '<span class="hm-th" title="' + esc(x.name + (x.tags.length ? ' · #' + x.tags.join(' #') : '')) + '">' + (x.thumb ? '<img src="' + esc(x.thumb) + '" alt="" loading="lazy" referrerpolicy="no-referrer">' : '<i>' + (x.kind === 'world' ? '🌐' : '🧍') + '</i>') + '<small>' + esc(x.name) + '</small></span>').join('') + '</div>'
+            return '<div class="hm-thumbs">' + c.items.slice(0, N(z, 4, 6, 9, 12)).map(x => '<span class="hm-th" title="' + esc(x.name + (x.tags.length ? ' · #' + x.tags.join(' #') : '')) + '">' + (UI.pic(x.thumb) ? '<img src="' + esc(UI.pic(x.thumb)) + '" alt="" loading="lazy" referrerpolicy="no-referrer">' : '<i>' + (x.kind === 'world' ? '🌐' : '🧍') + '</i>') + '<small>' + esc(x.name) + '</small></span>').join('') + '</div>'
                 + '<button type="button" class="nc-link" data-h="tab" data-v="coll">Alle ' + c.total + ' →</button>';
         },
         stream: z => {

@@ -27,7 +27,9 @@ const FIELDS = [
     ['sys.backup', 'system', 'Sicherung', 'select', 'weekly', 'Datenbank automatisch sichern', '', [['off', 'nie'], ['daily', 'täglich'], ['weekly', 'wöchentlich']]],
     ['sys.backup_keep', 'system', 'Sicherung', 'number', 5, 'Anzahl Sicherungen behalten', '', [1, 60]],
     // ---------- Oberfläche ----------
-    ['ui.accent', 'ui', 'Aussehen', 'color', '#38d5e6', 'Akzentfarbe', ''],
+    ['ui.lang', 'ui', 'Aussehen', 'select', 'de', 'Sprache / Language', 'Auch über die Flagge unten rechts umschaltbar.', [['de', 'Deutsch'], ['en', 'English'], ['fr', 'Français'], ['ja', '日本語']]],
+    ['ui.theme', 'ui', 'Aussehen', 'select', 'neon', 'Theme', 'Auch über 🎨 unten rechts umschaltbar.', [['neon', '🌃 Neon (dunkel, Standard)'], ['midnight', '🌌 Mitternacht (dunkel)'], ['snow', '❄️ Schnee (hell)'], ['sakura', '🌸 Sakura (hell)']]],
+    ['ui.accent', 'ui', 'Aussehen', 'color', '#38d5e6', 'Akzentfarbe', 'Bei #38d5e6 nimmt jedes Theme seine eigene Farbe.'],
     ['ui.zoom', 'ui', 'Aussehen', 'number', 100, 'Zoom (%)', '70–150 %', [70, 150]],
     ['ui.font', 'ui', 'Aussehen', 'select', 'default', 'Schrift', '', [['default', 'Standard'], ['system', 'Windows-Systemschrift'], ['mono', 'Monospace']]],
     ['ui.animations', 'ui', 'Aussehen', 'bool', true, 'Animationen', ''],

@@ -74,7 +74,7 @@ class NexusApp {
         const q = req.query || new URLSearchParams();
         try {
             if (req.method === 'POST') return json(await this.post(req.form || {}, req.files || {}));
-            if (q.has('img')) return await this.image(q.get('img'), int(q.get('v')) || 1);
+            if (q.has('img')) return await this.image(q.get('img'), int(q.get('v')) || 1, int(q.get('s')));
             if (q.has('export')) return download(this.vrc.exportCsv(q.get('export') === 'feed' ? 'feed' : 'friends'), 'text/csv; charset=utf-8', 'vrc-nexus_' + (q.get('export') === 'feed' ? 'verlauf' : 'freunde') + '_' + new Date().toISOString().slice(0, 10) + '.csv');
             if (q.has('client_export')) return download(this.game.exportCsv(), 'text/csv; charset=utf-8', 'vrchat-spiellog_' + new Date().toISOString().slice(0, 10) + '.csv');
             if (q.has('shot')) { const r = await this.tools.shotImage(q.get('shot'), q.get('t') === '1'); return { status: 200, headers: { 'Content-Type': r.type, 'Cache-Control': 'private, max-age=3600' }, body: r.body }; }
@@ -90,10 +90,23 @@ class NexusApp {
         }
     }
 
-    async image(id, v) {
+    async image(id, v, size) {
         const acc = this.vrc.account();
         if (!acc || !/^file_[0-9a-f-]{36}$/i.test(str(id))) return { status: 404, headers: {}, body: '' };
-        const r = await this.vrc.proxyFile(acc, id, v);
+        size = [64, 128, 256, 512, 1024, 2048].includes(size) ? size : 0;
+        // Zwischenspeicher (max. ~60 MB): Bilder werden sonst bei jedem Neuzeichnen erneut bei VRChat abgefragt
+        const key = id + '/' + v + '/' + size;
+        this.imgCache = this.imgCache || new Map();
+        let r = this.imgCache.get(key);
+        if (r) { this.imgCache.delete(key); this.imgCache.set(key, r); }
+        else {
+            r = await this.vrc.proxyFile(acc, id, v, size);
+            if (r) {
+                this.imgCache.set(key, r);
+                this.imgBytes = (this.imgBytes || 0) + r.body.length;
+                while (this.imgBytes > 60e6 && this.imgCache.size > 1) { const [k, o] = this.imgCache.entries().next().value; this.imgCache.delete(k); this.imgBytes -= o.body.length; }
+            }
+        }
         if (!r) return { status: 404, headers: {}, body: '' };
         return { status: 200, headers: { 'Content-Type': r.type, 'Cache-Control': 'private, max-age=86400', 'X-Content-Type-Options': 'nosniff' }, body: r.body };
     }

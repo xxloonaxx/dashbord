@@ -3,7 +3,29 @@
     const $ = (s, r) => (r || document).querySelector(s);
     const $$ = (s, r) => [...(r || document).querySelectorAll(s)];
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const img = (u, cls, alt) => /^https:\/\//.test(u || '') ? '<img class="' + cls + '" src="' + esc(u) + '" alt="' + esc(alt || '') + '" loading="lazy" referrerpolicy="no-referrer">' : '<span class="' + cls + ' vx-noimg">🦊</span>';
+    /* VRChat-Bilder (api.vrchat.cloud/…/file|image/file_…) brauchen das Anmelde-Cookie → über den Bildweg der App (nexus.php?img=…) laden */
+    const VRC_PIC = /^https:\/\/api\.vrchat\.cloud\/api\/1\/(file|image)\/(file_[0-9a-f-]{36})\/(\d+)(?:\/(\d+|file))?/i;
+    const pic = u => {
+        u = typeof u === 'string' ? u : '';
+        const m = VRC_PIC.exec(u);
+        if (m) return 'nexus.php?img=' + m[2] + '&v=' + m[3] + (/^\d+$/.test(m[4] || '') ? '&s=' + m[4] : '');
+        return /^https:\/\//.test(u) || /^nexus\.php\?img=file_/.test(u) ? u : '';
+    };
+    const img = (u, cls, alt) => (u = pic(u)) ? '<img class="' + cls + '" src="' + esc(u) + '" alt="' + esc(alt || '') + '" loading="lazy" referrerpolicy="no-referrer">' : '<span class="' + cls + ' vx-noimg">🦊</span>';
+    // Sicherheitsnetz für alle übrigen Stellen (Hintergrundbilder, andere Module): VRChat-Adressen im DOM umschreiben
+    const fixPics = root => {
+        if (!root || root.nodeType !== 1) return;
+        const list = root.matches && root.matches('img[src*="api.vrchat.cloud"], [style*="api.vrchat.cloud"]') ? [root] : [];
+        list.push(...root.querySelectorAll('img[src*="api.vrchat.cloud"], [style*="api.vrchat.cloud"]'));
+        for (const el of list) {
+            if (el.tagName === 'IMG') { const n = pic(el.getAttribute('src')); if (n && n !== el.getAttribute('src')) el.setAttribute('src', n); }
+            const st = el.getAttribute('style');
+            if (st && st.includes('api.vrchat.cloud')) el.setAttribute('style', st.replace(/https:\/\/api\.vrchat\.cloud\/api\/1\/(?:file|image)\/file_[0-9a-f-]{36}\/\d+(?:\/(?:\d+|file))?/gi, x => pic(x) || x));
+        }
+    };
+    new MutationObserver(l => { for (const m of l) { if (m.type === 'attributes') fixPics(m.target); else m.addedNodes.forEach(fixPics); } })
+        .observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['src', 'style'] });
+    fixPics(document.body);
     const ST = window.VRCX.status;
     const statusDot = s => '<i class="vx-dot" style="--sc:' + (ST[s] || ST.offline).color + '" title="' + esc((ST[s] || ST.offline).label) + '"></i>';
     const now = () => Date.now() / 1000;
@@ -470,7 +492,7 @@
         const favEntry = (loaded.worldList || []).find(x => x.id === w.id && x.fav_id);
         const friendsHere = state.friends.filter(f => f.state === 'online' && f.loc && f.loc.world === w.id);
         const groups = loaded.groupList || [];
-        let h = (/^https:/.test(w.image) ? '<div class="vx-w-hero" style="background-image:url(\'' + esc(w.image.replace(/['"()\\\s]/g, encodeURIComponent)) + '\')"></div>' : '')
+        let h = (pic(w.image) ? '<div class="vx-w-hero" style="background-image:url(\'' + esc(pic(w.image).replace(/['"()\\\s]/g, encodeURIComponent)) + '\')"></div>' : '')
             + '<div class="vx-w-head"><div><h2>' + esc(w.name) + '</h2><div class="vx-u-sub">von <a href="#" data-user="' + esc(w.author_id) + '">' + esc(w.author) + '</a>' + (w.status && w.status !== 'public' ? ' · ' + esc(w.status) : '') + '</div>'
             + '<div class="vx-u-tags">' + w.platforms.map(p => '<span class="vx-pill">' + esc(p) + '</span>').join('') + w.tags.slice(0, 10).map(t => '<span class="vx-pill" style="--pc:#bd93f9">#' + esc(t) + '</span>').join('') + '</div></div>'
             + '<span class="vx-u-btns"><button type="button" class="btn btn-sm ' + (favEntry ? '' : 'btn-gold') + '" id="wFav">' + (favEntry ? '★ Favorit entfernen' : '☆ Favorisieren') + '</button><a class="btn btn-sm" href="https://vrchat.com/home/world/' + encodeURIComponent(w.id) + '" target="_blank" rel="noopener noreferrer">↗ vrchat.com</a></span></div>';
@@ -1007,7 +1029,7 @@
         const q = gPrefs.q.toLowerCase();
         const sorter = (a, b) => gPrefs.sort === 'members' ? b.members - a.members : gPrefs.sort === 'short' ? String(a.short).localeCompare(String(b.short), 'de') : a.name.localeCompare(b.name, 'de');
         const list = all.filter(g => !q || (g.name + ' ' + g.short).toLowerCase().includes(q));
-        const tile = g => '<button type="button" class="vx-gtile' + (g.mod ? ' mod' : '') + '" data-group="' + esc(g.id) + '">' + (/^https:/.test(g.banner || '') ? '<span class="vx-gtile-ban" style="background-image:url(\'' + esc(g.banner.replace(/['"()\\\s]/g, encodeURIComponent)) + '\')"></span>' : '<span class="vx-gtile-ban none"></span>')
+        const tile = g => '<button type="button" class="vx-gtile' + (g.mod ? ' mod' : '') + '" data-group="' + esc(g.id) + '">' + (pic(g.banner) ? '<span class="vx-gtile-ban" style="background-image:url(\'' + esc(pic(g.banner).replace(/['"()\\\s]/g, encodeURIComponent)) + '\')"></span>' : '<span class="vx-gtile-ban none"></span>')
             + img(g.icon, 'vx-g-icon', '') + '<b>' + esc(g.name) + '</b><small>' + esc(g.short) + ' · 👥 ' + Number(g.members).toLocaleString('de-DE') + '</small>'
             + '<span class="vx-grow-b">' + (g.owner ? '<span class="vx-pill" style="--pc:#f3c262">👑 Besitzer</span>' : g.mod ? '<span class="vx-pill" style="--pc:#50fa7b">🛡️ Mod</span>' : g.staff ? '<span class="vx-pill" style="--pc:#8be9fd" title="Moderationsrechte ohne Kick">🔧 Teilrechte</span>' : '') + (g.rep ? '<span class="vx-pill rep">★</span>' : '') + '</span></button>';
         const row = g => gPrefs.view === 'grid' ? tile(g) : '<button type="button" class="vx-grow' + (g.mod ? ' mod' : '') + '" data-group="' + esc(g.id) + '">' + img(g.icon, 'vx-g-icon', '')
@@ -1053,7 +1075,7 @@
             if (g.member && can(g, 'group-invites-manage')) tabs.push(['requests', '📥 Anfragen'], ['invite', '✉ Einladen']);
             if (g.member && can(g, 'group-bans-manage')) tabs.push(['bans', '🚫 Banns']);
             if (g.member && can(g, 'group-audit-view')) tabs.push(['audit', '📋 Protokoll']);
-            box.innerHTML = '<div class="panel vx-gd">' + (/^https:/.test(g.banner) ? '<div class="vx-gd-banner" style="background-image:url(\'' + esc(g.banner.replace(/['"()\\\s]/g, encodeURIComponent)) + '\')"></div>' : '')
+            box.innerHTML = '<div class="panel vx-gd">' + (pic(g.banner) ? '<div class="vx-gd-banner" style="background-image:url(\'' + esc(pic(g.banner).replace(/['"()\\\s]/g, encodeURIComponent)) + '\')"></div>' : '')
                 + '<div class="vx-gd-head">' + img(g.icon, 'vx-g-icon lg', '') + '<div><h2>' + esc(g.name) + '</h2><small>' + esc(g.short) + ' · ' + g.members + ' Mitglieder' + (g.online ? ' · ' + g.online + ' online' : '') + ' · ' + esc(g.privacy) + ' · Beitritt: ' + esc(g.join_state || '–') + '</small></div>'
                 + '<span class="vx-u-btns">' + (g.member ? '<button type="button" class="btn btn-sm" id="gRep">' + (g.rep ? '★ Repräsentation entfernen' : '☆ Repräsentieren') + '</button>' + (g.owner ? '' : '<button type="button" class="btn btn-sm btn-danger" id="gLeave">Verlassen</button>')
                     : '<button type="button" class="btn btn-sm btn-gold" id="gJoin">＋ Beitreten</button>') + '<button type="button" class="btn btn-sm" id="gCopy" title="Link kopieren">⧉</button>' + (window.VRCX.discord ? '<button type="button" class="btn btn-sm" id="gShare" title="In Discord teilen">📣</button>' : '')
@@ -1121,7 +1143,7 @@
                     + '<div class="vx-tools"><select name="visibility"><option value="group">Nur für Mitglieder</option><option value="public">Öffentlich</option></select><label class="vx-auto"><input type="checkbox" name="notify"> Mitglieder benachrichtigen</label><button class="btn btn-gold">📢 Veröffentlichen</button></div></form>' : '')
                     + (d.items.length ? d.items.map(p => '<article class="vx-post"><header><b>' + esc(p.title) + '</b><small>' + esc(isoDT(p.created)) + ' · ' + esc(p.visibility) + '</small>'
                         + (mayPost ? '<button type="button" class="btn btn-sm btn-danger" data-gact="post_delete" data-post="' + esc(p.id) + '" data-user="" data-name="' + esc(p.title) + '">Löschen</button>' : '') + '</header>'
-                        + (/^https:/.test(p.image) ? img(p.image, 'vx-post-img', '') : '') + '<div class="fmt">' + p.html + '</div></article>').join('') : '<div class="vx-empty">Noch keine Beiträge.</div>');
+                        + (pic(p.image) ? img(p.image, 'vx-post-img', '') : '') + '<div class="fmt">' + p.html + '</div></article>').join('') : '<div class="vx-empty">Noch keine Beiträge.</div>');
                 const f = $('#gPost');
                 if (f) f.addEventListener('submit', e => { e.preventDefault(); api('group_post', { id: g.id, title: f.title.value, text: f.text.value, visibility: f.visibility.value, notify: f.notify.checked ? 1 : '' }).then(r => { toast(r.msg); groupPane('posts'); }).catch(x => toast(x.message, true)); });
             }).catch(fail(pane));
@@ -1828,7 +1850,7 @@
         api('avatar', { id }).then(d => {
             const a = d.avatar;
             remember('avatar', a.id, a.name);
-            $('#userBody').innerHTML = (/^https:/.test(a.image) ? '<div class="vx-w-hero" style="background-image:url(\'' + esc(a.image.replace(/['"()\\\s]/g, encodeURIComponent)) + '\')"></div>' : '')
+            $('#userBody').innerHTML = (pic(a.image) ? '<div class="vx-w-hero" style="background-image:url(\'' + esc(pic(a.image).replace(/['"()\\\s]/g, encodeURIComponent)) + '\')"></div>' : '')
                 + '<div class="vx-w-head"><div><h2>' + esc(a.name) + (a.current ? ' <span class="vx-pill rep">trägst du</span>' : '') + '</h2><div class="vx-u-sub">von <a href="#" data-user="' + esc(a.author_id) + '">' + esc(a.author) + '</a> · ' + esc(a.status) + (a.version ? ' · Version ' + a.version : '') + '</div>'
                 + '<div class="vx-u-tags">' + a.platforms.map(p => '<span class="vx-pill">' + esc(p) + '</span>').join('') + a.performance.map(p => '<span class="vx-pill" style="--pc:#ffb86c">' + esc(p) + '</span>').join('') + a.tags.slice(0, 8).map(t => '<span class="vx-pill" style="--pc:#bd93f9">#' + esc(t) + '</span>').join('') + '</div></div>'
                 + '<span class="vx-u-btns">' + (a.current ? '' : '<button type="button" class="btn btn-sm btn-gold" id="avSel">🎭 Anziehen</button>') + '<button type="button" class="btn btn-sm" id="avFav">☆ Favorisieren</button><button type="button" class="btn btn-sm" id="avUnfav">Favorit entfernen</button>'

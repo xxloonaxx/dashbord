@@ -1,0 +1,97 @@
+/* VRC Nexus – Themes. Alle Farben laufen über diese Variablen; ein Theme setzt nur Werte (html[data-theme=…]). */
+:root {
+    --scheme: dark;
+    --bg-rgb: 4, 6, 9;
+    --panel-rgb: 10, 16, 24;
+    --panel2-rgb: 18, 28, 42;
+    --accent-rgb: 56, 213, 230;
+    --gold-rgb: 243, 194, 98;
+    --ink-rgb: 255, 255, 255;          /* helle Überlagerungen (Hover) auf dunklem Grund */
+    --shade-rgb: 0, 0, 0;              /* Schatten / abgedunkelte Felder */
+    --shade-k: 1;
+    --surface: #0b121b;                /* Menüs, Popups */
+    --line: #3a4456;
+    --text-strong: #ffffff;
+    --grid-line: rgba(56, 213, 230, 0.04);
+}
+
+/* 🌌 Mitternacht – dunkel, violett/pink */
+html[data-theme="midnight"] {
+    --bg-color: #08050f; --bg-rgb: 8, 5, 15;
+    --panel-rgb: 20, 13, 34; --panel2-rgb: 34, 23, 58;
+    --panel-bg: rgba(20, 13, 34, 0.86); --panel-hover: rgba(34, 23, 58, 0.95);
+    --accent-cyan: #b794ff; --accent-rgb: 183, 148, 255;
+    --accent-gold: #ff8fc7; --gold-rgb: 255, 143, 199;
+    --accent-green: #6ee7b7; --accent-purple: #c4b5fd; --accent-red: #ff6b8b;
+    --accent-glow: rgba(183, 148, 255, 0.3); --border-color: rgba(183, 148, 255, 0.28);
+    --text-main: #ece6ff; --text-muted: #8f84ad; --text-strong: #ffffff;
+    --surface: #170f28; --line: #3d3159; --grid-line: rgba(183, 148, 255, 0.05);
+}
+
+/* ❄️ Schnee – hell, kühles Blau */
+html[data-theme="snow"] {
+    --scheme: light;
+    --bg-color: #edf1f7; --bg-rgb: 237, 241, 247;
+    --panel-rgb: 255, 255, 255; --panel2-rgb: 226, 233, 243;
+    --panel-bg: rgba(255, 255, 255, 0.92); --panel-hover: rgba(232, 238, 247, 0.98);
+    --accent-cyan: #0b7fa3; --accent-rgb: 11, 127, 163;
+    --accent-gold: #b26a00; --gold-rgb: 178, 106, 0;
+    --accent-green: #15803d; --accent-purple: #6d28d9; --accent-red: #d32f2f;
+    --accent-glow: rgba(11, 127, 163, 0.18); --border-color: rgba(11, 127, 163, 0.3);
+    --text-main: #1e293b; --text-muted: #5b6b82; --text-strong: #0b1220;
+    --ink-rgb: 15, 23, 42; --shade-rgb: 15, 23, 42; --shade-k: 0.18;
+    --surface: #ffffff; --line: #c5cfdc; --grid-line: rgba(11, 127, 163, 0.05);
+}
+
+/* 🌸 Sakura – hell, warmes Rosa */
+html[data-theme="sakura"] {
+    --scheme: light;
+    --bg-color: #fbf0f3; --bg-rgb: 251, 240, 243;
+    --panel-rgb: 255, 252, 253; --panel2-rgb: 249, 226, 234;
+    --panel-bg: rgba(255, 252, 253, 0.93); --panel-hover: rgba(250, 232, 239, 0.98);
+    --accent-cyan: #c2255c; --accent-rgb: 194, 37, 92;
+    --accent-gold: #b45309; --gold-rgb: 180, 83, 9;
+    --accent-green: #2f855a; --accent-purple: #7e3fb4; --accent-red: #c92a2a;
+    --accent-glow: rgba(194, 37, 92, 0.16); --border-color: rgba(194, 37, 92, 0.28);
+    --text-main: #3a2430; --text-muted: #8c6576; --text-strong: #24101a;
+    --ink-rgb: 58, 20, 38; --shade-rgb: 80, 30, 50; --shade-k: 0.16;
+    --surface: #fffafc; --line: #eac3d2; --grid-line: rgba(194, 37, 92, 0.05);
+}
+
+/* helle Themes: Leuchten/Schrift-Schein abschwächen, Bilder-Platzhalter hell */
+html[data-scheme="light"] body { background-image: radial-gradient(circle at 50% 0%, rgba(var(--accent-rgb), 0.10), transparent 65%), linear-gradient(rgba(var(--bg-rgb), 0.9), rgba(var(--bg-rgb), 1)); }
+html[data-scheme="light"] body::before, html[data-scheme="light"] body::after { opacity: 0.25; }
+html[data-scheme="light"] h1, html[data-scheme="light"] .hud-tag, html[data-scheme="light"] .panel-title { text-shadow: none; }
+html[data-scheme="light"] .vx-card-img, html[data-scheme="light"] .shot img, html[data-scheme="light"] .vx-gitem img { background: #dde3ec; }
+html[data-scheme="light"] .btn-gold, html[data-scheme="light"] .chip.on, html[data-scheme="light"] .hm-sz button.on { color: #fff; }
+html[data-scheme="light"] ::-webkit-scrollbar-thumb { background: rgba(var(--accent-rgb), 0.35); }
+
+html[data-scheme="light"] [style*="#cccccc"] { color: #6b7280 !important; }
+
+/* Theme-Auswahl (Einstellungen + Ecke unten rechts) */
+.th-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.th-card { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 2px solid var(--line); background: rgba(var(--panel-rgb), 0.8); color: var(--text-main); cursor: pointer; font: inherit; text-align: left; }
+.th-card.on { border-color: var(--accent-cyan); }
+.th-card i { display: flex; height: 38px; border-radius: 3px; overflow: hidden; border: 1px solid rgba(var(--shade-rgb), 0.2); }
+.th-card i span { flex: 1; }
+.th-card b { font-size: 0.82rem; } .th-card small { font-size: 0.7rem; color: var(--text-muted); }
+
+/* Ecke unten rechts: Sprache (Flaggen) + Theme */
+.i18n-corner { position: fixed; right: 14px; bottom: 14px; z-index: 6000; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; font-size: 0.85rem; }
+.i18n-btns { display: flex; gap: 6px; }
+.i18n-fab { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border-color); background: rgba(var(--panel-rgb), 0.92); color: var(--text-main); cursor: pointer; display: grid; place-items: center; font-size: 1.1rem; box-shadow: 0 4px 14px rgba(var(--shade-rgb), calc(0.45 * var(--shade-k))); padding: 0; transition: transform 0.15s, border-color 0.15s; }
+.i18n-fab:hover { transform: scale(1.08); border-color: var(--accent-cyan); }
+.i18n-fab i { width: 24px; height: 16px; display: block; border-radius: 2px; overflow: hidden; box-shadow: 0 0 0 1px rgba(var(--shade-rgb), 0.25); }
+.i18n-fab svg, .i18n-menu i svg { width: 100%; height: 100%; display: block; }
+.i18n-menu { min-width: 190px; background: var(--surface); border: 1px solid var(--border-color); box-shadow: 0 12px 30px rgba(var(--shade-rgb), calc(0.6 * var(--shade-k))); padding: 6px; display: flex; flex-direction: column; gap: 2px; }
+.i18n-menu[hidden] { display: none; }
+.i18n-menu > b { font-size: 0.66rem; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); padding: 4px 8px; }
+.i18n-menu button { display: flex; align-items: center; gap: 10px; padding: 7px 10px; background: none; border: 1px solid transparent; color: var(--text-main); font: inherit; cursor: pointer; text-align: left; }
+.i18n-menu button:hover { background: rgba(var(--accent-rgb), 0.1); }
+.i18n-menu button.on { border-color: var(--accent-cyan); color: var(--text-strong); font-weight: 700; }
+.i18n-menu button i { width: 26px; height: 17px; flex: none; border-radius: 2px; overflow: hidden; box-shadow: 0 0 0 1px rgba(var(--shade-rgb), 0.25); display: block; }
+.i18n-menu .th-sw { display: flex; } .i18n-menu .th-sw span { flex: 1; }
+.i18n-menu button small { margin-left: auto; color: var(--text-muted); }
+body.mobile .i18n-corner { bottom: 70px; right: 10px; }
+html[data-lang="ja"] body { font-family: "Segoe UI", "Yu Gothic UI", "Meiryo", "Hiragino Sans", "Noto Sans JP", sans-serif; }
+html[data-lang="ja"] .vx-tabbtn em, html[data-lang="ja"] h1, html[data-lang="ja"] .panel-title { letter-spacing: 0.04em; }

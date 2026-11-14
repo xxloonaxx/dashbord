@@ -654,10 +654,11 @@ class Vrc {
         return json || {};
     }
     /** Bild einer VRChat-Datei (braucht die Anmeldung) → { type, body } oder null */
-    async proxyFile(acc, fileId, version) {
+    async proxyFile(acc, fileId, version, size) {
         const jar = Object.entries(acc.cookie_jar).filter(([, v]) => v).map(([k, v]) => k + '=' + v).join('; ');
         try {
-            const res = await fetch(this.apiBase() + '/file/' + encodeURIComponent(fileId) + '/' + version + '/file', { headers: { Cookie: jar, 'User-Agent': this.userAgent() }, redirect: 'follow', signal: AbortSignal.timeout(30000) });
+            // mit Größe: verkleinertes Vorschaubild (/image/…/256), sonst Originaldatei
+            const res = await fetch(this.apiBase() + (size ? '/image/' + encodeURIComponent(fileId) + '/' + version + '/' + size : '/file/' + encodeURIComponent(fileId) + '/' + version + '/file'), { headers: { Cookie: jar, 'User-Agent': this.userAgent() }, redirect: 'follow', signal: AbortSignal.timeout(30000) });
             const type = res.headers.get('content-type') || '';
             if (res.status !== 200 || !/^image\/(png|jpe?g|gif|webp)/i.test(type)) return null;
             return { type, body: Buffer.from(await res.arrayBuffer()) };
