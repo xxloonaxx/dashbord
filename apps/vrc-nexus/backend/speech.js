@@ -45,6 +45,17 @@ function findFile(dir, re, depth = 0) {
     return '';
 }
 
+/** verständliche Fehlermeldung aus der Ausgabe von whisper.cpp */
+function whisperError(e, text, bin) {
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (lines.some(l => /deprecated/i.test(l))) return 'whisper.cpp: „' + path.basename(bin) + '“ ist veraltet – bitte whisper-cli.exe verwenden (unter Spiel & OSC → Sprache „Programm laden“ drücken).';
+    if (e.code === 'ENOENT') return 'whisper.cpp: Programm nicht gefunden (' + bin + ').';
+    if (e.killed || e.signal === 'SIGTERM') return 'whisper.cpp: hat zu lange gebraucht (über 2 Minuten) – kleineres Modell wählen.';
+    if (e.code === 3221225781 || e.code === -1073741515) return 'whisper.cpp: eine DLL fehlt – Programm neu laden (Spiel & OSC → Sprache → „Programm laden“) oder das Visual-C++-Laufzeitpaket installieren.';
+    const err = lines.filter(l => /error|failed|cannot|unable|invalid|not found/i.test(l)).pop() || lines.pop();
+    return 'whisper.cpp: ' + (err ? err.slice(0, 300) : 'Fehlercode ' + (e.code ?? '?'));
+}
+
 class Speech {
     constructor(app, crypt) {
         this.app = app;
@@ -98,8 +109,11 @@ class Speech {
     binPath() {
         const c = this.cfg();
         if (process.env.NEXUS_WHISPER_BIN) return process.env.NEXUS_WHISPER_BIN;
-        if (c.bin && fs.existsSync(c.bin)) return c.bin;
-        return findFile(path.join(this.dir(), 'bin'), /^(whisper-cli|main)(\.exe)?$/i);
+        // Neuere whisper.cpp-Pakete enthalten noch ein „main.exe“, das nur „veraltet“ meldet und mit Fehler endet → immer whisper-cli bevorzugen
+        const cli = d => { const f = path.join(d, process.platform === 'win32' ? 'whisper-cli.exe' : 'whisper-cli'); return fs.existsSync(f) ? f : ''; };
+        if (c.bin && fs.existsSync(c.bin)) return /^main(\.exe)?$/i.test(path.basename(c.bin)) ? cli(path.dirname(c.bin)) || c.bin : c.bin;
+        const root = path.join(this.dir(), 'bin');
+        return findFile(root, /^whisper-cli(\.exe)?$/i) || findFile(root, /^main(\.exe)?$/i);
     }
     modelPath(m) { return path.join(this.dir(), 'ggml-' + (m || this.cfg().model) + '.bin'); }
     status() {
@@ -196,9 +210,9 @@ class Speech {
         fs.writeFileSync(file, wav);
         const args = ['-m', model, '-f', file, '-l', c.lang, '-nt', '-np', '-t', String(c.threads)];
         if (c.whisper_en) args.push('-tr');
-        return new Promise((resolve, reject) => execFile(bin, args, { windowsHide: true, timeout: 120000, maxBuffer: 4 * 1024 * 1024 }, (e, out, err) => {
+        return new Promise((resolve, reject) => execFile(bin, args, { cwd: path.dirname(bin), windowsHide: true, timeout: 120000, maxBuffer: 4 * 1024 * 1024 }, (e, out, err) => {
             fs.rm(file, { force: true }, () => {});
-            if (e) return reject(new UserError('whisper.cpp: ' + (str(err).trim().split('\n').pop() || e.message)));
+            if (e) return reject(new UserError(whisperError(e, str(err) + '\n' + str(out), bin)));
             resolve(str(out).split(/\r?\n/).map(l => l.replace(/^\[[\d:.\s>-]+\]\s*/, '').trim()).filter(Boolean).join(' '));
         }));
     }

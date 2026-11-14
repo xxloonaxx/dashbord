@@ -425,6 +425,20 @@ test('1.3: Parameter-Erkennung, Makros, Kamera, Automatik, Sprache, Rückblick',
         assert.strictEqual(r.text, 'Hallo Welt');
         assert.ok(sent.includes('/chatbox/input Hallo Welt'), sent.join(' | '));
         delete process.env.NEXUS_WHISPER_BIN;
+        // 1.7.5: Paket mit veraltetem „main“ + „whisper-cli“ → whisper-cli wird genommen; nur „main“ → verständliche Meldung
+        const rel = path.join(app.speech.dir(), 'bin', 'Release');
+        fs.mkdirSync(rel, { recursive: true });
+        fs.writeFileSync(path.join(rel, 'main'), '#!/usr/bin/env node\nconsole.error("WARNING: The binary main is deprecated. Please use whisper-cli instead.");process.exit(1);\n', { mode: 0o755 });
+        fs.writeFileSync(path.join(rel, 'whisper-cli'), '#!/usr/bin/env node\nconsole.log("Hallo aus whisper-cli");\n', { mode: 0o755 });
+        fs.writeFileSync(app.speech.modelPath('tiny'), 'x');
+        app.speech.saveCfg({ enabled: '1', prefix: '', model: 'tiny' });
+        assert.strictEqual(path.basename(app.speech.binPath()), 'whisper-cli');
+        const r2 = await app.post({ act: 'speech_transcribe', audio: wav.toString('base64') }, {});
+        assert.strictEqual(r2.text, 'Hallo aus whisper-cli');
+        fs.rmSync(path.join(rel, 'whisper-cli'));
+        assert.strictEqual(path.basename(app.speech.binPath()), 'main');
+        await assert.rejects(app.post({ act: 'speech_transcribe', audio: wav.toString('base64') }, {}), /veraltet/);
+        fs.rmSync(path.join(app.speech.dir(), 'bin'), { recursive: true, force: true });
     }
     // Rückblick & Startseite
     const now = Math.floor(Date.now() / 1000);
