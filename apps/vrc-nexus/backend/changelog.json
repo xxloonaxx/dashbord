@@ -1,5 +1,10 @@
 [
  {
+  "version": "1.10.7",
+  "title": "Datenbank aufräumen",
+  "body": "- *Einstellungen → System → Aufräumen*: wie lange Freunde-Verlauf, Spiel-Log, Diagramm-Messwerte, Benachrichtigungs-Verlauf und Profil-Zwischenspeicher behalten werden (30 Tage … 2 Jahre oder **für immer**).\n- Vorgabe ist **für immer** – es wird nichts gelöscht, solange du keinen Zeitraum wählst. Nur der Profil-Zwischenspeicher (lädt sich bei Bedarf neu) wird nach 30 Tagen geleert. Offene Benachrichtigungen bei VRChat bleiben immer.\n- Neuer Bereich **🗄 Datenbank**: Dateigröße, Einträge und ältester Eintrag je Bereich, **🧹 Jetzt aufräumen** (danach wird die Datei verkleinert). Sonst läuft das Aufräumen automatisch einmal am Tag."
+ },
+ {
   "version": "1.10.6",
   "title": "Merken im Shop",
   "body": "- **☆ Merken** an jeder Artikelkarte (VRChat-Store und Creator-Shops) – ★ zeigt, was gemerkt ist; nochmal klicken = nicht mehr merken.\n- **☆ Shop merken** im Shop-Popup.\n- Neuer Bereich **★ Gemerkt** oben im Shop: gemerkte Shops als Schnellzugriff (Klick öffnet das Popup, ✕ entfernt), gemerkte Artikel als Karten mit Preis, Restzeit und Kaufen-Link.\n- Gespeichert wird nur lokal in der App (bis zu 200 Artikel und 50 Shops) – nichts geht an VRChat."

@@ -359,6 +359,7 @@ class Tools {
             try { const fr = this.app.vrc.friendList(); this.host.setTray('VRC Nexus · ' + fr.filter(f => f.state === 'online').length + ' im Spiel, ' + fr.filter(f => f.state === 'active').length + ' online'); } catch (e) { /* egal */ }
         }
         this.backupTick();
+        if (now() - (this.lastCleanup || 0) >= 86400) { this.lastCleanup = now(); try { const r = this.cleanup(false); if (r.total) this.debug('cleanup', new Error(r.msg)); } catch (e) { this.debug('cleanup', e); } }
         const a = this.autoCfg();
         const wantNotifs = s['notify.vrc'] || a.invite !== 'off' || s['int.webhook_vrc'];
         if (wantNotifs && this.acc() && now() - this.lastNotifPoll >= 120) { this.lastNotifPoll = now(); await this.pollNotifs(a).catch(e => this.debug('notifs', e)); }
@@ -428,6 +429,38 @@ class Tools {
         const files = fs.readdirSync(dir).filter(x => /^nexus_.*\.sqlite$/.test(x)).sort().reverse();
         files.slice(keep).forEach(x => fs.unlinkSync(path.join(dir, x)));
         return { msg: 'Datenbank gesichert: ' + path.basename(f) };
+    }
+
+    // ======================= Daten & Aufräumen =======================
+    dbInfo() {
+        const n = (sql, ...a) => { try { return int(this.db.prepare(sql).value(...a)); } catch (e) { return 0; } };
+        const first = (sql, ...a) => { try { return int(this.db.prepare(sql).value(...a)); } catch (e) { return 0; } };
+        let size = 0;
+        try { size = this.db.file ? require('fs').statSync(this.db.file).size : 0; } catch (e) { size = 0; }
+        return { size, tables: [
+            { key: 'feed', label: 'Freunde-Verlauf', rows: n('SELECT COUNT(*) FROM feed'), since: first('SELECT MIN(ts) FROM feed'), keep: str(this.settings.get('sys.keep_feed')) },
+            { key: 'gamelog', label: 'Spiel-Log', rows: n('SELECT COUNT(*) FROM game_log'), since: first('SELECT MIN(ts) FROM game_log'), keep: str(this.settings.get('sys.keep_gamelog')) },
+            { key: 'stats', label: 'Diagramm-Messwerte', rows: n('SELECT COUNT(*) FROM stats') + n('SELECT COUNT(*) FROM global_stats'), since: first('SELECT MIN(ts) FROM stats'), keep: str(this.settings.get('sys.keep_stats')) },
+            { key: 'notifs', label: 'Benachrichtigungs-Verlauf', rows: n('SELECT COUNT(*) FROM notif_log'), since: first('SELECT MIN(created) FROM notif_log'), keep: str(this.settings.get('sys.keep_notifs')) },
+            { key: 'cache', label: 'Profil-Zwischenspeicher', rows: n('SELECT COUNT(*) FROM user_cache') + n('SELECT COUNT(*) FROM mutual_cache'), since: first('SELECT MIN(fetched) FROM user_cache'), keep: str(this.settings.get('sys.keep_cache')) },
+        ] };
+    }
+    /** Alte Einträge gemäß Einstellungen löschen („0“ = für immer behalten). vacuum: danach Datei verkleinern */
+    cleanup(vacuum) {
+        const days = k => Math.max(0, int(this.settings.get(k)));
+        const cut = d => now() - d * 86400;
+        const del = (sql, ...a) => { try { return this.db.prepare(sql).run(...a).changes || 0; } catch (e) { return 0; } };
+        const out = {};
+        let d;
+        if ((d = days('sys.keep_feed'))) out.feed = del('DELETE FROM feed WHERE ts < ?', cut(d));
+        if ((d = days('sys.keep_gamelog'))) out.gamelog = del('DELETE FROM game_log WHERE ts < ?', cut(d));
+        if ((d = days('sys.keep_stats'))) out.stats = del('DELETE FROM stats WHERE ts < ?', cut(d)) + del('DELETE FROM global_stats WHERE ts < ?', cut(d));
+        if ((d = days('sys.keep_notifs'))) out.notifs = del('DELETE FROM notif_log WHERE active = 0 AND created < ?', cut(d));
+        if ((d = days('sys.keep_cache'))) out.cache = del('DELETE FROM user_cache WHERE fetched < ?', cut(d)) + del('DELETE FROM mutual_cache WHERE fetched < ?', cut(d));
+        const total = Object.values(out).reduce((a, b) => a + b, 0);
+        if (vacuum && total) { try { this.db.exec('VACUUM'); } catch (e) { /* egal */ } }
+        if (total) this.db.save();
+        return Object.assign(this.dbInfo(), { removed: out, total, msg: total ? total + ' alte Einträge gelöscht.' : 'Nichts zu löschen – alles innerhalb der eingestellten Zeiträume.' });
     }
 
     // ======================= Spielerliste =======================

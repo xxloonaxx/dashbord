@@ -629,12 +629,24 @@
             + (setTab === 'tr' ? '<div id="trPanel"></div>' : '') + (setTab === 'tr' ? [] : secs).map(sec => '<div class="set-sec"><h3>' + esc(sec) + '</h3>' + fields.filter(f => f.section === sec).map(f => '<div class="set-row"><div><b>' + esc(f.label) + '</b>' + (f.hint ? '<div class="nx-hint">' + esc(f.hint) + '</div>' : '') + '</div>' + field(f, d.settings[f.key]) + '</div>').join('') + '</div>').join('')
             + (setTab === 'link' && !MOBILE ? '<div class="set-sec"><h3>☁ Cloud-Sicherung ins Dashboard</h3><div id="bkBox"><div class="vx-loading">…</div></div></div>' : '')
             + (setTab === 'int' && !MOBILE ? obsHtml(d.settings) : '')
-            + (setTab === 'system' ? '<div class="set-sec"><h3>Version &amp; Updates</h3><div id="updBox"><div class="vx-loading">…</div></div></div>' : '')
+            + (setTab === 'system' ? '<div class="set-sec"><h3>Version &amp; Updates</h3><div id="updBox"><div class="vx-loading">…</div></div></div><div class="set-sec"><h3>🗄 Datenbank</h3><div id="dbBox"><div class="vx-loading">…</div></div></div>' : '')
             + (MOBILE ? (['adv', 'link'].includes(setTab) ? extra : '') : extra) + '<p class="vx-small">Änderungen werden sofort gespeichert.</p></div>';
         if (setTab === 'tr' && window.NexusTr) window.NexusTr.panel($('#trPanel'));
         if (setTab === 'link') { linkPanel(); if (!MOBILE) backupPanel(); }
-        if (setTab === 'system') updatePanel();
+        if (setTab === 'system') { updatePanel(); dbPanel(); }
     }
+    // Datenbank: Größe, Einträge je Bereich, ältester Eintrag, Aufbewahrung, jetzt aufräumen
+    function dbRender(d) {
+        const box = $('#dbBox');
+        if (!box) return;
+        const mb = b => (b / 1048576).toLocaleString(nxLoc(), { maximumFractionDigits: 1 }) + ' MB';
+        const keep = k => k === '0' || !k ? 'für immer' : k === '365' ? '1 Jahr' : k === '730' ? '2 Jahre' : k + ' Tage';
+        box.innerHTML = '<p class="vx-small">Dateigröße: <b>' + (d.size ? mb(d.size) : '–') + '</b></p>'
+            + '<table class="nx-list"><thead><tr><th>Bereich</th><th>Einträge</th><th>Ältester</th><th>Behalten</th></tr></thead><tbody>'
+            + d.tables.map(t => '<tr><td>' + esc(t.label) + '</td><td class="mono">' + t.rows.toLocaleString(nxLoc()) + '</td><td>' + (t.since ? esc(new Date(t.since * 1000).toLocaleDateString(nxLoc())) : '–') + '</td><td>' + esc(keep(t.keep)) + '</td></tr>').join('')
+            + '</tbody></table><div class="nx-row" style="margin-top:8px"><button type="button" class="btn btn-sm" data-act="cleanup">🧹 Jetzt aufräumen</button><span class="vx-small">Zeiträume oben unter „Aufräumen“ einstellen – „für immer“ löscht nichts. Läuft sonst automatisch einmal am Tag.</span></div>';
+    }
+    function dbPanel() { api('tools_dbinfo').then(dbRender).catch(e => { const b = $('#dbBox'); if (b) b.innerHTML = '<div class="vx-error">⚠ ' + esc(e.message) + '</div>'; }); }
     $('#setBox').addEventListener('click', e => {
         const t = e.target.closest('[data-st]');
         if (t) { setTab = t.dataset.st; UI.store.set('setTab', setTab); renderSettings(); return; }
@@ -642,6 +654,7 @@
         if (!a) return;
         const act = a.dataset.act;
         if (act.startsWith('f:')) return run('tools_folder', { which: act.slice(2) }).catch(() => {});
+        if (act === 'cleanup') { if (!confirm('Alte Einträge gemäß den eingestellten Zeiträumen jetzt löschen?')) return; a.disabled = true; return api('tools_cleanup').then(d => { toast(d.msg); dbRender(d); }).catch(x => toast(x.message, true)).finally(() => { a.disabled = false; }); }
         if (act === 'reset' && !confirm('Alle Einstellungen auf Standard zurücksetzen?')) return;
         if (act === 'token' && !confirm('Neuen Zugangsschlüssel erzeugen?')) return;
         run({ backup: 'tools_backup', test: 'tools_test_notify', cache: 'tools_cache_clear', vacuum: 'tools_vacuum', reset: 'tools_settings_reset', token: 'tools_token' }[act], {}, () => { if (['reset', 'token'].includes(act)) loadSettings(); }).catch(() => {});

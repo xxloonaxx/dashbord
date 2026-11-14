@@ -26,6 +26,11 @@ const FIELDS = [
     ['upd.mode', 'system', 'Updates', 'select', 'notify', 'Wenn ein Update da ist', 'Automatisch installieren nur, wenn VRChat gerade nicht läuft.', [['notify', 'nur Bescheid geben'], ['auto', 'automatisch herunterladen & installieren']]],
     ['sys.backup', 'system', 'Sicherung', 'select', 'weekly', 'Datenbank automatisch sichern', '', [['off', 'nie'], ['daily', 'täglich'], ['weekly', 'wöchentlich']]],
     ['sys.backup_keep', 'system', 'Sicherung', 'number', 5, 'Anzahl Sicherungen behalten', '', [1, 60]],
+    ['sys.keep_feed', 'system', 'Aufräumen', 'select', '0', 'Freunde-Verlauf behalten', 'Ältere Einträge (online/offline, Ortswechsel …) werden täglich gelöscht.', [['0', 'für immer'], ['30', '30 Tage'], ['90', '90 Tage'], ['180', '180 Tage'], ['365', '1 Jahr'], ['730', '2 Jahre']]],
+    ['sys.keep_gamelog', 'system', 'Aufräumen', 'select', '0', 'Spiel-Log behalten', 'Welten, Begegnungen, Avatare, Videos aus dem VRChat-Log.', [['0', 'für immer'], ['30', '30 Tage'], ['90', '90 Tage'], ['180', '180 Tage'], ['365', '1 Jahr'], ['730', '2 Jahre']]],
+    ['sys.keep_stats', 'system', 'Aufräumen', 'select', '0', 'Diagramm-Messwerte behalten', 'Freunde online & VRChat weltweit.', [['0', 'für immer'], ['30', '30 Tage'], ['90', '90 Tage'], ['180', '180 Tage'], ['365', '1 Jahr'], ['730', '2 Jahre']]],
+    ['sys.keep_notifs', 'system', 'Aufräumen', 'select', '0', 'Benachrichtigungs-Verlauf behalten', 'Nur erledigte – offene bei VRChat bleiben immer.', [['0', 'für immer'], ['30', '30 Tage'], ['90', '90 Tage'], ['180', '180 Tage'], ['365', '1 Jahr'], ['730', '2 Jahre']]],
+    ['sys.keep_cache', 'system', 'Aufräumen', 'select', '30', 'Profil-Zwischenspeicher behalten', 'Wird bei Bedarf neu von VRChat geladen.', [['0', 'für immer'], ['7', '7 Tage'], ['30', '30 Tage'], ['90', '90 Tage']]],
     // ---------- Oberfläche ----------
     ['ui.lang', 'ui', 'Aussehen', 'select', 'de', 'Sprache / Language', 'Auch über die Flagge unten rechts umschaltbar.', [['de', 'Deutsch'], ['en', 'English'], ['fr', 'Français'], ['ja', '日本語']]],
     ['ui.theme', 'ui', 'Aussehen', 'select', 'neon', 'Theme', 'Auch über 🎨 unten rechts umschaltbar.', [['neon', '🌃 Neon (dunkel, Standard)'], ['midnight', '🌌 Mitternacht (dunkel)'], ['snow', '❄️ Schnee (hell)'], ['sakura', '🌸 Sakura (hell)'], ['auto', '🌗 Automatisch (wie Windows/Android)']]],

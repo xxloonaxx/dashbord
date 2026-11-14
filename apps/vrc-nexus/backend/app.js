@@ -272,6 +272,8 @@ class NexusApp {
             case 'tools_test_notify': return t.testAlert();
             case 'tools_backup': return t.backupNow();
             case 'tools_cache_clear': this.db.exec('DELETE FROM user_cache; DELETE FROM mutual_cache;'); return { msg: 'Zwischenspeicher geleert.' };
+            case 'tools_dbinfo': return this.tools.dbInfo();
+            case 'tools_cleanup': return this.tools.cleanup(true);
             case 'tools_vacuum': this.db.exec('VACUUM'); this.db.save(); return { msg: 'Datenbank optimiert.' };
             case 'tools_folder': return await t.openFolder(str(input.which));
             case 'tools_players': return t.playersNow();

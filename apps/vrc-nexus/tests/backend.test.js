@@ -851,6 +851,31 @@ test('1.10.3: echtes PowerShell-Skript der Mediensteuerung antwortet (nur Window
     } finally { m.stop(); }
 });
 
+test('1.10.7: Datenbank aufräumen – Vorgabe löscht nichts, Zeiträume greifen, offene Benachrichtigungen bleiben', async () => {
+    const { NexusApp } = require('../backend/app');
+    const db = await openDatabase(null);
+    const app = new NexusApp({ db, crypt: { encrypt: s => s, decrypt: s => s }, host: { userData: os.tmpdir() } });
+    app.game.osc.stopListen();
+    const old = Math.floor(Date.now() / 1000) - 400 * 86400, fresh = Math.floor(Date.now() / 1000) - 3600;
+    for (const ts of [old, fresh]) {
+        db.prepare("INSERT INTO feed (user_id, ts, type, vrc_id) VALUES (1, ?, 'online', 'usr_x')").run(ts);
+        db.prepare('INSERT INTO stats (user_id, ts, online, active, total) VALUES (1, ?, 1, 1, 1)').run(ts);
+        db.prepare("INSERT INTO user_cache (vrc_id, data, fetched) VALUES (?, '{}', ?)").run('usr_' + ts, ts);
+    }
+    db.prepare("INSERT INTO notif_log (user_id, id, type, created, active) VALUES (1, 'not_a', 'invite', ?, 1)").run(old);
+    db.prepare("INSERT INTO notif_log (user_id, id, type, created, active) VALUES (1, 'not_b', 'invite', ?, 0)").run(old);
+    const rows = k => app.tools.dbInfo().tables.find(t => t.key === k).rows;
+    let r = app.tools.cleanup(false);
+    assert.strictEqual(rows('feed'), 2, 'Vorgabe „für immer“ löscht keinen Verlauf');
+    assert.strictEqual(rows('cache'), 1, 'nur Zwischenspeicher älter als 30 Tage weg');
+    app.settings.save({ 'sys.keep_feed': '365', 'sys.keep_stats': '365', 'sys.keep_notifs': '365' });
+    r = app.tools.cleanup(true);
+    assert.strictEqual(rows('feed'), 1); assert.strictEqual(rows('stats'), 1);
+    assert.strictEqual(rows('notifs'), 1, 'offene Benachrichtigung bleibt');
+    assert.ok(r.total >= 3 && /gelöscht/.test(r.msg));
+    app.tools.stop();
+});
+
 test('1.7: Wörterbuch (EN/FR/JA) vollständig und Platzhalter stimmen', () => {
     const fs = require('fs'), path = require('path'), vm = require('vm');
     const file = path.join(__dirname, '..', 'renderer', 'js', 'i18n-dict.js');

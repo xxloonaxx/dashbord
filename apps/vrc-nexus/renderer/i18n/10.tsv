@@ -73,3 +73,33 @@ Nicht mehr gemerkt.	Removed from saved.	Retiré des favoris.	保存を解除し�
 Shop nicht mehr gemerkt.	Shop removed from saved.	Boutique retirée des favoris.	ショップの保存を解除しました。
 # Artikel · # Shops	# items · # shops	# articles · # boutiques	#件の商品 · #件のショップ
 Shops	Shops	Boutiques	ショップ
+Aufräumen	Clean-up	Nettoyage	クリーンアップ
+für immer	forever	pour toujours	無期限
+# Tage	# days	# jours	#日
+1 Jahr	1 year	1 an	1年
+2 Jahre	2 years	2 ans	2年
+Datenbank	Database	Base de données	データベース
+🗄 Datenbank	🗄 Database	🗄 Base de données	🗄 データベース
+Bereich	Area	Zone	項目
+Ältester	Oldest	Plus ancien	最古
+Behalten	Keep	Conserver	保持
+Dateigröße	File size	Taille du fichier	ファイルサイズ
+🧹 Jetzt aufräumen	🧹 Clean up now	🧹 Nettoyer maintenant	🧹 今すぐクリーンアップ
+Freunde-Verlauf behalten	Keep friend history	Conserver l'historique des amis	フレンド履歴の保持期間
+Spiel-Log behalten	Keep game log	Conserver le journal de jeu	ゲームログの保持期間
+Diagramm-Messwerte behalten	Keep chart data	Conserver les données des graphiques	グラフデータの保持期間
+Benachrichtigungs-Verlauf behalten	Keep notification history	Conserver l'historique des notifications	通知履歴の保持期間
+Profil-Zwischenspeicher behalten	Keep profile cache	Conserver le cache des profils	プロフィールキャッシュの保持期間
+Freunde-Verlauf	Friend history	Historique des amis	フレンド履歴
+Diagramm-Messwerte	Chart data	Données des graphiques	グラフデータ
+Benachrichtigungs-Verlauf	Notification history	Historique des notifications	通知履歴
+Profil-Zwischenspeicher	Profile cache	Cache des profils	プロフィールキャッシュ
+Alte Einträge gemäß den eingestellten Zeiträumen jetzt löschen?	Delete old entries according to the set periods now?	Supprimer maintenant les anciennes entrées selon les durées définies ?	設定した期間に従って古いエントリを今すぐ削除しますか？
+# alte Einträge gelöscht.	# old entries deleted.	# anciennes entrées supprimées.	古いエントリを#件削除しました。
+Nichts zu löschen – alles innerhalb der eingestellten Zeiträume.	Nothing to delete – everything is within the set periods.	Rien à supprimer – tout est dans les durées définies.	削除対象はありません。すべて設定期間内です。
+Zeiträume oben unter „Aufräumen“ einstellen – „für immer“ löscht nichts. Läuft sonst automatisch einmal am Tag.	Set the periods above under “Clean-up” – “forever” deletes nothing. Otherwise runs automatically once a day.	Règle les durées ci-dessus sous « Nettoyage » – « pour toujours » ne supprime rien. Sinon, s'exécute automatiquement une fois par jour.	上の「クリーンアップ」で期間を設定してください。「無期限」は何も削除しません。それ以外は1日1回自動で実行されます。
+Ältere Einträge (online/offline, Ortswechsel …) werden täglich gelöscht.	Older entries (online/offline, location changes …) are deleted daily.	Les entrées plus anciennes (en ligne/hors ligne, changements de lieu …) sont supprimées chaque jour.	古いエントリ（オンライン/オフライン、移動など）は毎日削除されます。
+Welten, Begegnungen, Avatare, Videos aus dem VRChat-Log.	Worlds, encounters, avatars, videos from the VRChat log.	Mondes, rencontres, avatars, vidéos du journal VRChat.	VRChatログのワールド、出会い、アバター、動画。
+Freunde online & VRChat weltweit.	Friends online & VRChat worldwide.	Amis en ligne & VRChat dans le monde.	オンラインのフレンドと世界のVRChat。
+Nur erledigte – offene bei VRChat bleiben immer.	Only handled ones – open ones at VRChat always stay.	Seulement celles traitées – celles ouvertes chez VRChat restent toujours.	処理済みのみ。VRChatで未処理のものは常に残ります。
+Wird bei Bedarf neu von VRChat geladen.	Reloaded from VRChat when needed.	Rechargé depuis VRChat si nécessaire.	必要に応じてVRChatから再取得されます。

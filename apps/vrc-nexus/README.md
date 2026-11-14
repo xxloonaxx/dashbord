@@ -20,6 +20,11 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.10.7 – Datenbank aufräumen
+- *Einstellungen → System → Aufräumen*: wie lange Freunde-Verlauf, Spiel-Log, Diagramm-Messwerte, Benachrichtigungs-Verlauf und Profil-Zwischenspeicher behalten werden (30 Tage … 2 Jahre oder **für immer**).
+- Vorgabe ist **für immer** – es wird nichts gelöscht, solange du keinen Zeitraum wählst. Nur der Profil-Zwischenspeicher (lädt sich bei Bedarf neu) wird nach 30 Tagen geleert. Offene Benachrichtigungen bei VRChat bleiben immer.
+- Neuer Bereich **🗄 Datenbank**: Dateigröße, Einträge und ältester Eintrag je Bereich, **🧹 Jetzt aufräumen** (danach wird die Datei verkleinert). Sonst läuft das Aufräumen automatisch einmal am Tag.
+
 ### Neu in 1.10.6 – Merken im Shop
 - **☆ Merken** an jeder Artikelkarte (VRChat-Store und Creator-Shops) – ★ zeigt, was gemerkt ist; nochmal klicken = nicht mehr merken.
 - **☆ Shop merken** im Shop-Popup.
