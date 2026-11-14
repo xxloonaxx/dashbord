@@ -20,6 +20,13 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 2.5.2 – Info-Push: echte Tag-Abfrage
+
+- VRChat verlangt `require` und `include` als JSON-Liste – die kommagetrennte Variante (Fehler 400) ist raus.
+- Abgefragt werden jetzt vier Tag-Gruppen (u. a. `user-all`, `high-priority`, Plattform-Tags, Quick-Menü/Launchpad/Hilfe); Ergebnisse werden zusammengeführt.
+- Einträge ohne erkennbaren Tag landen nach Inhalt in der richtigen Kategorie (Artikel → Hilfe, Bild → Banner).
+- Bleibt die Liste leer, zeigt die Diagnosezeile pro Gruppe, was VRChat geantwortet hat.
+
 ### Neu in 2.5.1 – Leisten einklappen & Breite ziehen
 - **Linke Leiste**: « klappt sie zur schmalen Symbolleiste ein, » wieder auf.
 - **Rechte Freunde-Leiste**: » klappt sie zu einem schmalen Griff am Rand ein, « Freunde holt sie zurück.

@@ -638,26 +638,29 @@ class NexusApp {
 
             // ----- Info-Push -----
             case 'infopush': {
-                // „include“ = irgendeiner der Tags muss passen – leer liefert VRChat nichts. Die genauen Tags sind nicht dokumentiert,
-                // daher eine breite Liste in beiden üblichen Formaten (JSON-Liste und kommagetrennt); Ergebnisse werden zusammengeführt.
-                const TAGS = ['quickmenu', 'quick_menu', 'quickmenu_carousel', 'carousel', 'banner', 'help', 'help_article', 'helparticle', 'article', 'loadingscreen', 'loading_screen', 'loading',
-                    'launchpad', 'home', 'news', 'announcement', 'event', 'events', 'promo', 'promotion', 'store', 'vrcplus', 'safety', 'system', 'platform:standalonewindows', 'platform:android'];
-                const variants = [{ require: '[]', include: JSON.stringify(TAGS) }, { include: TAGS.join(',') }, { require: '[]', include: '[]' }];
+                // „include“ = irgendeiner der Tags muss passen, „require“ = alle; beide als JSON-Liste (sonst Fehler 400), leeres include liefert nichts.
+                // Die echten Tags sind nicht offiziell dokumentiert (Community-Doku nennt z. B. „user-all“, „high-priority“) – daher mehrere Gruppen, Ergebnisse zusammengeführt.
+                const GROUPS = [
+                    ['user-all', 'high-priority', 'medium-priority', 'low-priority', 'priority-high', 'priority-low', 'all', 'user', 'everyone'],
+                    ['platform:pc', 'platform:standalonewindows', 'platform:android', 'platform:ios', 'pc', 'android', 'ios', 'quest', 'desktop', 'vr'],
+                    ['quickmenu', 'quick-menu', 'quick_menu', 'quickMenu', 'carousel', 'banner', 'launchpad', 'launch-pad', 'home', 'help', 'help-article', 'article', 'loading-screen', 'loadingscreen', 'loading_screen'],
+                    ['news', 'announcement', 'event', 'events', 'promo', 'promotion', 'store', 'vrcplus', 'vrc-plus', 'safety', 'system', 'creator', 'groups', 'marketplace']];
+                const variants = GROUPS.map(g => ({ require: '[]', include: JSON.stringify(g) }));
                 const seen = new Map(), tried = [];
                 let lastErr = null;
                 for (const q of variants) {
                     try {
                         const got = await call('GET', '/infoPush', q);
                         const l = Array.isArray(got) ? got : arr(got && (got.results || got.items || got.data));
-                        tried.push({ q: Object.keys(q).map(k => k + '=' + String(q[k]).slice(0, 30)).join('&') || '–', n: l.length });
+                        tried.push({ q: JSON.parse(q.include).slice(0, 2).join(',') + ' …', n: l.length });
                         for (const i of l) if (i && typeof i === 'object' && i.id && !seen.has(i.id)) seen.set(i.id, i);
-                    } catch (e) { if (e instanceof U.VrcAuthError) throw e; lastErr = e; tried.push({ q: Object.keys(q).join('&'), err: cut(e.message, 120) }); }
+                    } catch (e) { if (e instanceof U.VrcAuthError) throw e; lastErr = e; tried.push({ q: JSON.parse(q.include).slice(0, 2).join(',') + ' …', err: cut(e.message, 120) }); }
                 }
                 if (!seen.size && lastErr && tried.every(t => t.err)) throw lastErr;
                 const r = [...seen.values()];
                 return { tried, items: r.map(i => {
                     const d = i.data || {}, tags = arr(i.tags).join(' ');
-                    const kind = /loading/i.test(tags) ? 'loading' : /banner|quickmenu|carousel/i.test(tags) ? 'banner' : (/help|article/i.test(tags) || d.article) ? 'help' : 'other';
+                    const kind = /loading/i.test(tags) ? 'loading' : /banner|quick.?menu|carousel|launch.?pad/i.test(tags) ? 'banner' : (/help|article/i.test(tags) || (d.article && d.article.content)) ? 'help' : d.imageUrl ? 'banner' : 'other';
                     let link = '';
                     for (const p of arr((d.onPressed || {}).parameters)) if (typeof p === 'string' && /^https:\/\//.test(p)) link = p;
                     const art = (d.article || {}).content || {};

@@ -1,5 +1,10 @@
 [
  {
+  "version": "2.5.2",
+  "title": "Info-Push: echte Tag-Abfrage",
+  "body": "- VRChat verlangt `require` und `include` als JSON-Liste – die kommagetrennte Variante (Fehler 400) ist raus.\n- Abgefragt werden jetzt vier Tag-Gruppen (u. a. `user-all`, `high-priority`, Plattform-Tags, Quick-Menü/Launchpad/Hilfe); Ergebnisse werden zusammengeführt.\n- Einträge ohne erkennbaren Tag landen nach Inhalt in der richtigen Kategorie (Artikel → Hilfe, Bild → Banner).\n- Bleibt die Liste leer, zeigt die Diagnosezeile pro Gruppe, was VRChat geantwortet hat."
+ },
+ {
   "version": "2.5.1",
   "title": "Leisten einklappen & Breite ziehen",
   "body": "- **Linke Leiste**: « klappt sie zur schmalen Symbolleiste ein, » wieder auf.\n- **Rechte Freunde-Leiste**: » klappt sie zu einem schmalen Griff am Rand ein, « Freunde holt sie zurück.\n- **Breite ziehen**: am Rand jeder Leiste ziehen (links 170–380 px, rechts 220–520 px), Doppelklick auf den Rand = Standardbreite. Alles wird gemerkt.\n- Direkt-Zugriff und Einstellungen sitzen jetzt ganz unten, bündig über 🎨 Theme und Sprache – die beiden sind eckig und stehen direkt nebeneinander."
