@@ -990,7 +990,10 @@ test('2.2: neue Chatbox-Module (Countdown, Freunde, Laufschrift, Animation, Akku
         app.vrc.friendList = () => [{ state: 'online' }, { state: 'online' }, { state: 'active' }, { state: 'offline' }];
         for (const k of ['status', 'time', 'media']) cm.save({ mod: k, mod_on: '0' });
         for (const k of ['countdown', 'friends', 'marquee', 'anim', 'battery', 'ping', 'system']) cm.save({ mod: k, mod_on: '1' });
-        cm.readCpu();   // CPU-Auslastung braucht zwei Messungen
+        cm.readCpu();   // CPU-Auslastung braucht zwei Messungen mit etwas Abstand
+        await new Promise(r => setTimeout(r, 300));
+        cm.readCpu(); cm.last.sys = Date.now(); await cm.readGpu();
+        if (!cm.v.cpu) cm.v.cpu = '0';   // sehr ruhige Maschine: Zähler hat sich nicht bewegt
         await cm.refresh(cm.cfg(), true);
         const r1 = cm.compose(cm.cfg(), true), r2 = cm.compose(cm.cfg(), true);
         assert.ok(/⏳ Stream in 2 T 5 h/.test(r1.per.countdown), r1.per.countdown);
