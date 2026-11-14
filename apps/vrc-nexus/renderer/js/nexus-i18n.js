@@ -106,7 +106,7 @@
         } finally { busy = false; }
     }
     const obs = new MutationObserver(list => {
-        if (busy) return;
+        if (busy || lang === 'de') return;      // Deutsch = Originaltexte, nichts zu tun (spart Arbeit bei jedem Neuzeichnen)
         busy = true;
         try {
             for (const m of list) {
