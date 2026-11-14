@@ -20,6 +20,12 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 2.5.1 – Leisten einklappen & Breite ziehen
+- **Linke Leiste**: « klappt sie zur schmalen Symbolleiste ein, » wieder auf.
+- **Rechte Freunde-Leiste**: » klappt sie zu einem schmalen Griff am Rand ein, « Freunde holt sie zurück.
+- **Breite ziehen**: am Rand jeder Leiste ziehen (links 170–380 px, rechts 220–520 px), Doppelklick auf den Rand = Standardbreite. Alles wird gemerkt.
+- Direkt-Zugriff und Einstellungen sitzen jetzt ganz unten, bündig über 🎨 Theme und Sprache – die beiden sind eckig und stehen direkt nebeneinander.
+
 ### Neu in 2.5.0 – Freunde-Leiste rechts, Knöpfe in der Seitenleiste
 - **Rechte Leiste** (bei Menü links und breitem Fenster): Reiter **Freunde** (im Spiel / gesamt) mit aufklappbaren Bereichen *Ich*, *Favoriten*, *Im Spiel*, *Online*, *Offline* – je Freund Profilbild, Status und Welt; Klick öffnet das Profil. Reiter **Gruppen**: alle Gruppen, die gerade **offene Instanzen** haben, mit Welt, Spielerzahl und Region – Klick öffnet die Instanz. Suchfeld für beides; wird alle 2 Minuten aufgefrischt.
 - **Linke Leiste unten**: 🧭 Direkt-Zugriff und ⚙ Einstellungen (statt oben rechts), darunter 🎨 Theme und die Sprach-Flagge.

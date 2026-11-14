@@ -63,12 +63,13 @@
         if (!st) return;
         const inGame = (st.friends || []).filter(f => f.state === 'online').length;
         const gCount = groups ? new Set(groups.map(i => i.group_id)).size : null;
-        box.innerHTML = '<div class="fs-tabs"><button type="button" class="' + (tab === 'friends' ? 'on' : '') + '" data-fstab="friends">Freunde <small>(' + inGame + '/' + (st.friends || []).length + ')</small></button>'
+        box.innerHTML = '<div class="vx-grip" data-grip="fside" title="Breite ziehen"></div><div class="fs-tabs"><button type="button" class="vx-fstoggle" data-fsmini title="Leiste ein-/ausklappen">' + (document.body.classList.contains('fside-mini') ? '« Freunde' : '»') + '</button><button type="button" class="' + (tab === 'friends' ? 'on' : '') + '" data-fstab="friends">Freunde <small>(' + inGame + '/' + (st.friends || []).length + ')</small></button>'
             + '<button type="button" class="' + (tab === 'groups' ? 'on' : '') + '" data-fstab="groups">Gruppen' + (gCount !== null ? ' <small>(' + gCount + ')</small>' : '') + '</button></div>'
             + '<input type="search" id="fsQ" class="fs-q" placeholder="Suchen …" value="' + esc(q) + '"><div id="fsBody"></div>';
         renderList();
     }
     function onClick(e) {
+        if (e.target.closest('[data-fsmini]')) { const on = !document.body.classList.contains('fside-mini'); document.body.classList.toggle('fside-mini', on); set('fsideMini', on); return render(); }
         const t = e.target.closest('[data-fstab]');
         if (t) { tab = t.dataset.fstab; set('sideTab', tab); if (tab === 'groups' && (!groups || Date.now() - gAt > 120000)) loadGroups(); return render(); }
         const s = e.target.closest('[data-sec]');
@@ -83,6 +84,43 @@
     }
     // Gruppen-Instanzen im Hintergrund alle 2 Minuten auffrischen, solange der Reiter offen ist
     setInterval(() => { if (tab === 'groups' && document.body.classList.contains('fside-on') && !document.hidden) loadGroups(); }, 120000);
+    // ---------- Einklappen (links) & Breite ziehen (beide Leisten), gemerkt pro Gerät ----------
+    function layout() {
+        const b = document.body, menu = document.getElementById('tabs');
+        b.classList.toggle('nav-mini', !!get('navMini', false));
+        b.classList.toggle('fside-mini', !!get('fsideMini', false));
+        const nw = get('navW', 0), fw = get('fsideW', 0);
+        if (nw) b.style.setProperty('--nav-w', nw + 'px'); else b.style.removeProperty('--nav-w');
+        if (fw) b.style.setProperty('--fside-w', fw + 'px'); else b.style.removeProperty('--fside-w');
+        if (menu && !menu.querySelector('.vx-navtoggle')) {
+            const t = document.createElement('button');
+            t.type = 'button'; t.className = 'vx-navtoggle'; t.title = 'Menü ein-/ausklappen';
+            t.addEventListener('click', e => { e.stopPropagation(); const on = !b.classList.contains('nav-mini'); b.classList.toggle('nav-mini', on); set('navMini', on); t.textContent = on ? '»' : '«'; });
+            menu.appendChild(t);
+            const g = document.createElement('div'); g.className = 'vx-grip vx-grip-nav'; g.dataset.grip = 'nav'; g.title = 'Breite ziehen';
+            document.body.appendChild(g);   // fest an der Kante – im scrollenden Menü würde er abgeschnitten
+        }
+        const t = menu && menu.querySelector('.vx-navtoggle');
+        if (t) t.textContent = b.classList.contains('nav-mini') ? '»' : '«';
+    }
+    document.addEventListener('pointerdown', e => {
+        const g = e.target.closest('.vx-grip');
+        if (!g) return;
+        e.preventDefault();
+        const which = g.dataset.grip, b = document.body;
+        b.classList.add('resizing');
+        const move = ev => {
+            const w = which === 'nav' ? Math.max(170, Math.min(380, ev.clientX)) : Math.max(220, Math.min(520, window.innerWidth - ev.clientX));
+            b.style.setProperty(which === 'nav' ? '--nav-w' : '--fside-w', w + 'px');
+            set(which === 'nav' ? 'navW' : 'fsideW', w);
+        };
+        const up = () => { b.classList.remove('resizing'); document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); };
+        document.addEventListener('pointermove', move);
+        document.addEventListener('pointerup', up);
+    });
+    // Doppelklick auf den Griff = Standardbreite
+    document.addEventListener('dblclick', e => { const g = e.target.closest('.vx-grip'); if (!g) return; set(g.dataset.grip === 'nav' ? 'navW' : 'fsideW', 0); layout(); });
+    layout();
     window.NexusSide = { update(state) { st = state; const a = document.activeElement; if (box && a && a.id === 'fsQ') { renderList(); return; } render(); }, render };
     void store;
 })();

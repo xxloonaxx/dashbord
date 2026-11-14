@@ -1,5 +1,10 @@
 [
  {
+  "version": "2.5.1",
+  "title": "Leisten einklappen & Breite ziehen",
+  "body": "- **Linke Leiste**: « klappt sie zur schmalen Symbolleiste ein, » wieder auf.\n- **Rechte Freunde-Leiste**: » klappt sie zu einem schmalen Griff am Rand ein, « Freunde holt sie zurück.\n- **Breite ziehen**: am Rand jeder Leiste ziehen (links 170–380 px, rechts 220–520 px), Doppelklick auf den Rand = Standardbreite. Alles wird gemerkt.\n- Direkt-Zugriff und Einstellungen sitzen jetzt ganz unten, bündig über 🎨 Theme und Sprache – die beiden sind eckig und stehen direkt nebeneinander."
+ },
+ {
   "version": "2.5.0",
   "title": "Freunde-Leiste rechts, Knöpfe in der Seitenleiste",
   "body": "- **Rechte Leiste** (bei Menü links und breitem Fenster): Reiter **Freunde** (im Spiel / gesamt) mit aufklappbaren Bereichen *Ich*, *Favoriten*, *Im Spiel*, *Online*, *Offline* – je Freund Profilbild, Status und Welt; Klick öffnet das Profil. Reiter **Gruppen**: alle Gruppen, die gerade **offene Instanzen** haben, mit Welt, Spielerzahl und Region – Klick öffnet die Instanz. Suchfeld für beides; wird alle 2 Minuten aufgefrischt.\n- **Linke Leiste unten**: 🧭 Direkt-Zugriff und ⚙ Einstellungen (statt oben rechts), darunter 🎨 Theme und die Sprach-Flagge.\n- **Volle Fensterbreite** ist jetzt Standard.\n- Abschaltbar: *Einstellungen → Oberfläche → Menü → Freunde-Leiste rechts*. Unter 1350 px Fensterbreite wird die rechte Leiste ausgeblendet."

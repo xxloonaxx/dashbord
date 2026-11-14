@@ -508,8 +508,8 @@ body.mobile .vx-hdirect kbd { display: none; }
 /* ---------- Hauptmenü links (Seitenleiste) + Unterpunkte oben ---------- */
 .vx-sidebrand { display: none; }
 .vx-subnav[hidden] { display: none !important; }
-body.nav-side { padding-left: 252px; }
-body.nav-side .vx-menu { position: fixed !important; top: 0; left: 0; bottom: 0; width: 232px; margin: 0; padding: 14px 8px 20px; flex-direction: column; flex-wrap: nowrap; gap: 1px;
+body.nav-side { --nav-w: 232px; padding-left: calc(var(--nav-w) + 20px); }
+body.nav-side .vx-menu { position: fixed !important; top: 0; left: 0; bottom: 0; width: var(--nav-w); margin: 0; padding: 14px 8px 20px; flex-direction: column; flex-wrap: nowrap; gap: 1px;
     overflow-y: auto; border: 0; border-right: 1px solid var(--border-color); z-index: 60; scrollbar-width: thin; }
 body.nav-side .vx-sidebrand { display: block; padding: 4px 12px 14px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--accent-gold); font-size: 1.05rem; }
 body.nav-side .vx-sidebrand b { color: var(--accent-cyan); }
@@ -535,17 +535,17 @@ body.sticky-menu .vx-subnav { position: sticky; top: 0; }
 
 /* ---------- Fuß der linken Leiste: Direkt-Zugriff, Einstellungen, Theme & Sprache ---------- */
 .vx-sidefoot { display: none; }
-body.nav-side .vx-menu { padding-bottom: 120px; }
+body.nav-side .vx-menu { padding-bottom: 58px; }
 body.nav-side .vx-sidefoot { display: flex; flex-direction: column; gap: 6px; margin-top: auto; padding: 12px 4px 0; border-top: 1px solid var(--border-color); }
 body.nav-side .vx-sidefoot .vx-hbtn { flex-direction: row; justify-content: flex-start; gap: 10px; width: 100%; padding: 8px 12px; min-width: 0; }
 body.nav-side .vx-sidefoot .vx-hbtn em { font-size: 0.72rem; }
 body.nav-side .vx-sidefoot .vx-hbtn span { font-size: 1.05rem; }
-body.nav-side .i18n-corner { right: auto; left: 16px; bottom: 14px; align-items: flex-start; }
+body.nav-side .i18n-corner { right: auto; left: 8px; bottom: 10px; width: calc(var(--nav-w) - 16px); align-items: stretch; }
 body.nav-side .i18n-corner > :not(.i18n-btns) { margin-left: 0; }
 /* ---------- rechte Leiste: Freunde & Gruppen ---------- */
 .vx-fside { display: none; }
-body.nav-side.fside-on { padding-right: 304px; }
-body.nav-side.fside-on .vx-fside { display: flex; flex-direction: column; position: fixed; top: 0; right: 0; bottom: 0; width: 288px; background: rgba(var(--panel-rgb), 0.96); border-left: 1px solid var(--border-color); z-index: 55; }
+body.nav-side.fside-on { --fside-w: 288px; padding-right: calc(var(--fside-w) + 16px); }
+body.nav-side.fside-on .vx-fside { display: flex; flex-direction: column; position: fixed; top: 0; right: 0; bottom: 0; width: var(--fside-w); background: rgba(var(--panel-rgb), 0.96); border-left: 1px solid var(--border-color); z-index: 55; }
 .vx-fside[hidden] { display: none !important; }
 .fs-tabs { display: flex; border-bottom: 1px solid var(--border-color); }
 .fs-tabs button { flex: 1; background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--text-muted); font: inherit; font-weight: 600; padding: 12px 6px; cursor: pointer; }
@@ -568,3 +568,42 @@ body.nav-side.fside-on .vx-fside { display: flex; flex-direction: column; positi
 .fs-gname { font-size: 0.8rem; font-weight: 700; padding: 10px 6px 2px; color: var(--accent-cyan); }
 .fs-empty, .fs-foot { padding: 10px 8px; font-size: 0.8rem; color: var(--text-muted); }
 @media (max-width: 1350px) { body.nav-side.fside-on { padding-right: 20px; } body.nav-side.fside-on .vx-fside { display: none; } }
+
+/* ---------- Einklappen & Breite ziehen; Theme/Sprache eckig nebeneinander ---------- */
+body.nav-side .i18n-btns { width: 100%; gap: 6px; }
+body.nav-side .i18n-fab { flex: 1; width: auto; height: 36px; border-radius: 4px; box-shadow: none; background: rgba(var(--accent-rgb), 0.06); }
+body.nav-side .i18n-fab:hover { transform: none; background: rgba(var(--accent-rgb), 0.14); }
+body.nav-side .vx-sidefoot { padding-bottom: 6px; }
+.vx-navtoggle, .vx-fstoggle { display: none; }
+body.nav-side .vx-navtoggle { display: grid; place-items: center; position: absolute; top: 12px; right: 8px; width: 26px; height: 26px; border: 1px solid var(--border-color); background: transparent; color: var(--text-muted); cursor: pointer; border-radius: 4px; font: inherit; font-size: 0.8rem; padding: 0; }
+body.nav-side .vx-navtoggle:hover, .vx-fstoggle:hover { color: var(--accent-cyan); border-color: var(--accent-cyan); }
+.vx-grip { display: none; }
+body.nav-side .vx-grip-nav, body.nav-side.fside-on .vx-fside > .vx-grip { display: block; position: absolute; top: 0; bottom: 0; width: 6px; cursor: ew-resize; z-index: 2; }
+body.nav-side .vx-grip-nav { position: fixed; left: calc(var(--nav-w) - 3px); z-index: 61; }
+body.nav-side.fside-on .vx-fside > .vx-grip { left: -3px; }
+.vx-grip:hover, body.resizing .vx-grip { background: rgba(var(--accent-rgb), 0.35); }
+body.resizing { cursor: ew-resize; user-select: none; }
+/* linke Leiste eingeklappt: nur Symbole */
+body.nav-side.nav-mini { --nav-w: 64px !important; }
+body.nav-mini .vx-menu em, body.nav-mini .vx-sidebrand, body.nav-mini .vx-mtop i, body.nav-mini .vx-menu .vx-tabbtn .vx-badge { display: none !important; }
+body.nav-mini .vx-menu .vx-tabbtn, body.nav-mini .vx-mtop { justify-content: center; padding: 8px 0; }
+body.nav-mini .vx-mdrop { padding-left: 0; }
+body.nav-mini .vx-mdrop .vx-tabbtn { border-left: 0; }
+body.nav-mini .vx-menu { padding-top: 46px; }
+body.nav-mini .vx-navtoggle { right: 19px; }
+body.nav-mini .vx-sidefoot .vx-hbtn { justify-content: center; padding: 8px 0; }
+body.nav-mini .vx-sidefoot .vx-hbtn em { display: none !important; }
+body.nav-mini .i18n-btns { flex-direction: column; }
+body.nav-mini .vx-menu { padding-bottom: 96px; }
+body.nav-mini .vx-grip-nav { display: none !important; }
+/* rechte Leiste eingeklappt: schmaler Griff am Rand */
+body.nav-side.fside-on .vx-fstoggle { display: grid; place-items: center; width: 30px; border: 0; border-left: 1px solid var(--border-color); background: transparent; color: var(--text-muted); cursor: pointer; font: inherit; }
+body.nav-side.fside-on.fside-mini { --fside-w: 34px !important; }
+body.fside-mini .vx-fside > :not(.fs-tabs) { display: none !important; }
+body.fside-mini .fs-tabs > :not(.vx-fstoggle) { display: none; }
+body.fside-mini .fs-tabs { border: 0; height: 100%; }
+body.fside-mini .vx-fstoggle { width: 100%; border-left: 0 !important; align-items: start; padding-top: 14px; writing-mode: vertical-rl; }
+.fs-tabs button { white-space: nowrap; padding-left: 4px; padding-right: 4px; }
+body.nav-side.fside-on .fs-tabs .vx-fstoggle { flex: 0 0 28px; width: 28px; padding: 0; }
+body.fside-mini .fs-tabs .vx-fstoggle { flex: 1 1 auto; width: 100%; }
+body.nav-mini .i18n-fab { flex: none; height: 32px; }
