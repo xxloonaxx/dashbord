@@ -14,7 +14,8 @@ class LocalApi {
 
     apply() {
         const s = this.tools.settings;
-        const want = s.get('int.api') ? s.get('int.api_port') : 0;
+        // läuft für das Stream Deck ODER für das OBS-Overlay
+        const want = s.get('int.api') || s.get('int.obs') ? s.get('int.api_port') : 0;
         if (want === this.port && (this.server || !want)) return;
         this.stop();
         if (!want) return;
@@ -37,14 +38,24 @@ class LocalApi {
     }
     async handle(req, res) {
         const url = new URL(req.url, 'http://127.0.0.1');
-        // Nur lokale Programme, keine Webseiten (Browser schicken immer Origin mit)
-        if (req.headers.origin) return this.send(res, 403, { error: 'Nicht erlaubt.' });
+        const obs = req.method === 'GET' && (url.pathname === '/obs' || url.pathname === '/obs.json' || url.pathname === '/chat');
+        // Nur lokale Programme, keine fremden Webseiten (Browser schicken Origin mit). Ausnahme: die eigene OBS-Seite (OBS-Browserquelle)
+        const origin = str(req.headers.origin);
+        if (origin && !(obs && /^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(origin))) return this.send(res, 403, { error: 'Nicht erlaubt.' });
+        if (obs && !this.tools.settings.get('int.api') && !this.tools.settings.get('int.obs')) return this.send(res, 403, { error: 'Aus.' });
         const token = str(req.headers['x-nexus-token'] || url.searchParams.get('token'));
         const want = Buffer.from(str(this.tools.settings.get('int.api_token')));
         const got = Buffer.from(token);
         if (!want.length || got.length !== want.length || !crypto.timingSafeEqual(got, want)) return this.send(res, 401, { error: 'Falscher Zugangsschlüssel.' });
+        if (url.pathname.startsWith('/api/') && !this.tools.settings.get('int.api')) return this.send(res, 403, { error: 'Die Stream-Deck-Schnittstelle ist aus (Einstellungen → Integrationen).' });
         if (req.method === 'GET' && url.pathname === '/api/state') return this.send(res, 200, this.tools.apiState());
         // Stream-Overlay für OBS (Browser-Quelle): /obs?token=…  (Stil: &theme=light, &hide=players,chat …)
+        if (req.method === 'GET' && (url.pathname === '/chat' || url.pathname === '/chat.json')) {
+            if (!this.tools.settings.get('int.obs')) return this.send(res, 403, { error: 'Stream-Overlay ist aus (Einstellungen → Integrationen).' });
+            if (url.pathname === '/chat.json') return this.send(res, 200, this.tools.app.stream ? this.tools.app.stream.overlay() : { items: [] });
+            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+            return res.end(CHAT_HTML);
+        }
         if (req.method === 'GET' && (url.pathname === '/obs' || url.pathname === '/obs.json')) {
             if (!this.tools.settings.get('int.obs')) return this.send(res, 403, { error: 'Stream-Overlay ist aus (Einstellungen → Integrationen).' });
             if (url.pathname === '/obs.json') return this.send(res, 200, this.obsState());
@@ -74,6 +85,24 @@ async function tick(){try{const d=await (await fetch('/obs.json?token='+encodeUR
 $('b').hidden=!d.running&&!d.chat;$('w').textContent=d.world?'🌐 '+d.world:'VRChat';
 $('s').textContent=[!hide.includes('players')&&d.world?'👥 '+d.players:'',!hide.includes('time')&&d.since?'⏱ '+fmt(d.since):'',!hide.includes('music')&&d.music?'🎵 '+d.music:'',d.afk?'💤 AFK':''].filter(Boolean).join('   ');
 $('c').hidden=hide.includes('chat')||!d.chat;$('c').textContent='💬 '+d.chat;}catch(e){}}tick();setInterval(tick,2000);
+</script></body></html>`;
+
+const CHAT_HTML = `<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>VRC Nexus · Chat</title><style>
+html,body{margin:0;background:transparent;font:600 20px/1.35 "Segoe UI",system-ui,sans-serif;color:#fff;overflow:hidden}
+#l{position:fixed;left:0;right:0;bottom:0;padding:8px;display:flex;flex-direction:column;gap:6px}
+.m{background:rgba(6,10,16,.6);border-left:4px solid #38d5e6;border-radius:6px;padding:6px 10px;text-shadow:0 1px 3px #000;animation:in .3s ease-out;word-wrap:break-word}
+.m.youtube{border-color:#ff4e45}.m.bot{border-color:#f3c262;opacity:.9}.m.reward,.m.alert{border-color:#50fa7b;background:rgba(20,60,30,.75)}
+.u{color:#38d5e6;margin-right:6px}.youtube .u{color:#ff8a84}.bot .u{color:#f3c262}.reward .u,.alert .u{color:#50fa7b}.out{opacity:0;transition:opacity 1s}
+body.light .m{background:rgba(255,255,255,.85);color:#111;text-shadow:none}@keyframes in{from{transform:translateX(-20px);opacity:0}}
+</style></head><body><div id="l"></div><script>
+const q=new URLSearchParams(location.search),l=document.getElementById('l'),keep=+(q.get('sekunden')||60)*1000,max=+(q.get('max')||12),hide=(q.get('hide')||'').split(',');
+if(q.get('theme')==='light')document.body.classList.add('light');let seen=0;
+const ic={twitch:'🟣',youtube:'🔴'};
+async function tick(){try{const d=await(await fetch('/chat.json?token='+encodeURIComponent(q.get('token')||''))).json();
+for(const e of d.items){if(e.i<=seen)continue;seen=e.i;if(hide.includes(e.kind))continue;const m=document.createElement('div');m.className='m '+e.platform+' '+e.kind;
+const u=document.createElement('span');u.className='u';u.textContent=(e.kind==='reward'?'🎁 ':e.kind==='alert'?'⭐ ':(ic[e.platform]||'')+' ')+(e.user||'')+(e.kind==='chat'?':':'');
+m.append(u,document.createTextNode(e.text));l.append(m);setTimeout(()=>{m.classList.add('out');setTimeout(()=>m.remove(),1100)},keep);}
+while(l.children.length>max)l.firstChild.remove();}catch(e){}}tick();setInterval(tick,1000);
 </script></body></html>`;
 
 module.exports = { LocalApi, int };

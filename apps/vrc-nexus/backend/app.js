@@ -25,6 +25,7 @@ const { Insights } = require('./insights');
 const { ModTools } = require('./modtools');
 const { Collections } = require('./collections');
 const { OscLog } = require('./osclog');
+const { StreamBot } = require('./streambot');
 
 const RENDERER = path.join(__dirname, '..', 'renderer');
 const truthy = v => v !== undefined && v !== null && v !== '' && v !== '0' && v !== false && v !== 'false';
@@ -54,6 +55,7 @@ class NexusApp {
         this.mod = new ModTools(this);
         this.coll = new Collections(this);
         this.osclog = new OscLog(this);
+        this.stream = opts.mobile ? null : new StreamBot(this, opts.crypt);
         this.vrc.onWatch = (name, world) => { if (this.settings.get('notify.watch')) this.tools.alert('🟢 ' + name + ' ist online', world ? 'in ' + world : 'gerade ins Spiel gekommen'); };
         this.vrc.onWatchEvent = (name, kind, world) => {
             const s = this.settings;
@@ -137,6 +139,7 @@ class NexusApp {
             if (act.startsWith('ins_')) return await this.insights.action(act, input);
             if (act.startsWith('mod_')) return await this.mod.action(act, input);
             if (act.startsWith('coll_')) return await this.coll.action(act, input);
+            if (act.startsWith('stream_')) { if (!this.stream) throw new UserError('Der Stream-Bot läuft nur in der Windows-App.'); return await this.stream.action(act, input); }
             if (act === 'osclog' || act === 'osclog_clear') return this.osclog.action(act, input);
             if (act === 'home_data') return this.home.data();
             if (act === 'home_summary') return this.home.summary();

@@ -79,7 +79,7 @@ const FIELDS = [
     ['notify.events', 'notify', 'Erinnerungen', 'bool', true, 'An Gruppen-Events erinnern', 'Aus dem Gruppen-Kalender (Mehr → Gruppen-Kalender).'],
     ['notify.event_minutes', 'notify', 'Erinnerungen', 'number', 15, 'Minuten vorher', '', [1, 240]],
     ['notify.anniversary', 'notify', 'Erinnerungen', 'bool', true, 'Freundschafts-Jahrestage & Geburtstage melden', 'Geburtstage aus der Notiz, z. B. „Geburtstag 24.12.“ oder „🎂 24.12.“.'],
-    ['int.obs', 'int', 'Stream-Overlay (OBS)', 'bool', false, 'Browser-Quelle für OBS/Streamlabs', 'Braucht die lokale Schnittstelle. Adresse: http://127.0.0.1:<Port>/obs?token=<Schlüssel>'],
+    ['int.obs', 'int', 'Stream-Overlay (OBS)', 'bool', false, 'Browser-Quelle für OBS/Streamlabs', 'Fertige Adressen stehen unten auf dieser Seite. Läuft auch ohne die Stream-Deck-Schnittstelle.'],
     ['osc.log', 'vr', 'OSC-Log', 'bool', true, 'Alles mitschreiben, was über OSC kommt und geht', 'Spiel & OSC → 📜 OSC-Log. Gespeichert im Datenordner unter „osc-log“.'],
     ['osc.log_out', 'vr', 'OSC-Log', 'bool', true, 'Auch Gesendetes loggen (Chatbox, Parameter, Kamera …)', ''],
     ['osc.log_days', 'vr', 'OSC-Log', 'number', 14, 'Aufbewahren (Tage)', 'Ältere Tagesdateien werden automatisch gelöscht.', [1, 365]],

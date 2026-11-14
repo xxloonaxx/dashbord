@@ -136,12 +136,13 @@ class Tools {
         if (this.timer.unref) this.timer.unref();
         if (this.app.auto) this.app.auto.start();
         if (this.app.insights) this.app.insights.start();
+        if (this.app.stream) this.app.stream.apply();
         if (this.app.osclog && !this.oscLogOn) { this.oscLogOn = true; this.app.osclog.attach(this.app.game.osc); }
     }
-    stop() { if (this.timer) clearInterval(this.timer); this.timer = null; if (this.app.auto) this.app.auto.stop(); if (this.app.insights) this.app.insights.stop(); if (this.app.osclog) this.app.osclog.stop(); this.api.stop(); this.rpc.close(); }
+    stop() { if (this.timer) clearInterval(this.timer); this.timer = null; if (this.app.auto) this.app.auto.stop(); if (this.app.insights) this.app.insights.stop(); if (this.app.osclog) this.app.osclog.stop(); if (this.app.stream) this.app.stream.stop(); this.api.stop(); this.rpc.close(); }
     applySettings(changed) {
         const all = changed.includes('*');
-        if (all || changed.some(k => k.startsWith('int.api'))) this.api.apply();
+        if (all || changed.some(k => k.startsWith('int.api') || k === 'int.obs')) this.api.apply();
         if (all || changed.includes('sys.autostart')) { if (this.host.setLoginItem) this.host.setLoginItem(!!this.settings.get('sys.autostart')); }
         if (all || changed.includes('sys.log_poll_ms')) { if (this.app.game.timer) this.app.game.start(int(this.settings.get('sys.log_poll_ms')) || 1000); }
         if (!this.settings.get('int.rpc')) this.rpc.close();

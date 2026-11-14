@@ -143,6 +143,7 @@
         if (window.NexusApp) window.NexusApp.open(name, sub);
         if (name === 'recap' && window.NexusRecap) window.NexusRecap.open();
         if (name === 'mod' && window.NexusMod) window.NexusMod.open();
+        if (name === 'stream' && window.NexusStream) window.NexusStream.open();
         if (name === 'coll' && window.NexusColl) window.NexusColl.open();
         if (window.NexusHome) { if (name === 'home') window.NexusHome.open(); else window.NexusHome.close(); }
     }

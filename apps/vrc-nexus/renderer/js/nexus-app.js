@@ -38,7 +38,7 @@
     applyUi(window.VRCX.ui || {});
     if (MOBILE) {
         document.body.classList.add('mobile');
-        $$('#tabs [data-tab=client], #tabs [data-tab=players], #tabs [data-tab=activity], #clientStandalone').forEach(el => el.parentNode.removeChild(el));
+        $$('#tabs [data-tab=client], #tabs [data-tab=stream], #tabs [data-tab=players], #tabs [data-tab=activity], #clientStandalone').forEach(el => el.parentNode.removeChild(el));
     } else $$('#tabs [data-mobile]').forEach(el => el.parentNode.removeChild(el));
 
     // Direkt-Zugriff: Knopf im Menü + Strg+D
@@ -556,6 +556,17 @@
             default: return '<input type="text" data-k="' + k + '" value="' + esc(v) + '" placeholder="' + esc(f.def) + '">';
         }
     }
+    /** fertige Adressen für OBS (Browser-Quelle) */
+    function obsHtml(s) {
+        const base = 'http://127.0.0.1:' + (s['int.api_port'] || 17865) + '/', tok = encodeURIComponent(s['int.api_token'] || '');
+        const row = (label, url, hint) => '<div class="set-row"><div><b>' + label + '</b><div class="nx-hint">' + hint + '</div></div><div class="nx-row" style="margin:0;flex-wrap:nowrap"><input type="text" readonly value="' + esc(url) + '" style="width:340px" onclick="this.select()">'
+            + '<button type="button" class="btn btn-sm" data-copy="' + esc(url) + '" onclick="navigator.clipboard.writeText(this.dataset.copy).then(()=>NexusUI.toast(\'Kopiert.\'))">⧉</button><a class="btn btn-sm" href="' + esc(url) + '" target="_blank" rel="noopener">Test ↗</a></div></div>';
+        return '<div class="set-sec"><h3>📺 OBS / Streamlabs – Adressen für „Browser“-Quellen</h3>'
+            + (s['int.obs'] ? '' : '<p class="nx-hint">⚠ Erst oben „Browser-Quelle für OBS/Streamlabs“ einschalten.</p>')
+            + row('Info-Leiste', base + 'obs?token=' + tok, 'Welt, Spieler, Zeit, Musik, Chatbox. Größe z. B. 900 × 220, Hintergrund transparent.')
+            + row('Stream-Chat', base + 'chat?token=' + tok, 'Twitch/YouTube-Chat + Punkte-Einlösungen (Stream-Bot). z. B. 420 × 600.')
+            + '<p class="nx-hint">Optionen anhängen: <code>&amp;theme=light</code>, <code>&amp;hide=players,time,music,chat</code>. Die Adresse funktioniert nur auf diesem PC.</p></div>';
+    }
     function renderSettings() {
         const d = setData, box = $('#setBox');
         const MOBILE_HIDE = /^(upd\.mode|link\.(upload|remote)|sys\.|vr\.|media\.|int\.|social\.(players|memo)|notify\.(player_|screenshot|vrc_start)|adv\.(debug|devtools)|ui\.(wide|sticky_menu))/;
@@ -576,6 +587,7 @@
         }[setTab] || '';
         box.innerHTML = '<div class="nx-panel"><h2>⚙ Einstellungen</h2><div class="set-tabs">' + Object.entries(d.schema.tabs).filter(([k]) => tabsShown.includes(k)).map(([k, l]) => '<button type="button" data-st="' + k + '" class="' + (k === setTab ? 'on' : '') + '">' + esc(l) + '</button>').join('') + '</div>'
             + (setTab === 'tr' ? '<div id="trPanel"></div>' : '') + (setTab === 'tr' ? [] : secs).map(sec => '<div class="set-sec"><h3>' + esc(sec) + '</h3>' + fields.filter(f => f.section === sec).map(f => '<div class="set-row"><div><b>' + esc(f.label) + '</b>' + (f.hint ? '<div class="nx-hint">' + esc(f.hint) + '</div>' : '') + '</div>' + field(f, d.settings[f.key]) + '</div>').join('') + '</div>').join('')
+            + (setTab === 'int' && !MOBILE ? obsHtml(d.settings) : '')
             + (setTab === 'system' ? '<div class="set-sec"><h3>Version &amp; Updates</h3><div id="updBox"><div class="vx-loading">…</div></div></div>' : '')
             + (MOBILE ? (['adv', 'link'].includes(setTab) ? extra : '') : extra) + '<p class="vx-small">Änderungen werden sofort gespeichert.</p></div>';
         if (setTab === 'tr' && window.NexusTr) window.NexusTr.panel($('#trPanel'));

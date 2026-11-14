@@ -20,6 +20,14 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.4.0 – Stream-Bot für Twitch & YouTube
+- **📺 Stream-Bot** (Menü → Stream-Bot): verbindet Twitch-Chat (lesen + schreiben, OAuth-Token) und YouTube-Livechat (lesen, API-Schlüssel) – Schlüssel verschlüsselt gespeichert.
+- **🏆 Punkte** pro Nachricht (mit Abklingzeit) und fürs Zuschauen; `!punkte`, `!top`, `!geben`, Mods: `!addpunkte`, `!setpunkte`; Rangliste mit +/−/setzen.
+- **⌨️ Befehle:** `!welt`, `!spieler`, `!avatar`, `!song`, `!befehle`, `!belohnungen` + eigene Befehle mit Platzhaltern, Abklingzeit, „nur Mods“.
+- **🎁 Belohnungen:** Zuschauer lösen mit Punkten **VRChat-Aktionen** aus – Avatar-Parameter, Chatbox, Kamera, Eingaben, Webhooks (Makro-Schritte), mit Vorlagen.
+- Begrüßung neuer Zuschauer, Stream-Chat optional in die VRChat-Chatbox, **OBS-Chat-Overlay** (`/chat`).
+- **OBS-Overlay repariert:** läuft jetzt auch ohne Stream-Deck-Schnittstelle und mit dem OBS-Browser; fertige Adressen mit Kopier-Knopf unter Einstellungen → Integrationen.
+
 ### Neu in 1.3.9
 - **🎤 Mikrofon-Auswahl für die Spracheingabe** (Spiel & OSC → Sprache): alle Mikrofone zur Auswahl (z. B. das vom VR-Headset), Verstärkung, Empfindlichkeit und „🔊 Mikro testen“ mit Pegelbalken. Ist das gewählte Mikro gerade nicht da, wird es am Namen wiedergefunden – sonst das Windows-Standardmikrofon.
 

@@ -83,6 +83,7 @@
             </div></div>
         <button type="button" class="vx-tabbtn" data-tab="tools"><span>🧰</span><em>Werkzeuge</em></button>
         <button type="button" class="vx-tabbtn" data-tab="client"><span>🎮</span><em>Spiel &amp; OSC</em></button>
+        <button type="button" class="vx-tabbtn" data-tab="stream"><span>📺</span><em>Stream-Bot</em></button>
         <button type="button" class="vx-tabbtn" data-tab="remote" data-mobile><span>🎮</span><em>PC-Fernbedienung</em></button>
         <div class="vx-mgroup vx-mright"><button type="button" class="vx-mtop" aria-haspopup="true"><span>⚙</span><em>Mehr</em><i>▾</i></button>
             <div class="vx-mdrop" role="menu">
@@ -108,6 +109,7 @@
     <div class="vx-myloc" id="myLoc" hidden></div>
     <div class="vx-error" id="globalErr" hidden></div>
 
+    <section class="vx-tab" data-pane="stream" hidden><div id="streamBox"></div></section>
     <section class="vx-tab" data-pane="mod" hidden><div id="modBox"></div></section>
     <section class="vx-tab" data-pane="coll" hidden><div id="collBox"></div></section>
     <section class="vx-tab" data-pane="recap" hidden><div id="recapBox"></div></section>
@@ -377,5 +379,6 @@
 <script src="js/nexus-speech.js"></script>
 <script src="js/nexus-recap.js"></script>
 <script src="js/nexus-mod.js"></script>
+<script src="js/nexus-stream.js"></script>
 </body>
 </html>
