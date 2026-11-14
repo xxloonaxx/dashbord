@@ -137,6 +137,7 @@ class Tools {
         if (this.app.auto) this.app.auto.start();
         if (this.app.insights) this.app.insights.start();
         if (this.app.stream) this.app.stream.apply();
+        if (this.app.backup) this.app.backup.start();
         if (this.app.osclog && !this.oscLogOn) { this.oscLogOn = true; this.app.osclog.attach(this.app.game.osc); }
     }
     stop() { if (this.timer) clearInterval(this.timer); this.timer = null; if (this.app.auto) this.app.auto.stop(); if (this.app.insights) this.app.insights.stop(); if (this.app.osclog) this.app.osclog.stop(); if (this.app.stream) this.app.stream.stop(); this.api.stop(); this.rpc.close(); }

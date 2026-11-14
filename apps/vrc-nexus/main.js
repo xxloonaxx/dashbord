@@ -163,6 +163,7 @@ app.whenReady().then(async () => {
     nexus.link.start();
     nexus.updater.start();
     host.applySpeech(nexus.speech.cfg());
+    if (db.restored) setTimeout(() => notify('VRC Nexus', '☁ Cloud-Sicherung wurde eingespielt. Die vorherigen Daten liegen als „nexus.sqlite.vor-wiederherstellung“ im Datenordner.'), 3000);
     // SteamVR-Overlay: Vorschaubild muss als echte Datei vorliegen (nicht im asar-Archiv)
     const ovIcon = path.join(app.getPath('userData'), 'overlay-icon.png');
     try { fs.writeFileSync(ovIcon, fs.readFileSync(path.join(RENDERER, 'icon.png'))); } catch (e) { /* egal */ }

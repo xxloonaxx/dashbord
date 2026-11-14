@@ -84,6 +84,19 @@ class Statement {
 class Database {
     constructor(SQL, file) {
         this.file = file;
+        // Cloud-Sicherung einspielen (wurde von „Wiederherstellen“ vorbereitet): alte Datei bleibt als Reserve liegen
+        this.restored = false;
+        if (file && fs.existsSync(file + '.restore')) {
+            try {
+                const r = fs.readFileSync(file + '.restore');
+                if (Buffer.from(r).subarray(0, 15).toString('latin1') === 'SQLite format 3') {
+                    if (fs.existsSync(file)) fs.writeFileSync(file + '.vor-wiederherstellung', fs.readFileSync(file));
+                    fs.writeFileSync(file, r);
+                    this.restored = true;
+                }
+            } catch (e) { /* Original bleibt */ }
+            try { fs.unlinkSync(file + '.restore'); } catch (e) { /* egal */ }
+        }
         const data = file && fs.existsSync(file) ? fs.readFileSync(file) : null;
         this.raw = data ? new SQL.Database(data) : new SQL.Database();
         this.timer = null;

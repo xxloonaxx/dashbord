@@ -557,6 +557,37 @@
         }
     }
     /** fertige Adressen für OBS (Browser-Quelle) */
+    /** ☁ Cloud-Sicherung: verschlüsselt ins eigene Dashboard */
+    function backupPanel(msg) {
+        const box = $('#bkBox');
+        if (!box) return;
+        api('backup_status').then(d => {
+            const c = d.cfg, mb = n => (n / 1048576).toFixed(1).replace('.', ',') + ' MB';
+            box.innerHTML = (msg ? '<p class="nx-hint">' + esc(msg) + '</p>' : '')
+                + (!d.linked ? '<p class="nx-hint">⚠ Erst oben die Dashboard-Verbindung einrichten (Adresse + Geräte-Token).</p>' : '')
+                + '<p class="nx-hint">Sichert die App-Daten (Spiel-Log, Notizen, Makros, Automatik, Sammlungen, Punkte, Einstellungen …) <b>verschlüsselt</b> in dein Dashboard. Ohne dein Sicherungs-Passwort kann niemand sie öffnen – auch der Server nicht.</p>'
+                + '<form class="nx-row" id="bkPass"><input type="password" name="pass" placeholder="' + (d.has_pass ? '•••••••• gespeichert – neu eingeben zum Ändern' : 'Sicherungs-Passwort (mind. 8 Zeichen)') + '" autocomplete="new-password" style="flex:1"><button class="btn btn-sm">Passwort speichern</button></form>'
+                + '<form class="nx-row" id="bkCfg"><label class="check small"><input type="checkbox" name="auto"' + (c.auto ? ' checked' : '') + '> automatisch einmal am Tag</label><label class="small">behalten: <input type="number" name="keep" value="' + c.keep + '" min="1" max="20" style="width:60px"></label><button class="btn btn-sm">Speichern</button></form>'
+                + '<div class="nx-row"><button type="button" class="btn btn-gold" data-bk="now"' + (d.has_pass && d.linked && !d.busy ? '' : ' disabled') + '>☁ Jetzt sichern</button>'
+                + '<span class="nx-hint">' + (d.busy ? '⏳ ' + (d.busy.kind === 'upload' ? 'lädt hoch' : 'lädt herunter') + ' … ' + (d.busy.total ? Math.round(d.busy.done / d.busy.total * 100) + ' %' : '') : c.last ? 'zuletzt gesichert ' + UI.ago(c.last) : 'noch nie gesichert') + (c.last_error ? ' · ⚠ ' + esc(c.last_error) : '') + '</span></div>'
+                + (d.error ? '<p class="nx-hint">⚠ ' + esc(d.error) + '</p>' : '')
+                + (d.backups && d.backups.length ? '<table class="ol-tab"><tbody>' + d.backups.map(b => '<tr><td>' + esc(UI.isoDT(b.created * 1000)) + '</td><td>' + mb(b.size) + '</td><td class="small">' + esc(b.device) + ' · ' + esc(b.version) + (b.note ? ' · ' + esc(b.note) : '') + '</td>'
+                    + '<td><button type="button" class="btn btn-sm" data-bk="restore" data-id="' + esc(b.id) + '">↩ Wiederherstellen</button><button type="button" class="nc-x" data-bk="del" data-id="' + esc(b.id) + '">✕</button></td></tr>').join('') + '</tbody></table>' : (d.linked ? '<p class="nx-hint">Noch keine Sicherungen im Dashboard.</p>' : ''));
+            if (d.busy) setTimeout(() => backupPanel(), 1000);
+        }).catch(fail(box));
+    }
+    document.addEventListener('submit', e => {
+        const f = e.target;
+        if (f.id === 'bkPass') { e.preventDefault(); run('backup_pass', { pass: f.pass.value }, d => backupPanel(d.msg)).catch(() => {}); }
+        if (f.id === 'bkCfg') { e.preventDefault(); run('backup_cfg', { auto: f.auto.checked ? '1' : '', keep: f.keep.value }, () => backupPanel()).catch(() => {}); }
+    });
+    document.addEventListener('click', e => {
+        const b = e.target.closest('[data-bk]');
+        if (!b) return;
+        if (b.dataset.bk === 'now') { setTimeout(() => backupPanel(), 300); return run('backup_now', {}, d => backupPanel(d.msg)).catch(() => backupPanel()); }
+        if (b.dataset.bk === 'restore' && confirm('Diese Sicherung wiederherstellen? Die aktuellen App-Daten werden beim nächsten Start ersetzt (die alte Datei bleibt als Reserve „nexus.sqlite.vor-wiederherstellung“).')) return run('backup_restore', { id: b.dataset.id }, d => { backupPanel(d.msg); alert(d.msg); }).catch(() => {});
+        if (b.dataset.bk === 'del' && confirm('Sicherung im Dashboard löschen?')) return run('backup_delete', { id: b.dataset.id }, () => backupPanel()).catch(() => {});
+    });
     function obsHtml(s) {
         const base = 'http://127.0.0.1:' + (s['int.api_port'] || 17865) + '/', tok = encodeURIComponent(s['int.api_token'] || '');
         const row = (label, url, hint) => '<div class="set-row"><div><b>' + label + '</b><div class="nx-hint">' + hint + '</div></div><div class="nx-row" style="margin:0;flex-wrap:nowrap"><input type="text" readonly value="' + esc(url) + '" style="width:340px" onclick="this.select()">'
@@ -587,11 +618,12 @@
         }[setTab] || '';
         box.innerHTML = '<div class="nx-panel"><h2>⚙ Einstellungen</h2><div class="set-tabs">' + Object.entries(d.schema.tabs).filter(([k]) => tabsShown.includes(k)).map(([k, l]) => '<button type="button" data-st="' + k + '" class="' + (k === setTab ? 'on' : '') + '">' + esc(l) + '</button>').join('') + '</div>'
             + (setTab === 'tr' ? '<div id="trPanel"></div>' : '') + (setTab === 'tr' ? [] : secs).map(sec => '<div class="set-sec"><h3>' + esc(sec) + '</h3>' + fields.filter(f => f.section === sec).map(f => '<div class="set-row"><div><b>' + esc(f.label) + '</b>' + (f.hint ? '<div class="nx-hint">' + esc(f.hint) + '</div>' : '') + '</div>' + field(f, d.settings[f.key]) + '</div>').join('') + '</div>').join('')
+            + (setTab === 'link' && !MOBILE ? '<div class="set-sec"><h3>☁ Cloud-Sicherung ins Dashboard</h3><div id="bkBox"><div class="vx-loading">…</div></div></div>' : '')
             + (setTab === 'int' && !MOBILE ? obsHtml(d.settings) : '')
             + (setTab === 'system' ? '<div class="set-sec"><h3>Version &amp; Updates</h3><div id="updBox"><div class="vx-loading">…</div></div></div>' : '')
             + (MOBILE ? (['adv', 'link'].includes(setTab) ? extra : '') : extra) + '<p class="vx-small">Änderungen werden sofort gespeichert.</p></div>';
         if (setTab === 'tr' && window.NexusTr) window.NexusTr.panel($('#trPanel'));
-        if (setTab === 'link') linkPanel();
+        if (setTab === 'link') { linkPanel(); if (!MOBILE) backupPanel(); }
         if (setTab === 'system') updatePanel();
     }
     $('#setBox').addEventListener('click', e => {

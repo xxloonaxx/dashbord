@@ -21,6 +21,31 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
 
+const NC_BACKUP_MAX_MB = 200;
+function nc_backup_dir(int $uid): string {
+    $d = __DIR__ . '/data/nexus-backup/u' . $uid;
+    if (!is_dir($d)) { mkdir($d, 0700, true); @file_put_contents(dirname($d) . '/.htaccess', "Require all denied\nDeny from all\n"); }
+    return $d;
+}
+function nc_backup_id(string $id): string {
+    if (!preg_match('/^\d{8}-\d{6}-[0-9a-f]{6}$/', $id)) nc_reply(['error' => 'Ungültige Kennung.'], 400);
+    return $id;
+}
+function nc_backup_list(int $uid): array {
+    $out = [];
+    foreach (glob(nc_backup_dir($uid) . '/*.json') ?: [] as $f) {
+        $m = json_decode((string)file_get_contents($f), true);
+        if (!$m) continue;
+        if (empty($m['complete'])) { if ((int)($m['created'] ?? 0) < time() - 86400) { @unlink($f); @unlink(substr($f, 0, -5) . '.part'); } continue; }
+        $out[] = ['id' => $m['id'], 'size' => (int)$m['size'], 'created' => (int)$m['created'], 'device' => (string)$m['device'], 'version' => (string)$m['version'], 'note' => (string)($m['note'] ?? '')];
+    }
+    usort($out, fn($a, $b) => $b['created'] <=> $a['created']);
+    return $out;
+}
+function nc_backup_prune(int $uid, int $keep): void {
+    foreach (array_slice(nc_backup_list($uid), $keep) as $b) foreach (['bin', 'json'] as $x) @unlink(nc_backup_dir($uid) . '/' . $b['id'] . '.' . $x);
+}
+
 function nc_reply(array $data, int $code = 200): void {
     http_response_code($code);
     echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -91,6 +116,65 @@ try {
             nc_reply(['ok' => true, 'id' => $id]);
         case 'remote':
             nc_reply(['ok' => true, 'state' => nc_state($uid), 'osc' => nc_osc_recent($uid), 'presets' => nc_presets($uid)]);
+        // ---------- Cloud-Sicherung der App (schon in der App verschlüsselt – der Server sieht nur Zufallsdaten) ----------
+        case 'backup_list':
+            nc_reply(['ok' => true, 'backups' => nc_backup_list($uid), 'limit_mb' => NC_BACKUP_MAX_MB]);
+        case 'backup_begin': {
+            if (!$post) nc_reply(['error' => 'Nur per POST.'], 405);
+            $size = (int)($body['size'] ?? 0);
+            if ($size <= 0 || $size > NC_BACKUP_MAX_MB * 1048576) nc_reply(['error' => 'Sicherung zu groß (höchstens ' . NC_BACKUP_MAX_MB . ' MB).'], 413);
+            $id = date('Ymd-His') . '-' . bin2hex(random_bytes(3));
+            $dir = nc_backup_dir($uid);
+            file_put_contents($dir . '/' . $id . '.part', '');
+            file_put_contents($dir . '/' . $id . '.json', json_encode(['id' => $id, 'size' => $size, 'sha256' => preg_replace('/[^0-9a-f]/', '', (string)($body['sha256'] ?? '')), 'device' => $c['token']['name'],
+                'version' => substr((string)($body['version'] ?? ''), 0, 20), 'note' => mb_substr((string)($body['note'] ?? ''), 0, 80), 'created' => time(), 'complete' => false]));
+            nc_reply(['ok' => true, 'id' => $id]);
+        }
+        case 'backup_chunk': {
+            if (!$post) nc_reply(['error' => 'Nur per POST.'], 405);
+            $id = nc_backup_id((string)($body['id'] ?? ''));
+            $dir = nc_backup_dir($uid);
+            $meta = json_decode((string)@file_get_contents($dir . '/' . $id . '.json'), true);
+            if (!$meta || !empty($meta['complete']) || !is_file($dir . '/' . $id . '.part')) nc_reply(['error' => 'Unbekannte Sicherung.'], 404);
+            $data = base64_decode((string)($body['data'] ?? ''), true);
+            if ($data === false) nc_reply(['error' => 'Ungültige Daten.'], 400);
+            clearstatcache();
+            if (filesize($dir . '/' . $id . '.part') !== (int)($body['offset'] ?? -1)) nc_reply(['error' => 'Reihenfolge stimmt nicht – Sicherung bitte neu starten.'], 409);
+            if (filesize($dir . '/' . $id . '.part') + strlen($data) > $meta['size']) nc_reply(['error' => 'Mehr Daten als angekündigt.'], 400);
+            file_put_contents($dir . '/' . $id . '.part', $data, FILE_APPEND | LOCK_EX);
+            nc_reply(['ok' => true]);
+        }
+        case 'backup_end': {
+            if (!$post) nc_reply(['error' => 'Nur per POST.'], 405);
+            $id = nc_backup_id((string)($body['id'] ?? ''));
+            $dir = nc_backup_dir($uid);
+            $meta = json_decode((string)@file_get_contents($dir . '/' . $id . '.json'), true);
+            if (!$meta || !is_file($dir . '/' . $id . '.part')) nc_reply(['error' => 'Unbekannte Sicherung.'], 404);
+            clearstatcache();
+            if (filesize($dir . '/' . $id . '.part') !== (int)$meta['size'] || ($meta['sha256'] !== '' && hash_file('sha256', $dir . '/' . $id . '.part') !== $meta['sha256'])) {
+                @unlink($dir . '/' . $id . '.part'); @unlink($dir . '/' . $id . '.json');
+                nc_reply(['error' => 'Sicherung unvollständig oder beschädigt – bitte erneut versuchen.'], 400);
+            }
+            rename($dir . '/' . $id . '.part', $dir . '/' . $id . '.bin');
+            $meta['complete'] = true;
+            file_put_contents($dir . '/' . $id . '.json', json_encode($meta));
+            nc_backup_prune($uid, max(1, min(20, (int)($body['keep'] ?? 5))));
+            nc_reply(['ok' => true, 'backups' => nc_backup_list($uid)]);
+        }
+        case 'backup_get': {
+            $id = nc_backup_id((string)($_GET['id'] ?? ''));
+            $f = nc_backup_dir($uid) . '/' . $id . '.bin';
+            if (!is_file($f)) nc_reply(['error' => 'Unbekannte Sicherung.'], 404);
+            $off = max(0, (int)($_GET['offset'] ?? 0));
+            $fh = fopen($f, 'rb'); fseek($fh, $off); $data = fread($fh, 1048576); fclose($fh);
+            nc_reply(['ok' => true, 'offset' => $off, 'size' => filesize($f), 'data' => base64_encode((string)$data)]);
+        }
+        case 'backup_delete': {
+            if (!$post) nc_reply(['error' => 'Nur per POST.'], 405);
+            $id = nc_backup_id((string)($body['id'] ?? ''));
+            foreach (['bin', 'json', 'part'] as $x) @unlink(nc_backup_dir($uid) . '/' . $id . '.' . $x);
+            nc_reply(['ok' => true, 'backups' => nc_backup_list($uid)]);
+        }
         default:
             nc_reply(['error' => 'Unbekannte Aktion.'], 404);
     }
