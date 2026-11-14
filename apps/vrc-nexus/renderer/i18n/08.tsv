@@ -1,0 +1,234 @@
+# Plätze pro Art. Nach dem Ändern ist ein Platz # Minuten gesperrt (VRChat	# slots per type. After a change a slot is locked for # minutes (VRChat	# emplacements par type. Après modification, un emplacement est bloqué # minutes (VRChat	種類ごとに # 枠。変更後、その枠は # 分間ロックされます (VRChat
+# ausgelöst – siehe Live-Chat	# triggered – see live chat	# déclenché – voir le chat en direct	# を実行 – ライブチャットを参照
+(Join Me / Online / Ask Me / Beschäftigt, mit Text	(Join Me / Online / Ask Me / Busy, with text	(Join Me / En ligne / Ask Me / Occupé, avec texte	(Join Me / オンライン / Ask Me / 取り込み中、テキスト付き
+(Springen, Stummschalten, Quick-Menü	(jump, mute, quick menu	(sauter, sourdine, menu rapide	(ジャンプ、ミュート、クイックメニュー
+(die neuesten	(the newest	(les plus récents	(最新
+(keine	(none	(aucun	(なし
+(keine Avatar-Dateien gefunden	(no avatar files found	(aucun fichier d'avatar trouvé	(アバターファイルが見つかりません
+(noch nicht vorhanden – wird angelegt	(not there yet – will be created	(pas encore présent – sera créé	(まだありません – 作成されます
+(nächster Abgleich in	(next sync in	(prochaine synchro dans	(次の同期まで
+(öffnet VRC-Nexus.streamDeckPlugin mit der Stream-Deck-App	(opens VRC-Nexus.streamDeckPlugin with the Stream Deck app	(ouvre VRC-Nexus.streamDeckPlugin avec l'appli Stream Deck	(Stream DeckアプリでVRC-Nexus.streamDeckPluginを開く
+Abo-Link für Handy / Outlook / Google-Kalender	Subscription link for phone / Outlook / Google Calendar	Lien d'abonnement pour mobile / Outlook / Google Agenda	スマホ / Outlook / Googleカレンダー用の購読リンク
+Aktuelle Welt und Spieler	Current world and players	Monde actuel et joueurs	現在のワールドとプレイヤー
+Alle Arten (	All types (	Tous les types (	すべての種類 (
+Alle Einstellungen auf Standard zurücksetzen	Reset all settings to default	Réinitialiser tous les paramètres	すべての設定を既定に戻す
+Alle Einträge aus dem Verlauf löschen, die es bei VRChat nicht mehr gibt	Delete all history entries that no longer exist at VRChat	Supprimer de l'historique les entrées qui n'existent plus chez VRChat	VRChatに存在しない履歴の項目をすべて削除
+Alle Memos zu VRChat übertragen	Transfer all memos to VRChat	Transférer tous les mémos vers VRChat	すべてのメモをVRChatへ転送
+Alle deine Freunde in dieser Gruppe	All your friends in this group	Tous tes amis dans ce groupe	このグループにいるフレンド全員
+Alle online	All online	Tous en ligne	全員オンライン
+Alle vorhandenen VRChat-Logdateien einlesen? (Doppelte Einträge werden erkannt	Import all existing VRChat log files? (Duplicate entries are detected	Importer tous les fichiers log VRChat existants ? (Les doublons sont détectés	既存のVRChatログファイルをすべて読み込みますか？(重複は検出されます
+Alle wählen	Select all	Tout sélectionner	すべて選択
+Allein in der Instanz	Alone in the instance	Seul dans l'instance	インスタンスに一人
+Anfrage von „	Request from “	Demande de «	リクエスト元「
+Antippen öffnet das Profil – dort kannst du eine Notiz hinterlassen oder die Freundschaft beenden	Tap to open the profile – there you can leave a note or unfriend	Touche pour ouvrir le profil – tu peux y laisser une note ou retirer l'ami	タップでプロフィールを開く – メモを残したりフレンド解除できます
+Auf vrchat.com öffnen	Open on vrchat.com	Ouvrir sur vrchat.com	vrchat.comで開く
+Aus dem Verlauf löschen	Delete from history	Supprimer de l'historique	履歴から削除
+Aus der Merkliste	From the watch list	De la liste mémorisée	保存リストから
+Aus der Merkliste entfernt	Removed from the saved list	Retiré de la liste mémorisée	保存リストから削除しました
+Aus der Sammlung entfernen	Remove from collection	Retirer de la collection	コレクションから削除
+Avatar suchen – Name, Stichwort, Autor-ID (usr_…) oder Avatar-ID	Search avatar – name, keyword, author ID (usr_…) or avatar ID	Chercher un avatar – nom, mot-clé, ID auteur (usr_…) ou ID avatar	アバター検索 – 名前、キーワード、作者ID (usr_…) またはアバターID
+Avatar-Datenbanken (VRCX-kompatibel), eine https-Adresse pro Zeile bzw. mit Leerzeichen getrennt	Avatar databases (VRCX-compatible), one https address per line or separated by spaces	Bases d'avatars (compatibles VRCX), une adresse https par ligne ou séparées par des espaces	アバターデータベース (VRCX互換)、https アドレスを1行に1つまたは空白区切り
+Avatare werden abgefragt	Loading avatars	Chargement des avatars	アバターを取得中
+Befehl löschen	Delete command	Supprimer la commande	コマンドを削除
+Befehle ausgeführt	Commands executed	Commandes exécutées	コマンドを実行しました
+Beiträge	Posts	Publications	投稿
+Belohnung löschen	Delete reward	Supprimer la récompense	報酬を削除
+Benachrichtigungen sind im Browser blockiert	Notifications are blocked in the browser	Les notifications sont bloquées dans le navigateur	ブラウザで通知がブロックされています
+Beschriftung für den Schnellknopf	Label for the quick button	Libellé du bouton rapide	クイックボタンのラベル
+Besitzer – alle Rechte	Owner – all rights	Propriétaire – tous les droits	オーナー – 全権限
+Bestätigen	Confirm	Confirmer	確認
+Bilddatei	Image file	Fichier image	画像ファイル
+Bildern. Mit „📌“ markierte haben Welt-/Spieler-Infos	images. Those marked “📌” have world/player info	images. Celles marquées « 📌 » ont des infos monde/joueurs	枚。「📌」付きはワールド/プレイヤー情報あり
+Bio geändert	Bio changed	Bio modifiée	自己紹介を変更
+Bitte mindestens eine Person auswählen	Please select at least one person	Sélectionne au moins une personne	少なくとも1人選んでください
+Blockieren beendet auch eine Freundschaft	Blocking also ends a friendship	Bloquer met aussi fin à une amitié	ブロックするとフレンドも解除されます
+Code aus deiner Authenticator-App (# Ziffern	Code from your authenticator app (# digits	Code de ton appli d'authentification (# chiffres	認証アプリのコード (# 桁
+Das geht nur unter Windows	This only works on Windows	Fonctionne seulement sous Windows	Windowsのみ対応
+Das ist die neueste Version	This is the latest version	C'est la dernière version	最新バージョンです
+Datei	File	Fichier	ファイル
+Datei ungültig	Invalid file	Fichier invalide	無効なファイル
+Debug-Menü (--enable-debug-gui	Debug menu (--enable-debug-gui	Menu de débogage (--enable-debug-gui	デバッグメニュー (--enable-debug-gui
+Dein Passwort wird	Your password is	Ton mot de passe est	パスワードは
+Deine Freunde hier	Your friends here	Tes amis ici	ここにいるフレンド
+Deine Memos (Notizen in VRC Nexus) lassen sich als CSV sichern oder als	Your memos (notes in VRC Nexus) can be saved as CSV or as	Tes mémos (notes dans VRC Nexus) peuvent être sauvegardés en CSV ou comme	メモ (VRC Nexus内のノート) はCSVで保存するか、次として保存できます:
+Den ganzen OSC-Log löschen (auch die Tagesdateien	Delete the whole OSC log (including daily files	Supprimer tout le journal OSC (y compris les fichiers journaliers	OSCログ全体を削除 (日別ファイルも
+Der Browser erlaubt das Lesen der Zwischenablage nicht – einfach Strg+V drücken	The browser does not allow reading the clipboard – just press Ctrl+V	Le navigateur n'autorise pas la lecture du presse-papiers – appuie simplement sur Ctrl+V	ブラウザがクリップボードの読み取りを許可していません – Ctrl+V を押してください
+Der Download wurde stattdessen im Browser geöffnet	The download was opened in the browser instead	Le téléchargement a été ouvert dans le navigateur à la place	代わりにブラウザでダウンロードを開きました
+Der Instanz-Verlauf kommt aus dem Spiel-Log vom PC – in der Windows-App	The instance history comes from the PC game log – in the Windows app	L'historique des instances vient du journal de jeu du PC – dans l'appli Windows	インスタンス履歴はPCのゲームログから取得 – Windowsアプリで
+Der Rückblick braucht das Spiel-Log vom PC – in der Windows-App	The recap needs the PC game log – in the Windows app	Le bilan nécessite le journal de jeu du PC – dans l'appli Windows	振り返りにはPCのゲームログが必要です – Windowsアプリで
+Dialog unter „⭐ Merken in“ hinzufügen	Add the dialog under “⭐ Save in”	Ajouter la boîte de dialogue sous « ⭐ Mémoriser dans »	「⭐ 保存先」の下にダイアログを追加
+Die Fotos liegen auf dem PC – in der Windows-App	The photos are on the PC – in the Windows app	Les photos sont sur le PC – dans l'appli Windows	写真はPCにあります – Windowsアプリで
+Die Instanz ist voll	The instance is full	L'instance est pleine	インスタンスは満員です
+Die Instanz wurde geschlossen	The instance was closed	L'instance a été fermée	インスタンスは閉じられました
+Die Person bekommt eine Gruppen-Einladung in VRChat	The person gets a group invite in VRChat	La personne reçoit une invitation de groupe dans VRChat	相手にVRChatでグループ招待が届きます
+Die VRChat-API ist inoffiziell. VRC Nexus fragt bewusst sparsam ab (höchstens alle # s) und führt nichts automatisch aus	The VRChat API is unofficial. VRC Nexus queries sparingly on purpose (at most every # s) and runs nothing automatically	L'API VRChat n'est pas officielle. VRC Nexus interroge volontairement peu (au plus toutes les # s) et n'exécute rien automatiquement	VRChat APIは非公式です。VRC Nexusは意図的に控えめに取得し (最短 # 秒ごと)、何も自動実行しません
+Die Warnliste ist leer. Einträge erscheinen auch im Beitrittsanfragen-Assistenten	The watch list is empty. Entries also appear in the join request assistant	La liste d'alerte est vide. Les entrées apparaissent aussi dans l'assistant des demandes d'adhésion	警告リストは空です。項目は参加リクエストアシスタントにも表示されます
+Die aktuelle Welt und Mitspieler in dieses Bild schreiben	Write the current world and players into this image	Inscrire le monde actuel et les joueurs dans cette image	現在のワールドとプレイヤーをこの画像に書き込む
+Die nächsten Termine deiner Gruppen	Your groups' upcoming dates	Les prochaines dates de tes groupes	グループの次の予定
+Diese Sicherung wiederherstellen? Die aktuellen App-Daten werden beim nächsten Start ersetzt (die alte Datei bleibt als Reserve „nexus.sqlite.vor-wiederherstellung	Restore this backup? The current app data will be replaced at the next start (the old file stays as a spare “nexus.sqlite.vor-wiederherstellung	Restaurer cette sauvegarde ? Les données actuelles seront remplacées au prochain démarrage (l'ancien fichier reste en réserve « nexus.sqlite.vor-wiederherstellung	このバックアップを復元しますか？現在のアプリデータは次回起動時に置き換えられます (古いファイルは「nexus.sqlite.vor-wiederherstellung」として保持
+Dieser Browser kann keine Benachrichtigungen	This browser cannot show notifications	Ce navigateur ne gère pas les notifications	このブラウザは通知に対応していません
+Direkt aus dem Browser	Directly from the browser	Directement depuis le navigateur	ブラウザから直接
+Discord-Namen deiner Freunde	Your friends' Discord names	Noms Discord de tes amis	フレンドのDiscord名
+Du bist gerade in keiner Instanz – erst ins Spiel gehen	You are not in an instance – join the game first	Tu n'es dans aucune instance – entre d'abord en jeu	インスタンスにいません – 先にゲームに入ってください
+Du bist in keiner Gruppe	You are not in any group	Tu n'es dans aucun groupe	グループに参加していません
+Du hast in keiner Gruppe Moderationsrechte (mindestens Kicken	You have no moderation rights in any group (at least kick	Tu n'as de droits de modération dans aucun groupe (au moins expulser	どのグループにもモデレーション権限がありません (最低キック
+Du hast keine Gruppen blockiert	You have not blocked any groups	Tu n'as bloqué aucun groupe	ブロックしたグループはありません
+Du hast keine Meldungen eingereicht	You have not submitted any reports	Tu n'as envoyé aucun signalement	通報はありません
+Du hast keine eigenen Welten hochgeladen	You have not uploaded any worlds	Tu n'as publié aucun monde	アップロードしたワールドはありません
+Durchsucht öffentliche Avatare über eine Avatar-Datenbank (z. B. avtrdb). Gefundene Avatare kannst du direkt anziehen oder favorisieren	Searches public avatars via an avatar database (e.g. avtrdb). You can wear or favourite found avatars directly	Cherche des avatars publics via une base d'avatars (p. ex. avtrdb). Tu peux porter ou mettre en favori les avatars trouvés	アバターデータベース (例: avtrdb) で公開アバターを検索。見つけたアバターはそのまま着用・お気に入りにできます
+Einladungen senden	Send invites	Envoyer des invitations	招待を送る
+Einladungs-Anfragen automatisch beantworten	Answer invite requests automatically	Répondre automatiquement aux demandes d'invitation	招待リクエストに自動返信
+Einladungslink kopiert – zum Teilen einfügen	Invite link copied – paste to share	Lien d'invitation copié – colle-le pour partager	招待リンクをコピーしました – 貼り付けて共有
+Einstellungen → 🔗 Dashboard: Adresse und Geräte-Token eintragen, Verbindung einschalten	Settings → 🔗 Dashboard: enter address and device token, enable the connection	Paramètres → 🔗 Tableau de bord : saisis adresse et jeton d'appareil, active la connexion	設定 → 🔗 ダッシュボード: アドレスとデバイストークンを入力し、接続をオン
+Eintrag löschen	Delete entry	Supprimer l'entrée	項目を削除
+Einträge	Entries	Entrées	項目
+Einträge entfernen	Remove entries	Retirer les entrées	項目を削除
+Einträge gelöscht	Entries deleted	Entrées supprimées	項目を削除しました
+Einträgen löschen	entries delete	entrées supprimer	件を削除
+Erst einen Parameternamen eingeben	Enter a parameter name first	Saisis d'abord un nom de paramètre	先にパラメーター名を入力してください
+Erst einen Text eingeben	Enter a text first	Saisis d'abord un texte	先にテキストを入力してください
+Erst oben „Browser-Quelle für OBS/Streamlabs“ einschalten	First enable “Browser source for OBS/Streamlabs” above	Active d'abord « Source navigateur pour OBS/Streamlabs » ci-dessus	先に上の「OBS/Streamlabs用ブラウザソース」をオンに
+Event wirklich im VRChat-Kalender löschen	Really delete the event in the VRChat calendar	Vraiment supprimer l'événement du calendrier VRChat	VRChatカレンダーのイベントを本当に削除しますか
+Fenstergröße	Window size	Taille de la fenêtre	ウィンドウサイズ
+Freund auswählen	Select friend	Choisir un ami	フレンドを選択
+Freunde dort	Friends there	Amis présents	そこにいるフレンド
+Freunde hier	Friends here	Amis ici	ここにいるフレンド
+Freunde im Spiel, letzte # h (max	Friends in game, last # h (max	Amis en jeu, dernières # h (max	ゲーム中のフレンド、直近 # 時間 (最大
+Freunde in meine Instanz einladen	Invite friends to my instance	Inviter des amis dans mon instance	フレンドを自分のインスタンスに招待
+Freunde online	Friends online	Amis en ligne	オンラインのフレンド
+Freunde online, letzte # Tage	Friends online, last # days	Amis en ligne, # derniers jours	オンラインのフレンド、直近 # 日
+Freunde suchen	Search friends	Chercher des amis	フレンドを検索
+Freunde suchen (Name, Welt, Status, Notiz) … Taste /	Search friends (name, world, status, note) … key /	Chercher des amis (nom, monde, statut, note) … touche /	フレンド検索 (名前、ワールド、ステータス、メモ) … キー /
+Freunde · abgeglichen	friends · synced	amis · synchronisé	フレンド · 同期
+Freunde+	Friends+	Friends+	Friends+
+Freunden (Online & Favoriten zuerst – die Gruppe ist zu groß für eine vollständige Liste	friends (online & favourites first – the group is too big for a full list	amis (en ligne & favoris d'abord – le groupe est trop grand pour une liste complète	人のフレンド (オンライン & お気に入り優先 – グループが大きすぎて全員は表示できません
+Freundschaft mit „	Friendship with “	Amitié avec «	フレンド「
+Freundschaften werden ab Beginn der Aufzeichnung gezählt	Friendships are counted from the start of recording	Les amitiés sont comptées depuis le début de l'enregistrement	フレンドは記録開始から数えます
+Frühere Instanzen dieser Gruppe	Previous instances of this group	Instances précédentes de ce groupe	このグループの以前のインスタンス
+Frühere Instanzen zeigen	Show previous instances	Afficher les instances précédentes	以前のインスタンスを表示
+Funktioniert, solange VRC Nexus läuft (auch im Infobereich) und die VRChat-Logs mitgelesen werden. Status-Änderungen höchstens alle # Sekunden	Works while VRC Nexus is running (also in the tray) and reading the VRChat logs. Status changes at most every # seconds	Fonctionne tant que VRC Nexus tourne (aussi dans la zone de notification) et lit les logs VRChat. Changements de statut au plus toutes les # secondes	VRC Nexus起動中 (トレイ含む) でVRChatログを読んでいる間に動作。ステータス変更は最短 # 秒ごと
+Für Creator: lokale Test-Builds neu laden	For creators: reload local test builds	Pour les créateurs : recharger les builds de test locaux	クリエイター向け: ローカルのテストビルドを再読み込み
+Für Gruppen-Instanzen einmal den Reiter „Gruppen“ öffnen	For group instances, open the “Groups” tab once	Pour les instances de groupe, ouvre une fois l'onglet « Groupes »	グループインスタンスには一度「グループ」タブを開いてください
+Für die Kalender-Verbindung fehlt dir das Recht „Kalender bearbeiten	For the calendar connection you lack the right “Edit calendar	Il te manque le droit « Modifier le calendrier » pour la connexion	カレンダー連携には「カレンダー編集」権限が必要です
+Für diesen Tag ist nichts aufgezeichnet	Nothing recorded for this day	Rien d'enregistré pour ce jour	この日の記録はありません
+Geburtstage: in die Notiz eines Freundes „Geburtstag #.“ oder „🎂 #.“ schreiben	Birthdays: write “Geburtstag #.” or “🎂 #.” into a friend's note	Anniversaires : écris « Geburtstag #. » ou « 🎂 #. » dans la note d'un ami	誕生日: フレンドのメモに「Geburtstag #.」または「🎂 #.」と書く
+Geplanten Beitrag löschen	Delete scheduled post	Supprimer la publication planifiée	予約投稿を削除
+Geprüft	Checked	Vérifié	確認済み
+Gerade ist kein Freund in einer öffentlich sichtbaren Welt	No friend is in a publicly visible world right now	Aucun ami n'est dans un monde visible publiquement	公開ワールドにいるフレンドはいません
+Gerade ist niemand online	Nobody is online right now	Personne n'est en ligne	今オンラインの人はいません
+Gerade keine offenen Gruppen-Instanzen	No open group instances right now	Aucune instance de groupe ouverte pour le moment	開いているグループインスタンスはありません
+Gesucht wird in Bio und Profil-Links (Freunde, deren Profil schon geladen wurde, z. B. über die Spielerliste oder das Profil-Fenster). Es wird nichts an Discord gesendet	Searches bios and profile links (friends whose profile was already loaded, e.g. via the player list or profile window). Nothing is sent to Discord	Recherche dans les bios et liens de profil (amis dont le profil a déjà été chargé, p. ex. via la liste des joueurs ou la fenêtre de profil). Rien n'est envoyé à Discord	自己紹介とプロフィールリンクを検索 (プレイヤーリストやプロフィールで読み込み済みのフレンド)。Discordには何も送信しません
+Google-API-Schlüssel (YouTube Data API v#	Google API key (YouTube Data API v#	Clé API Google (YouTube Data API v#	Google APIキー (YouTube Data API v#
+Group+ (mit Freunden	Group+ (with friends	Group+ (avec amis	Group+ (フレンドと
+Gruppe blockieren	Block group	Bloquer le groupe	グループをブロック
+Gruppe löschen	Delete group	Supprimer le groupe	グループを削除
+Gruppe „	Group “	Groupe «	グループ「
+Gruppen suchen: „	Search groups: “	Chercher des groupes : «	グループ検索:「
+Gruppen, die du moderierst (mit Kick-Rechten	Groups you moderate (with kick rights	Groupes que tu modères (avec droit d'expulsion	モデレート中のグループ (キック権限あり
+Gruppen-Kürzel	Group short code	Code court du groupe	グループ略称
+Größe	Size	Taille	サイズ
+Hier die lokale Schnittstelle einschalten	Enable the local interface here	Active l'interface locale ici	ここでローカルインターフェースをオン
+Hier ist noch nichts	Nothing here yet	Rien ici pour l'instant	まだ何もありません
+Hier kannst du sie als .reg-Datei sichern und später zurückspielen (z. B. nach einer Neuinstallation). Vor jedem Wiederherstellen wird automatisch eine Sicherung angelegt	Here you can save them as a .reg file and restore them later (e.g. after a reinstall). A backup is created automatically before each restore	Ici tu peux les sauvegarder en fichier .reg et les restaurer plus tard (p. ex. après une réinstallation). Une sauvegarde est créée automatiquement avant chaque restauration	.regファイルとして保存し、後で復元できます (再インストール後など)。復元前には自動でバックアップします
+Hinweis: Private Avatare anderer Personen kann VRChat nicht anziehen lassen	Note: VRChat does not let you wear other people's private avatars	Remarque : VRChat ne permet pas de porter les avatars privés d'autres personnes	注意: 他人のプライベートアバターはVRChatで着用できません
+Hole Benachrichtigungen von VRChat	Fetching notifications from VRChat	Récupération des notifications de VRChat	VRChatから通知を取得中
+Höchststand	Peak	Pic	最高値
+Höhe	Height	Hauteur	高さ
+ID oder Link einfügen (wrld_… / avtr_	Paste ID or link (wrld_… / avtr_	Coller un ID ou lien (wrld_… / avtr_	IDまたはリンクを貼り付け (wrld_… / avtr_
+Im Ordner zeigen	Show in folder	Afficher dans le dossier	フォルダーで表示
+Immer hören	Always listen	Toujours écouter	常に聞く
+In Invite-Instanzen immer „Beschäftigt	Always “Busy” in invite instances	Toujours « Occupé » dans les instances sur invitation	招待制インスタンスでは常に「取り込み中」
+In den letzten # Tagen noch nicht gespielt	Not played in the last # days	Pas joué ces # derniers jours	直近 # 日間プレイなし
+In den nächsten # Tagen nichts. Tipp: „Geburtstag #.“ in die Freundes-Notiz schreiben	Nothing in the next # days. Tip: write “Geburtstag #.” into a friend's note	Rien dans les # prochains jours. Astuce : écris « Geburtstag #. » dans la note d'un ami	今後 # 日間は何もありません。ヒント: フレンドのメモに「Geburtstag #.」と書く
+In der Stream-Deck-App eine VRC-Nexus-Aktion auf eine Taste ziehen und Port + Zugangsschlüssel eintragen (einmal reicht, gilt für alle Tasten	In the Stream Deck app drag a VRC Nexus action onto a key and enter port + access key (once is enough, applies to all keys	Dans l'appli Stream Deck, glisse une action VRC Nexus sur une touche et saisis port + clé d'accès (une fois suffit, vaut pour toutes les touches	Stream DeckアプリでVRC Nexusのアクションをキーにドラッグし、ポート + アクセスキーを入力 (1回でOK、全キー共通
+In der Zwischenablage	In the clipboard	Dans le presse-papiers	クリップボード内
+In der Zwischenablage ist keine VRChat-ID – einfach einfügen oder suchen	No VRChat ID in the clipboard – just paste or search	Pas d'ID VRChat dans le presse-papiers – colle ou cherche	クリップボードにVRChat IDがありません – 貼り付けるか検索してください
+Infos von	Info from	Infos de	情報元
+Installation wird geöffnet	Opening installation	Ouverture de l'installation	インストールを開いています
+Instanz #	Instance #	Instance #	インスタンス #
+Instanz erstellen	Create instance	Créer une instance	インスタンスを作成
+Instanz gemerkt – unter Welten → Gemerkt	Instance saved – under Worlds → Saved	Instance mémorisée – sous Mondes → Mémorisés	インスタンスを保存しました – ワールド → 保存済み
+Instanz neu betreten	Re-enter instance	Revenir dans l'instance	インスタンスに再参加
+Instanzen, in denen du	Instances in which you	Instances où tu	一緒にいたインスタンス:
+Interaktion aus	Interaction off	Interaction désactivée	操作オフ
+Inventar ist leer	Inventory is empty	L'inventaire est vide	インベントリは空です
+JSON anzeigen	Show JSON	Afficher le JSON	JSONを表示
+Kapazität	Capacity	Capacité	定員
+Kapazität / empfohlen	Capacity / recommended	Capacité / recommandée	定員 / 推奨
+Kein Mitglied	Not a member	Pas membre	メンバーではありません
+Kein OSC empfangen – in VRChat: Action-Menü → Optionen → OSC → Aktiviert	No OSC received – in VRChat: Action Menu → Options → OSC → Enabled	Aucun OSC reçu – dans VRChat : menu d'action → Options → OSC → Activé	OSC未受信 – VRChatで アクションメニュー → オプション → OSC → 有効
+Keine (öffentlichen) Gruppen	No (public) groups	Aucun groupe (public)	(公開) グループなし
+Keine Angebote gefunden	No listings found	Aucune offre trouvée	出品が見つかりません
+Keine Avatare	No avatars	Aucun avatar	アバターなし
+Keine Daten	No data	Aucune donnée	データなし
+Keine Einträge	No entries	Aucune entrée	項目なし
+Keine Einträge. VRC Nexus liest die VRChat-Logs automatisch mit – oder unter ⚙ Einstellungen alte Logs einlesen	No entries. VRC Nexus reads the VRChat logs automatically – or import old logs under ⚙ Settings	Aucune entrée. VRC Nexus lit les logs VRChat automatiquement – ou importe d'anciens logs dans ⚙ Paramètres	項目なし。VRC NexusはVRChatログを自動で読みます – または ⚙ 設定で過去のログを読み込み
+Keine Gruppe mit dem Kürzel	No group with the short code	Aucun groupe avec le code	該当する略称のグループはありません
+Keine Gruppen gefunden	No groups found	Aucun groupe trouvé	グループが見つかりません
+Keine Liste ausgewählt	No list selected	Aucune liste sélectionnée	リストが選択されていません
+Keine Mitglieder sichtbar	No members visible	Aucun membre visible	表示できるメンバーはいません
+Keine Moderationen – du hast niemanden blockiert oder stummgeschaltet	No moderations – you have not blocked or muted anyone	Aucune modération – tu n'as bloqué ni mis en sourdine personne	モデレーションなし – 誰もブロック・ミュートしていません
+Keine Parameter	No parameters	Aucun paramètre	パラメーターなし
+Keine Screenshots im Zeitraum	No screenshots in this period	Aucune capture sur la période	期間内のスクリーンショットはありません
+Keine Treffer	No results	Aucun résultat	該当なし
+Keine VRChat-Gruppen	No VRChat groups	Aucun groupe VRChat	VRChatグループなし
+Keine Welt-Infos gespeichert	No world info saved	Aucune info de monde enregistrée	ワールド情報は保存されていません
+Keine Weltbesuche im Zeitraum	No world visits in this period	Aucune visite de monde sur la période	期間内のワールド訪問はありません
+Keine Welten	No worlds	Aucun monde	ワールドなし
+Keine Welten gefunden	No worlds found	Aucun monde trouvé	ワールドが見つかりません
+Keine Welten zum Auswürfeln gefunden	No worlds found to roll	Aucun monde à tirer au sort	抽選できるワールドが見つかりません
+Keine deiner Freunde ist in dieser Gruppe	None of your friends is in this group	Aucun de tes amis n'est dans ce groupe	このグループにフレンドはいません
+Keine kommenden Events in deinen Gruppen	No upcoming events in your groups	Aucun événement à venir dans tes groupes	グループの予定イベントはありません
+Keine offenen Beitrittsanfragen	No open join requests	Aucune demande d'adhésion en attente	保留中の参加リクエストはありません
+Keine offenen Beitrittsanfragen. 🎉	No open join requests. 🎉	Aucune demande d'adhésion en attente. 🎉	保留中の参加リクエストはありません。🎉
+Keine offenen Benachrichtigungen. 🎉	No open notifications. 🎉	Aucune notification en attente. 🎉	未処理の通知はありません。🎉
+Keine offenen Gruppen-Einladungen	No open group invites	Aucune invitation de groupe en attente	保留中のグループ招待はありません
+Keine passenden Avatare zum Auswürfeln	No matching avatars to roll	Aucun avatar correspondant à tirer au sort	抽選できるアバターがありません
+Keine veröffentlichten Welten	No published worlds	Aucun monde publié	公開済みワールドなし
+Keine öffentlichen Avatare	No public avatars	Aucun avatar public	公開アバターなし
+Keine öffentlichen Instanzen offen	No public instances open	Aucune instance publique ouverte	開いている公開インスタンスはありません
+Keine öffentlichen Lieblingswelten (nur sichtbar, wenn die Gruppe öffentlich ist	No public favourite worlds (only visible if the group is public	Aucun monde favori public (visible seulement si le groupe est public	公開のお気に入りワールドなし (グループが公開の場合のみ表示
+Lade Aktivität	Loading activity	Chargement de l'activité	アクティビティを読み込み中
+Lade Angebote	Loading listings	Chargement des offres	出品を読み込み中
+Lade Avatar	Loading avatar	Chargement de l'avatar	アバターを読み込み中
+Lade Avatare	Loading avatars	Chargement des avatars	アバターを読み込み中
+Lade Einstellungen	Loading settings	Chargement des paramètres	設定を読み込み中
+Lade Favoriten	Loading favourites	Chargement des favoris	お気に入りを読み込み中
+Lade Freundesnetz	Loading friend network	Chargement du réseau d'amis	フレンドネットワークを読み込み中
+Lade Galerie	Loading gallery	Chargement de la galerie	ギャラリーを読み込み中
+Lade Gruppe	Loading group	Chargement du groupe	グループを読み込み中
+Lade Gruppen	Loading groups	Chargement des groupes	グループを読み込み中
+Lade Instanz	Loading instance	Chargement de l'instance	インスタンスを読み込み中
+Lade Inventar	Loading inventory	Chargement de l'inventaire	インベントリを読み込み中
+Lade Neuigkeiten	Loading news	Chargement des actualités	ニュースを読み込み中
+Lade Shop-Konto	Loading shop account	Chargement du compte boutique	ショップアカウントを読み込み中
+Lade VRC Nexus	Loading VRC Nexus	Chargement de VRC Nexus	VRC Nexusを読み込み中
+Lade VRChat-Kalender	Loading VRChat calendar	Chargement du calendrier VRChat	VRChatカレンダーを読み込み中
+Lade Welt	Loading world	Chargement du monde	ワールドを読み込み中
+Lade Welten	Loading worlds	Chargement des mondes	ワールドを読み込み中
+Lade deine letzten Instanzen	Loading your recent instances	Chargement de tes instances récentes	最近のインスタンスを読み込み中
+Laden & installieren	Download & install	Télécharger & installer	ダウンロード & インストール
+Log-Einträge	Log entries	Entrées du journal	ログ項目
+Lokale Gruppe „	Local group “	Groupe local «	ローカルグループ「
+Lokaler Verlauf	Local history	Historique local	ローカル履歴
+Lädt hoch	Uploading	Téléversement	アップロード中
+Markiere Parameter mit ★ unter Spiel & OSC → Parameter	Mark parameters with ★ under Game & OSC → Parameters	Marque des paramètres avec ★ dans Jeu & OSC → Paramètres	ゲーム & OSC → パラメーターで ★ を付けてください
+Meldung zurückziehen/löschen	Withdraw/delete report	Retirer/supprimer le signalement	通報を取り下げ/削除
+Memos werden lokal gespeichert (Enter oder Feld verlassen	Memos are saved locally (Enter or leave the field	Les mémos sont enregistrés localement (Entrée ou quitter le champ	メモはローカルに保存されます (Enter またはフィールド外へ
+Mit anderen (ab … Spielern	With others (from … players	Avec d'autres (à partir de … joueurs	他の人と (… 人以上
+Mit dem Dashboard kannst du vom Handy aus die Chatbox und Avatar-Parameter an deinem PC steuern (dort muss VRC Nexus mit Dashboard-Verbindung laufen) und Memos abgleichen	With the dashboard you can control the chatbox and avatar parameters on your PC from your phone (VRC Nexus must run there with the dashboard connection) and sync memos	Avec le tableau de bord, tu peux piloter la chatbox et les paramètres d'avatar de ton PC depuis ton mobile (VRC Nexus doit y tourner avec la connexion au tableau de bord) et synchroniser les mémos	ダッシュボードを使うとスマホからPCのチャットボックスやアバターパラメーターを操作できます (PCでダッシュボード接続付きのVRC Nexusが必要)。メモも同期できます
+Mit dem Dashboard-Kalender synchronisieren (privat, aktualisiert sich automatisch	Sync with the dashboard calendar (private, updates automatically	Synchroniser avec le calendrier du tableau de bord (privé, mis à jour automatiquement	ダッシュボードのカレンダーと同期 (非公開、自動更新
+Mitglied seit	Member since	Membre depuis	登録日
+Mitglieder	Members	Membres	メンバー
+Mitglieder auf dieser Seite filtern	Filter members on this page	Filtrer les membres sur cette page	このページのメンバーを絞り込む
+Mitglieder benachrichtigen	Notify members	Notifier les membres	メンバーに通知
+Mitglieder exportiert	Members exported	Membres exportés	メンバーをエクスポートしました
+Mitglieder filtern	Filter members	Filtrer les membres	メンバーを絞り込む
+Mitgliederliste als CSV	Member list as CSV	Liste des membres en CSV	メンバーリストをCSVで
+Mitschreiben ist aus (Einstellungen → VR → OSC-Log	Logging is off (Settings → VR → OSC log	La journalisation est désactivée (Paramètres → VR → Journal OSC	記録はオフです (設定 → VR → OSCログ
+Modell löschen	Delete model	Supprimer le modèle	モデルを削除
+Morgen gibt es hier eine Kurve	There will be a chart here tomorrow	Il y aura une courbe ici demain	明日ここにグラフが表示されます
+Name der neuen lokalen Gruppe	Name of the new local group	Nom du nouveau groupe local	新しいローカルグループの名前
+Neue Instanz erstellen	Create new instance	Créer une nouvelle instance	新しいインスタンスを作成
+Neue Punktzahl	New score	Nouveau score	新しいポイント数
+Neuen Abo-Link erzeugen? Der alte funktioniert dann nicht mehr	Create a new subscription link? The old one will stop working	Créer un nouveau lien d'abonnement ? L'ancien ne fonctionnera plus	新しい購読リンクを作成しますか？古いリンクは使えなくなります

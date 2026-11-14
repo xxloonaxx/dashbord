@@ -20,6 +20,10 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.7.8
+- **Übersetzung vervollständigt:** Welt-, Avatar-, Instanz- und Gruppen-Fenster, Verlauf, Spielerliste, Hinweise und Leer-Meldungen sind jetzt übersetzt (Wörterbuch fast 2.000 Einträge, alle Texte aus dem Quellcode abgeglichen).
+- **Fix Update:** „Im Release fehlt die passende Datei (Setup)“ – die App bietet ein Update erst an, wenn die Datei für dein Gerät wirklich hochgeladen ist (Android und Windows werden nacheinander gebaut).
+
 ### Neu in 1.7.7
 - ⚙ **Einstellungen** sind jetzt ein eigener Knopf oben rechts neben der Profilkarte (statt im Mehr-Menü); leuchtet, solange die Einstellungen offen sind.
 
