@@ -1,5 +1,10 @@
 [
  {
+  "version": "1.9.2",
+  "title": "",
+  "body": "- Spracheingabe: der **📜 Verlauf** steht jetzt rechts oben neben den anderen Karten (statt unten über die ganze Breite) und nutzt die volle Höhe."
+ },
+ {
   "version": "1.9.1",
   "title": "ℹ️ Über-Seite mit Changelog",
   "body": "- Neu unter **Mehr → ℹ️ Über VRC Nexus**: installierte Version, System, Update-Status (mit „Nach Updates suchen“), **Changelog der letzten 2 Versionen** (ältere auf Knopfdruck, alle Releases auf GitHub), Datenordner und Danksagungen.\n- Der Changelog kommt aus dieser README (`node scripts/changelog-build.js` → `backend/changelog.json`); ein Test prüft, dass er zur Version passt."

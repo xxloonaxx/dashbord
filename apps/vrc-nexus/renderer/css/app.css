@@ -428,8 +428,8 @@ body.mobile .vx-hbtn em { display: none; } body.mobile .vx-hbtn { min-width: 48p
 .sp-mode button.on { background: rgba(var(--accent-rgb), 0.16); border-color: var(--accent-cyan); color: var(--text-strong); font-weight: 700; }
 .sp-listen { margin: 0 0 6px; }
 .sp-meter i.hit { background: var(--accent-green); }
-.sp-histcard { grid-column: 1 / -1; order: 9; }
-.sp-hist { display: flex; flex-direction: column; gap: 6px; max-height: 420px; overflow-y: auto; margin-top: 6px; }
+.sp-histcard { order: 9; align-self: stretch; display: flex; flex-direction: column; min-width: 0; }
+.sp-hist { display: flex; flex-direction: column; gap: 6px; max-height: 75vh; overflow-y: auto; margin-top: 6px; flex: 1; }
 .sp-h { padding: 6px 10px; border-left: 2px solid var(--accent-cyan); background: rgba(var(--panel-rgb), 0.6); }
 .sp-h-top { display: flex; align-items: center; gap: 10px; }
 .sp-h-tag { font-size: 0.7rem; color: var(--text-muted); }
