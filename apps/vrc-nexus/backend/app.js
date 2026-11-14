@@ -427,6 +427,16 @@ class NexusApp {
                 return { items: arr(await call('GET', '/groups/' + enc(valid(id, 'grp')) + '/' + p, qq)).map(m => { const u = m.user || {};
                     return { id: str(m.userId || u.id), name: str(u.displayName || '?'), image: U.userImage(u), joined: str(m.joinedAt || m.createdAt), roles: arr(m.roleIds), rep: !!m.isRepresenting, banned: str(m.bannedAt) }; }) };
             }
+            case 'group_instances_all': {   // offene Instanzen aller Gruppen, in denen du bist (ein Aufruf)
+                const r = await call('GET', '/users/' + enc(acc.vrc_id) + '/instances/groups');
+                const list = arr(r && r.instances ? r.instances : r);
+                this.groupNames = this.groupNames || new Map();
+                const ids = [...new Set(list.map(i => str(i.ownerId)).filter(x => /^grp_/.test(x)))];
+                for (const gid of ids) if (!this.groupNames.has(gid)) { const g = await quiet(() => call('GET', '/groups/' + enc(gid))); this.groupNames.set(gid, str(g && g.name) || 'Gruppe'); }
+                return { items: list.filter(i => i && i.location).map(i => { const w = i.world || {}, gid = str(i.ownerId);
+                    return { group_id: gid, group_name: this.groupNames.get(gid) || 'Gruppe', loc: U.location(str(i.location)), world: str(w.name), thumb: str(w.thumbnailImageUrl || w.imageUrl), users: int(i.n_users || i.userCount || i.memberCount), capacity: int(w.capacity || i.capacity) }; })
+                    .sort((a, b) => b.users - a.users) };
+            }
             case 'group_instances':
                 return { items: arr(await call('GET', '/groups/' + enc(valid(id, 'grp')) + '/instances')).map(i => {
                     const w = i.world || {};

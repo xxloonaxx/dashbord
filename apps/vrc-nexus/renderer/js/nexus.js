@@ -185,6 +185,17 @@
         const bar = $('#subNav');
         if (!bar) return;
         name = name || store.get('tab') || 'home';
+        // Direkt-Zugriff & Einstellungen: bei Menü links unten in die Seitenleiste, sonst oben rechts
+        const head = $('.vx-head-r'), menu = $('#tabs');
+        let foot = $('#sideFoot');
+        if (!foot && menu) { foot = document.createElement('div'); foot.className = 'vx-sidefoot'; foot.id = 'sideFoot'; menu.appendChild(foot); }
+        const side = document.body.classList.contains('nav-side');
+        for (const id of ['directBtn', 'hdSettings']) {
+            const el = $('#' + id);
+            if (!el || !foot || !head) continue;
+            if (side && el.parentNode !== foot) foot.appendChild(el);
+            if (!side && el.parentNode === foot) head.insertBefore(el, $('#me'));
+        }
         for (const [el, h] of subHomes) if (el.parentNode === bar) h.parent.insertBefore(el, h.next && h.next.parentNode === h.parent ? h.next : null);
         subHomes.clear();
         bar.innerHTML = '';
@@ -227,6 +238,7 @@
             fillTrustFilter();
             renderFavChips();
             renderFriends();
+            if (window.NexusSide) window.NexusSide.update(d);
             notifyChanges();
             showErr($('#globalErr'), d.error || '');
             const s = d.sync || {};
@@ -2180,7 +2192,7 @@
 
     // Start
     load(false).then(() => load(true)).finally(schedule);
-    window.NexusUI = { subnav: () => syncSubNav(), pic, popMenu, renderUser, feedRow, tab, api, toast, esc, img, ago, hm, dur, clock, num, launch, openUser, openWorld, openAvatar, openInstance, openModal, closeModal, load, readClipboard,
+    window.NexusUI = { subnav: () => syncSubNav(), statusDot, store, pic, popMenu, renderUser, feedRow, tab, api, toast, esc, img, ago, hm, dur, clock, num, launch, openUser, openWorld, openAvatar, openInstance, openModal, closeModal, load, readClipboard,
         state: () => state, statusDot, isoDT, renderFriends, store };
     { const st = (window.VRCX.ui || {})['ui.start_tab']; if (st && st !== 'last') tab(st); else tab(store.get('tab', 'home'), store.get('tabSub', '')); }
     setInterval(() => { if (state && !$('[data-pane=friends]').hidden) renderFriends(); }, 60000);

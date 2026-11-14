@@ -20,6 +20,12 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 2.5.0 – Freunde-Leiste rechts, Knöpfe in der Seitenleiste
+- **Rechte Leiste** (bei Menü links und breitem Fenster): Reiter **Freunde** (im Spiel / gesamt) mit aufklappbaren Bereichen *Ich*, *Favoriten*, *Im Spiel*, *Online*, *Offline* – je Freund Profilbild, Status und Welt; Klick öffnet das Profil. Reiter **Gruppen**: alle Gruppen, die gerade **offene Instanzen** haben, mit Welt, Spielerzahl und Region – Klick öffnet die Instanz. Suchfeld für beides; wird alle 2 Minuten aufgefrischt.
+- **Linke Leiste unten**: 🧭 Direkt-Zugriff und ⚙ Einstellungen (statt oben rechts), darunter 🎨 Theme und die Sprach-Flagge.
+- **Volle Fensterbreite** ist jetzt Standard.
+- Abschaltbar: *Einstellungen → Oberfläche → Menü → Freunde-Leiste rechts*. Unter 1350 px Fensterbreite wird die rechte Leiste ausgeblendet.
+
 ### Neu in 2.4.0 – Menü links, Unterpunkte oben
 - **Hauptmenü als Seitenleiste links** (Windows-App): alle Seiten untereinander, Gruppen wie *Favoriten*, *Sozial*, *Diagramme* und *Mehr* klappen als Unterpunkte auf – die aktuelle Gruppe ist automatisch offen.
 - **Oben stehen die Unterpunkte der aktuellen Seite**: bei Gruppen deren Einträge (z. B. Sozial → Freundes-Log, Freundesliste, Gruppen, Moderation, Mod-Zentrale), bei *Spiel & OSC* dessen Reiter (Live & OSC, Parameter, OSC-Log, OSC-Werkzeuge, Chatbox-Module …), bei *Benachrichtigungen* die vier Ansichten.

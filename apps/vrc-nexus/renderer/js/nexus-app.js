@@ -34,6 +34,8 @@
         b.classList.toggle('sticky-menu', s['ui.sticky_menu'] !== false);
         b.classList.toggle('wide', !!s['ui.wide']);
         b.classList.toggle('nav-side', !MOBILE && s['ui.nav'] !== 'top');
+        b.classList.toggle('fside-on', !MOBILE && s['ui.nav'] !== 'top' && s['ui.friend_side'] !== false);
+        if (window.NexusSide) window.NexusSide.render();
         if (window.NexusUI && window.NexusUI.subnav) window.NexusUI.subnav();
         b.classList.remove('menu-icons', 'menu-text', 'font-system', 'font-mono');
         if (s['ui.menu_style'] === 'icons') b.classList.add('menu-icons');

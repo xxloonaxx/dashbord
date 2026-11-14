@@ -229,3 +229,10 @@ Hauptmenü	Main menu	Menu principal	メインメニュー
 links (Seitenleiste)	left (sidebar)	à gauche (barre latérale)	左（サイドバー）
 oben	top	en haut	上
 Links: Menü als Seitenleiste, oben stehen die Unterpunkte der aktuellen Seite.	Left: menu as a sidebar, the sub-items of the current page are shown at the top.	À gauche : menu en barre latérale, les sous-rubriques de la page actuelle s'affichent en haut.	左：メニューをサイドバーに表示し、現在のページのサブ項目を上に表示します。
+Freunde-Leiste rechts	Friends sidebar on the right	Barre des amis à droite	右側のフレンドバー
+Bei Menü links und breitem Fenster: Freunde nach Status und Gruppen mit offenen Instanzen.	With the menu on the left and a wide window: friends by status and groups with open instances.	Avec le menu à gauche et une fenêtre large : amis par statut et groupes avec instances ouvertes.	メニューが左で画面が広い場合：ステータス別フレンドと、インスタンスが開いているグループ。
+Ich	Me	Moi	自分
+Suchen …	Search …	Rechercher …	検索 …
+neu laden	reload	recharger	再読み込み
+Lade …	Loading …	Chargement …	読み込み中 …
+Gerade hat keine deiner Gruppen eine offene Instanz.	None of your groups has an open instance right now.	Aucun de tes groupes n'a d'instance ouverte pour le moment.	今インスタンスを開いているグループはありません。

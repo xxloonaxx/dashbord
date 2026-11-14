@@ -45,7 +45,8 @@ const FIELDS = [
     ['ui.menu_style', 'ui', 'Menü', 'select', 'both', 'Menü-Darstellung', '', [['both', 'Symbol + Text'], ['icons', 'nur Symbole'], ['text', 'nur Text']]],
     ['ui.sticky_menu', 'ui', 'Menü', 'bool', true, 'Menü beim Scrollen oben festhalten', ''],
     ['ui.start_tab', 'ui', 'Menü', 'select', 'last', 'Beim Start öffnen', '', [['last', 'zuletzt geöffnete Seite']].concat(START_TABS)],
-    ['ui.wide', 'ui', 'Menü', 'bool', false, 'Volle Fensterbreite nutzen', ''],
+    ['ui.wide', 'ui', 'Menü', 'bool', true, 'Volle Fensterbreite nutzen', ''],
+    ['ui.friend_side', 'ui', 'Menü', 'bool', true, 'Freunde-Leiste rechts', 'Bei Menü links und breitem Fenster: Freunde nach Status und Gruppen mit offenen Instanzen.'],
     // ---------- Sozial ----------
     ['social.show_offline', 'social', 'Freundesliste', 'bool', false, 'Offline-Freunde standardmäßig zeigen', ''],
     ['social.sort', 'social', 'Freundesliste', 'select', 'state', 'Standard-Sortierung', '', [['state', 'Nach Status'], ['name', 'Name A–Z'], ['since', 'Zuletzt geändert'], ['trust', 'Vertrauensstufe'], ['world', 'Nach Welt']]],

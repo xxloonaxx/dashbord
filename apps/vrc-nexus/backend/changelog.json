@@ -1,5 +1,10 @@
 [
  {
+  "version": "2.5.0",
+  "title": "Freunde-Leiste rechts, Knöpfe in der Seitenleiste",
+  "body": "- **Rechte Leiste** (bei Menü links und breitem Fenster): Reiter **Freunde** (im Spiel / gesamt) mit aufklappbaren Bereichen *Ich*, *Favoriten*, *Im Spiel*, *Online*, *Offline* – je Freund Profilbild, Status und Welt; Klick öffnet das Profil. Reiter **Gruppen**: alle Gruppen, die gerade **offene Instanzen** haben, mit Welt, Spielerzahl und Region – Klick öffnet die Instanz. Suchfeld für beides; wird alle 2 Minuten aufgefrischt.\n- **Linke Leiste unten**: 🧭 Direkt-Zugriff und ⚙ Einstellungen (statt oben rechts), darunter 🎨 Theme und die Sprach-Flagge.\n- **Volle Fensterbreite** ist jetzt Standard.\n- Abschaltbar: *Einstellungen → Oberfläche → Menü → Freunde-Leiste rechts*. Unter 1350 px Fensterbreite wird die rechte Leiste ausgeblendet."
+ },
+ {
   "version": "2.4.0",
   "title": "Menü links, Unterpunkte oben",
   "body": "- **Hauptmenü als Seitenleiste links** (Windows-App): alle Seiten untereinander, Gruppen wie *Favoriten*, *Sozial*, *Diagramme* und *Mehr* klappen als Unterpunkte auf – die aktuelle Gruppe ist automatisch offen.\n- **Oben stehen die Unterpunkte der aktuellen Seite**: bei Gruppen deren Einträge (z. B. Sozial → Freundes-Log, Freundesliste, Gruppen, Moderation, Mod-Zentrale), bei *Spiel & OSC* dessen Reiter (Live & OSC, Parameter, OSC-Log, OSC-Werkzeuge, Chatbox-Module …), bei *Benachrichtigungen* die vier Ansichten.\n- Umschaltbar unter *Einstellungen → Oberfläche → Menü → Hauptmenü* („links“ oder wie bisher „oben“). Bei schmalem Fenster wird die Seitenleiste zur Symbolleiste; die Android-App bleibt wie sie ist."
