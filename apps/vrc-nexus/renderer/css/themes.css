@@ -63,7 +63,7 @@ html[data-scheme="light"] body { background-image: radial-gradient(circle at 50%
 html[data-scheme="light"] body::before, html[data-scheme="light"] body::after { opacity: 0.25; }
 html[data-scheme="light"] h1, html[data-scheme="light"] .hud-tag, html[data-scheme="light"] .panel-title { text-shadow: none; }
 html[data-scheme="light"] .vx-card-img, html[data-scheme="light"] .shot img, html[data-scheme="light"] .vx-gitem img { background: #dde3ec; }
-html[data-scheme="light"] .btn-gold, html[data-scheme="light"] .chip.on, html[data-scheme="light"] .hm-sz button.on { color: #fff; }
+html[data-scheme="light"] .hm-sz button.on { color: #fff; }
 html[data-scheme="light"] ::-webkit-scrollbar-thumb { background: rgba(var(--accent-rgb), 0.35); }
 
 html[data-scheme="light"] [style*="#cccccc"] { color: #6b7280 !important; }
