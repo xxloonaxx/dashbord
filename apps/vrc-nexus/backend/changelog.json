@@ -1,5 +1,10 @@
 [
  {
+  "version": "1.10.2",
+  "title": "„Spielt gerade“ über die Windows-Mediensteuerung",
+  "body": "- **🎵 Spielt gerade** nutzt jetzt die **Windows-Mediensteuerung** – erkannt wird alles, was Windows im Medien-Popup zeigt: Spotify, **Browser (YouTube, SoundCloud …)**, Apple Music, TIDAL, Deezer, VLC, Medienwiedergabe … Ältere Player ohne Mediensteuerung werden weiter über den Fenstertitel erkannt.\n- Startseiten-Kachel neu: Titel, Künstler, App, Status, **Fortschrittsbalken** mit Zeit und Knöpfe **⏮ ⏯ ⏭**.\n- Neue Platzhalter für Rotator, Chatbox-Modul und Automatik: `{musik_titel}` `{musik_kuenstler}` `{musik_app}` `{musik_zeit}` (z. B. 1:18/3:44). Pausiert = „spielt“ nichts.\n- Abschaltbar unter *Einstellungen → Medien → Spielt gerade*.\n- **🧭 Direkt-Zugriff** sitzt jetzt oben neben ⚙ Einstellungen statt in der Menüleiste.\n- Fix: In den Einstellungen leuchtete „Mehr“ fälschlich mit."
+ },
+ {
   "version": "1.10.1",
   "title": "Store durchsuchen, NEU bei Info-Push",
   "body": "- **🛒 Shop:** Suchfeld und Sortierung im VRChat-Store (*Empfohlen, Endet bald, Preis auf-/absteigend, Name A–Z*) – Regale ohne Treffer werden ausgeblendet.\n- **📰 Info-Push:** Einträge, die seit deinem letzten Besuch neu sind, tragen ein **NEU**-Kennzeichen; die Reiter zeigen, wie viele neu sind, und springen automatisch zur Kategorie mit Neuem."

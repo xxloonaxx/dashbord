@@ -781,6 +781,45 @@ test('1.10: VRChat-Store (Store-ID aus /config, Regale, Restzeit, Artikelart), M
     app.tools.stop();
 });
 
+test('1.10.2: Spielt gerade über die Windows-Mediensteuerung (Sitzungen, Platzhalter, ⏯ ⏭, Fallback)', async () => {
+    const path = require('path');
+    const { appName, PS } = require('../backend/media');
+    assert.strictEqual(appName('308046B0AF4A39CB'), 'Firefox'); assert.strictEqual(appName('Microsoft.ZuneMusic_8wekyb3d8bbwe!Microsoft.ZuneMusic'), 'Medienwiedergabe');
+    assert.ok(PS.includes("IAsyncOperation`1") && PS.includes('TryTogglePlayPauseAsync'), 'PowerShell-Skript vollständig');
+    process.env.NEXUS_MEDIA_PS = path.join(__dirname, 'fixtures', 'fake-media.js');
+    delete process.env.NEXUS_MUSIC;
+    const { NexusApp } = require('../backend/app');
+    const db = await openDatabase(null);
+    const app = new NexusApp({ db, crypt: { encrypt: s => s, decrypt: s => s }, host: { userData: os.tmpdir() } });
+    app.game.osc.stopListen();
+    try {
+        app.media.start();
+        const wait = async f => { for (let i = 0; i < 60 && !f(); i++) await new Promise(r => setTimeout(r, 100)); assert.ok(f(), 'Zeitüberschreitung'); };
+        await wait(() => app.media.now());
+        const n = app.media.now();
+        assert.strictEqual(n.app, 'Spotify'); assert.strictEqual(n.status, 'playing'); assert.strictEqual(n.title, 'Harder, Better, Faster, Stronger');
+        assert.strictEqual(app.media.sessions.length, 2, 'auch pausierter Browser wird gelistet');
+        app.auto.refreshMusic();
+        assert.strictEqual(app.auto.music, 'Daft Punk – Harder, Better, Faster, Stronger');
+        const v = app.auto.vars();
+        assert.strictEqual(v.musik_kuenstler, 'Daft Punk'); assert.strictEqual(v.musik_app, 'Spotify'); assert.ok(/^\d+:\d\d\/3:44$/.test(v.musik_zeit), v.musik_zeit);
+        await app.post({ act: 'media_ctl', cmd: 'next', id: 'Spotify.exe' }, {});
+        await wait(() => app.media.now() && app.media.now().title === 'Snowfall');
+        await app.post({ act: 'media_ctl', cmd: 'toggle' }, {});
+        await wait(() => app.media.sessions[0] && app.media.sessions[0].status === 'paused');
+        assert.strictEqual(app.media.text(), '', 'pausiert = nichts „spielt gerade“');
+        assert.strictEqual(app.auto.vars().musik_titel, '–');
+        const st = await app.post({ act: 'media_status' }, {});
+        assert.ok(st.available && st.running && st.now.status === 'paused');
+        await assert.rejects(app.post({ act: 'media_ctl', cmd: 'rm -rf' }, {}));
+        const h = await app.post({ act: 'home_data' }, {}).catch(() => null);
+        if (h && h.media !== undefined) assert.ok(h.media_on);
+    } finally {
+        app.media.stop(); app.tools.stop();
+        delete process.env.NEXUS_MEDIA_PS;
+    }
+});
+
 test('1.7: Wörterbuch (EN/FR/JA) vollständig und Platzhalter stimmen', () => {
     const fs = require('fs'), path = require('path'), vm = require('vm');
     const file = path.join(__dirname, '..', 'renderer', 'js', 'i18n-dict.js');

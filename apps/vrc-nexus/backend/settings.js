@@ -102,6 +102,7 @@ const FIELDS = [
     ['media.photo_dir', 'media', 'Ordner', 'text', '', 'VRChat-Fotoordner', 'leer = Bilder\\VRChat'],
     ['media.steam_dir', 'media', 'Ordner', 'text', '', 'Steam-Screenshot-Ordner', 'leer = automatisch suchen'],
     ['media.meta', 'media', 'Screenshots', 'bool', false, 'Welt & Mitspieler in neue Screenshots schreiben', 'Als PNG-Text „Description“ (lesbar im Screenshot-Manager, kompatibel mit anderen Tools).'],
+    ['media.smtc', 'media', 'Spielt gerade', 'bool', true, 'Windows-Mediensteuerung nutzen', 'Erkennt alles, was Windows im Medien-Popup zeigt (Spotify, Browser/YouTube, Apple Music, TIDAL …) und erlaubt ⏮ ⏯ ⏭. Aus = nur Fenstertitel bekannter Player.'],
     ['media.copy', 'media', 'Screenshots', 'bool', false, 'Neue Screenshots zusätzlich kopieren', ''],
     ['media.copy_dir', 'media', 'Screenshots', 'text', '', 'Zielordner', 'Unterordner pro Monat werden angelegt.'],
     ['media.copy_by_world', 'media', 'Screenshots', 'bool', false, 'Unterordner nach Welt statt nach Monat', ''],

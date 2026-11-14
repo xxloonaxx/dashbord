@@ -230,7 +230,7 @@
                             <select name="rotator_mode"><option value="seq">der Reihe nach</option><option value="random">zufällig</option></select></div>
                         <label class="check"><input type="checkbox" name="rotator_only_game"> nur wenn VRChat läuft</label>
                         <p class="muted small"><b>/n</b> = neue Zeile · Platzhalter: {zeit} {zeit_s} {uhr} {datum} {wochentag} {welt} {zugang} {region} {spieler} {avatar} {dauer} {name}
-                            {freunde} {freunde_online} {status} {statustext} {countdown:2026-12-24 18:00} {zufall:a|b|c} {musik} {afk} {afk_zeit} {spieler_neu}</p>
+                            {freunde} {freunde_online} {status} {statustext} {countdown:2026-12-24 18:00} {zufall:a|b|c} {musik} {musik_titel} {musik_kuenstler} {musik_app} {musik_zeit} {afk} {afk_zeit} {spieler_neu}</p>
                         <div class="nc-row"><button type="button" class="btn btn-sm" id="ncRotPrev">👁 Vorschau</button><span class="small" id="ncRotOut" style="white-space: pre-wrap;"></span></div>
                         <button class="btn btn-sm btn-gold">💾 Speichern</button>
                     </div>

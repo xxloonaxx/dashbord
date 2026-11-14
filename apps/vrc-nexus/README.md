@@ -20,6 +20,14 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.10.2 – „Spielt gerade“ über die Windows-Mediensteuerung
+- **🎵 Spielt gerade** nutzt jetzt die **Windows-Mediensteuerung** – erkannt wird alles, was Windows im Medien-Popup zeigt: Spotify, **Browser (YouTube, SoundCloud …)**, Apple Music, TIDAL, Deezer, VLC, Medienwiedergabe … Ältere Player ohne Mediensteuerung werden weiter über den Fenstertitel erkannt.
+- Startseiten-Kachel neu: Titel, Künstler, App, Status, **Fortschrittsbalken** mit Zeit und Knöpfe **⏮ ⏯ ⏭**.
+- Neue Platzhalter für Rotator, Chatbox-Modul und Automatik: `{musik_titel}` `{musik_kuenstler}` `{musik_app}` `{musik_zeit}` (z. B. 1:18/3:44). Pausiert = „spielt“ nichts.
+- Abschaltbar unter *Einstellungen → Medien → Spielt gerade*.
+- **🧭 Direkt-Zugriff** sitzt jetzt oben neben ⚙ Einstellungen statt in der Menüleiste.
+- Fix: In den Einstellungen leuchtete „Mehr“ fälschlich mit.
+
 ### Neu in 1.10.1 – Store durchsuchen, NEU bei Info-Push
 - **🛒 Shop:** Suchfeld und Sortierung im VRChat-Store (*Empfohlen, Endet bald, Preis auf-/absteigend, Name A–Z*) – Regale ohne Treffer werden ausgeblendet.
 - **📰 Info-Push:** Einträge, die seit deinem letzten Besuch neu sind, tragen ein **NEU**-Kennzeichen; die Reiter zeigen, wie viele neu sind, und springen automatisch zur Kategorie mit Neuem.

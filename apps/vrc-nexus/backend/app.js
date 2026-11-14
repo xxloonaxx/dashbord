@@ -10,6 +10,7 @@ const { VrcAuthError, UserError, now, str, int, cut, arr } = U;
 const { Vrc, UID, SYNC_MIN, OFFLINE_SYNC, FEED_KEEP_DAYS, VERSION } = require('./vrchat');
 const { Extra, NOTIF_TYPES, NOTIF_RESPONSES } = require('./extra');
 const { GameLog, KINDS } = require('./gamelog');
+const { Media } = require('./media');
 const { Settings } = require('./settings');
 const { Tools } = require('./tools');
 const { Translator } = require('./translate');
@@ -62,6 +63,7 @@ class NexusApp {
         this.backup = new CloudBackup(this, opts.crypt);
         this.chatmods = opts.mobile ? null : new ChatMods(this, opts.crypt);
         this.tts = opts.mobile ? null : new Tts(this, opts.crypt);
+        this.media = opts.mobile ? null : new Media(this);
         this.vrc.onWatch = (name, world) => { if (this.settings.get('notify.watch')) this.tools.alert('🟢 ' + name + ' ist online', world ? 'in ' + world : 'gerade ins Spiel gekommen'); };
         this.vrc.onWatchEvent = (name, kind, world) => {
             const s = this.settings;
@@ -151,6 +153,8 @@ class NexusApp {
             if (act === 'cancel_login') { this.vrc.pending = null; return { ok: true }; }
             if (act.startsWith('client_')) return await this.client(act, input);
             if (act.startsWith('cam_')) return await this.cam.action(act, input);
+            if (act === 'media_status') return this.media ? this.media.status() : { available: false };
+            if (act === 'media_ctl') { if (!this.media) throw new UserError('Nur in der Windows-App.'); return this.media.control(str(input.cmd), str(input.id)); }
             if (act.startsWith('auto_')) return await this.auto.action(act, input);
             if (act.startsWith('speech_')) { if (!this.speech) throw new UserError('Spracheingabe gibt es nur in der Windows-App.'); return await this.speech.action(act, input); }
             if (act === 'overlay_act') return await this.tools.apiAction(str(input.action), input);

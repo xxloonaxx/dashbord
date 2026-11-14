@@ -461,3 +461,18 @@ body.mobile .vx-hbtn em { display: none; } body.mobile .vx-hbtn { min-width: 48p
 .ab-body { font-size: 0.86rem; line-height: 1.5; } .ab-body ul { margin: 4px 0 4px 18px; padding: 0; } .ab-body li { margin: 3px 0; } .ab-body p { margin: 4px 0; }
 .ab-credits { margin: 4px 0 0 16px; padding: 0; } .ab-credits li { margin: 3px 0; }
 @media (max-width: 900px) { .ab-grid { grid-template-columns: 1fr; } }
+
+/* Startseite: Spielt gerade (Windows-Mediensteuerung) */
+.hm-media { display: flex; flex-direction: column; gap: 6px; }
+.hm-mt { display: flex; flex-direction: column; min-width: 0; }
+.hm-mt b { font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hm-mt span { color: var(--text-muted); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hm-mapp { font-size: 0.76rem; color: var(--text-muted); }
+.hm-media.on .hm-mst { color: var(--accent-green, #4ade80); }
+.hm-mbar { height: 4px; border-radius: 2px; background: rgba(var(--accent-rgb), 0.15); overflow: hidden; }
+.hm-mbar i { display: block; height: 100%; background: var(--accent-cyan); }
+.hm-mctl { justify-content: flex-start; }
+.hm-mctl .btn { min-width: 40px; font-size: 1rem; }
+.vx-hdirect kbd { font-size: 0.56rem; padding: 0 4px; margin-left: 2px; border: 1px solid var(--border-color); border-radius: 3px; letter-spacing: 0; text-transform: none; }
+.vx-hdirect:hover span { transform: rotate(-30deg); }
+body.mobile .vx-hdirect kbd { display: none; }

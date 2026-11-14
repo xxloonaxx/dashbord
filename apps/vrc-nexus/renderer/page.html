@@ -17,7 +17,7 @@
             <div class="hud-tag">VRChat // Freunde · Welten · Avatare · Gruppen · Desktop</div>
             <h1>VRC Nexus</h1>
         </div>
-        {{IF_CONNECTED}}<div class="vx-head-r"><button type="button" class="vx-hbtn" id="hdSettings" title="Einstellungen" aria-label="Einstellungen"><span>⚙</span><em>Einstellungen</em></button><div class="vx-me" id="me"></div></div>{{END_CONNECTED}}
+        {{IF_CONNECTED}}<div class="vx-head-r"><button type="button" class="vx-hbtn vx-hdirect" id="directBtn" title="ID oder Link aus der Zwischenablage öffnen (Strg+D)" aria-label="Direkt-Zugriff"><span>🧭</span><em>Direkt-Zugriff <kbd>Strg</kbd><kbd>D</kbd></em></button><button type="button" class="vx-hbtn" id="hdSettings" title="Einstellungen" aria-label="Einstellungen"><span>⚙</span><em>Einstellungen</em></button><div class="vx-me" id="me"></div></div>{{END_CONNECTED}}
     </header>
 
 {{IF_LOGIN}}
@@ -95,7 +95,6 @@
                 <button type="button" class="vx-tabbtn" data-tab="shop"><span>🛒</span><em>Shop &amp; Käufe</em></button>
                 <button type="button" class="vx-tabbtn" data-tab="about"><span>ℹ️</span><em>Über VRC Nexus</em></button>
             </div></div>
-        <button type="button" class="vx-direct" id="directBtn" title="ID oder Link aus der Zwischenablage öffnen"><span>🧭</span><em>Direkt-Zugriff</em><kbd>Strg</kbd><kbd>D</kbd></button>
     </nav>
     <div class="vx-bar" id="syncBar">
         <span id="syncInfo">Lade …</span>

@@ -15,7 +15,7 @@ const { str, int, cut, UserError } = require('./util');
 const MODULES = {
     status: ['💬', 'Persönlicher Status', 'Deine Texte der Reihe nach (wie der Rotator) – bei AFK automatisch „💤 AFK seit …“.', '{status_text}', 'both'],
     window: ['🪟', 'Fenster-Aktivität', 'Was gerade im Vordergrund läuft – oder „🥽 In VR“. Programme lassen sich als privat markieren.', '🪟 {fenster}', 'desktop'],
-    media: ['🎵', 'Musik', 'Was auf dem PC läuft (Spotify, foobar2000, AIMP, MusicBee, VLC, Browser …).', '🎵 {musik}', 'both'],
+    media: ['🎵', 'Musik', 'Was auf dem PC läuft – über die Windows-Mediensteuerung (Spotify, Browser/YouTube, Apple Music, TIDAL, VLC …). Platzhalter: {musik} {musik_titel} {musik_kuenstler} {musik_app} {musik_zeit}.', '🎵 {musik}', 'both'],
     vrchat: ['🌐', 'VRChat-Radar', 'Welt, Spieler und Zeit in der Instanz – aus dem Spiel-Log.', '🌐 {welt} · 👥 {spieler}', 'both'],
     time: ['🕒', 'Uhrzeit', 'Deine Uhrzeit und Zeitzone – Schluss mit „wie spät ist es bei dir?“.', '🕒 {zeit} {zone}', 'both'],
     weather: ['⛅', 'Wetter', 'Temperatur, gefühlt, Wind und Luftfeuchte an deinem Ort (Open-Meteo, ohne Konto).', '{wetter_symbol} {temp}°C · gefühlt {temp_gefuehlt}°C', 'both'],

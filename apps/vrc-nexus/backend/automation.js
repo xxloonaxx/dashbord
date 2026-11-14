@@ -4,7 +4,7 @@
  *   Auslöser: Spieler kommt/geht, Welt betreten, Avatar gewechselt, AFK an/aus, Parameter = Wert, Uhrzeit, alle N Minuten,
  *             VRChat gestartet/beendet, Screenshot
  *   Aktion:   Makro-Skript (siehe macros.js) – mit zusätzlichen Platzhaltern {spieler_name} {welt_name} {param_name} {param_wert}
- * Dazu „Spielt gerade“ ({musik}) aus dem Fenstertitel gängiger Musik-Programme (Windows).
+ * Dazu „Spielt gerade“ ({musik}) über die Windows-Mediensteuerung (media.js), sonst aus dem Fenstertitel gängiger Musik-Programme.
  */
 const { execFile } = require('child_process');
 const { str, int, cut, UserError } = require('./util');
@@ -116,6 +116,10 @@ class Automation {
     refreshMusic() {
         this.musicAt = Date.now();
         if (process.env.NEXUS_MUSIC !== undefined) { this.music = process.env.NEXUS_MUSIC; return; }
+        const m = this.app.media;
+        if (m && m.proc) {   // Windows-Mediensteuerung: alles, was Windows als „wird abgespielt“ kennt (auch Browser)
+            if (m.at && Date.now() - m.at < 15000 && m.text()) { this.music = m.text(); return; }   // sonst: Fenstertitel (ältere Player ohne Mediensteuerung)
+        } else if (m && m.available() && this.app.settings.get('media.smtc') !== false) m.start();
         if (process.platform !== 'win32') return;
         execFile('tasklist', ['/v', '/fo', 'csv', '/nh'], { windowsHide: true, timeout: 8000, maxBuffer: 8 * 1024 * 1024 }, (e, out) => {
             if (e) return;
@@ -133,7 +137,10 @@ class Automation {
     }
     vars() {
         const afk = this.afkSince ? Math.round((Date.now() - this.afkSince) / 60000) : 0;
-        return { musik: this.music || '–', afk: this.afkSince ? 'AFK' : '', afk_zeit: afk + ' min', spieler_neu: this.lastPlayer || '–' };
+        const s = this.app.media ? this.app.media.now() : null, on = s && s.status === 'playing';
+        const { fmt } = require('./media');
+        return { musik: this.music || '–', musik_titel: on ? s.title : '–', musik_kuenstler: on ? s.artist || '–' : '–', musik_app: on ? s.app : '–',
+            musik_zeit: on && s.dur ? fmt(s.pos) + '/' + fmt(s.dur) : '', afk: this.afkSince ? 'AFK' : '', afk_zeit: afk + ' min', spieler_neu: this.lastPlayer || '–' };
     }
     async action(act, input) {
         switch (act) {

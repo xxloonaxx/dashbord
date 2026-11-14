@@ -139,15 +139,17 @@ class Tools {
         if (this.app.stream) this.app.stream.apply();
         if (this.app.backup) this.app.backup.start();
         if (this.app.chatmods) this.app.chatmods.start();
+        if (this.app.media && this.settings.get('media.smtc') !== false) this.app.media.start();
         if (this.app.osclog && !this.oscLogOn) { this.oscLogOn = true; this.app.osclog.attach(this.app.game.osc); }
     }
-    stop() { if (this.timer) clearInterval(this.timer); this.timer = null; if (this.app.auto) this.app.auto.stop(); if (this.app.insights) this.app.insights.stop(); if (this.app.osclog) this.app.osclog.stop(); if (this.app.stream) this.app.stream.stop(); if (this.app.chatmods) this.app.chatmods.stop(); this.api.stop(); this.rpc.close(); }
+    stop() { if (this.timer) clearInterval(this.timer); this.timer = null; if (this.app.auto) this.app.auto.stop(); if (this.app.insights) this.app.insights.stop(); if (this.app.osclog) this.app.osclog.stop(); if (this.app.stream) this.app.stream.stop(); if (this.app.chatmods) this.app.chatmods.stop(); if (this.app.media) this.app.media.stop(); this.api.stop(); this.rpc.close(); }
     applySettings(changed) {
         const all = changed.includes('*');
         if (all || changed.some(k => k.startsWith('int.api') || k === 'int.obs')) this.api.apply();
         if (all || changed.includes('sys.autostart')) { if (this.host.setLoginItem) this.host.setLoginItem(!!this.settings.get('sys.autostart')); }
         if (all || changed.includes('sys.log_poll_ms')) { if (this.app.game.timer) this.app.game.start(int(this.settings.get('sys.log_poll_ms')) || 1000); }
         if (!this.settings.get('int.rpc')) this.rpc.close();
+        if (changed.includes('media.smtc') && this.app.media) { if (this.settings.get('media.smtc')) { this.app.media.restartAt = 0; this.app.media.start(); } else this.app.media.stop(); }
         if (this.host.applySettings) this.host.applySettings(changed, this.settings.all());
     }
     debug(where, e) {

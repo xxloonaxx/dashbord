@@ -148,7 +148,7 @@
             const l = $$('#tabs [data-tab="' + name + '"]'), main = l.find(b => !b.dataset.msub) || l[0];
             l.forEach(b => b.classList.toggle('active', b === main));
         }
-        $$('#tabs .vx-mgroup').forEach(g => { g.classList.toggle('active', !!g.querySelector('.active')); g.classList.remove('open'); });
+        $$('#tabs .vx-mgroup').forEach(g => { g.classList.toggle('active', !!g.querySelector('.active:not([hidden])')); g.classList.remove('open'); });
         const hs = $('#hdSettings'); if (hs) hs.classList.toggle('active', name === 'settings');
         $$('.vx-tab').forEach(p => { p.hidden = p.dataset.pane !== name; });
         store.set('tab', name);

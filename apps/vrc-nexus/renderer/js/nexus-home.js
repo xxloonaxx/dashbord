@@ -157,6 +157,7 @@
         if (a === 'overlay') return done(api('overlay_act', { action: 'overlay' }));
         if (a === 'act') return done(api('overlay_act', { action: v }).then(d => Object.assign({ msg: b.dataset.ok || '✔ erledigt' }, d)));
         if (a === 'rule') return done(api('auto_toggle', { id: v }));
+        if (a === 'media') { b.disabled = true; return api('media_ctl', { cmd: v, id: b.dataset.id || '' }).then(() => setTimeout(load, 700)).catch(err => toast('⚠ ' + err.message, true)).finally(() => { b.disabled = false; }); }
         if (a === 'tab') return UI.tab(v, b.dataset.sub || '');
     }
     function onSubmit(e) {
@@ -197,7 +198,17 @@
             : empty('Markiere Parameter mit ★ unter Spiel & OSC → Parameter.') + '<button type="button" class="nc-link" data-h="tab" data-v="client" data-sub="params">Parameter →</button>',
         camera: () => '<div class="hm-btns"><button type="button" class="btn btn-sm btn-gold" data-h="cam" data-v="Capture">📸 Foto</button><button type="button" class="btn btn-sm" data-h="cam" data-v="CaptureDelayed">⏱ Timer</button><button type="button" class="btn btn-sm" data-h="tab" data-v="client" data-sub="cam">Mehr →</button></div>'
             + (data.cam.presets.length ? '<div class="hm-btns">' + data.cam.presets.map(p => '<button type="button" class="chip" data-h="campreset" data-v="' + esc(p) + '">' + esc(p) + '</button>').join('') + '</div>' : ''),
-        music: () => '<div class="hm-big">' + (data.music ? '🎵 ' + esc(data.music) : '<span class="muted">Nichts erkannt (Spotify, foobar2000, AIMP, MusicBee, VLC …)</span>') + '</div><span class="muted small">Platzhalter <code>{musik}</code> für Rotator & Automatik.</span>',
+        music: () => {
+            const m = data.media, mm = s => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+            if (m) return '<div class="hm-media' + (m.status === 'playing' ? ' on' : '') + '"><div class="hm-mt" data-no-i18n><b title="' + esc(m.title) + '">' + esc(m.title) + '</b><span>' + esc(m.artist || m.album || '') + '</span></div>'
+                + '<div class="hm-mapp"><span class="hm-mst">' + (m.status === 'playing' ? '▶ läuft' : '⏸ pausiert') + '</span> · ' + esc(m.app) + (m.dur ? ' · <span class="mono">' + mm(m.pos) + ' / ' + mm(m.dur) + '</span>' : '') + '</div>'
+                + (m.dur ? '<div class="hm-mbar"><i style="width:' + Math.min(100, Math.round(m.pos / m.dur * 100)) + '%"></i></div>' : '')
+                + '<div class="hm-btns hm-mctl"><button type="button" class="btn btn-sm" data-h="media" data-v="prev" data-id="' + esc(m.id) + '" title="Zurück">⏮</button><button type="button" class="btn btn-sm btn-gold" data-h="media" data-v="toggle" data-id="' + esc(m.id) + '" title="Wiedergabe/Pause">' + (m.status === 'playing' ? '⏸' : '▶') + '</button><button type="button" class="btn btn-sm" data-h="media" data-v="next" data-id="' + esc(m.id) + '" title="Weiter">⏭</button></div></div>'
+                + '<span class="muted small">Platzhalter <code>{musik}</code> <code>{musik_titel}</code> <code>{musik_kuenstler}</code> <code>{musik_app}</code> <code>{musik_zeit}</code></span>';
+            return '<div class="hm-big">' + (data.music ? '🎵 ' + esc(data.music) : '<span class="muted">Gerade läuft nichts' + (data.media_on ? '' : ' (Spotify, Browser, foobar2000, VLC …)') + '</span>') + '</div>'
+                + (data.media_on ? '<div class="hm-btns hm-mctl"><button type="button" class="btn btn-sm" data-h="media" data-v="prev" title="Zurück">⏮</button><button type="button" class="btn btn-sm btn-gold" data-h="media" data-v="toggle" title="Wiedergabe/Pause">⏯</button><button type="button" class="btn btn-sm" data-h="media" data-v="next" title="Weiter">⏭</button></div>' : '')
+                + '<span class="muted small">Erkennt alles aus der Windows-Mediensteuerung. Platzhalter <code>{musik}</code> für Rotator & Automatik.</span>';
+        },
         rotator: () => !data.rotator ? empty('–') : '<div class="hm-row"><button type="button" class="btn btn-sm' + (data.rotator.on ? ' btn-gold' : '') + '" data-h="rotator">' + (data.rotator.on ? '● läuft' : '○ aus') + '</button></div><div class="hm-pre">' + esc(data.rotator.text) + '</div>',
         today: () => !data.stats ? empty('–') : '<div class="hm-kpis"><span><b>' + fmtDur(data.stats.playtime) + '</b> Spielzeit</span><span><b>' + data.stats.worlds + '</b> Welten</span><span><b>' + data.stats.players + '</b> Begegnungen</span><span><b>' + data.stats.screenshots + '</b> Fotos</span></div>',
         speech: () => !data.speech ? empty('Spracheingabe nicht verfügbar.') : '<div class="hm-row"><button type="button" class="btn btn-sm' + (data.speech.recording ? ' btn-gold' : '') + '" data-h="speech">' + (data.speech.recording ? '⏹ Stopp' : '🎙 Sprechen') + '</button> <span class="muted small">' + esc(data.speech.engine_label || '') + '</span></div>' + (data.speech.last ? '<div class="hm-pre">„' + esc(data.speech.last) + '“</div>' : ''),

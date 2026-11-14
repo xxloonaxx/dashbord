@@ -52,3 +52,11 @@ Preis aufsteigend	Price: low to high	Prix croissant	価格の安い順
 Preis absteigend	Price: high to low	Prix décroissant	価格の高い順
 NEU	NEW	NOUVEAU	NEW
 Nichts gefunden	Nothing found	Rien trouvé	見つかりません
+Gerade läuft nichts	Nothing is playing	Rien en cours de lecture	再生中のものはありません
+Weiter	Next	Suivant	次へ
+Wiedergabe/Pause	Play/Pause	Lecture/Pause	再生/一時停止
+Windows-Mediensteuerung nutzen	Use Windows media controls	Utiliser les contrôles multimédias de Windows	Windowsのメディアコントロールを使う
+Windows-Mediensteuerung startet gerade – gleich nochmal versuchen	Windows media controls are starting – try again in a moment	Les contrôles multimédias de Windows démarrent – réessaie dans un instant	Windowsのメディアコントロールを起動中です。少ししてから再試行してください
+Nur in der Windows-App	Only in the Windows app	Uniquement dans l'application Windows	Windowsアプリのみ
+Erkennt alles aus der Windows-Mediensteuerung	Detects everything from the Windows media controls	Détecte tout ce qui passe par les contrôles multimédias de Windows	Windowsのメディアコントロールからすべて検出
+Erkennt alles, was Windows im Medien-Popup zeigt (Spotify, Browser/YouTube, Apple Music, TIDAL …) und erlaubt ⏮ ⏯ ⏭. Aus = nur Fenstertitel bekannter Player	Detects everything Windows shows in its media pop-up (Spotify, browser/YouTube, Apple Music, TIDAL …) and allows ⏮ ⏯ ⏭. Off = only window titles of known players	Détecte tout ce que Windows affiche dans sa fenêtre multimédia (Spotify, navigateur/YouTube, Apple Music, TIDAL …) et permet ⏮ ⏯ ⏭. Désactivé = seulement les titres de fenêtre des lecteurs connus	Windowsのメディアポップアップに表示されるすべて（Spotify、ブラウザ/YouTube、Apple Music、TIDAL …）を検出し、⏮ ⏯ ⏭ が使えます。オフ = 既知のプレーヤーのウィンドウタイトルのみ

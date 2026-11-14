@@ -34,7 +34,7 @@ class Home {
             game: { running: st.running, world: st.worldName, world_id: st.worldId, instance: st.instance, since: st.since, players: [...st.players.values()].map(p => ({ id: p.id, name: p.name, since: p.since })).slice(0, 80), avatar: st.avatar },
             stats: safe(() => g.stats().today, null),
             macros: a.macros.list().map(m => ({ id: m.id, name: m.name })),
-            music: a.auto.music, afk: !!a.auto.afkSince,
+            music: a.auto.music, media: a.media ? safe(() => a.media.now(), null) : null, media_on: !!(a.media && a.media.proc), afk: !!a.auto.afkSince,
             rotator: safe(() => { const c = g.cfg(); return { on: !!c.rotator_enabled, text: g.rotatorText(g.rotatorNext ? (str(c.rotator_texts).split('\n').filter(x => x.trim())[0] || c.rotator_text) : c.rotator_text) }; }, null),
             osc: { active: g.osc.active, avatar: g.osc.avatarId },
             params: safe(() => { const l = a.params.list(''); return l.params.filter(p => p.fav && p.input).slice(0, 16); }, []),
