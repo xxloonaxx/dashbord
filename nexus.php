@@ -21,6 +21,62 @@ if (isset($_GET['ics'])) {
     exit;
 }
 
+// Öffentliche Event-Seite zum Teilen: nexus.php?events=<token> (gleicher geheimer Token wie das Kalender-Abo)
+if (isset($_GET['events'])) {
+    $tok = (string)$_GET['events'];
+    $st = site_db()->prepare("SELECT key FROM settings WHERE key LIKE 'vrc_ics_%' AND value = ?");
+    $st->execute([$tok]);
+    $key = $st->fetchColumn();
+    if (!$key || strlen($tok) !== 32) { http_response_code(404); exit('Unbekannter Link'); }
+    $owner = (int)substr($key, 8);
+    $all = array_values(array_filter(vrc_calendar_list($owner), fn($e) => (int)$e['starts'] < time() + 60 * 86400));
+    $groups = [];
+    foreach ($all as $e) $groups[$e['group_id']] = $e['group_name'] ?: 'Gruppe';
+    $g = (string)($_GET['g'] ?? '');
+    $list = $g !== '' ? array_values(array_filter($all, fn($e) => $e['group_id'] === $g)) : $all;
+    $days = [];
+    $fmtDay = fn($t) => ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][(int)date('w', $t)] . ', ' . date('d.m.Y', $t);
+    foreach ($list as $e) $days[$fmtDay((int)$e['starts'])][] = $e;
+    $self = strtok($_SERVER['REQUEST_URI'] ?? 'nexus.php', '?');
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $ics = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $self . '?ics=' . $tok;
+    header('Content-Type: text/html; charset=utf-8');
+    header('X-Robots-Tag: noindex');
+    header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; img-src https: data:; base-uri 'none'; form-action 'none'");
+    ?><!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+<title>VRChat-Events</title>
+<style>
+:root{--bg:#060a10;--card:#0d1824;--line:#1f3140;--c:#38d5e6;--g:#f3c262;--t:#e2e8f0;--m:#8796a5}
+@media (prefers-color-scheme: light){:root{--bg:#f4f6f9;--card:#fff;--line:#d6dee6;--c:#0b7f8c;--g:#a86b00;--t:#1b2530;--m:#5b6b7a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font:16px/1.45 "Segoe UI",system-ui,sans-serif}
+main{max-width:860px;margin:0 auto;padding:24px 16px 48px}h1{margin:0 0 4px;color:var(--g);letter-spacing:.04em}
+.sub{color:var(--m);margin:0 0 16px}.bar{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 18px}
+.chip{display:inline-block;padding:5px 12px;border:1px solid var(--line);border-radius:16px;color:var(--t);text-decoration:none;font-size:.9rem}
+.chip.on{border-color:var(--c);color:var(--c)}.btn{display:inline-block;padding:7px 14px;border:1px solid var(--c);color:var(--c);text-decoration:none;border-radius:6px;font-size:.9rem}
+h2{font-size:1rem;color:var(--c);margin:22px 0 8px;text-transform:uppercase;letter-spacing:.06em}
+.ev{display:grid;grid-template-columns:110px 1fr;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:10px}
+.ev img{width:110px;height:74px;object-fit:cover;border-radius:6px;background:var(--line)}.ev h3{margin:0 0 2px;font-size:1.05rem}
+.meta{color:var(--m);font-size:.85rem}.desc{font-size:.9rem;margin-top:6px;white-space:pre-wrap;max-height:7.5em;overflow:hidden}
+.ev a{color:var(--c)}.empty{color:var(--m);padding:30px 0;text-align:center}@media(max-width:520px){.ev{grid-template-columns:1fr}.ev img{width:100%;height:140px}}
+</style></head><body><main>
+<h1>📅 VRChat-Events</h1>
+<p class="sub"><?= count($list) ?> <?= count($list) === 1 ? 'Termin' : 'Termine' ?> in den nächsten 60 Tagen · Stand <?= e(date('d.m.Y H:i')) ?></p>
+<div class="bar">
+<a class="btn" href="<?= e($ics) ?>">➕ In den Kalender abonnieren (.ics)</a>
+</div>
+<?php if (count($groups) > 1): ?><div class="bar"><a class="chip<?= $g === '' ? ' on' : '' ?>" href="?events=<?= e($tok) ?>">Alle Gruppen</a><?php foreach ($groups as $gid => $gn): ?><a class="chip<?= $g === $gid ? ' on' : '' ?>" href="?events=<?= e($tok) ?>&amp;g=<?= e(rawurlencode($gid)) ?>"><?= e($gn) ?></a><?php endforeach; ?></div><?php endif; ?>
+<?php if (!$days): ?><p class="empty">Gerade keine anstehenden Events.</p><?php endif; ?>
+<?php foreach ($days as $day => $evs): ?><h2><?= e($day) ?></h2>
+<?php foreach ($evs as $ev): ?><article class="ev"><?php if (preg_match('~^https://~', (string)$ev['image'])): ?><img src="<?= e($ev['image']) ?>" alt="" loading="lazy" referrerpolicy="no-referrer"><?php else: ?><div></div><?php endif; ?>
+<div><h3><?= e($ev['title']) ?></h3><div class="meta">🕒 <?= e(date('H:i', (int)$ev['starts'])) ?>–<?= e(date('H:i', (int)$ev['ends'])) ?> · 🛡 <?= e($ev['group_name'] ?: 'Gruppe') ?><?= (int)$ev['interested'] ? ' · ' . (int)$ev['interested'] . ' interessiert' : '' ?></div>
+<?php if (trim((string)$ev['description']) !== ''): ?><div class="desc"><?= e(preg_replace('/(\*\*|__|~~)(.+?)\1/u', '$2', mb_substr((string)$ev['description'], 0, 600))) ?></div><?php endif; ?>
+<div class="meta" style="margin-top:6px"><a href="https://vrchat.com/home/group/<?= e(rawurlencode($ev['group_id'])) ?>/calendar/<?= e(rawurlencode($ev['id'])) ?>" rel="noopener noreferrer" target="_blank">In VRChat ansehen ↗</a></div></div></article>
+<?php endforeach; endforeach; ?>
+</main></body></html><?php
+    exit;
+}
+
 auth_require_setup();
 require_permission('vrcx.access');
 $me = current_user();
@@ -447,7 +503,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 'start' => (int)$e['starts'], 'end' => (int)$e['ends'], 'category' => $e['category'], 'access' => $e['access'], 'image' => $e['image'], 'interested' => (int)$e['interested'],
                                 'following' => (bool)$e['following'], 'platforms' => array_filter(explode(',', $e['platforms'])), 'languages' => array_filter(explode(',', $e['languages'])), 'tags' => array_filter(explode(',', $e['tags']))];
                     }, vrc_calendar_list($uid)), 'linked' => (bool)vrc_calendar_sub($uid, false), 'can_link' => can('calendar.edit') || can('calendar.subscriptions'),
-                       'ics' => $base . '?ics=' . vrc_ics_token($uid), 'refreshed' => (int)setting('vrc_cal_refresh_' . $uid, '0'), 'error' => $err, 'can_create' => $can];
+                       'ics' => $base . '?ics=' . vrc_ics_token($uid), 'events_page' => $base . '?events=' . vrc_ics_token($uid), 'refreshed' => (int)setting('vrc_cal_refresh_' . $uid, '0'), 'error' => $err, 'can_create' => $can];
                     break;
                 case 'calendar_link':
                     if (!can('calendar.edit') && !can('calendar.subscriptions')) throw new RuntimeException('Dafür brauchst du das Recht, den Kalender zu bearbeiten.');
