@@ -20,7 +20,10 @@
         for (const el of list) {
             if (el.tagName === 'IMG') { const n = pic(el.getAttribute('src')); if (n && n !== el.getAttribute('src')) el.setAttribute('src', n); }
             const st = el.getAttribute('style');
-            if (st && st.includes('api.vrchat.cloud')) el.setAttribute('style', st.replace(/https:\/\/api\.vrchat\.cloud\/api\/1\/(?:file|image)\/file_[0-9a-f-]{36}\/\d+(?:\/(?:\d+|file))?/gi, x => pic(x) || x));
+            if (st && st.includes('api.vrchat.cloud')) {
+                const n = st.replace(/https:\/\/api\.vrchat\.cloud\/api\/1\/(?:file|image)\/file_[0-9a-f-]{36}\/\d+(?:\/(?:\d+|file))?/gi, x => pic(x) || x);
+                if (n !== st) el.setAttribute('style', n);      // nur bei Änderung – sonst meldet der Beobachter endlos neu
+            }
         }
     };
     new MutationObserver(l => { for (const m of l) { if (m.type === 'attributes') fixPics(m.target); else m.addedNodes.forEach(fixPics); } })
