@@ -37,13 +37,14 @@ public class NexusWidget extends AppWidgetProvider {
                 JSONObject o = new JSONObject(raw);
                 String me = o.optString("me", "");
                 head = me.isEmpty() ? "VRC Nexus" : me + statusDot(o.optString("status", ""));
-                line = o.optInt("in_game", 0) + " im Spiel · " + o.optInt("online", 0) + " online" + (o.optInt("notifs", 0) > 0 ? " · 🔔 " + o.optInt("notifs", 0) : "");
+                // Zeile in der gewählten App-Sprache (kommt fertig aus der App), sonst Deutsch
+                line = o.optString("line", o.optInt("in_game", 0) + " im Spiel · " + o.optInt("online", 0) + " online") + (o.optInt("notifs", 0) > 0 ? " · 🔔 " + o.optInt("notifs", 0) : "");
                 JSONArray top = o.optJSONArray("top");
                 StringBuilder sb = new StringBuilder();
                 if (top != null) for (int i = 0; i < top.length() && i < 5; i++) sb.append(i > 0 ? "\n" : "").append("• ").append(top.optString(i));
                 list = sb.toString();
                 long ts = o.optLong("ts", 0);
-                if (ts > 0) foot = "Stand " + new SimpleDateFormat("HH:mm", Locale.GERMANY).format(new Date(ts * 1000));
+                if (ts > 0) foot = o.optString("stand", "Stand") + " " + new SimpleDateFormat("HH:mm", Locale.GERMANY).format(new Date(ts * 1000));
             }
         } catch (Exception e) { line = "⚠ " + e.getMessage(); }
         v.setTextViewText(R.id.w_head, head);

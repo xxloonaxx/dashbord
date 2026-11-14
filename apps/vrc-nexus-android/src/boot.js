@@ -93,7 +93,15 @@ if (native) {
 
     // Homescreen-Widget mit einer Zusammenfassung versorgen (beim Start, jede Minute, beim Verlassen der App)
     const NexusWidget = native ? registerPlugin('NexusWidget') : null;
-    const pushWidget = () => { if (!NexusWidget) return; try { NexusWidget.update({ data: JSON.stringify(app.home.summary()) }).catch(() => {}); } catch (e) { /* egal */ } };
+    // Homescreen-Widget: Text in der gewählten Sprache (Übersetzer aus nexus-i18n.js, sobald geladen)
+    const widgetData = () => {
+        const d = app.home.summary();
+        const t = typeof window.t === 'function' ? window.t : s => s;
+        d.line = t(d.in_game + ' im Spiel') + ' · ' + t(d.online + ' online');
+        d.stand = t('Stand');
+        return d;
+    };
+    const pushWidget = () => { if (!NexusWidget) return; try { NexusWidget.update({ data: JSON.stringify(widgetData()) }).catch(() => {}); } catch (e) { /* egal */ } };
     setTimeout(pushWidget, 8000);
     setInterval(pushWidget, 60000);
     document.addEventListener('visibilitychange', () => { if (document.hidden) pushWidget(); });
