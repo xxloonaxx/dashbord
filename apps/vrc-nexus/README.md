@@ -20,6 +20,10 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.10.1 – Store durchsuchen, NEU bei Info-Push
+- **🛒 Shop:** Suchfeld und Sortierung im VRChat-Store (*Empfohlen, Endet bald, Preis auf-/absteigend, Name A–Z*) – Regale ohne Treffer werden ausgeblendet.
+- **📰 Info-Push:** Einträge, die seit deinem letzten Besuch neu sind, tragen ein **NEU**-Kennzeichen; die Reiter zeigen, wie viele neu sind, und springen automatisch zur Kategorie mit Neuem.
+
 ### Neu in 1.10.0 – Info-Push & Meldungen in den Benachrichtigungen, Shop im Store-Stil
 - **🔔 Benachrichtigungen** haben jetzt vier Ansichten: *Offen bei VRChat*, *Ganzer Verlauf*, **📰 Info-Push** und **🚩 Meine Meldungen** (Info-Push ist aus „Mehr“ hierher umgezogen; alte Links/Kacheln führen automatisch hin).
 - **Info-Push** neu: Reiter *Hilfe-Artikel / Quick-Menü-Banner / Ladebildschirme* mit Anzahl, Zeilen mit 16:9-Vorschaubild, Titel, Untertitel und Datum – mit **›** direkt in der Liste aufklappen (Artikel mit Formatierung: Überschriften, **fett**, Links, Listen).

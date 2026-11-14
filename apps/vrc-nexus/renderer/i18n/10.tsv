@@ -45,3 +45,10 @@ Store-ID des VRChat-Stores (esto_…)	Store ID of the VRChat store (esto_…)	ID
 leer = automatisch aus der VRChat-Konfiguration ermitteln	empty = detect automatically from the VRChat configuration	vide = détecter automatiquement depuis la configuration VRChat	空欄 = VRChatの設定から自動検出
 Priorität	Priority	Priorité	優先度
 Offen	Open	Ouvert	オープン
+Im Store suchen …	Search the store …	Chercher dans la boutique …	ストアを検索 …
+Empfohlen	Featured	Recommandé	おすすめ
+Endet bald	Ending soon	Se termine bientôt	まもなく終了
+Preis aufsteigend	Price: low to high	Prix croissant	価格の安い順
+Preis absteigend	Price: high to low	Prix décroissant	価格の高い順
+NEU	NEW	NOUVEAU	NEW
+Nichts gefunden	Nothing found	Rien trouvé	見つかりません

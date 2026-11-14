@@ -1359,18 +1359,40 @@
     };
     const storeShelf = s => '<section class="st-shelf">' + (s.title || s.banner ? '<div class="st-banner' + (s.banner ? ' pic' : '') + '"' + (s.banner || (s.listings[0] && s.listings[0].image) ? ' style="--st-bg:url(' + cssUrl(s.banner || s.listings[0].image) + ')"' : '') + '><div><h3>' + esc(s.title || 'Angebote') + '</h3>' + (s.desc ? '<p>' + esc(s.desc) + '</p>' : '') + '</div><span class="st-count">' + s.listings.length + ' Artikel</span></div>' : '')
         + '<div class="st-grid">' + s.listings.map(storeCard).join('') + '</div></section>';
+    let storeData = null;
+    const ST_SORT = { '': 'Empfohlen', ends: 'Endet bald', cheap: 'Preis aufsteigend', pricey: 'Preis absteigend', name: 'Name A–Z' };
     function loadStore() {
         const box = $('#shopStore');
         if (!box) return;
         loading(box, 'Lade VRChat-Store …');
-        api('shop_store').then(d => {
-            const shelves = (d.shelves || []).filter(s => s.listings.length);
-            box.innerHTML = '<div class="st-head"><h3>🏬 ' + esc(d.found ? d.title || 'VRChat-Store' : 'VRChat-Store') + '</h3><button type="button" class="btn btn-sm" id="storeReload" title="Neu laden">⟳</button>'
-                + '<a class="nc-link" href="' + STORE_WEB + '" target="_blank" rel="noopener noreferrer">Store auf vrchat.com ↗</a></div>'
-                + (shelves.length ? shelves.map(storeShelf).join('')
-                    : '<div class="vx-empty">' + (d.found ? 'Im Store ist gerade nichts.' : 'Der offizielle Store wurde nicht gefunden. Trage die Store-ID (esto_…) unter Einstellungen → Soziales → Shop ein oder gib sie unten bei „Shop ansehen“ ein.') + '</div>');
-        }).catch(fail(box));
+        api('shop_store').then(d => { storeData = d; renderStore(); }).catch(fail(box));
     }
+    function storeFilter(list, q, sort) {
+        const ql = q.toLowerCase();
+        let l = list.filter(x => !ql || [x.name, x.subtitle, x.seller, itemLabel(x)].join(' ').toLowerCase().includes(ql));
+        const end = x => { const t = Date.parse(x.ends); return isNaN(t) || t < Date.now() ? Infinity : t; };
+        if (sort === 'ends') l = l.slice().sort((a, b) => end(a) - end(b));
+        if (sort === 'cheap') l = l.slice().sort((a, b) => a.price - b.price);
+        if (sort === 'pricey') l = l.slice().sort((a, b) => b.price - a.price);
+        if (sort === 'name') l = l.slice().sort((a, b) => a.name.localeCompare(b.name));
+        return l;
+    }
+    function renderStore() {
+        const box = $('#shopStore'), d = storeData;
+        if (!box || !d) return;
+        const q = (($('#stQ') || {}).value || '').trim(), sort = ($('#stSort') || {}).value || '';
+        const shelves = (d.shelves || []).map(s => Object.assign({}, s, { listings: storeFilter(s.listings, q, sort) })).filter(s => s.listings.length);
+        const total = (d.shelves || []).reduce((n, s) => n + s.listings.length, 0);
+        const head = $('#stHead');
+        if (!head) box.innerHTML = '<div class="st-head" id="stHead"><h3>🏬 ' + esc(d.found ? d.title || 'VRChat-Store' : 'VRChat-Store') + '</h3><button type="button" class="btn btn-sm" id="storeReload" title="Neu laden">⟳</button>'
+            + (total ? '<input type="search" id="stQ" placeholder="Im Store suchen …"><select id="stSort">' + Object.entries(ST_SORT).map(([k, v]) => '<option value="' + k + '">' + v + '</option>').join('') + '</select>' : '')
+            + '<a class="nc-link" href="' + STORE_WEB + '" target="_blank" rel="noopener noreferrer">Store auf vrchat.com ↗</a></div><div id="stBody"></div>';
+        $('#stBody').innerHTML = shelves.length ? shelves.map(storeShelf).join('')
+            : '<div class="vx-empty">' + (q ? 'Nichts gefunden.' : d.found ? 'Im Store ist gerade nichts.' : 'Der offizielle Store wurde nicht gefunden. Trage die Store-ID (esto_…) unter Einstellungen → Soziales → Shop ein oder gib sie unten bei „Shop ansehen“ ein.') + '</div>';
+    }
+    let stTimer = null;
+    document.addEventListener('input', e => { if (e.target.id === 'stQ') { clearTimeout(stTimer); stTimer = setTimeout(renderStore, 200); } });
+    document.addEventListener('change', e => { if (e.target.id === 'stSort') renderStore(); });
     document.addEventListener('click', e => {
         if (e.target.closest('#storeReload')) return loadStore();
         const p = e.target.closest('[data-stl]');
@@ -1735,21 +1757,30 @@
     });
 
     // ---------- Info-Push (VRChat-Neuigkeiten) – Ansicht in den Benachrichtigungen ----------
-    let newsData = [], newsKind = 'help';
+    let newsData = [], newsKind = 'help', newsSeen = '';
     const NEWS = { help: 'Hilfe-Artikel', banner: 'Quick-Menü-Banner', loading: 'Ladebildschirme', other: 'Sonstiges' };
     const dOnly = s => { const d = new Date(s); return isNaN(d) ? '' : d.toLocaleDateString(nxLoc(), { day: '2-digit', month: '2-digit', year: 'numeric' }); };
     function loadNews() {
         loaded.news = true;
         loading($('#newsBox'), 'Lade Neuigkeiten …');
-        api('infopush').then(d => { newsData = d.items.sort((a, b) => String(b.date).localeCompare(String(a.date))); renderNews(); }).catch(fail($('#newsBox')));
+        api('infopush').then(d => {
+            newsData = d.items.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+            newsSeen = store.get('newsSeen') || '';
+            const top = newsData.reduce((m, i) => String(i.date) > m ? String(i.date) : m, '');
+            if (top) store.set('newsSeen', top);   // beim nächsten Öffnen gelten diese als gesehen
+            if (newsSeen) { const k = newsData.find(i => String(i.date) > newsSeen); if (k && !newsData.some(i => i.kind === newsKind && String(i.date) > newsSeen)) newsKind = k.kind; }
+            renderNews();
+        }).catch(fail($('#newsBox')));
     }
     function renderNews() {
         const cnt = k => newsData.filter(i => i.kind === k).length;
-        $('#newsKinds').innerHTML = Object.entries(NEWS).filter(([k]) => cnt(k) || k !== 'other').map(([k, l]) => '<button type="button" class="' + (k === newsKind ? 'on' : '') + '" data-nk="' + k + '">' + l + ' <small>(' + cnt(k) + ')</small></button>').join('');
+        const isNew = i => newsSeen && String(i.date) > newsSeen;
+        const fresh = k => newsData.filter(i => i.kind === k && isNew(i)).length;
+        $('#newsKinds').innerHTML = Object.entries(NEWS).filter(([k]) => cnt(k) || k !== 'other').map(([k, l]) => '<button type="button" class="' + (k === newsKind ? 'on' : '') + '" data-nk="' + k + '">' + l + ' <small>(' + cnt(k) + ')</small>' + (fresh(k) ? ' <b class="ip-dot" title="neu">' + fresh(k) + '</b>' : '') + '</button>').join('');
         const list = newsData.filter(i => i.kind === newsKind);
         $('#newsBox').innerHTML = list.length ? '<div class="ip-list">' + list.map(i => '<div class="ip-row" data-news="' + esc(i.id) + '"><button type="button" class="ip-head" aria-expanded="false">'
             + '<span class="ip-chev">›</span>' + (i.img ? '<img class="ip-thumb" src="' + esc(pic(i.img)) + '" alt="" loading="lazy">' : '<span class="ip-thumb vx-noimg">📰</span>')
-            + '<span class="ip-txt"><b>' + esc(i.title) + '</b><small>' + esc(i.desc) + '</small></span><time>' + esc(dOnly(i.date)) + '</time></button><div class="ip-body" hidden></div></div>').join('') + '</div>'
+            + '<span class="ip-txt"><b>' + (isNew(i) ? '<span class="ip-new">NEU</span> ' : '') + esc(i.title) + '</b><small>' + esc(i.desc) + '</small></span><time>' + esc(dOnly(i.date)) + '</time></button><div class="ip-body" hidden></div></div>').join('') + '</div>'
             : '<div class="vx-empty">Nichts in dieser Kategorie.</div>';
     }
     $('#newsRefresh').addEventListener('click', loadNews);
