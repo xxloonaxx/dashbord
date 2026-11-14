@@ -275,6 +275,7 @@ body.menu-icons .vx-menu .vx-tabbtn .vx-badge, body.mobile .vx-menu .vx-tabbtn .
 .hm-poll { display: flex; flex-direction: column; gap: 3px; font-size: 0.82rem; }
 .hm-pbar { position: relative; border: 1px solid var(--line); padding: 1px 6px; } .hm-pbar i { position: absolute; inset: 0 auto 0 0; background: rgba(var(--gold-rgb), 0.25); } .hm-pbar span { position: relative; }
 .hm-log { font-family: var(--mono, monospace); font-size: 0.74rem; display: flex; flex-direction: column; gap: 2px; } .hm-log div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hm-f.pic { align-items: center; } .hm-fav { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; flex: none; background: rgba(var(--shade-rgb), calc(0.3 * var(--shade-k))); display: inline-grid; place-items: center; font-size: 0.9rem; }
 .hm-flist.big { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); max-height: none; }
 /* weniger Platz → weniger Spalten (Container-Abfrage: richtet sich nach der Startseite, nicht dem Fenster) */
 @container (max-width: 1100px) { .hm-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .hm-l { grid-column: 1 / -1; } }

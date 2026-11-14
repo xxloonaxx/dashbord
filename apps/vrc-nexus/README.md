@@ -20,6 +20,10 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.7.2
+- Startseite: Widget „Freunde im Spiel“ zeigt in Größe L/XL Profilbilder.
+- Übersetzer ruht bei Deutsch (weniger Arbeit bei jedem Neuzeichnen).
+
 ### Neu in 1.7.1
 - 🌗 Theme **Automatisch**: hell/dunkel wie Windows bzw. Android, wechselt live mit.
 - Daten und Zahlen im Format der gewählten Sprache; SteamVR-Overlay ist mit übersetzt und folgt dem Hauptfenster.
