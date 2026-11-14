@@ -20,6 +20,15 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.8.0 – 🧩 Chatbox-Module
+Unter **Spiel & OSC → 🧩 Chatbox-Module** setzt VRC Nexus die Chatbox aus Bausteinen zusammen (eigene Umsetzung, inspiriert von MagicChatbox):
+- **💬 Persönlicher Status** (Rotator-Texte, bei AFK „💤 AFK seit …“), **🪟 Fenster-Aktivität** (Vordergrund-Programm, Programme als privat markierbar, in VR „🥽 In VR“), **🎵 Musik**, **🌐 VRChat-Radar**, **🕒 Uhrzeit + Zone**,
+  **⛅ Wetter** (Open-Meteo, Ort suchen, ohne Konto), **🖥 Rechner** (CPU, RAM, GPU/VRAM/Temperatur über nvidia-smi), **📶 Netzwerk** (↓/↑, Spitze, Summe), **🟣 Twitch** (Live, Zuschauer, Spiel), **💓 Puls** (Pulsoid-Token verschlüsselt, Puls auch als Avatar-Parameter).
+- Jedes Modul: an/aus, eigene Vorlage mit Platzhalter-Knöpfen (zeigen den aktuellen Wert), **Desktop + VR / nur Desktop / nur VR** (SteamVR wird erkannt), Reihenfolge ▲▼.
+- **Live-Vorschau** im Chatbox-Stil mit Zeichenzähler; wird es länger als 144 Zeichen, fallen ganze Module am Ende weg (statt mitten im Text abzuschneiden). Module ohne Wert (keine Musik, Twitch offline, keine NVIDIA-Karte) verschwinden automatisch.
+- Senden alle N Sekunden (Trennung: neue Zeile, ·, |), optional nur wenn VRChat läuft; der Rotator pausiert solange. Alle Werte gibt es auch als Platzhalter in Rotator, Makros und Automatik (`{temp}`, `{cpu}`, `{puls}`, `{netz_down}`, `{fenster}` …).
+- Fix: Beim Öffnen einer Unterseite ohne eigenen Menüeintrag wird im Menü der richtige Bereich markiert.
+
 ### Neu in 1.7.9 – Stream Deck: Freund-Taste
 - **Kurz drücken:** beitreten – oder, wenn die Instanz privat ist, automatisch eine Einladung anfragen (einstellbar: beitreten, anfragen, zu mir einladen, Selbst-Einladung, Profil öffnen).
 - **Gedrückt halten (½ s):** zu mir einladen (ebenfalls einstellbar).

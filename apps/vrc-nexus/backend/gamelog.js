@@ -328,7 +328,7 @@ class GameLog {
         }
         this.saveState();
         const c = this.cfg();
-        if (c.rotator_enabled && Date.now() - this.lastRot >= Math.max(5, c.rotator_seconds) * 1000 && (!c.rotator_only_game || this.state.running)) {
+        if (c.rotator_enabled && !this.suppressRotator && Date.now() - this.lastRot >= Math.max(5, c.rotator_seconds) * 1000 && (!c.rotator_only_game || this.state.running)) {
             this.lastRot = Date.now();
             this.osc.chatbox(this.rotatorText(this.rotatorNext(c)), false).catch(() => {});
         }

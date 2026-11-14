@@ -245,3 +245,54 @@ Nur Mitglieder	Members only	Membres uniquement	メンバーのみ
 Group+ (mit Freunden	Group+ (with friends	Group+ (avec amis	Group+ (フレンドと
 # Personen	# people	# personnes	# 人
 # Spieler · max. #	# players · max. #	# joueurs · max. #	# 人 · 最大 #
+Chatbox-Module	Chatbox modules	Modules de chatbox	チャットボックスモジュール
+Chatbox-Module senden	Send chatbox modules	Envoyer les modules de chatbox	チャットボックスモジュールを送信
+Persönlicher Status	Personal status	Statut personnel	パーソナルステータス
+Deine Texte der Reihe nach (wie der Rotator) – bei AFK automatisch „💤 AFK seit …“	Your texts in turn (like the rotator) – when AFK automatically “💤 AFK since …”	Tes textes à tour de rôle (comme la rotation) – en AFK automatiquement « 💤 AFK depuis … »	テキストを順番に表示 (ローテーターと同じ) – AFK時は自動で「💤 AFK …」
+Fenster-Aktivität	Window activity	Activité des fenêtres	ウィンドウアクティビティ
+Was gerade im Vordergrund läuft – oder „🥽 In VR“. Programme lassen sich als privat markieren	What is in the foreground right now – or “🥽 In VR”. Apps can be marked private	Ce qui est au premier plan – ou « 🥽 En VR ». Les programmes peuvent être marqués privés	今前面にあるアプリ – または「🥽 VR中」。アプリを非公開にできます
+Was auf dem PC läuft (Spotify, foobar#, AIMP, MusicBee, VLC, Browser …)	What is playing on the PC (Spotify, foobar#, AIMP, MusicBee, VLC, browser …)	Ce qui joue sur le PC (Spotify, foobar#, AIMP, MusicBee, VLC, navigateur …)	PCで再生中の曲 (Spotify、foobar#、AIMP、MusicBee、VLC、ブラウザ…)
+VRChat-Radar	VRChat radar	Radar VRChat	VRChatレーダー
+Welt, Spieler und Zeit in der Instanz – aus dem Spiel-Log	World, players and time in the instance – from the game log	Monde, joueurs et temps dans l'instance – depuis le journal de jeu	ワールド、プレイヤー、滞在時間 – ゲームログから
+Deine Uhrzeit und Zeitzone – Schluss mit „wie spät ist es bei dir?“	Your time and time zone – no more “what time is it for you?”	Ton heure et ton fuseau – fini les « quelle heure est-il chez toi ? »	あなたの時刻とタイムゾーン – 「そっちは何時？」とはもうお別れ
+Temperatur, gefühlt, Wind und Luftfeuchte an deinem Ort (Open-Meteo, ohne Konto)	Temperature, feels-like, wind and humidity where you are (Open-Meteo, no account)	Température, ressenti, vent et humidité chez toi (Open-Meteo, sans compte)	あなたの場所の気温、体感、風、湿度 (Open-Meteo、アカウント不要)
+Rechner	Computer	Ordinateur	PC
+CPU, GPU, RAM und VRAM – Auslastung und GPU-Temperatur (NVIDIA über nvidia-smi)	CPU, GPU, RAM and VRAM – load and GPU temperature (NVIDIA via nvidia-smi)	CPU, GPU, RAM et VRAM – charge et température GPU (NVIDIA via nvidia-smi)	CPU、GPU、RAM、VRAM – 使用率とGPU温度 (NVIDIAはnvidia-smi経由)
+Netzwerk	Network	Réseau	ネットワーク
+Download/Upload gerade, Spitze und Summe der Sitzung – Beweis, dass die Welt laggt, nicht du	Download/upload right now, session peak and total – proof that the world lags, not you	Débit actuel, pic et total de la session – la preuve que c'est le monde qui lag, pas toi	現在の下り/上り、セッションの最大と合計 – ラグはワールドのせい、の証拠
+Live-Status, Zuschauer und Kategorie deines Kanals (öffentliche Daten über decapi.me)	Live status, viewers and category of your channel (public data via decapi.me)	Statut live, spectateurs et catégorie de ta chaîne (données publiques via decapi.me)	配信状態、視聴者数、カテゴリー (decapi.me経由の公開データ)
+Herzfrequenz	Heart rate	Fréquence cardiaque	心拍数
+Dein Puls in der Chatbox und als Avatar-Parameter – über Pulsoid (eigenes Token)	Your pulse in the chatbox and as an avatar parameter – via Pulsoid (own token)	Ton pouls dans la chatbox et en paramètre d'avatar – via Pulsoid (jeton perso)	心拍をチャットボックスとアバターパラメーターに – Pulsoid経由 (自分のトークン)
+Jetzt senden	Send now	Envoyer maintenant	今すぐ送信
+Trennung	Separator	Séparateur	区切り
+neue Zeile	new line	nouvelle ligne	改行
+Leerzeichen	space	espace	空白
+nur wenn VRChat läuft	only while VRChat is running	seulement si VRChat tourne	VRChat起動中のみ
+VR erkannt	VR detected	VR détectée	VRを検出
+Desktop + VR	Desktop + VR	Bureau + VR	デスクトップ + VR
+nur Desktop	desktop only	bureau seulement	デスクトップのみ
+nur VR	VR only	VR seulement	VRのみ
+Anpassen ›	Customise ›	Personnaliser ›	カスタマイズ ›
+Schließen ▴	Close ▴	Fermer ▴	閉じる ▴
+Vorlage	Template	Modèle	テンプレート
+Ort	Place	Lieu	場所
+Ort fehlt	Place missing	Lieu manquant	場所が未設定
+Kanal fehlt	Channel missing	Chaîne manquante	チャンネル未設定
+kein Token	no token	pas de jeton	トークンなし
+keine NVIDIA-GPU erkannt	no NVIDIA GPU detected	aucun GPU NVIDIA détecté	NVIDIA GPUが見つかりません
+nur unter Windows	Windows only	Windows uniquement	Windowsのみ
+Privat (nur Name zeigen	Private (show name only	Privé (afficher seulement le nom	非公開 (名前のみ表示
+Pulsoid-Token	Pulsoid token	Jeton Pulsoid	Pulsoidトークン
+senden (Int + Float	send (int + float	envoyer (int + float	送信 (int + float
+noch nichts eingeschaltet	nothing switched on yet	rien d'activé pour l'instant	まだ何もオンになっていません
+zu lang – weggelassen	too long – left out	trop long – omis	長すぎ – 省略
+Ohne Eintrag wird der Kanal vom Stream-Bot genommen. Ist der Kanal offline, fällt das Modul weg	Without an entry the stream bot's channel is used. If the channel is offline, the module is left out	Sans saisie, la chaîne du bot de stream est utilisée. Si elle est hors ligne, le module est omis	未入力なら配信ボットのチャンネルを使用。オフラインならモジュールは省略
+Die Texte kommen aus dem Chatbox-Rotator (Spiel & OSC → Live & OSC → Rotator). Bei AFK erscheint automatisch „💤 AFK seit … min“	The texts come from the chatbox rotator (Game & OSC → Live & OSC → Rotator). When AFK, “💤 AFK since … min” appears automatically	Les textes viennent de la rotation de chatbox (Jeu & OSC → Live & OSC → Rotation). En AFK, « 💤 AFK depuis … min » s'affiche automatiquement	テキストはチャットボックスローテーターから (ゲーム & OSC → ライブ & OSC → ローテーター)。AFK時は自動で「💤 AFK … 分」
+ℹ Der Chatbox-Rotator pausiert, solange die Module senden – der Text vom Rotator kommt über das Modul „Persönlicher Status“	ℹ The chatbox rotator pauses while the modules are sending – the rotator text comes via the “Personal status” module	ℹ La rotation de chatbox est en pause pendant l'envoi des modules – son texte passe par le module « Statut personnel »	ℹ モジュール送信中はローテーターは停止 – ローテーターの文は「パーソナルステータス」モジュールで送られます
+An die Chatbox gesendet	Sent to the chatbox	Envoyé à la chatbox	チャットボックスに送信しました
+Nichts zu senden – erst Module einschalten	Nothing to send – switch on modules first	Rien à envoyer – active d'abord des modules	送信するものがありません – 先にモジュールをオン
+Pulsoid-Token gespeichert (verschlüsselt	Pulsoid token saved (encrypted	Jeton Pulsoid enregistré (chiffré	Pulsoidトークンを保存しました (暗号化
+Pulsoid-Token ungültig	Pulsoid token invalid	Jeton Pulsoid invalide	Pulsoidトークンが無効です
+nach oben	move up	vers le haut	上へ
+nach unten	move down	vers le bas	下へ
+einfügen	insert	insérer	挿入

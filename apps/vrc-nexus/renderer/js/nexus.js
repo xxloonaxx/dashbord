@@ -143,7 +143,10 @@
         sub = sub || '';
         let hit = false;
         $$('#tabs [data-tab]').forEach(b => { const on = b.dataset.tab === name && (b.dataset.msub || '') === sub; hit = hit || on; b.classList.toggle('active', on); });
-        if (!hit) $$('#tabs [data-tab="' + name + '"]').forEach((b, i) => b.classList.toggle('active', i === 0));
+        if (!hit) {   // kein Menüeintrag für diese Unterseite → den allgemeinen Eintrag (ohne Unterseite) markieren
+            const l = $$('#tabs [data-tab="' + name + '"]'), main = l.find(b => !b.dataset.msub) || l[0];
+            l.forEach(b => b.classList.toggle('active', b === main));
+        }
         $$('#tabs .vx-mgroup').forEach(g => { g.classList.toggle('active', !!g.querySelector('.active')); g.classList.remove('open'); });
         const hs = $('#hdSettings'); if (hs) hs.classList.toggle('active', name === 'settings');
         $$('.vx-tab').forEach(p => { p.hidden = p.dataset.pane !== name; });

@@ -47,6 +47,7 @@
                 <button type="button" class="chip" data-sub="live">📡 Live &amp; OSC</button>
                 <button type="button" class="chip" data-sub="params">🎚 Parameter</button>
                 <button type="button" class="chip" data-sub="osclog">📜 OSC-Log</button>
+                <button type="button" class="chip" data-sub="mods">🧩 Chatbox-Module</button>
                 <button type="button" class="chip" data-sub="cam">📷 Kamera</button>
                 <button type="button" class="chip" data-sub="macros">⚡ Makros</button>
                 <button type="button" class="chip" data-sub="auto">🤖 Automatik</button>
@@ -102,6 +103,7 @@
                 <div class="muted small" id="ncPInfo"></div>
                 <div class="nc-pgrid" id="ncPList"></div>
             </div>
+            <div class="nc-pane" data-p="mods" hidden><div id="cmBox"></div></div>
             <div class="nc-pane" data-p="osclog" hidden>
                 <div class="nc-row nc-filter">
                     <select id="olRange"><option value="live">Live (Speicher)</option><option value="today">Heute</option><option value="7">7 Tage</option><option value="30">30 Tage</option><option value="all">Alles</option></select>
@@ -334,6 +336,7 @@
         if (name === 'params') loadParams();
         if (name === 'cam') loadCam();
         if (name === 'osclog') loadOscLog();
+        if (name === 'mods' && window.NexusChatMods) window.NexusChatMods.open(document.getElementById('cmBox'));
         if (name === 'macros') loadMacros();
         if (name === 'auto') loadAuto();
         if (name === 'speech' && window.NexusSpeech) window.NexusSpeech.open();

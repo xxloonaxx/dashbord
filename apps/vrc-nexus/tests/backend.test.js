@@ -549,6 +549,94 @@ test('1.4: Stream-Bot (Twitch-Zeilen, Punkte, Befehle, Belohnungen), Cloud-Siche
     app.tools.api.stop(); sb.stop(); app.tools.stop();
 });
 
+test('1.8: Chatbox-Module (Status, Zeit, Wetter, Rechner, Netzwerk, Twitch, Puls, VR/Desktop)', async () => {
+    const http = require('http');
+    // Nachbildungen: Open-Meteo (Wetter + Orte), decapi.me (Twitch), Pulsoid
+    const srv = http.createServer((req, res) => {
+        const u = new URL(req.url, 'http://x');
+        const j = o => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(o)); };
+        if (u.pathname === '/v1/search') return j({ results: [{ name: 'Leipzig', admin1: 'Sachsen', country_code: 'DE', latitude: 51.34, longitude: 12.37 }] });
+        if (u.pathname === '/v1/forecast') return j({ current: { temperature_2m: 7.4, apparent_temperature: 4.1, relative_humidity_2m: 81, wind_speed_10m: 13.2, weather_code: 61 } });
+        if (u.pathname === '/twitch/uptime/luna') return res.end('2 hours, 5 minutes');
+        if (u.pathname === '/twitch/viewercount/luna') return res.end('42');
+        if (u.pathname === '/twitch/game/luna') return res.end('VRChat');
+        if (u.pathname === '/api/v1/data/heart_rate/latest') return req.headers.authorization === 'Bearer pulsoid-token-1234567890abcdef' ? j({ measured_at: Date.now(), data: { heart_rate: 88 } }) : (res.statusCode = 403, j({}));
+        res.statusCode = 404; res.end('');
+    });
+    await new Promise(r => srv.listen(0, '127.0.0.1', r));
+    const B = 'http://127.0.0.1:' + srv.address().port;
+    Object.assign(process.env, { NEXUS_OPENMETEO_BASE: B, NEXUS_GEO_BASE: B, NEXUS_DECAPI_BASE: B, NEXUS_PULSOID_BASE: B, NEXUS_FAKE_VR: '0' });
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nxcm-'));
+    // nvidia-smi + Netzwerkzähler nachbilden
+    const smi = path.join(dir, 'nvidia-smi');
+    fs.writeFileSync(smi, '#!/bin/sh\necho "57, 63, 6144, 12288, 180.5, NVIDIA GeForce RTX 4070"\n', { mode: 0o755 });
+    process.env.NEXUS_NVIDIA_SMI = smi;
+    const netdev = path.join(dir, 'netdev');
+    const net = (rx, tx) => fs.writeFileSync(netdev, 'Inter-|   Receive\n face |bytes\n    lo: 999 0 0 0 0 0 0 0 999 0 0 0 0 0 0 0\n  eth0: ' + rx + ' 0 0 0 0 0 0 0 ' + tx + ' 0 0 0 0 0 0 0\n');
+    net(1000000, 500000);
+    process.env.NEXUS_NETDEV = netdev;
+    const { NexusApp } = require('../backend/app');
+    const db = await openDatabase(null);
+    const app = new NexusApp({ db, crypt: { encrypt: s => 'enc:' + s, decrypt: s => s.replace(/^enc:/, '') }, host: { userData: dir } });
+    app.game.osc.stopListen();
+    const sent = [];
+    app.game.osc.send = async (a, ...x) => { sent.push(a + ' ' + JSON.stringify(x)); };
+    app.game.osc.chatbox = async t => { sent.push('/chatbox/input ' + t); };
+    app.game.saveCfg({ rotator_enabled: '1', rotator_texts: 'Hallo Welt 🦊\nBin am Basteln', rotator_seconds: 5 });
+    const post = (act, d) => app.post(Object.assign({ act }, d || {}), {});
+    let r = await post('cm_get');
+    assert.ok(r.modules.weather && r.cfg.mods.status.on && !r.cfg.on);
+    await post('cm_place', { city: 'Leipzig' });
+    for (const k of ['weather', 'system', 'network', 'twitch', 'heart', 'vrchat']) await post('cm_save', { mod: k, mod_on: '1' });
+    await post('cm_save', { twitch: 'https://twitch.tv/luna', sep: 'line', on: '1', seconds: 3, only_game: '0' });
+    await assert.rejects(post('cm_hr_key', { token: 'kurz' }), /Pulsoid/);
+    await post('cm_hr_key', { token: 'pulsoid-token-1234567890abcdef' });
+    assert.ok(db.setting('chatmods_hr', '').startsWith('enc:'), 'Token nicht verschlüsselt');
+    app.game.state.worldName = 'Testwelt';
+    await post('cm_get', { refresh: '1' });
+    net(3000000, 1500000);
+    await U.sleep(2100);
+    r = await post('cm_get', { refresh: '1' });
+    const v = r.values;
+    assert.strictEqual(v.temp, '7'); assert.strictEqual(v.wetter_symbol, '🌧'); assert.strictEqual(v.gpu, '57'); assert.strictEqual(v.gpu_temp, '63');
+    assert.strictEqual(v.twitch_zuschauer, '42'); assert.strictEqual(v.twitch_spiel, 'VRChat'); assert.strictEqual(v.puls, '88');
+    assert.ok(/MB\/s|KB\/s/.test(v.netz_down) && v.cpu !== undefined, JSON.stringify(v));
+    assert.ok(sent.some(x => x.startsWith('/avatar/parameters/HeartRate [88]')), 'Puls nicht als Avatar-Parameter gesendet');
+    let p = r.preview.text;
+    // zu lang für 144 Zeichen → ganze Module am Ende fallen weg (hier der Puls), nichts wird mitten im Text abgeschnitten
+    assert.ok(Array.from(p).length <= 144 && r.preview.dropped.includes('heart') && !p.includes('💓'), JSON.stringify(r.preview));
+    await post('cm_save', { mod: 'system', mod_on: '0' }); await post('cm_save', { mod: 'vrchat', mod_on: '0' });
+    r = await post('cm_get'); p = r.preview.text;
+    for (const part of ['🌧 7°C', '🔴 LIVE · 👀 42 · VRChat', '💓 88 bpm', '📶 ↓']) assert.ok(p.includes(part), 'fehlt: ' + part + ' in ' + p);
+    assert.ok(!r.preview.dropped.length && Array.from(p).length <= 144);
+    // Reihenfolge ändern: Puls nach vorn
+    await post('cm_save', { order: 'heart,status' });
+    r = await post('cm_get');
+    assert.ok(r.preview.text.startsWith('💓 88 bpm'), r.preview.text);
+    // nur-Desktop-Module verschwinden in VR, Fenster zeigt „In VR“
+    await post('cm_save', { mod: 'window', mod_on: '1', where: 'both' });
+    process.env.NEXUS_FAKE_VR = '1'; app.chatmods.last.vr = 0;
+    r = await post('cm_get');
+    assert.ok(!r.preview.text.includes('📶') && r.preview.text.includes('🥽 In VR'), r.preview.text);
+    // Senden + Rotator pausiert, solange Module an sind
+    sent.length = 0;
+    await post('cm_send');
+    assert.ok(sent.some(x => x.startsWith('/chatbox/input ') && x.includes('💓 88 bpm')));
+    assert.ok(app.game.suppressRotator);
+    app.game.lastRot = 0; sent.length = 0; app.game.tick();
+    assert.ok(!sent.some(x => x.includes('Hallo Welt')), 'Rotator lief trotz Modulen');
+    // AFK ersetzt den Status-Text
+    app.auto.afkSince = Date.now() - 5 * 60000;
+    r = await post('cm_get');
+    assert.ok(r.preview.text.includes('💤 AFK seit 5 min'), r.preview.text);
+    // Platzhalter auch im Rotator/Makros nutzbar
+    assert.ok(app.game.fill('{temp}°C {puls}').includes('7°C 88'));
+    await post('cm_save', { on: '0' });
+    assert.ok(!app.game.suppressRotator);
+    app.chatmods.stop(); app.tools.stop(); srv.close();
+    for (const k of ['NEXUS_OPENMETEO_BASE', 'NEXUS_GEO_BASE', 'NEXUS_DECAPI_BASE', 'NEXUS_PULSOID_BASE', 'NEXUS_FAKE_VR', 'NEXUS_NVIDIA_SMI', 'NEXUS_NETDEV']) delete process.env[k];
+});
+
 test('1.7: Wörterbuch (EN/FR/JA) vollständig und Platzhalter stimmen', () => {
     const fs = require('fs'), path = require('path'), vm = require('vm');
     const file = path.join(__dirname, '..', 'renderer', 'js', 'i18n-dict.js');
