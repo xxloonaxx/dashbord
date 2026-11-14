@@ -505,6 +505,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }, vrc_calendar_list($uid)), 'linked' => (bool)vrc_calendar_sub($uid, false), 'can_link' => can('calendar.edit') || can('calendar.subscriptions'),
                        'ics' => $base . '?ics=' . vrc_ics_token($uid), 'events_page' => $base . '?events=' . vrc_ics_token($uid), 'refreshed' => (int)setting('vrc_cal_refresh_' . $uid, '0'), 'error' => $err, 'can_create' => $can];
                     break;
+                case 'discord_online': {
+                    if (!can('discord.manage')) throw new RuntimeException('Dafür brauchst du Zugriff auf die Discord-Zentrale.');
+                    $cur = json_decode(setting('discord_nexus', ''), true) ?: [];
+                    if (isset($_POST['save'])) {
+                        $on = !empty($_POST['on']);
+                        if (!$on && (int)($cur['uid'] ?? 0) === $uid) set_setting('discord_nexus', '');
+                        if ($on) set_setting('discord_nexus', json_encode(['uid' => $uid, 'scope' => ($_POST['scope'] ?? '') === 'favorites' ? 'favorites' : 'list',
+                            'world' => in_array($_POST['world'] ?? '', ['public', 'all', 'none'], true) ? $_POST['world'] : 'public']));
+                        $cur = json_decode(setting('discord_nexus', ''), true) ?: [];
+                    }
+                    $mine = (int)($cur['uid'] ?? 0) === $uid;
+                    $out = ['on' => $mine, 'other' => !empty($cur['uid']) && !$mine, 'scope' => $cur['scope'] ?? 'list', 'world' => $cur['world'] ?? 'public'];
+                    if (isset($_POST['save'])) $out['msg'] = $mine ? 'Discord „/online“ ist verbunden.' : 'Discord „/online“ ist aus.';
+                    break;
+                }
                 case 'calendar_link':
                     if (!can('calendar.edit') && !can('calendar.subscriptions')) throw new RuntimeException('Dafür brauchst du das Recht, den Kalender zu bearbeiten.');
                     if (!empty($in['on'])) { vrc_calendar_sub($uid, true); $r = vrc_calendar_push($uid); $out = ['msg' => 'Verbunden – ' . (int)($r['total'] ?? 0) . ' Events stehen jetzt im Dashboard-Kalender.']; }
@@ -1314,6 +1329,19 @@ session_write_close();
 
     <section class="vx-tab" data-pane="client" hidden><div id="clientPane" class="nc"></div></section>
     <section class="vx-tab" data-pane="account" hidden>
+        <?php if (can('discord.manage')): ?>
+        <form class="panel" id="dcOnline" style="margin-bottom: 16px;">
+            <div class="panel-title">🤖 Discord „/online“ &amp; „/wo“</div>
+            <p class="vx-small">Der Discord-Bot zeigt mit <code>/online</code>, wer gerade in VRChat ist, und mit <code>/wo Name</code>, wo jemand ist – <b>nur für Freunde, die du freigibst</b>.</p>
+            <label class="check"><input type="checkbox" name="on"> Mit meinem VRC-Nexus-Konto verbinden</label>
+            <div class="nx-row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+                <label class="vx-small">Freigegeben: <select name="scope"><option value="list">Freunde mit der Liste „discord“ (Profil → Listen)</option><option value="favorites">alle ⭐ Lieblings-Freunde</option></select></label>
+                <label class="vx-small">Welt anzeigen: <select name="world"><option value="public">nur bei öffentlichen Instanzen</option><option value="all">immer</option><option value="none">nie (nur „im Spiel“)</option></select></label>
+            </div>
+            <p class="vx-small" id="dcOnlineInfo"></p>
+            <button class="btn btn-sm btn-gold">Speichern</button>
+        </form>
+        <?php endif; ?>
         <div class="vx-cols">
             <div class="panel">
                 <div class="panel-title">Mein Status</div>

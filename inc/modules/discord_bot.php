@@ -28,6 +28,8 @@ function dbot_builtins(): array {
     return [
         'hilfe'      => ['Zeigt alle Befehle dieses Bots', [], false],
         'countdown'  => ['Die nächsten Countdowns (Cons, Urlaub, Geburtstage …)', [], false],
+        'online'     => ['Welche (freigegebenen) VRChat-Freunde gerade im Spiel sind', [], false],
+        'wo'         => ['Wo ist ein (freigegebener) VRChat-Freund gerade?', [['type' => 3, 'name' => 'name', 'description' => 'Name oder Teil davon', 'required' => true, 'max_length' => 64]], false],
         'termine'    => ['Die nächsten Termine aus dem Kalender', [['type' => 4, 'name' => 'anzahl', 'description' => 'Wie viele (1–10)', 'min_value' => 1, 'max_value' => 10]], false],
         'würfel'     => ['Würfeln', [['type' => 4, 'name' => 'seiten', 'description' => 'Seiten pro Würfel (Standard 6)', 'min_value' => 2, 'max_value' => 1000],
                                      ['type' => 4, 'name' => 'anzahl', 'description' => 'Wie viele Würfel (1–20)', 'min_value' => 1, 'max_value' => 20]], false],
@@ -237,6 +239,37 @@ function dbot_handle(array $it, bool $test = false): array {
             foreach (dbot_builtins() as $n => [$d]) if (!in_array($n, $cfg['disabled'], true)) $lines[] = '`/' . $n . '` – ' . $d;
             foreach ($cfg['custom'] as $c) $lines[] = '`/' . $c['name'] . '` – ' . ($c['desc'] ?: 'Eigener Befehl');
             return dbot_reply('', [['title' => '🤖 Befehle', 'description' => mb_substr(implode("\n", $lines), 0, 4000), 'color' => 0x5865f2]], true);
+        case 'online':
+        case 'wo':
+            $nx = json_decode(setting('discord_nexus', ''), true);
+            if (!$nx || empty($nx['uid'])) return dbot_reply('VRC Nexus ist mit diesem Bot nicht verbunden (im Dashboard: VRC Nexus → Konto & Status → Discord „/online“).', [], true);
+            require_once __DIR__ . '/vrchat.php';
+            $fr = array_values(array_filter(vrc_friend_list((int)$nx['uid']), function ($f) use ($nx) {
+                if (($nx['scope'] ?? 'list') === 'favorites') return !empty($f['favorite']);
+                return in_array('discord', array_map('mb_strtolower', $f['lists']), true);
+            }));
+            $where = function ($f) use ($nx) {
+                if ($f['state'] === 'offline') return '⚫ offline';
+                if ($f['state'] === 'active') return '🟡 online (nicht im Spiel)';
+                $l = $f['loc'];
+                $show = $nx['world'] ?? 'public';
+                if (($l['kind'] ?? '') !== 'world' || $show === 'none') return '🟢 im Spiel';
+                if ($show === 'public' && ($l['access'] ?? '') !== 'Public') return '🟢 im Spiel (' . ($l['access'] ?? 'privat') . ')';
+                return '🟢 **' . (($l['world_name'] ?? '') ?: 'Welt') . '**' . (!empty($l['access']) ? ' · ' . $l['access'] : '');
+            };
+            if ($name === 'wo') {
+                $q = mb_strtolower(trim((string)($o['name'] ?? '')));
+                $hits = array_values(array_filter($fr, function ($f) use ($q) { return $q !== '' && mb_strpos(mb_strtolower($f['name']), $q) !== false; }));
+                if (!$hits) return dbot_reply('🔎 Keinen freigegebenen Freund mit „' . $o['name'] . '“ gefunden.', [], true);
+                $lines = array_map(function ($f) use ($where) { return '**' . $f['name'] . '** – ' . $where($f) . ($f['status_desc'] ? ' · „' . $f['status_desc'] . '“' : ''); }, array_slice($hits, 0, 10));
+                return dbot_reply('', [['title' => '📍 Wo?', 'description' => implode("\n", $lines), 'color' => 0x38d5e6]]);
+            }
+            $on = array_values(array_filter($fr, function ($f) { return $f['state'] === 'online'; }));
+            $act = count(array_filter($fr, function ($f) { return $f['state'] === 'active'; }));
+            if (!$on) return dbot_reply('', [['title' => '🟢 Gerade im Spiel', 'description' => 'Niemand von den freigegebenen Freunden ist gerade in VRChat.' . ($act ? "\n🟡 " . $act . ' online, aber nicht im Spiel.' : ''), 'color' => 0x38d5e6]]);
+            $lines = array_map(function ($f) use ($where) { return '• **' . $f['name'] . '** – ' . $where($f); }, array_slice($on, 0, 40));
+            return dbot_reply('', [['title' => '🟢 Gerade im Spiel (' . count($on) . ')', 'description' => mb_substr(implode("\n", $lines), 0, 4000) . ($act ? "\n\n🟡 " . $act . ' weitere online, nicht im Spiel' : ''), 'color' => 0x38d5e6,
+                'footer' => ['text' => 'VRC Nexus · Stand ' . date('H:i', (int)((vrc_account((int)$nx['uid']) ?: [])['last_sync'] ?? time()))]]]);
         case 'countdown':
             require_once __DIR__ . '/countdown.php';
             [$up] = sorted_countdowns(load_countdowns()['events']);

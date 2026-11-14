@@ -1373,6 +1373,13 @@
     });
 
     // ---------- Konto ----------
+    // Discord „/online“ (nur mit Zugriff auf die Discord-Zentrale)
+    const dco = $('#dcOnline');
+    if (dco) {
+        const fill = d => { dco.on.checked = !!d.on; dco.scope.value = d.scope; dco.world.value = d.world; $('#dcOnlineInfo').textContent = d.other ? '⚠ Gerade ist ein anderes Dashboard-Konto verbunden – Speichern übernimmt die Verbindung.' : d.on ? '✔ Verbunden. Nach dem Hinzufügen neuer Befehle in der Discord-Zentrale einmal „Befehle registrieren“ drücken.' : ''; };
+        api('discord_online').then(fill).catch(() => {});
+        dco.addEventListener('submit', e => { e.preventDefault(); api('discord_online', { save: 1, on: dco.on.checked ? 1 : '', scope: dco.scope.value, world: dco.world.value }).then(d => { fill(d); toast(d.msg); }).catch(x => toast(x.message, true)); });
+    }
     $('#statusForm').addEventListener('input', e => { e.currentTarget.dataset.touched = '1'; });
     $('#statusForm').addEventListener('submit', e => {
         e.preventDefault();
