@@ -151,11 +151,11 @@
         }
         const open = [...box.querySelectorAll('.i18n-menu')].filter(x => !x.hidden).map(x => x.dataset.m)[0] || '';
         const TH = (window.NexusApp && window.NexusApp.THEMES) || null;
-        const cur = document.documentElement.dataset.theme || 'neon';
+        const cur = document.documentElement.dataset.themeChoice || document.documentElement.dataset.theme || 'neon';
         const L = { de: ['Sprache', 'Theme'], en: ['Language', 'Theme'], fr: ['Langue', 'Thème'], ja: ['言語', 'テーマ'] }[lang];
-        const TN = { neon: { en: '🌃 Neon', fr: '🌃 Néon', ja: '🌃 ネオン' }, midnight: { en: '🌌 Midnight', fr: '🌌 Minuit', ja: '🌌 ミッドナイト' }, snow: { en: '❄️ Snow', fr: '❄️ Neige', ja: '❄️ スノー' }, sakura: { en: '🌸 Sakura', fr: '🌸 Sakura', ja: '🌸 さくら' } };
+        const TN = { neon: { en: '🌃 Neon', fr: '🌃 Néon', ja: '🌃 ネオン' }, midnight: { en: '🌌 Midnight', fr: '🌌 Minuit', ja: '🌌 ミッドナイト' }, snow: { en: '❄️ Snow', fr: '❄️ Neige', ja: '❄️ スノー' }, sakura: { en: '🌸 Sakura', fr: '🌸 Sakura', ja: '🌸 さくら' }, auto: { en: '🌗 Automatic', fr: '🌗 Automatique', ja: '🌗 自動' } };
         box.innerHTML = '<div class="i18n-menu" data-m="lang"' + (open === 'lang' ? '' : ' hidden') + '><b>' + L[0] + '</b>' + Object.entries(LANGS).map(([k, v]) => '<button type="button" data-lang="' + k + '" class="' + (k === lang ? 'on' : '') + '"><i>' + FLAG[k] + '</i>' + v[0] + '</button>').join('') + '</div>'
-            + (TH ? '<div class="i18n-menu" data-m="theme"' + (open === 'theme' ? '' : ' hidden') + '><b>' + L[1] + '</b>' + Object.entries(TH).map(([k, v]) => '<button type="button" data-theme="' + k + '" class="' + (k === cur ? 'on' : '') + '"><i class="th-sw">' + v[2].map(c => '<span style="background:' + c + '"></span>').join('') + '</i>' + ((TN[k] || {})[lang] || v[0]) + '<small>' + (v[1] === 'light' ? '☀' : '☾') + '</small></button>').join('') + '</div>' : '')
+            + (TH ? '<div class="i18n-menu" data-m="theme"' + (open === 'theme' ? '' : ' hidden') + '><b>' + L[1] + '</b>' + Object.entries(TH).map(([k, v]) => '<button type="button" data-theme="' + k + '" class="' + (k === cur ? 'on' : '') + '"><i class="th-sw">' + v[2].map(c => '<span style="background:' + c + '"></span>').join('') + '</i>' + ((TN[k] || {})[lang] || v[0]) + '<small>' + (v[1] === 'light' ? '☀' : v[1] === 'auto' ? '◐' : '☾') + '</small></button>').join('') + '</div>' : '')
             + '<span class="i18n-btns">' + (TH ? '<button type="button" class="i18n-fab" data-open="theme" title="' + L[1] + '">🎨</button>' : '') + '<button type="button" class="i18n-fab" data-open="lang" title="' + L[0] + '"><i>' + FLAG[lang] + '</i></button></span>';
     }
     function setTheme(k) {
@@ -179,7 +179,7 @@
         setTimeout(corner, 0);
     }
     window.NexusI18n = {
-        get lang() { return lang; }, LANGS, set: setLang, t: window.t, locale: () => LANGS[lang][1], refresh: () => walk(document.body),
+        get lang() { return lang; }, LANGS, set: setLang, t: window.t, locale: () => LANGS[lang][1], refresh: () => walk(document.body), corner: () => { if (box) corner(); },
         /** Hilfe beim Übersetzen: alle sichtbaren deutschen Texte ohne Übersetzung */
         missing() {
             const out = new Set();

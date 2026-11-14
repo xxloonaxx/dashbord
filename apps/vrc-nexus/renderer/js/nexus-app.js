@@ -21,7 +21,11 @@
         midnight: ['🌌 Mitternacht', 'dark', ['#08050f', '#140d22', '#b794ff', '#ff8fc7']],
         snow: ['❄️ Schnee', 'light', ['#edf1f7', '#ffffff', '#0b7fa3', '#b26a00']],
         sakura: ['🌸 Sakura', 'light', ['#fbf0f3', '#fffcfd', '#c2255c', '#b45309']],
+        auto: ['🌗 Automatisch', 'auto', ['#040609', '#38d5e6', '#edf1f7', '#0b7fa3']],
     };
+    // „Automatisch“: hell/dunkel wie Windows bzw. Android – wechselt mit, wenn das System umschaltet
+    const LIGHT = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null;
+    if (LIGHT && LIGHT.addEventListener) LIGHT.addEventListener('change', () => { if ((window.VRCX.ui || {})['ui.theme'] === 'auto') applyUi(window.VRCX.ui); });
     function applyUi(s) {
         const b = document.body;
         b.classList.toggle('no-anim', s['ui.animations'] === false);
@@ -35,9 +39,12 @@
         if (s['ui.font'] === 'system') b.classList.add('font-system');
         if (s['ui.font'] === 'mono') b.classList.add('font-mono');
         if (window.NexusI18n && s['ui.lang'] && s['ui.lang'] !== window.NexusI18n.lang) window.NexusI18n.set(s['ui.lang'], false);
-        const theme = THEMES[s['ui.theme']] ? s['ui.theme'] : 'neon';
+        const choice = THEMES[s['ui.theme']] ? s['ui.theme'] : 'neon';
+        const theme = choice === 'auto' ? (LIGHT && LIGHT.matches ? 'snow' : 'neon') : choice;
         const html = document.documentElement;
         html.dataset.theme = theme;
+        html.dataset.themeChoice = choice;
+        if (window.NexusI18n) setTimeout(() => window.NexusI18n.corner(), 0);   // Markierung im 🎨-Menü
         html.dataset.scheme = THEMES[theme][1];
         const a = /^#[0-9a-f]{6}$/i.test(s['ui.accent'] || '') ? s['ui.accent'] : '#38d5e6';
         const r = html.style;
