@@ -20,6 +20,9 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.7.7
+- ⚙ **Einstellungen** sind jetzt ein eigener Knopf oben rechts neben der Profilkarte (statt im Mehr-Menü); leuchtet, solange die Einstellungen offen sind.
+
 ### Neu in 1.7.6
 - Spracheingabe robuster: Lehnt das Audiosystem 16 kHz ab, wird mit der Standardrate aufgenommen und für whisper.cpp auf 16 kHz umgerechnet (vorher: Aufnahme startete nicht bzw. verzerrte Audio).
 

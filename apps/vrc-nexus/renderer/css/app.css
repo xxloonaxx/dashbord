@@ -382,3 +382,15 @@ body.menu-icons .vx-menu .vx-tabbtn .vx-badge, body.mobile .vx-menu .vx-tabbtn .
 
 .sb-evgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 10px; }
 .sb-ev textarea, .sb-ev input[type=text] { margin-top: 4px; }
+
+/* Einstellungen als eigener Knopf oben rechts neben der Profilkarte */
+.vx-head-r { display: flex; align-items: stretch; gap: 10px; }
+.vx-hbtn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 64px; padding: 6px 10px; background: var(--panel-bg); border: 1px solid var(--border-color); color: var(--text-main); cursor: pointer; font: inherit; transition: border-color 0.15s, background 0.15s; }
+.vx-hbtn span { font-size: 1.35rem; line-height: 1; transition: transform 0.4s; }
+.vx-hbtn em { font-style: normal; font-size: 0.62rem; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); }
+.vx-hbtn:hover { border-color: var(--accent-cyan); background: rgba(var(--accent-rgb), 0.08); }
+.vx-hbtn:hover span { transform: rotate(60deg); }
+.vx-hbtn.active { border-color: var(--accent-cyan); background: rgba(var(--accent-rgb), 0.12); }
+.vx-hbtn.active em { color: var(--accent-cyan); }
+#tabs [data-tab="settings"][hidden] { display: none !important; }
+body.mobile .vx-hbtn em { display: none; } body.mobile .vx-hbtn { min-width: 48px; }

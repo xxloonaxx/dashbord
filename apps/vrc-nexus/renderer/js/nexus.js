@@ -145,6 +145,7 @@
         $$('#tabs [data-tab]').forEach(b => { const on = b.dataset.tab === name && (b.dataset.msub || '') === sub; hit = hit || on; b.classList.toggle('active', on); });
         if (!hit) $$('#tabs [data-tab="' + name + '"]').forEach((b, i) => b.classList.toggle('active', i === 0));
         $$('#tabs .vx-mgroup').forEach(g => { g.classList.toggle('active', !!g.querySelector('.active')); g.classList.remove('open'); });
+        const hs = $('#hdSettings'); if (hs) hs.classList.toggle('active', name === 'settings');
         $$('.vx-tab').forEach(p => { p.hidden = p.dataset.pane !== name; });
         store.set('tab', name);
         store.set('tabSub', sub);
@@ -178,6 +179,8 @@
         const b = e.target.closest('[data-tab]'); if (b) tab(b.dataset.tab, b.dataset.msub);
     });
     document.addEventListener('click', e => { if (!e.target.closest('#tabs')) $$('#tabs .vx-mgroup.open').forEach(x => x.classList.remove('open')); });
+    // ⚙ Einstellungen oben rechts neben der Profilkarte
+    if ($('#hdSettings')) $('#hdSettings').addEventListener('click', () => tab('settings'));
     document.addEventListener('keydown', e => {
         if (e.target.closest('input, textarea, select') || e.ctrlKey || e.metaKey || e.altKey || !$('#userModal').hidden) return;
         if (e.key === '/') { e.preventDefault(); tab('friends'); $('#friendSearch').focus(); }

@@ -17,7 +17,7 @@
             <div class="hud-tag">VRChat // Freunde · Welten · Avatare · Gruppen · Desktop</div>
             <h1>VRC Nexus</h1>
         </div>
-        {{IF_CONNECTED}}<div class="vx-me" id="me"></div>{{END_CONNECTED}}
+        {{IF_CONNECTED}}<div class="vx-head-r"><button type="button" class="vx-hbtn" id="hdSettings" title="Einstellungen" aria-label="Einstellungen"><span>⚙</span><em>Einstellungen</em></button><div class="vx-me" id="me"></div></div>{{END_CONNECTED}}
     </header>
 
 {{IF_LOGIN}}
@@ -88,7 +88,7 @@
         <button type="button" class="vx-tabbtn" data-tab="remote" data-mobile><span>🎮</span><em>PC-Fernbedienung</em></button>
         <div class="vx-mgroup vx-mright"><button type="button" class="vx-mtop" aria-haspopup="true"><span>⚙</span><em>Mehr</em><i>▾</i></button>
             <div class="vx-mdrop" role="menu">
-                <button type="button" class="vx-tabbtn" data-tab="settings"><span>⚙</span><em>Einstellungen</em></button>
+                <button type="button" class="vx-tabbtn" data-tab="settings" hidden><span>⚙</span><em>Einstellungen</em></button>
                 <button type="button" class="vx-tabbtn" data-tab="account"><span>👤</span><em>Konto &amp; Status</em></button>
                 <button type="button" class="vx-tabbtn" data-tab="calendar"><span>📅</span><em>Gruppen-Kalender</em></button>
                 <button type="button" class="vx-tabbtn" data-tab="gallery"><span>🖼️</span><em>Galerie &amp; Inventar</em></button>
