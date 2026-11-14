@@ -820,6 +820,26 @@ test('1.10.2: Spielt gerade über die Windows-Mediensteuerung (Sitzungen, Platzh
     }
 });
 
+test('1.10.3: echtes PowerShell-Skript der Mediensteuerung antwortet (nur Windows)', async () => {
+    if (process.platform !== 'win32') return;
+    const { Media } = require('../backend/media');
+    const m = new Media({ mobile: false });
+    try {
+        m.start();
+        for (let i = 0; i < 400 && !m.at && !m.error; i++) await new Promise(r => setTimeout(r, 100));
+        console.log('   Mediensteuerung:', m.at ? 'antwortet, ' + m.sessions.length + ' Sitzung(en)' : 'Fehler: ' + m.error, m.stderr ? '| stderr: ' + m.stderr.slice(-200) : '');
+        assert.ok(m.at || m.error, 'Das PowerShell-Skript hat in 40 s nichts gemeldet (hängt es?)');
+        if (m.at) {   // Befehlsdatei wird abgeholt (blockiert nicht)
+            m.control('pause');
+            for (let i = 0; i < 50 && require('fs').existsSync(m.cmdFile); i++) await new Promise(r => setTimeout(r, 100));
+            assert.ok(!require('fs').existsSync(m.cmdFile), 'Befehlsdatei wurde nicht abgeholt');
+            const at = m.at;
+            for (let i = 0; i < 60 && m.at === at; i++) await new Promise(r => setTimeout(r, 100));
+            assert.ok(m.at > at, 'nach einem Befehl kommen weiter Meldungen');
+        }
+    } finally { m.stop(); }
+});
+
 test('1.7: Wörterbuch (EN/FR/JA) vollständig und Platzhalter stimmen', () => {
     const fs = require('fs'), path = require('path'), vm = require('vm');
     const file = path.join(__dirname, '..', 'renderer', 'js', 'i18n-dict.js');

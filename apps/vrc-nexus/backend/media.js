@@ -2,35 +2,41 @@
 /*
  * „Spielt gerade“ über die Windows-Mediensteuerung (System Media Transport Controls):
  * alles, was Windows im Lautstärke-/Medien-Popup zeigt – Spotify, Browser (YouTube, SoundCloud …), Apple Music, Tidal, VLC, Medienwiedergabe …
- * Ein dauerhafter PowerShell-Prozess (Skript per -EncodedCommand, stdin bleibt frei für Befehle) meldet alle 2 s die Sitzungen als JSON-Zeile und nimmt Befehle (play/pause/next/prev) über stdin an.
+ * Ein dauerhafter PowerShell-Prozess (Skript per -EncodedCommand) meldet alle 2 s die Sitzungen als JSON-Zeile auf stdout.
+ * Befehle (play/pause/next/prev) kommen über eine kleine Befehlsdatei im Temp-Ordner – stdin wird bewusst nicht benutzt,
+ * denn [Console]::In.ReadLineAsync() blockiert in Windows PowerShell 5.1 (dann käme nie eine Ausgabe).
  * Test/Entwicklung: NEXUS_MEDIA_PS=<datei.js> startet stattdessen ein Node-Skript mit demselben Zeilenprotokoll.
  */
 const { spawn } = require('child_process');
+const fs = require('fs'), os = require('os'), path = require('path');
 const { str, int } = require('./util');
 
 const PS = String.raw`
 $ErrorActionPreference = 'SilentlyContinue'
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false
 Add-Type -AssemblyName System.Runtime.WindowsRuntime
 $asTask = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object { $_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation` + '`' + String.raw`1' })[0]
 function Await($op, $type) { $t = $asTask.MakeGenericMethod($type).Invoke($null, @($op)); [void]$t.Wait(4000); $t.Result }
 $null = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager, Windows.Media.Control, ContentType = WindowsRuntime]
 $mgr = Await ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager]::RequestAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager])
 if ($null -eq $mgr) { [Console]::Out.WriteLine('{"error":"Windows-Mediensteuerung nicht verfügbar"}'); exit 1 }
-$in = [Console]::In; $read = $in.ReadLineAsync(); $n = 0
+$cf = $env:NEXUS_MEDIA_CMD; $n = 0
 while ($true) {
-  if ($read.IsCompleted) {
-    $cmd = [string]$read.Result
-    if ($null -eq $read.Result) { exit 0 }
-    $parts = $cmd.Split(' ', 2); $s = $null
-    foreach ($x in $mgr.GetSessions()) { if ($parts.Count -gt 1 -and $x.SourceAppUserModelId -eq $parts[1]) { $s = $x } }
-    if ($null -eq $s) { $s = $mgr.GetCurrentSession() }
-    if ($null -ne $s) {
-      switch ($parts[0]) { 'toggle' { $null = $s.TryTogglePlayPauseAsync() } 'next' { $null = $s.TrySkipNextAsync() } 'prev' { $null = $s.TrySkipPreviousAsync() } 'play' { $null = $s.TryPlayAsync() } 'pause' { $null = $s.TryPauseAsync() } }
+  if ($cf -and (Test-Path -LiteralPath $cf)) {
+    $work = $cf + '.work'
+    Move-Item -LiteralPath $cf -Destination $work -Force
+    foreach ($cmd in @(Get-Content -LiteralPath $work -Encoding UTF8)) {
+      $parts = ([string]$cmd).Trim().Split(' ', 2); $s = $null
+      foreach ($x in $mgr.GetSessions()) { if ($parts.Count -gt 1 -and $x.SourceAppUserModelId -eq $parts[1]) { $s = $x } }
+      if ($null -eq $s) { $s = $mgr.GetCurrentSession() }
+      if ($null -ne $s) {
+        switch ($parts[0]) { 'toggle' { $null = $s.TryTogglePlayPauseAsync() } 'next' { $null = $s.TrySkipNextAsync() } 'prev' { $null = $s.TrySkipPreviousAsync() } 'play' { $null = $s.TryPlayAsync() } 'pause' { $null = $s.TryPauseAsync() } }
+      }
     }
-    $read = $in.ReadLineAsync(); $n = 6
+    Remove-Item -LiteralPath $work -Force; $n = 3
   }
   if ($n -le 0) {
+    if ($env:NEXUS_MEDIA_PARENT -and -not (Get-Process -Id ([int]$env:NEXUS_MEDIA_PARENT) -ErrorAction SilentlyContinue)) { exit 0 }   # App beendet → mit beenden
     $out = New-Object System.Collections.ArrayList
     $cur = $mgr.GetCurrentSession(); $curId = if ($cur) { $cur.SourceAppUserModelId } else { '' }
     foreach ($s in $mgr.GetSessions()) {
@@ -73,10 +79,13 @@ class Media {
     start() {
         if (!this.available() || this.proc || Date.now() < this.restartAt) return;
         let p;
+        this.cmdFile = path.join(os.tmpdir(), 'vrc-nexus-media-' + process.pid + '.cmd');
+        try { fs.unlinkSync(this.cmdFile); } catch (e) { /* gab es nicht */ }
+        const env = Object.assign({}, process.env, { NEXUS_MEDIA_CMD: this.cmdFile, NEXUS_MEDIA_PARENT: String(process.pid) });
         try {
             const fake = process.env.NEXUS_MEDIA_PS;
-            p = fake ? spawn(process.execPath, [fake], { env: Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' }), windowsHide: true })
-                : spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', Buffer.from(PS, 'utf16le').toString('base64')], { windowsHide: true });
+            p = fake ? spawn(process.execPath, [fake], { env: Object.assign(env, { ELECTRON_RUN_AS_NODE: '1' }), windowsHide: true })
+                : spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', Buffer.from(PS, 'utf16le').toString('base64')], { env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
         } catch (e) { this.error = e.message; return; }
         this.proc = p;
         let buf = '';
@@ -87,19 +96,25 @@ class Media {
             while ((i = buf.indexOf('\n')) >= 0) { const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1); if (line) this.onLine(line); }
             if (buf.length > 1e6) buf = '';
         });
-        p.stderr.on('data', () => {});
+        this.stderr = '';
+        p.stderr.setEncoding('utf8');
+        p.stderr.on('data', d => { this.stderr = (this.stderr + d).slice(-2000); });
         p.on('error', e => { this.error = e.message; });
         p.on('exit', () => {
             if (this.proc !== p) return;
             this.proc = null; this.sessions = [];
+            if (!this.at) this.error = 'Windows-Mediensteuerung beendet' + (this.stderr ? ': ' + this.stderr.trim().split('\n').pop().slice(0, 200) : '');
             this.fails++;
             this.restartAt = Date.now() + Math.min(300000, 5000 * this.fails);   // nicht in einer Schleife neu starten
         });
     }
-    stop() { if (this.proc) { const p = this.proc; this.proc = null; try { p.stdin.end(); p.kill(); } catch (e) { /* egal */ } } }
+    stop() {
+        if (this.proc) { const p = this.proc; this.proc = null; try { p.kill(); } catch (e) { /* egal */ } }
+        if (this.cmdFile) try { fs.unlinkSync(this.cmdFile); } catch (e) { /* egal */ }
+    }
     onLine(line) {
         let d;
-        try { d = JSON.parse(line); } catch (e) { return; }
+        try { d = JSON.parse(line.replace(/^\uFEFF/, '')); } catch (e) { this.error = 'Unerwartete Ausgabe: ' + line.slice(0, 120); return; }
         if (d && !Array.isArray(d) && d.error) { this.error = str(d.error); return; }
         if (!Array.isArray(d)) d = d ? [d] : [];
         this.fails = 0; this.error = '';
@@ -120,10 +135,10 @@ class Media {
     control(cmd, id) {
         if (!['toggle', 'next', 'prev', 'play', 'pause'].includes(cmd)) throw new Error('Unbekannter Befehl.');
         if (!this.proc) { this.start(); throw new Error('Windows-Mediensteuerung startet gerade – gleich nochmal versuchen.'); }
-        this.proc.stdin.write(cmd + (id ? ' ' + str(id).replace(/[\r\n]/g, '') : '') + '\n');
+        fs.appendFileSync(this.cmdFile, cmd + (id ? ' ' + str(id).replace(/[\r\n]/g, '') : '') + '\n');
         return { ok: true };
     }
-    status() { return { available: this.available(), running: !!this.proc, error: this.error, now: this.now(), sessions: this.sessions }; }
+    status() { return { available: this.available(), running: !!this.proc, error: this.error, waiting: !!this.proc && !this.at, now: this.now(), sessions: this.sessions }; }
 }
 const fmt = s => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
 module.exports = { Media, appName, fmt, PS };

@@ -1,5 +1,10 @@
 [
  {
+  "version": "1.10.3",
+  "title": "Fix: „Spielt gerade“ erkennt jetzt wirklich, was läuft",
+  "body": "- Fix: Die Windows-Mediensteuerung meldete nie, was gerade spielt (nur ⏮ ⏯ ⏭ gingen). Ursache: Windows PowerShell wartete beim Lesen der Befehle blockierend – jetzt kommen Befehle über eine kleine Datei im Temp-Ordner, die Erkennung läuft durchgehend (z. B. YouTube Music in Brave/Chrome/Edge/Firefox, Spotify …).\n- Startet die Mediensteuerung noch oder meldet einen Fehler, zeigt die Kachel das jetzt an.\n- Der PowerShell-Helfer beendet sich selbst, wenn die App geschlossen wird.\n- Der Windows-Build testet das echte Skript jetzt mit."
+ },
+ {
   "version": "1.10.2",
   "title": "„Spielt gerade“ über die Windows-Mediensteuerung",
   "body": "- **🎵 Spielt gerade** nutzt jetzt die **Windows-Mediensteuerung** – erkannt wird alles, was Windows im Medien-Popup zeigt: Spotify, **Browser (YouTube, SoundCloud …)**, Apple Music, TIDAL, Deezer, VLC, Medienwiedergabe … Ältere Player ohne Mediensteuerung werden weiter über den Fenstertitel erkannt.\n- Startseiten-Kachel neu: Titel, Künstler, App, Status, **Fortschrittsbalken** mit Zeit und Knöpfe **⏮ ⏯ ⏭**.\n- Neue Platzhalter für Rotator, Chatbox-Modul und Automatik: `{musik_titel}` `{musik_kuenstler}` `{musik_app}` `{musik_zeit}` (z. B. 1:18/3:44). Pausiert = „spielt“ nichts.\n- Abschaltbar unter *Einstellungen → Medien → Spielt gerade*.\n- **🧭 Direkt-Zugriff** sitzt jetzt oben neben ⚙ Einstellungen statt in der Menüleiste.\n- Fix: In den Einstellungen leuchtete „Mehr“ fälschlich mit."

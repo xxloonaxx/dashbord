@@ -20,6 +20,12 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.10.3 – Fix: „Spielt gerade“ erkennt jetzt wirklich, was läuft
+- Fix: Die Windows-Mediensteuerung meldete nie, was gerade spielt (nur ⏮ ⏯ ⏭ gingen). Ursache: Windows PowerShell wartete beim Lesen der Befehle blockierend – jetzt kommen Befehle über eine kleine Datei im Temp-Ordner, die Erkennung läuft durchgehend (z. B. YouTube Music in Brave/Chrome/Edge/Firefox, Spotify …).
+- Startet die Mediensteuerung noch oder meldet einen Fehler, zeigt die Kachel das jetzt an.
+- Der PowerShell-Helfer beendet sich selbst, wenn die App geschlossen wird.
+- Der Windows-Build testet das echte Skript jetzt mit.
+
 ### Neu in 1.10.2 – „Spielt gerade“ über die Windows-Mediensteuerung
 - **🎵 Spielt gerade** nutzt jetzt die **Windows-Mediensteuerung** – erkannt wird alles, was Windows im Medien-Popup zeigt: Spotify, **Browser (YouTube, SoundCloud …)**, Apple Music, TIDAL, Deezer, VLC, Medienwiedergabe … Ältere Player ohne Mediensteuerung werden weiter über den Fenstertitel erkannt.
 - Startseiten-Kachel neu: Titel, Künstler, App, Status, **Fortschrittsbalken** mit Zeit und Knöpfe **⏮ ⏯ ⏭**.
