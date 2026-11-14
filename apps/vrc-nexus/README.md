@@ -20,6 +20,17 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 2.3.0 – Sieben neue Stream-Deck-Tasten
+- **🎵 Medien**: ⏯ / ⏭ / ⏮ für das, was Windows gerade abspielt (Spotify, Browser/YouTube …) – die Taste zeigt den Titel (oder Künstler) und leuchtet, solange etwas läuft.
+- **⚡ Schnelltext**: sendet einen gespeicherten Chatbox-Schnelltext – oder die letzte Nachricht erneut.
+- **🎬 Parameter-Szene**: setzt eine gespeicherte Avatar-Parameter-Szene mit einem Druck.
+- **⏺ Aufnahme**: Parameter-Aufnahme starten/stoppen (zeigt die Sekunden) oder eine Aufnahme abspielen (½× / 1× / 2×).
+- **🧩 Chatbox-Module**: alle Module oder ein einzelnes Modul an/aus – mit Zustandsanzeige.
+- **🔊 Vorlesen**: spricht einen Text über die Sprachausgabe, optional zusätzlich in die Chatbox.
+- **ℹ️ Info-Anzeige**: zeigt beliebige Platzhalter auf der Taste, z. B. `🕒 {zeit}/n📡 {ping} ms`, `{akku}%`, `{countdown_rest}`, `{musik_titel}` – die Einstellungsseite listet alle verfügbaren.
+- Lange Texte (Liedtitel, Namen) werden für die Taste sauber umgebrochen und gekürzt.
+- *Werkzeuge → Stream Deck* listet jetzt alle 25 Aktionen.
+
 ### Neu in 2.2.0 – Sechs neue Chatbox-Module, GPU für AMD/Intel
 - **Neue Chatbox-Module** (Spiel & OSC → Chatbox-Module), jeweils mit eigener Vorlage, Desktop/VR und Reihenfolge:
   - **⏳ Countdown** bis zu einem Termin (Name + Datum/Uhrzeit) – `{countdown_name}` `{countdown_rest}` `{countdown_tage}`.

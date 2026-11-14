@@ -1018,6 +1018,48 @@ test('2.2: neue Chatbox-Module (Countdown, Freunde, Laufschrift, Animation, Akku
     }
 });
 
+test('2.3: Stream-Deck-Schnittstelle – Schnelltext, Chatbox-Module, Aufnahme, Vorlesen, Werte für die Info-Taste', async () => {
+    const { NexusApp } = require('../backend/app');
+    const db = await openDatabase(null);
+    const app = new NexusApp({ db, crypt: { encrypt: s => s, decrypt: s => s }, host: { userData: os.tmpdir() } });
+    app.game.osc.stopListen();
+    const sent = [];
+    app.game.osc.send = async (a, ...args) => { sent.push([a, args[0]]); };
+    app.game.osc.lastChat = 0;
+    const t = app.tools;
+    try {
+        app.osctools.quickSave('Hallo {zeit}', 'Gruß');
+        const st = t.apiState();
+        assert.strictEqual(st.quick.list[0].name, 'Gruß');
+        assert.ok(/^\d\d:\d\d$/.test(st.vars.zeit) && st.vars.uhr, 'Uhrzeit-Platzhalter für die Info-Taste');
+        let r = await t.apiAction('quicktext', { id: st.quick.list[0].id });
+        assert.ok(/^Hallo/.test(r.text));
+        r = await t.apiAction('quicktext', { mode: 'last' });
+        assert.ok(/^Hallo/.test(r.text), 'letzte Nachricht erneut');
+        r = await t.apiAction('chatmods', { mod: 'countdown' });
+        assert.strictEqual(r.value, true); assert.strictEqual(t.apiState().chatmods.mods.countdown, true);
+        r = await t.apiAction('chatmods', {});
+        assert.strictEqual(r.value, true); assert.strictEqual(app.chatmods.cfg().on, true);
+        await t.apiAction('chatmods', { on: false });
+        await assert.rejects(t.apiAction('chatmods', { mod: 'gibtsnicht' }));
+        // Aufnahme: Start → Parameter kommt rein → Stopp → Abspielen
+        app.game.osc.params = { Ears: true };
+        r = await t.apiAction('record', { name: 'SD' }); assert.strictEqual(r.value, true);
+        assert.ok(t.apiState().recs.recording);
+        r = await t.apiAction('record', {}); assert.strictEqual(r.value, false);
+        const rec = t.apiState().recs.list[0];
+        assert.strictEqual(rec.name, 'SD');
+        sent.length = 0;
+        r = await t.apiAction('record', { op: 'play', id: rec.id, speed: 4 }); assert.strictEqual(r.value, true);
+        for (let i = 0; i < 20 && !sent.some(x => x[0] === '/avatar/parameters/Ears'); i++) await new Promise(res => setTimeout(res, 25));
+        assert.ok(sent.some(x => x[0] === '/avatar/parameters/Ears'), 'Wiedergabe sendet');
+        // Vorlesen: TTS aus → verständlicher Fehler
+        await assert.rejects(t.apiAction('tts', { text: '' }), /Text fehlt/);
+        await assert.rejects(t.apiAction('scene', { id: 'x' }), /nicht gefunden/);
+        await assert.rejects(t.apiAction('media', { cmd: 'toggle' }));
+    } finally { app.osctools.stopPlay(); app.tools.stop(); }
+});
+
 test('1.7: Wörterbuch (EN/FR/JA) vollständig und Platzhalter stimmen', () => {
     const fs = require('fs'), path = require('path'), vm = require('vm');
     const file = path.join(__dirname, '..', 'renderer', 'js', 'i18n-dict.js');

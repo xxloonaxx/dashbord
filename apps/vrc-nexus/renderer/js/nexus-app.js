@@ -538,9 +538,17 @@
                 + '<div class="set-row"><div><b>Port</b></div><input type="number" id="sdPort" value="' + s['int.api_port'] + '"></div>'
                 + '<div class="set-row"><div><b>Zugangsschlüssel</b><div class="nx-hint">Nicht weitergeben – damit kann man deinen Status ändern und Chatbox-Nachrichten senden.</div></div><div class="nx-row" style="margin:0"><input type="text" readonly value="' + esc(s['int.api_token']) + '" id="sdTok" style="flex:1">'
                 + '<button type="button" class="btn btn-sm" id="sdCopy">📋</button><button type="button" class="btn btn-sm" id="sdNew" title="Neuen Schlüssel erzeugen">♻</button></div></div>'
-                + '<h3 style="margin-top:16px">Aktionen im Plugin</h3><ul class="vx-small" style="line-height:1.7"><li>🟢 <b>Status setzen</b> (Join Me / Online / Ask Me / Beschäftigt, mit Text)</li><li>💬 <b>Chatbox-Nachricht</b> oder gespeicherte OSC-Vorlage senden</li>'
-                + '<li>🎚 <b>Avatar-Parameter</b> setzen oder umschalten (zeigt den aktuellen Zustand)</li><li>🎮 <b>OSC-Eingabe</b> (Springen, Stummschalten, Quick-Menü …)</li><li>🔄 <b>Chatbox-Rotator</b> an/aus</li>'
-                + '<li>👥 <b>Freunde online</b> und <b>Spieler in der Instanz</b> als Live-Anzeige auf der Taste</li><li>▶ <b>VRChat starten</b> (mit deinen Startoptionen), 🔁 <b>Instanz neu betreten</b>, 🧭 <b>VRC Nexus öffnen</b> (beliebige Seite)</li></ul>';
+                + '<h3 style="margin-top:16px">Aktionen im Plugin</h3><ul class="vx-small sd-list" style="line-height:1.7">'
+                + [['🟢', 'Status setzen', 'Join Me / Online / Ask Me / Beschäftigt, mit Text – leuchtet, wenn aktiv'], ['💬', 'Chatbox-Nachricht', 'eigener Text oder gespeicherte OSC-Vorlage'],
+                    ['⚡', 'Schnelltext', 'gespeicherten Schnelltext senden – oder die letzte Nachricht erneut'], ['🎚', 'Avatar-Parameter', 'umschalten, halten oder setzen (zeigt den Zustand)'],
+                    ['🎬', 'Parameter-Szene', 'gespeicherte Szene mit einem Druck setzen'], ['⏺', 'Aufnahme', 'Parameter aufnehmen oder eine Aufnahme abspielen'],
+                    ['🎮', 'OSC-Eingabe', 'Springen, Stummschalten, Quick-Menü …'], ['🔄', 'Chatbox-Rotator', 'an/aus'], ['🧩', 'Chatbox-Module', 'alle oder ein einzelnes Modul an/aus'],
+                    ['🎵', 'Medien', '⏯ ⏭ ⏮ für das, was Windows abspielt – zeigt den Titel'], ['🔊', 'Vorlesen', 'Text über die Sprachausgabe sprechen'], ['🎙', 'Spracheingabe', 'drücken bzw. halten → Chatbox'],
+                    ['ℹ️', 'Info-Anzeige', 'beliebige Platzhalter auf der Taste, z. B. {zeit}, {ping}, {akku}, {countdown_rest}'],
+                    ['👥', 'Freunde online / Spieler in der Instanz', 'Live-Anzeige'], ['🧑', 'Freund', 'Profilbild mit Statusring – kurz: beitreten, halten: einladen'],
+                    ['🔔', 'Benachrichtigungen', 'Zähler'], ['📷', 'Kamera', 'Foto, Timer, Serie, Vorlage, Zoom'], ['⚡', 'Makro', 'OSC-Makro ausführen'], ['🎭', 'Avatar wechseln', ''],
+                    ['🥽', 'SteamVR-Overlay', 'ein/aus'], ['▶', 'VRChat starten / Instanz neu betreten', ''], ['🧭', 'VRC Nexus öffnen', 'beliebige Seite'], ['🎛', 'Drehregler (Stream Deck +)', 'Parameter, Kamera-Zoom/Belichtung']]
+                    .map(([i, n, d]) => '<li>' + i + ' <b>' + n + '</b>' + (d ? ' – ' + d : '') + '</li>').join('') + '</ul>';
             const save = () => run('tools_settings_save', { data: JSON.stringify({ 'int.api': $('#sdOn').checked, 'int.api_port': $('#sdPort').value }) }, () => setTimeout(toolStreamDeck, 400)).catch(() => {});
             $('#sdInstall').onclick = () => run('tools_streamdeck_install', {}).catch(() => {});
             $('#sdOn').onchange = save; $('#sdPort').onchange = save;

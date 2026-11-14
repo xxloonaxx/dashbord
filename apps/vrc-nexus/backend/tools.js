@@ -940,7 +940,13 @@ class Tools {
             cam: { mode: (this.app.game.osc.cam || {}).Mode ?? null, zoom: (this.app.game.osc.cam || {}).Zoom ?? null, burst: !!this.app.cam.burstRun },
             macros: this.app.macros.list().map(m => ({ id: m.id, name: m.name })), running_macros: [...this.app.macros.running.keys()],
             overlay: this.host.overlayState ? this.host.overlayState() : null, speech: this.app.speech ? this.app.speech.status() : null,
-            friend_list: fr.slice(0, 400).map(f => ({ id: f.id, name: f.name, state: f.state, status: f.status, loc: f.loc.kind === 'world' ? f.loc.location : '', world: f.loc.world_name || '', access: f.loc.kind === 'world' ? f.loc.access : '', image: !!f.image })) };
+            friend_list: fr.slice(0, 400).map(f => ({ id: f.id, name: f.name, state: f.state, status: f.status, loc: f.loc.kind === 'world' ? f.loc.location : '', world: f.loc.world_name || '', access: f.loc.kind === 'world' ? f.loc.access : '', image: !!f.image })),
+            media: this.app.media ? (() => { const m = this.app.media.now(); return m ? { title: m.title, artist: m.artist, app: m.app, status: m.status, pos: m.pos, dur: m.dur } : null; })() : null,
+            quick: this.app.osctools ? (() => { const c = this.app.osctools.cbx(); return { list: c.quick.map(q => ({ id: q.id, name: q.label || q.text.slice(0, 24) })), last: c.hist[0] ? c.hist[0].text.slice(0, 40) : '' }; })() : null,
+            scenes: this.app.osctools ? this.app.osctools.scenes().map(x => ({ id: x.id, name: x.name })) : [],
+            recs: this.app.osctools ? (() => { const t = this.app.osctools.status(); return { list: t.recs.map(r => ({ id: r.id, name: r.name, dur: r.dur })), recording: t.recording, playing: t.playing }; })() : null,
+            chatmods: this.app.chatmods ? (() => { const c = this.app.chatmods.cfg(); return { on: !!c.on, mods: Object.fromEntries(Object.entries(c.mods).map(([k, m]) => [k, !!m.on])) }; })() : null,
+            vars: (() => { try { const v = this.app.game.values(); return Object.fromEntries(Object.entries(v).filter(([, x]) => typeof x === 'string' || typeof x === 'number').slice(0, 150).map(([k, x]) => [k, String(x).slice(0, 80)])); } catch (e) { return {}; } })() };
     }
     /** Profilbild eines Freundes (für Stream-Deck-Tasten) → { mime, b64 } */
     async friendImage(id) {
@@ -1051,6 +1057,59 @@ class Tools {
             }
             case 'overlay': if (!this.host.overlayToggle) throw new UserError('Das SteamVR-Overlay gibt es nur in der Windows-App.'); return Object.assign({ ok: true }, await this.host.overlayToggle(d.on));
             case 'speech': if (!this.app.speech) throw new UserError('Spracheingabe ist nicht verfügbar.'); return Object.assign({ ok: true }, await this.app.speech.ptt(str(d.op || 'toggle')));
+            // ---- seit 2.3: Medien, Schnelltexte, Szenen, Aufnahme, Chatbox-Module, Vorlesen ----
+            case 'media': {
+                if (!this.app.media) throw new UserError('Mediensteuerung gibt es nur in der Windows-App.');
+                const cmd = ['toggle', 'next', 'prev', 'play', 'pause'].includes(str(d.cmd)) ? str(d.cmd) : 'toggle';
+                const now = this.app.media.now();
+                this.app.media.control(cmd, now ? now.id : '');
+                return { ok: true, msg: cmd };
+            }
+            case 'quicktext': {
+                const t = this.app.osctools;
+                if (!t) throw new UserError('Nur in der Windows-App.');
+                const c = t.cbx();
+                let text = '';
+                if (str(d.mode) === 'last') { if (!c.hist.length) throw new UserError('Noch nichts gesendet.'); text = c.hist[0].text; }
+                else { const q = c.quick.find(x => x.id === str(d.id)) || c.quick[int(d.index)]; if (!q) throw new UserError('Schnelltext nicht gefunden – in VRC Nexus → Spiel & OSC → Live & OSC anlegen.'); text = q.text; }
+                await t.send(text, d.sound !== false);
+                return { ok: true, text };
+            }
+            case 'scene': {
+                if (!this.app.osctools) throw new UserError('Nur in der Windows-App.');
+                const r = await this.app.osctools.sceneApply(str(d.id));
+                return { ok: true, msg: r.n + ' Parameter' };
+            }
+            case 'record': {
+                const t = this.app.osctools;
+                if (!t) throw new UserError('Nur in der Windows-App.');
+                if (str(d.op) === 'play') { if (t.playing) { t.stopPlay(); return { ok: true, value: false }; } t.recPlay(str(d.id), d.speed); return { ok: true, value: true }; }
+                if (t.rec) { const r = await t.recStop(); return { ok: true, value: false, msg: r.n + ' Änderungen' }; }
+                t.recStart(str(d.name) || 'Stream Deck', d.max); return { ok: true, value: true };
+            }
+            case 'chatmods': {
+                const cm = this.app.chatmods;
+                if (!cm) throw new UserError('Chatbox-Module gibt es nur in der Windows-App.');
+                const c = cm.cfg(), mod = str(d.mod);
+                if (mod) {
+                    if (!c.mods[mod]) throw new UserError('Unbekanntes Modul.');
+                    const on = d.on === undefined ? !c.mods[mod].on : !!d.on;
+                    cm.save({ mod, mod_on: on ? '1' : '0' });
+                    return { ok: true, value: on };
+                }
+                const on = d.on === undefined ? !c.on : !!d.on;
+                cm.save({ on: on ? '1' : '0' });
+                return { ok: true, value: on };
+            }
+            case 'tts': {
+                const tt = this.app.tts;
+                if (!tt) throw new UserError('Sprachausgabe gibt es nur in der Windows-App.');
+                const text = this.app.game.fillVars(cut(str(d.text).trim(), 500));
+                if (!text) throw new UserError('Text fehlt.');
+                await tt.say(text, 'streamdeck');
+                if (d.chatbox) await g.oscSend('chatbox', { text, sound: '', split: '1' });
+                return { ok: true, text };
+            }
             case 'open':
                 if (/^usr_[0-9a-f-]{36}$/i.test(str(d.user)) && this.host.showUser) { this.host.showUser(str(d.user)); return { ok: true }; }
                 if (this.host.showTab) this.host.showTab(/^[a-z]{2,12}$/.test(str(d.tab)) ? str(d.tab) : ''); return { ok: true };

@@ -98,6 +98,35 @@ def draw(name, d, n, on=False):
     elif name == 'dial':
         d.ellipse(P((16, 16), (84, 84)), outline=col, width=w)
         d.line(P((50, 50), (70, 28)), fill=GOLD, width=w)
+    elif name == 'media':
+        d.ellipse(P((14, 14), (86, 86)), outline=col, width=w)
+        if on:
+            d.rectangle(P((38, 34), (46, 66)), fill=GOLD); d.rectangle(P((54, 34), (62, 66)), fill=GOLD)
+        else:
+            d.polygon(P((40, 32), (68, 50), (40, 68)), fill=WHITE)
+    elif name == 'quicktext':
+        d.rounded_rectangle(P((12, 22), (80, 66)), radius=10 * s, outline=col, width=w)
+        d.polygon(P((28, 64), (28, 82), (44, 66)), fill=col)
+        d.polygon(P((62, 8), (46, 44), (60, 44), (52, 74), (82, 34), (66, 34), (76, 8)), fill=GOLD)
+    elif name == 'scene':
+        d.rectangle(P((14, 34), (86, 82)), outline=col, width=w)
+        d.polygon(P((14, 18), (84, 10), (86, 26), (16, 34)), outline=col, width=w)
+        for x in (30, 50, 70):
+            d.line(P((x - 6, 30), (x + 4, 14)), fill=GOLD, width=max(1, w // 2))
+    elif name == 'record':
+        d.ellipse(P((14, 14), (86, 86)), outline=col, width=w)
+        d.ellipse(P((32, 32), (68, 68)), fill=RED if on else col)
+    elif name == 'chatmods':
+        for x, y in ((14, 14), (52, 14), (14, 52), (52, 52)):
+            d.rounded_rectangle(P((x, y), (x + 34, y + 34)), radius=6 * s, outline=col, width=w, fill=(GOLD + (160,)) if on and (x, y) == (52, 52) else None)
+    elif name == 'tts':
+        d.polygon(P((14, 38), (32, 38), (54, 18), (54, 82), (32, 62), (14, 62)), fill=col)
+        d.arc(P((52, 30), (76, 70)), 300, 60, fill=GOLD, width=w)
+        d.arc(P((56, 18), (92, 82)), 300, 60, fill=GOLD, width=w)
+    elif name == 'info':
+        d.ellipse(P((14, 14), (86, 86)), outline=col, width=w)
+        d.ellipse(P((45, 24), (55, 34)), fill=GOLD)
+        d.line(P((50, 44), (50, 74)), fill=GOLD, width=w + 2)
     elif name == 'plugin':
         d.polygon(P((50, 8), (88, 30), (88, 70), (50, 92), (12, 70), (12, 30)), outline=CYAN, width=w)
         d.line(P((34, 66), (34, 34), (66, 66), (66, 34)), fill=GOLD, width=w + 2)
@@ -110,12 +139,13 @@ def save(name, size, key, on=False, suffix=''):
 
 
 os.makedirs(OUT, exist_ok=True)
-for name in ('status', 'chatbox', 'param', 'input', 'rotator', 'friends', 'players', 'launch', 'rejoin', 'open', 'camera', 'macro', 'avatar', 'friend', 'notifs', 'overlay', 'speech', 'dial'):
+for name in ('status', 'chatbox', 'param', 'input', 'rotator', 'friends', 'players', 'launch', 'rejoin', 'open', 'camera', 'macro', 'avatar', 'friend', 'notifs', 'overlay', 'speech', 'dial',
+             'media', 'quicktext', 'scene', 'record', 'chatmods', 'tts', 'info'):
     save(name, 20, False, suffix='_icon')
     save(name, 40, False, suffix='_icon@2x')
     save(name, 72, True, suffix='_key')
     save(name, 144, True, suffix='_key@2x')
-    if name in ('param', 'rotator', 'status', 'camera', 'macro', 'friend', 'notifs', 'overlay', 'speech'):
+    if name in ('param', 'rotator', 'status', 'camera', 'macro', 'friend', 'notifs', 'overlay', 'speech', 'media', 'record', 'chatmods'):
         save(name, 72, True, True, '_key_on')
         save(name, 144, True, True, '_key_on@2x')
 save('plugin', 28, False, suffix='_category')

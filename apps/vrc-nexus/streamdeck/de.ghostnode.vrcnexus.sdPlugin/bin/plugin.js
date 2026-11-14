@@ -10,6 +10,8 @@ const crypto = require('crypto');
 const PREFIX = 'de.ghostnode.vrcnexus.';
 const CAM_TITLE = { Capture: 'Foto', CaptureDelayed: 'Timer', Close: 'Kamera\nzu', burst: 'Serie', preset: 'Vorlage', Mode: 'Modus' };
 const STATUS = { 'join me': 'Join Me', active: 'Online', 'ask me': 'Ask Me', busy: 'Beschäftigt' };
+const MOD_NAME = { status: 'Status', window: 'Fenster', media: 'Musik', vrchat: 'Radar', time: 'Uhrzeit', weather: 'Wetter', system: 'Rechner', network: 'Netzwerk', twitch: 'Twitch', heart: 'Puls',
+    countdown: 'Countdown', friends: 'Freunde', marquee: 'Laufschrift', anim: 'Animation', battery: 'Akku', ping: 'Ping' };
 
 // ---------------- kleiner WebSocket-Client (RFC 6455, nur Text) ----------------
 class MiniWs {
@@ -85,6 +87,23 @@ async function nexus(method, path, body) {
 }
 const act = (action, extra) => nexus('POST', 'action', Object.assign({ action }, extra || {}));
 
+// Text für die kleine Taste: Wörter umbrechen, höchstens `lines` Zeilen à `w` Zeichen
+function wrapKey(text, w = 9, lines = 3) {
+    const out = [];
+    for (const para of String(text || '').split('\n')) {
+        let cur = '';
+        for (let word of para.split(/\s+/).filter(Boolean)) {
+            while (Array.from(word).length > w) { if (cur) { out.push(cur); cur = ''; } out.push(Array.from(word).slice(0, w).join('')); word = Array.from(word).slice(w).join(''); }
+            if (!cur) cur = word; else if (Array.from(cur + ' ' + word).length <= w) cur += ' ' + word; else { out.push(cur); cur = word; }
+        }
+        out.push(cur);
+    }
+    const l = out.filter((x, i) => x || i === 0);
+    if (l.length > lines) { l.length = lines; l[lines - 1] = Array.from(l[lines - 1]).slice(0, w - 1).join('') + '…'; }
+    return l.join('\n');
+}
+const fillVars = (tpl, vars) => String(tpl || '').replace(/\/n/g, '\n').replace(/\{(\w+)\}/g, (m, k) => vars && vars[k] !== undefined && vars[k] !== '' ? vars[k] : '–');
+
 // ---------------- Anzeige aktualisieren ----------------
 function render(ctx) {
     const c = contexts.get(ctx);
@@ -120,6 +139,33 @@ function render(ctx) {
             break;
         }
         case 'overlay': setState(ctx, st.overlay && st.overlay.visible ? 1 : 0); break;
+        case 'media': {
+            const m = st.media;
+            setState(ctx, m && m.status === 'playing' ? 1 : 0);
+            if (!s.title) setTitle(ctx, !m ? (s.cmd && s.cmd !== 'toggle' ? (s.cmd === 'next' ? '⏭' : '⏮') : '–') : (s.cmd === 'next' ? '⏭\n' : s.cmd === 'prev' ? '⏮\n' : '') + wrapKey(s.show === 'artist' ? m.artist || m.title : m.title, 9, s.cmd && s.cmd !== 'toggle' ? 2 : 3));
+            break;
+        }
+        case 'quicktext': {
+            if (s.title) break;
+            const q = st.quick;
+            setTitle(ctx, !q ? '–' : s.mode === 'last' ? '↻\n' + wrapKey(q.last || 'Verlauf', 9, 2) : wrapKey(((q.list || []).find(x => x.id === s.id) || {}).name || 'Schnelltext', 9, 3));
+            break;
+        }
+        case 'scene': if (!s.title) setTitle(ctx, wrapKey(((st.scenes || []).find(x => x.id === s.id) || {}).name || 'Szene', 9, 3)); break;
+        case 'record': {
+            const r = st.recs || {};
+            if ((s.op || 'record') === 'play') { const p = r.playing && r.playing.id === s.id; setState(ctx, p ? 1 : 0); if (!s.title) setTitle(ctx, p ? '▶ ' + r.playing.left + ' s' : wrapKey(((r.list || []).find(x => x.id === s.id) || {}).name || 'Aufnahme', 9, 2)); }
+            else { setState(ctx, r.recording ? 1 : 0); if (!s.title) setTitle(ctx, r.recording ? '⏺ ' + r.recording.sec + ' s' : 'Aufnahme'); }
+            break;
+        }
+        case 'chatmods': {
+            const c = st.chatmods;
+            const on = !!c && (s.mod ? !!c.mods[s.mod] : c.on);
+            setState(ctx, on ? 1 : 0);
+            if (!s.title) setTitle(ctx, (s.mod ? (MOD_NAME[s.mod] || s.mod) : 'Module') + '\n' + (on ? 'an' : 'aus'));
+            break;
+        }
+        case 'info': setTitle(ctx, wrapKey(fillVars(s.text || '{zeit}', st.vars), Number(s.width) || 9, 4)); break;
         case 'speech': setState(ctx, st.speech && st.speech.recording ? 1 : 0); break;
         case 'dial': {
             const k = s.target || 'param';
@@ -238,6 +284,13 @@ async function keyDown(ctx, action, s) {
         case 'overlay': return act('overlay', {});
         case 'speech': return act('speech', { op: s.mode === 'hold' ? 'start' : 'toggle' });
         case 'dial': return dialPress(ctx, s);
+        case 'media': return act('media', { cmd: s.cmd || 'toggle' });
+        case 'quicktext': return act('quicktext', s.mode === 'last' ? { mode: 'last' } : { id: s.id || '', index: s.id ? undefined : 0, sound: s.sound !== false });
+        case 'scene': if (!s.id) throw new Error('Keine Szene gewählt.'); return act('scene', { id: s.id });
+        case 'record': { const r = await act('record', (s.op || 'record') === 'play' ? { op: 'play', id: s.id, speed: s.speed || 1 } : { name: s.name || '', max: s.max || 60 }); setState(ctx, r.value ? 1 : 0); return r; }
+        case 'chatmods': { const r = await act('chatmods', s.mod ? { mod: s.mod } : {}); setState(ctx, r.value ? 1 : 0); return r; }
+        case 'tts': return act('tts', { text: s.text || '', chatbox: !!s.chatbox });
+        case 'info': return s.tab ? act('open', { tab: s.tab }) : null;
     }
     return null;
 }
@@ -286,7 +339,7 @@ function onMessage(raw) {
         case 'didReceiveGlobalSettings': globals = Object.assign({ port: 17865, token: '' }, settings); poll(); break;
         case 'keyDown':
             if (action === PREFIX + 'friend') { friendDown(context, settings); break; }
-            keyDown(context, action, settings).then(r => { if (r && !['param', 'rotator', 'macro', 'speech', 'overlay'].includes(action.slice(PREFIX.length))) send('showOk', context); setTimeout(poll, 400); })
+            keyDown(context, action, settings).then(r => { if (r && !['param', 'rotator', 'macro', 'speech', 'overlay', 'media', 'record', 'chatmods'].includes(action.slice(PREFIX.length))) send('showOk', context); setTimeout(poll, 400); })
                 .catch(e => { lastError = e.message; send('showAlert', context); send('logMessage', undefined, { message: 'VRC Nexus: ' + e.message }); });
             break;
         case 'keyUp': keyUp(context, action, settings).catch(() => send('showAlert', context)); break;
@@ -311,4 +364,4 @@ function connect() {
 }
 
 if (require.main === module) connect();
-module.exports = { MiniWs, onMessage, keyDown, render, dialRotate, friendSvg, _test: { pics, holds, contexts, setGlobals: g => { globals = g; }, get state() { return lastState; }, poll } };
+module.exports = { MiniWs, onMessage, keyDown, render, dialRotate, friendSvg, wrapKey, fillVars, _test: { pics, holds, contexts, setGlobals: g => { globals = g; }, get state() { return lastState; }, poll } };

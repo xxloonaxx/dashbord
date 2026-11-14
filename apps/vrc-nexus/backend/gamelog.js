@@ -348,7 +348,8 @@ class GameLog {
     /** Rotator: Platzhalter füllen, /n bzw. \n als Zeilenumbruch, max. 144 Zeichen */
     rotatorText(tpl) { return Array.from(chatNewlines(this.fill(tpl))).slice(0, 144).join(''); }
     /** Platzhalter füllen: {zeit} {welt} {freunde} {countdown:2026-12-24 18:00} {zufall:a|b} … */
-    fill(tpl, more) {
+    /** alle Platzhalter-Werte (Uhrzeit, Welt, Spieler … plus Werte der Module/Automatik) */
+    values(more) {
         const s = this.state, d = new Date(), dur = s.since ? now() - s.since : 0;
         const extra = this.vars ? this.vars() : {};
         const loc = s.worldId ? require('./util').location(s.worldId + ':' + s.instance) : null;
@@ -356,6 +357,10 @@ class GameLog {
             wochentag: d.toLocaleDateString('de-DE', { weekday: 'long' }), welt: s.worldName || '–', spieler: String(s.players.size), avatar: s.avatar || '–',
             dauer: Math.floor(dur / 3600) + ':' + String(Math.floor(dur / 60) % 60).padStart(2, '0'), name: s.displayName || '', zugang: loc ? loc.access : '–', region: loc ? loc.region : '–',
             uhr: ['🕛', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚'][d.getHours() % 12] }, extra, more || {});
+        return vals;
+    }
+    fill(tpl, more) {
+        const vals = this.values(more);
         let out = str(tpl).replace(/\{(\w+)(?::([^}]*))?\}/g, (m, k, arg) => {
             if (k === 'zufall' && arg) { const o = arg.split('|'); return o[Math.floor(Math.random() * o.length)]; }
             if (k === 'countdown' && arg) {

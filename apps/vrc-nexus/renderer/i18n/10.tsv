@@ -190,3 +190,38 @@ Langer Text, der durchläuft …	Long text that scrolls through …	Long texte q
 Mit jeder gesendeten Nachricht kommt das nächste Bild – bei „alle 10 s“ also alle 10 s.	With every message sent comes the next frame – with “every 10 s” that's every 10 s.	À chaque message envoyé, l'image suivante – avec « toutes les 10 s », donc toutes les 10 s.	メッセージ送信ごとに次のコマへ。「10秒ごと」なら10秒ごとです。
 Misst alle 30 s, wie lange der Verbindungsaufbau zu api.vrchat.cloud dauert. Bei Verbindungsproblemen fällt das Modul weg.	Measures every 30 s how long connecting to api.vrchat.cloud takes. If the connection fails, the module is left out.	Mesure toutes les 30 s le temps de connexion à api.vrchat.cloud. En cas de problème, le module est omis.	30秒ごとにapi.vrchat.cloudへの接続時間を測定します。接続できない場合はモジュールが省略されます。
 Datum/Uhrzeit ungültig.	Invalid date/time.	Date/heure invalide.	日時が無効です。
+Aktionen im Plugin	Actions in the plugin	Actions du plugin	プラグインのアクション
+Status setzen	Set status	Définir le statut	ステータス設定
+Join Me / Online / Ask Me / Beschäftigt, mit Text – leuchtet, wenn aktiv	Join Me / Online / Ask Me / Busy, with text – lights up when active	Join Me / En ligne / Ask Me / Occupé, avec texte – s'allume quand actif	Join Me / Online / Ask Me / Busy（テキスト付き）– 有効時に点灯
+Chatbox-Nachricht	Chatbox message	Message chatbox	チャットボックスメッセージ
+eigener Text oder gespeicherte OSC-Vorlage	own text or saved OSC preset	texte perso ou préréglage OSC enregistré	独自テキストまたは保存済みOSCプリセット
+Schnelltext	Quick text	Texte rapide	クイックテキスト
+gespeicherten Schnelltext senden – oder die letzte Nachricht erneut	send a saved quick text – or the last message again	envoyer un texte rapide – ou renvoyer le dernier message	保存したクイックテキストを送信、または最後のメッセージを再送
+umschalten, halten oder setzen (zeigt den Zustand)	toggle, hold or set (shows the state)	basculer, maintenir ou définir (affiche l'état)	切替・長押し・値設定（状態を表示）
+Parameter-Szene	Parameter scene	Scène de paramètres	パラメーターシーン
+gespeicherte Szene mit einem Druck setzen	apply a saved scene with one press	appliquer une scène en un appui	保存したシーンをワンタップで適用
+Aufnahme	Recording	Enregistrement	録画
+Parameter aufnehmen oder eine Aufnahme abspielen	record parameters or play a recording	enregistrer des paramètres ou lire un enregistrement	パラメーターを録画、または録画を再生
+Springen, Stummschalten, Quick-Menü …	Jump, mute, quick menu …	Sauter, couper le micro, menu rapide …	ジャンプ、ミュート、クイックメニュー …
+Chatbox-Module	Chatbox modules	Modules chatbox	チャットボックスモジュール
+alle oder ein einzelnes Modul an/aus	all or a single module on/off	tous ou un seul module on/off	全体または個別モジュールのオン/オフ
+Medien	Media	Médias	メディア
+⏯ ⏭ ⏮ für das, was Windows abspielt – zeigt den Titel	⏯ ⏭ ⏮ for whatever Windows is playing – shows the title	⏯ ⏭ ⏮ pour ce que Windows lit – affiche le titre	Windowsで再生中のものを ⏯ ⏭ ⏮ – タイトルを表示
+Vorlesen	Read aloud	Lire à voix haute	読み上げ
+Text über die Sprachausgabe sprechen	speak text via text-to-speech	dire un texte via la synthèse vocale	テキストを音声合成で読み上げ
+drücken bzw. halten → Chatbox	press or hold → chatbox	appuyer ou maintenir → chatbox	押す／長押し → チャットボックス
+Info-Anzeige	Info display	Affichage d'infos	情報表示
+beliebige Platzhalter auf der Taste, z. B. {zeit}, {ping}, {akku}, {countdown_rest}	any placeholders on the key, e.g. {zeit}, {ping}, {akku}, {countdown_rest}	n'importe quelles variables sur la touche, p. ex. {zeit}, {ping}, {akku}, {countdown_rest}	キーに任意のプレースホルダーを表示（例：{zeit} {ping} {akku} {countdown_rest}）
+Freunde online / Spieler in der Instanz	Friends online / players in the instance	Amis en ligne / joueurs dans l'instance	オンラインのフレンド／インスタンスのプレイヤー
+Live-Anzeige	live display	affichage en direct	ライブ表示
+Profilbild mit Statusring – kurz: beitreten, halten: einladen	profile picture with status ring – tap: join, hold: invite	photo de profil avec anneau de statut – appui : rejoindre, maintien : inviter	ステータスリング付きプロフィール画像 – 短押し：参加、長押し：招待
+Zähler	counter	compteur	カウンター
+Foto, Timer, Serie, Vorlage, Zoom	photo, timer, burst, preset, zoom	photo, minuteur, rafale, préréglage, zoom	写真、タイマー、連写、プリセット、ズーム
+OSC-Makro ausführen	run an OSC macro	lancer une macro OSC	OSCマクロを実行
+Avatar wechseln	Switch avatar	Changer d'avatar	アバター切替
+ein/aus	on/off	on/off	オン/オフ
+VRChat starten / Instanz neu betreten	Start VRChat / rejoin instance	Lancer VRChat / rejoindre l'instance	VRChat起動／インスタンス再参加
+VRC Nexus öffnen	Open VRC Nexus	Ouvrir VRC Nexus	VRC Nexusを開く
+beliebige Seite	any page	n'importe quelle page	任意のページ
+Drehregler (Stream Deck +)	Dial (Stream Deck +)	Molette (Stream Deck +)	ダイヤル（Stream Deck +）
+Parameter, Kamera-Zoom/Belichtung	parameters, camera zoom/exposure	paramètres, zoom/exposition caméra	パラメーター、カメラのズーム／露出

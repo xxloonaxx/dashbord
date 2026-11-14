@@ -81,6 +81,38 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
         tx({ event: 'dialRotate', action: 'de.ghostnode.vrcnexus.dial', context: 'ctxD', payload: { settings: { target: 'param', name: 'Hue', type: 'float', step: 0.1 }, ticks: 3 } });
         const fb = await wait(m => m.event === 'setFeedback' && m.context === 'ctxD' && m.payload.value === '0.3');
         console.log('Drehregler Hue nach 3 Rasten:', JSON.stringify(fb.payload));
+        // 2.3: Medien, Schnelltext, Chatbox-Module, Info-Anzeige
+        const st2 = await (await fetch('http://127.0.0.1:' + apiPort + '/api/state', { headers: { 'X-Nexus-Token': token } })).json();
+        const qid = st2.quick && st2.quick.list[0] ? st2.quick.list[0].id : '';
+        const nk2 = { media: ['ctxMe', { cmd: 'toggle' }], quicktext: ['ctxQ', { id: qid }], chatmods: ['ctxCm', { mod: 'countdown' }], info: ['ctxIn', { text: '🕒 {zeit}/n👥 {freunde_im_spiel}' }] };
+        for (const [k, [ctx, se]] of Object.entries(nk2)) tx({ event: 'willAppear', action: 'de.ghostnode.vrcnexus.' + k, context: ctx, payload: { settings: se } });
+        if (st2.media) {
+            const mt = await wait(m => m.event === 'setTitle' && m.context === 'ctxMe' && m.payload.title !== '–');
+            console.log('Taste Medien:', JSON.stringify(mt.payload.title));
+        }
+        const it = await wait(m => m.event === 'setTitle' && m.context === 'ctxIn' && /\d/.test(m.payload.title));
+        console.log('Taste Info-Anzeige:', JSON.stringify(it.payload.title));
+        assert.ok(!/\{/.test(it.payload.title), 'Platzhalter ausgefüllt');
+        const ct = await wait(m => m.event === 'setTitle' && m.context === 'ctxCm');
+        console.log('Taste Chatbox-Module:', JSON.stringify(ct.payload.title));
+        for (const [k, [ctx, se]] of Object.entries(nk2)) {
+            if (k === 'info' || (k === 'quicktext' && !qid) || (k === 'media' && !st2.media)) continue;
+            const n = got.length;
+            tx({ event: 'keyDown', action: 'de.ghostnode.vrcnexus.' + k, context: ctx, payload: { settings: se } });
+            const r = await wait(m => got.indexOf(m) >= n && m.context === ctx && ['showOk', 'showAlert', 'setState'].includes(m.event));
+            console.log('Taste ' + k.padEnd(9), r.event + (r.payload ? ' ' + JSON.stringify(r.payload) : ''));
+            assert.notStrictEqual(r.event, 'showAlert');
+        }
+        // Medien: nach ⏯ meldet die Taste „pausiert“ (State 0), danach wieder abspielen
+        if (st2.media) {
+            await sleep(1500);
+            const st3 = await (await fetch('http://127.0.0.1:' + apiPort + '/api/state', { headers: { 'X-Nexus-Token': token } })).json();
+            console.log('Medien nach ⏯:', st3.media && st3.media.status);
+            assert.strictEqual(st3.media && st3.media.status, 'paused');
+            tx({ event: 'keyDown', action: 'de.ghostnode.vrcnexus.media', context: 'ctxMe', payload: { settings: { cmd: 'toggle' } } });
+        }
+        // Chatbox-Modul wieder aus
+        tx({ event: 'keyDown', action: 'de.ghostnode.vrcnexus.chatmods', context: 'ctxCm', payload: { settings: { mod: 'countdown' } } });
         // Rotator wieder aus
         tx({ event: 'keyDown', action: 'de.ghostnode.vrcnexus.rotator', context: 'ctxR', payload: { settings: {} } });
         // Test-Knopf der Einstellungsseite

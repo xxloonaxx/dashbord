@@ -92,6 +92,42 @@
     <div class="row" data-show="target=param"><label>Typ</label><select data-s="type"><option value="float">Kommazahl (-1…1)</option><option value="int">Ganzzahl (0–255)</option></select></div>
     <div class="row"><label>Schritt</label><input type="number" data-s="step" step="0.01" placeholder="automatisch"></div>
 </div>
+<div id="sec-media" hidden>
+    <div class="row"><label>Drücken</label><select data-s="cmd"><option value="toggle">⏯ Wiedergabe / Pause</option><option value="next">⏭ Nächster Titel</option><option value="prev">⏮ Vorheriger Titel</option></select></div>
+    <div class="row"><label>Anzeige</label><select data-s="show"><option value="title">Titel</option><option value="artist">Künstler</option></select></div>
+    <div class="hint">Steuert, was Windows gerade abspielt (Spotify, Browser/YouTube, Apple Music …). Die Taste zeigt den Titel und leuchtet, solange etwas läuft.</div>
+</div>
+<div id="sec-quicktext" hidden>
+    <div class="row"><label>Sendet</label><select data-s="mode"><option value="quick">einen Schnelltext</option><option value="last">die letzte Nachricht erneut</option></select></div>
+    <div class="row" data-show="mode=quick"><label>Schnelltext</label><select data-s="id" id="quickSel"><option value="">(erst Verbindung testen)</option></select></div>
+    <div class="hint">Schnelltexte legst du in VRC Nexus → Spiel &amp; OSC → Live &amp; OSC an. Platzhalter wie {zeit} {musik} werden beim Senden ausgefüllt.</div>
+</div>
+<div id="sec-scene" hidden>
+    <div class="row"><label>Szene</label><select data-s="id" id="sceneSel"><option value="">(erst Verbindung testen)</option></select></div>
+    <div class="hint">Szenen speicherst du in VRC Nexus → Spiel &amp; OSC → OSC-Werkzeuge.</div>
+</div>
+<div id="sec-record" hidden>
+    <div class="row"><label>Funktion</label><select data-s="op"><option value="record">⏺ Aufnahme starten / stoppen</option><option value="play">▶ Aufnahme abspielen / stoppen</option></select></div>
+    <div class="row" data-show="op=record"><label>Name</label><input type="text" data-s="name" maxlength="40" placeholder="optional"></div>
+    <div class="row" data-show="op=record"><label>Höchstens</label><select data-s="max"><option value="15">15 s</option><option value="30">30 s</option><option value="60" selected>60 s</option><option value="120">2 min</option><option value="300">5 min</option></select></div>
+    <div class="row" data-show="op=play"><label>Aufnahme</label><select data-s="id" id="recSel"><option value="">(erst Verbindung testen)</option></select></div>
+    <div class="row" data-show="op=play"><label>Tempo</label><select data-s="speed"><option value="0.5">½×</option><option value="1" selected>1×</option><option value="2">2×</option></select></div>
+</div>
+<div id="sec-chatmods" hidden>
+    <div class="row"><label>Schaltet</label><select data-s="mod"><option value="">alle Chatbox-Module (Senden an/aus)</option><option value="status">💬 Status</option><option value="window">🪟 Fenster</option><option value="media">🎵 Musik</option><option value="vrchat">🌐 VRChat-Radar</option><option value="time">🕒 Uhrzeit</option><option value="weather">⛅ Wetter</option><option value="system">🖥 Rechner</option><option value="network">📶 Netzwerk</option><option value="twitch">🟣 Twitch</option><option value="heart">💓 Puls</option><option value="countdown">⏳ Countdown</option><option value="friends">👥 Freunde</option><option value="marquee">📜 Laufschrift</option><option value="anim">✨ Animation</option><option value="battery">🔋 Akku</option><option value="ping">📡 Ping</option></select></div>
+</div>
+<div id="sec-tts" hidden>
+    <div class="row"><label>Text</label><textarea data-s="text" maxlength="500" placeholder="Bin gleich zurück!"></textarea></div>
+    <div class="row"><label>Chatbox</label><input type="checkbox" data-s="chatbox"> <span class="hint" style="margin:0">zusätzlich in die Chatbox schreiben</span></div>
+    <div class="hint">Wird über die Sprachausgabe von VRC Nexus gesprochen (Ausgabegerät, z. B. ein virtuelles Kabel als VRChat-Mikrofon). Platzhalter gehen auch.</div>
+</div>
+<div id="sec-info-key" hidden>
+    <div class="row"><label>Anzeige</label><textarea data-s="text" placeholder="🕒 {zeit}/n📡 {ping} ms"></textarea></div>
+    <div class="row"><label>Breite</label><input type="number" data-s="width" min="5" max="16" placeholder="9"></div>
+    <div class="row"><label>Drücken</label><select data-s="tab"><option value="">nichts</option><option value="client">Spiel &amp; OSC öffnen</option><option value="home">Start öffnen</option><option value="locations">Freunde-Orte öffnen</option></select></div>
+    <div class="hint">/n = neue Zeile. Beispiele: {zeit} {datum} {ping} {akku}% {countdown_rest} {musik_titel} {freunde_im_spiel} {spieler} {welt} {cpu}% {temp}°C</div>
+    <div class="hint" id="varList"></div>
+</div>
 <div id="sec-info" hidden><div class="hint" style="margin-left:0" id="infoText"></div></div>
 
 <details id="conn">
@@ -120,10 +156,10 @@ function showDeps() {
 }
 function fill() {
     const k = kind();
-    const sec = $('#sec-' + k) || (INFO[k] ? $('#sec-info') : null);
+    const sec = (k === 'info' ? $('#sec-info-key') : $('#sec-' + k)) || (INFO[k] ? $('#sec-info') : null);
     if (sec) sec.hidden = false;
     if (INFO[k]) $('#infoText').textContent = INFO[k];
-    document.querySelectorAll('#sec-' + k + ' [data-s]').forEach(el => {
+    document.querySelectorAll('#sec-' + (k === 'info' ? 'info-key' : k) + ' [data-s]').forEach(el => {
         const v = settings[el.dataset.s];
         if (el.type === 'checkbox') el.checked = !!v; else if (v !== undefined) el.value = v;
     });
@@ -165,6 +201,11 @@ window.connectElgatoStreamDeckSocket = function (port, inUuid, registerEvent, in
                 const opt = (l, cur) => l.map(x => '<option value="' + x.id + '"' + (x.id === cur ? ' selected' : '') + '>' + String(x.name).replace(/[<>&]/g, '') + '</option>').join('');
                 if ($('#macroSel')) $('#macroSel').innerHTML = '<option value="">(Skript unten benutzen)</option>' + opt(st.macros || [], settings.id);
                 if ($('#friendSel')) $('#friendSel').innerHTML = opt((st.friend_list || []).slice().sort((a, b) => a.name.localeCompare(b.name)), settings.id);
+                const fillSel = (id, list, empty) => { const el = $(id); if (el) el.innerHTML = list && list.length ? opt(list, settings.id) : '<option value="">' + empty + '</option>'; };
+                fillSel('#quickSel', st.quick && st.quick.list, '(keine Schnelltexte in VRC Nexus)');
+                fillSel('#sceneSel', st.scenes, '(keine Szenen in VRC Nexus)');
+                fillSel('#recSel', st.recs && st.recs.list, '(keine Aufnahmen in VRC Nexus)');
+                if ($('#varList')) $('#varList').textContent = 'Verfügbar: ' + Object.keys(st.vars || {}).sort().map(x => '{' + x + '}').join(' ');
                 if ($('#paramList')) $('#paramList').innerHTML = Object.keys((st.osc && st.osc.params) || {}).map(k => '<option value="' + k.replace(/["<>&]/g, '') + '">').join('');
                 const sel = $('#presetSel');
                 if (sel) {

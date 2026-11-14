@@ -2,7 +2,7 @@
   "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
   "UUID": "de.ghostnode.vrcnexus",
   "Name": "VRC Nexus",
-  "Version": "1.4.0.0",
+  "Version": "1.5.0.0",
   "Author": "GHOST NODE",
   "Description": "Steuert VRChat über die VRC-Nexus-App: Status, Chatbox, Avatar-Parameter, Eingaben, Rotator, Makros, Kamera, Avatar wechseln, Freunde beitreten/einladen, Benachrichtigungen, SteamVR-Overlay, Spracheingabe, Drehregler.",
   "Category": "VRC Nexus",
@@ -375,6 +375,153 @@
           "Touch": "Auslösen"
         }
       }
+    },
+    {
+      "UUID": "de.ghostnode.vrcnexus.media",
+      "Name": "Medien",
+      "Tooltip": "Spielt gerade (Windows-Mediensteuerung): Wiedergabe/Pause, weiter, zurück – zeigt den Titel",
+      "Icon": "imgs/media_icon",
+      "States": [
+        {
+          "Image": "imgs/media_key",
+          "Title": "",
+          "TitleAlignment": "middle",
+          "FontSize": 10,
+          "ShowTitle": true
+        },
+        {
+          "Image": "imgs/media_key_on",
+          "Title": "",
+          "TitleAlignment": "middle",
+          "FontSize": 10,
+          "ShowTitle": true
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ]
+    },
+    {
+      "UUID": "de.ghostnode.vrcnexus.quicktext",
+      "Name": "Schnelltext",
+      "Tooltip": "Sendet einen gespeicherten Chatbox-Schnelltext – oder die letzte Nachricht erneut",
+      "Icon": "imgs/quicktext_icon",
+      "States": [
+        {
+          "Image": "imgs/quicktext_key",
+          "Title": "",
+          "TitleAlignment": "middle",
+          "FontSize": 10,
+          "ShowTitle": true
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ]
+    },
+    {
+      "UUID": "de.ghostnode.vrcnexus.scene",
+      "Name": "Parameter-Szene",
+      "Tooltip": "Setzt eine gespeicherte Avatar-Parameter-Szene",
+      "Icon": "imgs/scene_icon",
+      "States": [
+        {
+          "Image": "imgs/scene_key",
+          "Title": "",
+          "TitleAlignment": "bottom",
+          "FontSize": 10,
+          "ShowTitle": true
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ]
+    },
+    {
+      "UUID": "de.ghostnode.vrcnexus.record",
+      "Name": "Aufnahme",
+      "Tooltip": "Avatar-Parameter aufnehmen (Start/Stopp) oder eine Aufnahme abspielen",
+      "Icon": "imgs/record_icon",
+      "States": [
+        {
+          "Image": "imgs/record_key",
+          "Title": "Aufnahme",
+          "TitleAlignment": "bottom",
+          "FontSize": 10,
+          "ShowTitle": true
+        },
+        {
+          "Image": "imgs/record_key_on",
+          "Title": "⏺",
+          "TitleAlignment": "bottom",
+          "FontSize": 10,
+          "ShowTitle": true
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ]
+    },
+    {
+      "UUID": "de.ghostnode.vrcnexus.chatmods",
+      "Name": "Chatbox-Module",
+      "Tooltip": "Chatbox-Module an/aus – alle oder ein einzelnes Modul",
+      "Icon": "imgs/chatmods_icon",
+      "States": [
+        {
+          "Image": "imgs/chatmods_key",
+          "Title": "Module\naus",
+          "TitleAlignment": "bottom",
+          "FontSize": 10,
+          "ShowTitle": true
+        },
+        {
+          "Image": "imgs/chatmods_key_on",
+          "Title": "Module\nan",
+          "TitleAlignment": "bottom",
+          "FontSize": 10,
+          "ShowTitle": true
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ]
+    },
+    {
+      "UUID": "de.ghostnode.vrcnexus.tts",
+      "Name": "Vorlesen",
+      "Tooltip": "Spricht einen Text über die Sprachausgabe (TTS) – optional zusätzlich in die Chatbox",
+      "Icon": "imgs/tts_icon",
+      "States": [
+        {
+          "Image": "imgs/tts_key",
+          "Title": "",
+          "TitleAlignment": "bottom",
+          "FontSize": 10,
+          "ShowTitle": true
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ]
+    },
+    {
+      "UUID": "de.ghostnode.vrcnexus.info",
+      "Name": "Info-Anzeige",
+      "Tooltip": "Zeigt Platzhalter wie {zeit}, {ping}, {akku}, {countdown_rest} oder {musik_titel} auf der Taste",
+      "Icon": "imgs/info_icon",
+      "States": [
+        {
+          "Image": "imgs/info_key",
+          "Title": "",
+          "TitleAlignment": "middle",
+          "FontSize": 10,
+          "ShowTitle": true
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ]
     }
   ]
 }
