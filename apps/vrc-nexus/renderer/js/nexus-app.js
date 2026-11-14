@@ -34,6 +34,7 @@
         if (s['ui.menu_style'] === 'text') b.classList.add('menu-text');
         if (s['ui.font'] === 'system') b.classList.add('font-system');
         if (s['ui.font'] === 'mono') b.classList.add('font-mono');
+        if (window.NexusI18n && s['ui.lang'] && s['ui.lang'] !== window.NexusI18n.lang) window.NexusI18n.set(s['ui.lang'], false);
         const theme = THEMES[s['ui.theme']] ? s['ui.theme'] : 'neon';
         const html = document.documentElement;
         html.dataset.theme = theme;

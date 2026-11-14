@@ -20,6 +20,12 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.7.0 – Sprachen, Themes, Bilder
+- **🌐 Sprachen:** Deutsch, English, Français, 日本語 – umschalten über die **Flagge unten rechts** (oder Einstellungen → Oberfläche). Übersetzt die ganze Oberfläche, auch alles, was später nachgeladen wird; Namen, Chats und Bios bleiben unverändert. Wörterbuch: `renderer/i18n/*.tsv` (eine Zeile pro Text, `#` = Zahl), daraus baut `node scripts/i18n-build.js` die Datei `renderer/js/i18n-dict.js`.
+- **🎨 Themes:** 🌃 Neon (Standard), 🌌 Mitternacht (dunkel, violett), ❄️ Schnee (hell), 🌸 Sakura (hell) – über 🎨 unten rechts oder in den Einstellungen. Eigene Akzentfarbe geht weiterhin.
+- **🖼 Bilder repariert:** Profil-, Avatar- und Weltbilder von VRChat werden jetzt mit deiner Anmeldung über die App geladen (mit Zwischenspeicher) – vorher erschien oft nur der 🦊-Platzhalter. Gleicher Fix im Dashboard.
+- Fehler behoben: Die Seite konnte bei ungewöhnlichen Bildadressen einfrieren (z. B. in der Sammlung).
+
 ### Neu in 1.6.0 – Startseite: Widget-Raster wie im Dashboard
 - **Raster mit 4 Spalten** (passt sich an: 3 / 2 / 1 Spalte je nach Breite, auch auf Android) im Mauerwerk-Stil: Widgets rutschen lückenlos nach oben, gleichmäßige Abstände.
 - **✏️ Anpassen:** sichtbares Raster mit Spalten-Hilfslinien, Widgets **per Ziehen** sortieren (oder ◀ ▶), **Größe S / M / L** und bei passenden Widgets **XL (ganze Breite)**; Widgets einklappen (▾); Hinzufügen als Kacheln mit Beschreibung und möglichen Größen.

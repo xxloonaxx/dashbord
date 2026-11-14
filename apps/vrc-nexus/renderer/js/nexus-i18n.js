@@ -122,6 +122,7 @@
         if (!LANGS[l]) return;
         lang = l;
         try { localStorage.setItem('nexusLang', l); } catch (e) { /* egal */ }
+        if (window.VRCX && window.VRCX.ui) window.VRCX.ui['ui.lang'] = l;   // sonst setzt ein späteres applyUi die alte Sprache zurück
         apply();
         corner();
         if (save !== false && window.NexusUI) window.NexusUI.api('tools_settings_save', { data: JSON.stringify({ 'ui.lang': l }) }).catch(() => {});
