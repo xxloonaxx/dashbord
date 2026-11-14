@@ -20,6 +20,12 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.9.0 – 🔊 Sprachausgabe (TTS) – in VRChat sprechen
+Unter **Spiel & OSC → 🔊 Sprachausgabe**. Die Stimme wird auf einem wählbaren **Ausgabegerät** abgespielt – mit einem virtuellen Audiokabel (z. B. VB-Audio Virtual Cable: hier „CABLE Input“, in VRChat „CABLE Output“ als Mikrofon) hört VRChat sie wie dein Mikrofon. Optional **mithören**.
+- **Anbieter:** 🪟 Windows-Stimmen (offline), 🐦 **Piper** (offline, neuronal, Programm + Stimmen per Knopf: Thorsten, Kerstin, Eva, Amy, Alba, Siwis …, eigene .onnx möglich), 🔵 Google Cloud TTS, 🟦 Microsoft Azure, 🎙 ElevenLabs, ⚪ OpenAI – Schlüssel verschlüsselt; Google/OpenAI nutzen auf Wunsch die schon hinterlegten Schlüssel von Übersetzer bzw. Spracheingabe.
+- **Wann:** nach der Spracheingabe (Übersetzung, nur Original oder beides – z. B. Deutsch sprechen → Englisch in VRChat hören lassen), bei getippten Chatbox-Nachrichten, per Makro-Schritt `speak Text`, oder direkt über das Textfeld (optional auch in die Chatbox).
+- Stimme, Tempo und Lautstärke einstellbar; Stimmenliste kommt live vom Anbieter.
+
 ### Neu in 1.8.1 – Spracheingabe: Sprachaktivierung & Verlauf
 - **👂 Sprachaktivierung:** Mikro bleibt offen, sobald du sprichst wird aufgenommen (inkl. 0,4 s davor), nach der Pause erkannt und gesendet. Kurze Geräusche (unter „mind. … s Sprache“) werden ignoriert. Optional **nur wenn du in VRChat stumm bist** (ideal als Mute-Spieler) und nur wenn VRChat läuft; jederzeit pausierbar. Umschalten oben in der Karte: „🎙 Taste / Knopf“ ↔ „👂 Sprachaktivierung“.
 - **📜 Verlauf:** jede Erkennung mit Uhrzeit, Original und Übersetzung (+ Zielsprache), Modell und Dauer; durchsuchen, Original oder Übersetzung erneut senden, kopieren, löschen (bis 500 Einträge, abschaltbar).

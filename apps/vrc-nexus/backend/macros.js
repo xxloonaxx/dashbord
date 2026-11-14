@@ -87,7 +87,12 @@ class Macros {
                     case 'status': await this.app.tools.setStatus(s.status, s.desc, 'manual'); break;
                     case 'avatar': await this.app.tools.call('PUT', '/avatars/' + encodeURIComponent(s.arg.trim()) + '/select'); break;
                     case 'rotator': g.saveCfg({ rotator_enabled: yes(s.arg) ? '1' : '0' }); break;
-                    case 'speak': if (this.app.tools.host.speak) this.app.tools.host.speak(g.fill(s.arg, vars)); break;
+                    case 'speak': {
+                        const t = g.fill(s.arg, vars), tts = this.app.tts;
+                        if (tts && tts.cfg().enabled) await tts.say(t, 'makro').catch(() => {});      // Sprachausgabe (auch in VRChat hörbar)
+                        else if (this.app.tools.host.speak) this.app.tools.host.speak(t);
+                        break;
+                    }
                     case 'webhook': {
                         // webhook https://… [Text] → POST JSON (z. B. Home Assistant, IFTTT, Node-RED)
                         const [url, ...rest] = s.arg.split(/\s+/);

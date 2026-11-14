@@ -322,3 +322,49 @@ kopieren	copy	copier	コピー
 Den ganzen Sprach-Verlauf löschen	Delete the whole speech history	Supprimer tout l'historique vocal	音声履歴をすべて削除
 Erneut an die Chatbox gesendet	Sent to the chatbox again	Renvoyé à la chatbox	チャットボックスに再送信しました
 Kopiert	Copied	Copié	コピーしました
+Sprachausgabe	Speech output	Synthèse vocale	音声出力
+Sprachausgabe an	Speech output on	Synthèse vocale activée	音声出力オン
+Text, der in VRChat gesprochen wird	Text to be spoken in VRChat	Texte à prononcer dans VRChat	VRChatで話すテキスト
+auch in die Chatbox	also to the chatbox	aussi dans la chatbox	チャットボックスにも
+So hört VRChat dich	This is how VRChat hears you	Voici comment VRChat t'entend	VRChatに声を届ける方法
+Ein virtuelles Audiokabel installieren, z. B. VB-Audio Virtual Cable (kostenlos) oder Voicemeeter	Install a virtual audio cable, e.g. VB-Audio Virtual Cable (free) or Voicemeeter	Installe un câble audio virtuel, p. ex. VB-Audio Virtual Cable (gratuit) ou Voicemeeter	仮想オーディオケーブルをインストール (例: VB-Audio Virtual Cable (無料) や Voicemeeter)
+Hier unten als Ausgabe „CABLE Input“ wählen	Choose “CABLE Input” as output below	Choisis « CABLE Input » comme sortie ci-dessous	下の出力で「CABLE Input」を選択
+In VRChat als Mikrofon „CABLE Output“ einstellen	Set “CABLE Output” as microphone in VRChat	Dans VRChat, choisis « CABLE Output » comme micro	VRChatのマイクを「CABLE Output」に設定
+Tipp: „mithören“ einschalten, um die Stimme selbst zu hören. Für Mikro + TTS gleichzeitig: Voicemeeter (mischt beides	Tip: turn on “monitor” to hear the voice yourself. For mic + TTS at the same time: Voicemeeter (mixes both	Astuce : active « écouter » pour entendre la voix. Pour micro + TTS en même temps : Voicemeeter (mélange les deux	ヒント: 「モニター」をオンにすると自分でも聞けます。マイクとTTSを同時に使うならVoicemeeter (両方をミックス
+Windows-Stimmen	Windows voices	Voix Windows	Windowsの音声
+Offline und kostenlos – nutzt die in Windows installierten Stimmen (SAPI	Offline and free – uses the voices installed in Windows (SAPI	Hors ligne et gratuit – utilise les voix installées dans Windows (SAPI	オフライン・無料 – Windowsにインストール済みの音声を使用 (SAPI
+Offline, kostenlos, natürlich klingend – Programm + Stimme werden einmal heruntergeladen (~#–# MB je Stimme	Offline, free, natural-sounding – program + voice are downloaded once (~#–# MB per voice	Hors ligne, gratuit, naturel – programme + voix téléchargés une fois (~#–# Mo par voix	オフライン・無料・自然な声 – プログラムと音声を一度ダウンロード (1音声 ~#–# MB
+Sehr viele Sprachen und Stimmen (WaveNet/Neural#). Monatliches Freikontingent, eigener API-Schlüssel	Lots of languages and voices (WaveNet/Neural#). Monthly free quota, own API key	Beaucoup de langues et voix (WaveNet/Neural#). Quota gratuit mensuel, clé API perso	多数の言語と音声 (WaveNet/Neural#)。毎月の無料枠、自分のAPIキー
+Über # neuronale Stimmen in #+ Sprachen. Freikontingent, Schlüssel + Region	Over # neural voices in #+ languages. Free quota, key + region	Plus de # voix neuronales en #+ langues. Quota gratuit, clé + région	#以上のニューラル音声、#+言語。無料枠、キー + リージョン
+Sehr natürliche, ausdrucksstarke Stimmen. Kleines Freikontingent, eigener Schlüssel	Very natural, expressive voices. Small free quota, own key	Voix très naturelles et expressives. Petit quota gratuit, clé perso	とても自然で表現豊かな音声。小さな無料枠、自分のキー
+Gute mehrsprachige Stimmen (alloy, nova, shimmer …), günstig, kein Freikontingent	Good multilingual voices (alloy, nova, shimmer …), cheap, no free quota	Bonnes voix multilingues (alloy, nova, shimmer …), bon marché, sans quota gratuit	良質な多言語音声 (alloy、nova、shimmer…)、安価、無料枠なし
+Schlüssel nötig	key needed	clé nécessaire	キーが必要
+Schlüssel da	key present	clé présente	キーあり
+offline	offline	hors ligne	オフライン
+Stimme	Voice	Voix	音声
+lade Stimmen	loading voices	chargement des voix	音声を読み込み中
+keine Stimmen	no voices	aucune voix	音声なし
+Tempo	Speed	Vitesse	速度
+Lautstärke	Volume	Volume	音量
+Ausgabe	Output	Sortie	出力
+Standard-Ausgabe	Default output	Sortie par défaut	既定の出力
+Geräte anzeigen	Show devices	Afficher les appareils	デバイスを表示
+mithören (zusätzlich auf dem Standard-Gerät	monitor (also on the default device	écouter (aussi sur l'appareil par défaut	モニター (既定のデバイスでも再生
+Wann sprechen?	When to speak?	Quand parler ?	いつ話す？
+nach der Spracheingabe	after voice input	après la saisie vocale	音声入力の後
+Übersetzung (bzw. Erkanntes	Translation (or recognised text	Traduction (ou texte reconnu	翻訳 (または認識結果
+nur das Original	original only	original seulement	原文のみ
+Original + Übersetzung	original + translation	original + traduction	原文 + 翻訳
+getippte Chatbox-Nachrichten	typed chatbox messages	messages de chatbox tapés	入力したチャットボックスメッセージ
+Makro-Schritt speak Text nutzt ebenfalls diese Stimme	Macro step speak Text also uses this voice	L'étape de macro speak Texte utilise aussi cette voix	マクロのステップ speak テキスト もこの音声を使用
+Piper – Dateien	Piper – files	Piper – fichiers	Piper – ファイル
+Programm	Program	Programme	プログラム
+Piper laden	Download Piper	Télécharger Piper	Piperをダウンロード
+Stimmen von huggingface.co/rhasspy/piper-voices, Programm von github.com/rhasspy/piper. Eigene Stimme: Pfad zu einer .onnx-Datei als Stimme eintragen	Voices from huggingface.co/rhasspy/piper-voices, program from github.com/rhasspy/piper. Own voice: enter the path to an .onnx file as voice	Voix de huggingface.co/rhasspy/piper-voices, programme de github.com/rhasspy/piper. Voix perso : saisis le chemin d'un fichier .onnx	音声: huggingface.co/rhasspy/piper-voices、プログラム: github.com/rhasspy/piper。独自の音声は .onnx ファイルのパスを指定
+eigene piper.exe	own piper.exe	piper.exe perso	独自の piper.exe
+Ausgabegerät nicht verfügbar – spiele auf dem Standard-Gerät	Output device not available – playing on the default device	Sortie indisponible – lecture sur l'appareil par défaut	出力デバイスが使えません – 既定のデバイスで再生
+Sprachausgabe ist aus	Speech output is off	La synthèse vocale est désactivée	音声出力はオフです
+Kein Text	No text	Pas de texte	テキストがありません
+Stimme löschen	Delete voice	Supprimer la voix	音声を削除
+Download gestartet	Download started	Téléchargement lancé	ダウンロードを開始しました
+Die Sprachausgabe gibt es nur in der Windows-App	Speech output is only available in the Windows app	La synthèse vocale n'existe que dans l'appli Windows	音声出力はWindowsアプリのみ

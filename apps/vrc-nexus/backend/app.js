@@ -28,6 +28,7 @@ const { OscLog } = require('./osclog');
 const { StreamBot } = require('./streambot');
 const { CloudBackup } = require('./cloudbackup');
 const { ChatMods } = require('./chatmods');
+const { Tts } = require('./tts');
 
 const RENDERER = path.join(__dirname, '..', 'renderer');
 const truthy = v => v !== undefined && v !== null && v !== '' && v !== '0' && v !== false && v !== 'false';
@@ -60,6 +61,7 @@ class NexusApp {
         this.stream = opts.mobile ? null : new StreamBot(this, opts.crypt);
         this.backup = new CloudBackup(this, opts.crypt);
         this.chatmods = opts.mobile ? null : new ChatMods(this, opts.crypt);
+        this.tts = opts.mobile ? null : new Tts(this, opts.crypt);
         this.vrc.onWatch = (name, world) => { if (this.settings.get('notify.watch')) this.tools.alert('🟢 ' + name + ' ist online', world ? 'in ' + world : 'gerade ins Spiel gekommen'); };
         this.vrc.onWatchEvent = (name, kind, world) => {
             const s = this.settings;
@@ -156,6 +158,7 @@ class NexusApp {
             if (act.startsWith('ins_')) return await this.insights.action(act, input);
             if (act.startsWith('mod_')) return await this.mod.action(act, input);
             if (act.startsWith('coll_')) return await this.coll.action(act, input);
+            if (act.startsWith('tts_')) { if (!this.tts) throw new UserError('Die Sprachausgabe gibt es nur in der Windows-App.'); return await this.tts.action(act, input); }
             if (act.startsWith('cm_')) { if (!this.chatmods) throw new UserError('Chatbox-Module gibt es nur in der Windows-App.'); return await this.chatmods.action(act, input); }
             if (act.startsWith('backup_')) return await this.backup.action(act, input);
             if (act.startsWith('stream_')) { if (!this.stream) throw new UserError('Der Stream-Bot läuft nur in der Windows-App.'); return await this.stream.action(act, input); }
@@ -189,6 +192,8 @@ class NexusApp {
                 let sent = null;
                 if (str(input.kind) === 'chatbox' && truthy(input.translate)) { const c = await this.tr.chat(str(input.text), str(input.target)); input = Object.assign({}, input, { text: c.text }); sent = c.text; }
                 const nid = await g.oscSend(str(input.kind), input);
+                // getippte Chatbox-Nachricht zusätzlich vorlesen (Sprachausgabe → „Chatbox-Nachrichten sprechen“)
+                if (str(input.kind) === 'chatbox' && this.tts && !truthy(input.clear)) { const tc = this.tts.cfg(); if (tc.enabled && tc.on_chat) this.tts.say(sent || str(input.text), 'chatbox').catch(() => {}); }
                 return { id: nid, osc: g.oscRecent(), sent };
             }
             case 'client_osc_status': return { osc: g.oscRecent(), state: g.stateRow() };

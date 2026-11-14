@@ -637,6 +637,97 @@ test('1.8: Chatbox-Module (Status, Zeit, Wetter, Rechner, Netzwerk, Twitch, Puls
     for (const k of ['NEXUS_OPENMETEO_BASE', 'NEXUS_GEO_BASE', 'NEXUS_DECAPI_BASE', 'NEXUS_PULSOID_BASE', 'NEXUS_FAKE_VR', 'NEXUS_NVIDIA_SMI', 'NEXUS_NETDEV']) delete process.env[k];
 });
 
+test('1.9: Sprachausgabe (Windows, Piper, Google, Azure, ElevenLabs, OpenAI) + nach Spracheingabe sprechen', async () => {
+    const http = require('http');
+    const seen = [];
+    const srv = http.createServer(async (req, res) => {
+        let body = ''; for await (const c of req) body += c;
+        const u = new URL(req.url, 'http://x');
+        seen.push(req.method + ' ' + u.pathname);
+        const mp3 = () => { res.setHeader('Content-Type', 'audio/mpeg'); res.end(Buffer.from('ID3fakeaudio')); };
+        res.setHeader('Content-Type', 'application/json');
+        if (u.pathname === '/v1/voices' && u.searchParams.get('key') === 'gkey-1234567890abcdef') return res.end(JSON.stringify({ voices: [{ name: 'de-DE-Neural2-B', ssmlGender: 'MALE', languageCodes: ['de-DE'] }] }));
+        if (u.pathname === '/v1/text:synthesize') { const j = JSON.parse(body); return res.end(JSON.stringify({ audioContent: Buffer.from('G:' + j.input.text).toString('base64') })); }
+        if (u.pathname === '/cognitiveservices/voices/list') return req.headers['ocp-apim-subscription-key'] === 'azkey-1234567890abcdef' ? res.end(JSON.stringify([{ ShortName: 'de-DE-KatjaNeural', LocalName: 'Katja', Gender: 'Female', Locale: 'de-DE' }])) : (res.statusCode = 401, res.end('{}'));
+        if (u.pathname === '/cognitiveservices/v1') { assert.ok(body.includes('<voice name="de-DE-KatjaNeural">') && body.includes('&lt;3')); return mp3(); }
+        if (u.pathname === '/v1/voices') return res.end(JSON.stringify({ voices: [{ voice_id: 'v123', name: 'Rachel', labels: { gender: 'female' } }] }));
+        if (u.pathname === '/v1/text-to-speech/v123') { assert.strictEqual(req.headers['xi-api-key'], 'elkey-1234567890abcdef'); return mp3(); }
+        if (u.pathname === '/audio/speech') { const j = JSON.parse(body); assert.strictEqual(j.voice, 'nova'); return mp3(); }
+        res.statusCode = 404; res.end('{}');
+    });
+    await new Promise(r => srv.listen(0, '127.0.0.1', r));
+    const B = 'http://127.0.0.1:' + srv.address().port;
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nxtts-'));
+    const piper = path.join(dir, 'piper.js');
+    fs.writeFileSync(piper, "let t='';process.stdin.on('data',d=>t+=d);process.stdin.on('end',()=>{const a=process.argv;require('fs').writeFileSync(a[a.indexOf('--output_file')+1],Buffer.concat([Buffer.from('RIFF'),Buffer.from(t)]))});");
+    Object.assign(process.env, { NEXUS_GTTS_BASE: B, NEXUS_AZURE_BASE: B, NEXUS_EL_BASE: B, NEXUS_OPENAI_BASE: B, NEXUS_FAKE_SAPI: '1', NEXUS_PIPER_BIN: piper });
+    const { NexusApp } = require('../backend/app');
+    const db = await openDatabase(null);
+    const app = new NexusApp({ db, crypt: { encrypt: s => 'enc:' + s, decrypt: s => s.replace(/^enc:/, '') }, host: { userData: dir } });
+    app.game.osc.stopListen();
+    const sent = [];
+    app.game.osc.chatbox = async t => { sent.push(t); };
+    const post = (act, d) => app.post(Object.assign({ act }, d || {}), {});
+    await assert.rejects(post('tts_say', { text: 'Hallo' }), /aus/);
+    await post('tts_cfg', { enabled: '1', provider: 'windows' });
+    let v = await post('tts_voices', { provider: 'windows' });
+    assert.ok(v.voices.some(x => x.id === 'Microsoft Hedda Desktop'));
+    let r = await post('tts_say', { text: 'Hallo Welt', chatbox: '1' });
+    assert.strictEqual(r.item.mime, 'audio/wav');
+    assert.ok(sent.includes('Hallo Welt'), 'nicht in die Chatbox');
+    // Piper: Text kommt per stdin an, WAV zurück
+    await post('tts_cfg', { provider: 'piper', voice: 'de_DE-thorsten-medium' });
+    r = await post('tts_say', { text: 'Guten Abend' });
+    assert.strictEqual(Buffer.from(r.item.b64, 'base64').toString(), 'RIFFGuten Abend');
+    // Anbieter mit Schlüssel (verschlüsselt gespeichert)
+    await post('tts_cfg', { provider: 'google' });
+    await assert.rejects(post('tts_say', { text: 'x' }), /Schlüssel fehlt/);
+    await post('tts_key', { provider: 'google', key: 'gkey-1234567890abcdef' });
+    assert.ok(db.setting('tts_keys', '').startsWith('enc:'));
+    v = await post('tts_voices', { provider: 'google' });
+    assert.strictEqual(v.voices[0].id, 'de-DE-Neural2-B');
+    r = await post('tts_say', { text: 'Google spricht' });
+    assert.strictEqual(Buffer.from(r.item.b64, 'base64').toString(), 'G:Google spricht');
+    await post('tts_key', { provider: 'azure', key: 'azkey-1234567890abcdef' });
+    await post('tts_cfg', { provider: 'azure', voice: 'de-DE-KatjaNeural' });
+    assert.strictEqual((await post('tts_voices', { provider: 'azure' })).voices[0].id, 'de-DE-KatjaNeural');
+    r = await post('tts_say', { text: 'Ich hab euch <3 lieb' });
+    assert.strictEqual(r.item.mime, 'audio/mpeg');
+    await post('tts_key', { provider: 'elevenlabs', key: 'elkey-1234567890abcdef' });
+    await post('tts_cfg', { provider: 'elevenlabs' });
+    assert.strictEqual((await post('tts_voices', { provider: 'elevenlabs' })).voices[0].id, 'v123');
+    await post('tts_cfg', { voice: 'v123' });
+    await post('tts_say', { text: 'Eleven' });
+    await post('tts_key', { provider: 'openai', key: 'sk-test1234567890abcdef' });
+    await post('tts_cfg', { provider: 'openai', voice: 'nova' });
+    await post('tts_say', { text: 'OpenAI' });
+    // Oberfläche holt fertige Audios ab
+    const q = await post('tts_poll', { since: 0 });
+    assert.ok(q.items.length >= 6 && q.items[q.items.length - 1].text === 'OpenAI');
+    // nach der Spracheingabe: Übersetzung sprechen
+    await post('tts_cfg', { provider: 'piper', on_speech: '1', speak: 'sent' });
+    const fakeW = path.join(dir, 'w.js');
+    fs.writeFileSync(fakeW, 'console.log("[00:00:00.000 --> 00:00:01.000]  Guten Morgen");');
+    if (process.platform !== 'win32') {
+        fs.writeFileSync(path.join(dir, 'w.sh'), '#!/bin/sh\nexec "' + process.execPath + '" "' + fakeW + '"\n', { mode: 0o755 });
+        process.env.NEXUS_WHISPER_BIN = path.join(dir, 'w.sh');
+        app.speech.saveCfg({ enabled: '1', prefix: '' });
+        const before = (await post('tts_poll', { since: 0 })).seq;
+        await app.speech.transcribe(Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(3000)]));
+        await U.sleep(300);
+        const n = await post('tts_poll', { since: before });
+        assert.ok(n.items.some(x => x.text === 'Guten Morgen' && x.via === 'sprache'), JSON.stringify(n.items.map(x => x.text)));
+        delete process.env.NEXUS_WHISPER_BIN;
+    }
+    // Makro-Schritt „speak“ nutzt die Sprachausgabe
+    const before2 = (await post('tts_poll', { since: 0 })).seq;
+    await app.macros.run('speak Makro spricht');
+    await U.sleep(300);
+    assert.ok((await post('tts_poll', { since: before2 })).items.some(x => x.text === 'Makro spricht'));
+    app.tools.stop(); srv.close();
+    for (const k of ['NEXUS_GTTS_BASE', 'NEXUS_AZURE_BASE', 'NEXUS_EL_BASE', 'NEXUS_OPENAI_BASE', 'NEXUS_FAKE_SAPI', 'NEXUS_PIPER_BIN']) delete process.env[k];
+});
+
 test('1.7: Wörterbuch (EN/FR/JA) vollständig und Platzhalter stimmen', () => {
     const fs = require('fs'), path = require('path'), vm = require('vm');
     const file = path.join(__dirname, '..', 'renderer', 'js', 'i18n-dict.js');

@@ -205,6 +205,14 @@ class Speech {
             let sent = text;
             if (c.translate && !c.whisper_en) sent = (await this.app.tr.chat(text, c.target)).text;
             if (!opts.noSend) await this.app.game.oscSend('chatbox', { text: (c.prefix || '') + sent, sound: c.sound ? '1' : '', split: '1', vars: false });
+            // Sprachausgabe: Erkanntes (bzw. die Übersetzung) in VRChat sprechen
+            if (this.app.tts && !opts.noSend) {
+                const tc = this.app.tts.cfg();
+                if (tc.enabled && tc.on_speech) {
+                    const say = tc.speak === 'text' ? text : tc.speak === 'both' && sent !== text ? text + '. ' + sent : sent;
+                    this.app.tts.say(say, 'sprache').catch(() => {});
+                }
+            }
             if (c.log) this.addLog({ t: Date.now(), text, sent: sent !== text ? sent : '', target: sent !== text ? c.target : '', lang: c.lang, engine: c.engine === 'openai' ? 'OpenAI' : 'whisper.cpp ' + ((MODELS[c.model] || [''])[0]), ms: Date.now() - t0, via: str(opts.via) || 'ptt', test: !!opts.noSend });
             return { text, sent };
         } catch (e) { this.lastError = e.message; throw e; }
@@ -275,4 +283,4 @@ class Speech {
     }
 }
 
-module.exports = { Speech, MODELS, LANGS };
+module.exports = { Speech, MODELS, LANGS, download, findFile };
