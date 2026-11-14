@@ -76,8 +76,11 @@
 </div>
 <div id="sec-friend" hidden>
     <div class="row"><label>Freund</label><select data-s="id" id="friendSel"><option value="">(erst Verbindung testen)</option></select></div>
-    <div class="row"><label>Beim Drücken</label><select data-s="op"><option value="join">Beitreten</option><option value="invite_me">Mich einladen lassen (Selbst-Einladung)</option><option value="invite">In meine Instanz einladen</option></select></div>
-    <div class="hint">Die Taste leuchtet, wenn dein Freund im Spiel ist.</div>
+    <div class="row"><label>Kurz drücken</label><select data-s="op"><option value="smart">Beitreten – oder Einladung anfragen, wenn privat</option><option value="join">Beitreten (nur offene Instanzen)</option><option value="request">Einladung anfragen</option><option value="invite">Zu mir einladen</option><option value="invite_me">Selbst-Einladung in seine Instanz</option><option value="profile">Profil in VRC Nexus öffnen</option></select></div>
+    <div class="row"><label>Gedrückt halten</label><select data-s="hold_op"><option value="invite">Zu mir einladen</option><option value="smart">Beitreten – oder Einladung anfragen, wenn privat</option><option value="join">Beitreten (nur offene Instanzen)</option><option value="request">Einladung anfragen</option><option value="invite_me">Selbst-Einladung in seine Instanz</option><option value="profile">Profil in VRC Nexus öffnen</option><option value="none">nichts</option></select></div>
+    <div class="row"><label>Symbol</label><input type="checkbox" data-s="nopic"> <span class="hint" style="margin:0">Standard-Symbol statt Profilbild</span></div>
+    <div class="row"><label>Titel</label><select data-s="label"><option value="">Name + Welt / Status</option><option value="name">nur Name</option><option value="none">kein Text (nur Bild)</option></select></div>
+    <div class="hint">Symbol = Profilbild mit Statusring (grün = im Spiel, blau = Website/App, grau = offline). Halten = ½ Sekunde.</div>
 </div>
 <div id="sec-speech" hidden>
     <div class="row"><label>Modus</label><select data-s="mode"><option value="toggle">Drücken = Start/Stopp</option><option value="hold">Halten zum Sprechen (Push-to-Talk)</option></select></div>

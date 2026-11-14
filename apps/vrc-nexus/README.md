@@ -20,6 +20,11 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.7.9 – Stream Deck: Freund-Taste
+- **Kurz drücken:** beitreten – oder, wenn die Instanz privat ist, automatisch eine Einladung anfragen (einstellbar: beitreten, anfragen, zu mir einladen, Selbst-Einladung, Profil öffnen).
+- **Gedrückt halten (½ s):** zu mir einladen (ebenfalls einstellbar).
+- **Symbol = Profilbild** des Freundes mit Statusring (grün = im Spiel, blau = Website/App, grau = offline, dann auch Bild in Grau) und Status-Punkt (Join Me / Online / Ask Me / Beschäftigt); Titel wählbar (Name + Welt, nur Name, kein Text).
+
 ### Neu in 1.7.8
 - **Übersetzung vervollständigt:** Welt-, Avatar-, Instanz- und Gruppen-Fenster, Verlauf, Spielerliste, Hinweise und Leer-Meldungen sind jetzt übersetzt (Wörterbuch fast 2.000 Einträge, alle Texte aus dem Quellcode abgeglichen).
 - **Fix Update:** „Im Release fehlt die passende Datei (Setup)“ – die App bietet ein Update erst an, wenn die Datei für dein Gerät wirklich hochgeladen ist (Android und Windows werden nacheinander gebaut).

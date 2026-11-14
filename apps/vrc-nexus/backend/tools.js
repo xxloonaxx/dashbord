@@ -889,7 +889,22 @@ class Tools {
             cam: { mode: (this.app.game.osc.cam || {}).Mode ?? null, zoom: (this.app.game.osc.cam || {}).Zoom ?? null, burst: !!this.app.cam.burstRun },
             macros: this.app.macros.list().map(m => ({ id: m.id, name: m.name })), running_macros: [...this.app.macros.running.keys()],
             overlay: this.host.overlayState ? this.host.overlayState() : null, speech: this.app.speech ? this.app.speech.status() : null,
-            friend_list: fr.slice(0, 400).map(f => ({ id: f.id, name: f.name, state: f.state, loc: f.loc.kind === 'world' ? f.loc.location : '', world: f.loc.world_name || '' })) };
+            friend_list: fr.slice(0, 400).map(f => ({ id: f.id, name: f.name, state: f.state, status: f.status, loc: f.loc.kind === 'world' ? f.loc.location : '', world: f.loc.world_name || '', access: f.loc.kind === 'world' ? f.loc.access : '', image: !!f.image })) };
+    }
+    /** Profilbild eines Freundes (für Stream-Deck-Tasten) → { mime, b64 } */
+    async friendImage(id) {
+        const f = (this.app.vrc.friendList() || []).find(x => x.id === str(id));
+        if (!f || !f.image) throw new UserError('Kein Bild.');
+        const m = /\/(?:file|image)\/(file_[0-9a-f-]{36})\/(\d+)/i.exec(f.image);
+        let r;
+        if (m) r = await this.app.image(m[1], int(m[2]) || 1, 256);
+        else {
+            const res = await fetch(f.image, { signal: AbortSignal.timeout(10000) });
+            const type = res.headers.get('content-type') || '';
+            r = res.ok && /^image\//.test(type) ? { status: 200, headers: { 'Content-Type': type }, body: Buffer.from(await res.arrayBuffer()) } : { status: 404 };
+        }
+        if (!r || r.status !== 200) throw new UserError('Bild nicht verfügbar.');
+        return { mime: r.headers['Content-Type'], b64: Buffer.from(r.body).toString('base64') };
     }
     async apiAction(action, d) {
         const g = this.app.game;
@@ -968,6 +983,15 @@ class Tools {
                     await this.call('POST', '/invite/' + f.id, {}, { instanceId: st.worldId + ':' + st.instance });
                     return { ok: true, msg: f.name + ' eingeladen.' };
                 }
+                // Einladung anfragen (geht auch bei privaten Instanzen)
+                const request = async () => { await this.call('POST', '/requestInvite/' + f.id, {}, {}); return { ok: true, msg: 'Einladung bei ' + f.name + ' angefragt.' }; };
+                if (str(d.op) === 'request') { if (f.state === 'offline') throw new UserError(f.name + ' ist offline.'); return request(); }
+                // „smart“ (Stream-Deck-Standard): offene Instanz → beitreten, sonst Einladung anfragen
+                const open = f.loc.kind === 'world' && !['Invite', 'Gruppe'].includes(f.loc.access);
+                if (str(d.op) === 'smart') {
+                    if (f.state === 'offline') throw new UserError(f.name + ' ist offline.');
+                    if (!open) return request();
+                }
                 if (f.loc.kind !== 'world') throw new UserError(f.name + ' ist in keiner offenen Instanz.');
                 const loc = f.loc.location;
                 if (str(d.op) === 'invite_me') { await this.call('POST', '/invite/myself/to/' + loc); return { ok: true, msg: 'Selbst-Einladung geschickt.' }; }
@@ -976,7 +1000,9 @@ class Tools {
             }
             case 'overlay': if (!this.host.overlayToggle) throw new UserError('Das SteamVR-Overlay gibt es nur in der Windows-App.'); return Object.assign({ ok: true }, await this.host.overlayToggle(d.on));
             case 'speech': if (!this.app.speech) throw new UserError('Spracheingabe ist nicht verfügbar.'); return Object.assign({ ok: true }, await this.app.speech.ptt(str(d.op || 'toggle')));
-            case 'open': if (this.host.showTab) this.host.showTab(/^[a-z]{2,12}$/.test(str(d.tab)) ? str(d.tab) : ''); return { ok: true };
+            case 'open':
+                if (/^usr_[0-9a-f-]{36}$/i.test(str(d.user)) && this.host.showUser) { this.host.showUser(str(d.user)); return { ok: true }; }
+                if (this.host.showTab) this.host.showTab(/^[a-z]{2,12}$/.test(str(d.tab)) ? str(d.tab) : ''); return { ok: true };
             case 'invite_self': {
                 const loc = str(d.location);
                 if (!/^wrld_[0-9a-f-]{36}:[\w~()\-.:]+$/i.test(loc)) throw new UserError('Ungültige Instanz.');

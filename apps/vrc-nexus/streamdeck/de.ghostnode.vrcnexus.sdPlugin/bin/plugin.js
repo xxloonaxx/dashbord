@@ -111,7 +111,12 @@ function render(ctx) {
         case 'friend': {
             const f = (st.friend_list || []).find(x => x.id === s.id);
             setState(ctx, f && f.state === 'online' ? 1 : 0);
-            if (!s.title) setTitle(ctx, f ? f.name.slice(0, 10) + '\n' + (f.state === 'online' ? (f.world || 'im Spiel').slice(0, 10) : f.state === 'active' ? 'online' : 'offline') : '?');
+            if (!s.title) {
+                const sub = f ? (f.state === 'online' ? (f.world || (f.access ? f.access : 'privat')) : f.state === 'active' ? 'online' : 'offline') : '';
+                setTitle(ctx, !f ? '?' : s.label === 'none' ? '' : s.label === 'name' ? f.name.slice(0, 11) : f.name.slice(0, 11) + '\n' + sub.slice(0, 11));
+            }
+            if (f && !s.nopic) friendIcon(ctx, f);
+            else if (c.img) { c.img = ''; send('setImage', ctx, { image: null, target: 0 }); }
             break;
         }
         case 'overlay': setState(ctx, st.overlay && st.overlay.visible ? 1 : 0); break;
@@ -132,6 +137,42 @@ function render(ctx) {
         }
     }
 }
+// ---------- Profilbild als Tastensymbol (mit Statusring) ----------
+const pics = new Map();                       // Freund-ID → { b64, mime, at } bzw. { fail, at }
+const RING = { online: '#3ddc84', active: '#42a5f5', offline: '#6b7280' };
+async function friendPic(id) {
+    const c = pics.get(id);
+    if (c && Date.now() - c.at < (c.fail ? 120000 : 600000)) return c.fail ? null : c;
+    if (c && c.loading) return c.b64 ? c : null;
+    pics.set(id, Object.assign({}, c || {}, { loading: true, at: (c && c.at) || 0 }));
+    try { const r = await nexus('GET', 'friend_image?id=' + encodeURIComponent(id)); pics.set(id, { b64: r.b64, mime: r.mime, at: Date.now() }); }
+    catch (e) { pics.set(id, Object.assign({}, c && c.b64 ? c : {}, { fail: !(c && c.b64), at: Date.now() })); }
+    const n = pics.get(id);
+    return n && n.b64 ? n : null;
+}
+function friendSvg(pic, f) {
+    const off = f.state === 'offline', col = RING[f.state] || RING.offline;
+    const STC = { 'join me': '#42a5f5', active: '#3ddc84', 'ask me': '#ffa726', busy: '#ef5350' };
+    return '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="144" height="144" viewBox="0 0 144 144">'
+        + '<defs><clipPath id="c"><rect x="8" y="8" width="128" height="128" rx="22"/></clipPath><filter id="g"><feColorMatrix type="saturate" values="0"/></filter>'
+        + '<linearGradient id="d" x1="0" y1="0" x2="0" y2="1"><stop offset="0.45" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.8"/></linearGradient></defs>'
+        + '<rect width="144" height="144" fill="#0b0f15"/>'
+        + '<image x="8" y="8" width="128" height="128" preserveAspectRatio="xMidYMid slice" clip-path="url(#c)"' + (off ? ' filter="url(#g)" opacity="0.55"' : '') + ' xlink:href="data:' + pic.mime + ';base64,' + pic.b64 + '"/>'
+        + '<rect x="8" y="8" width="128" height="128" rx="22" fill="url(#d)"/>'
+        + '<rect x="5" y="5" width="134" height="134" rx="25" fill="none" stroke="' + col + '" stroke-width="7"/>'
+        + (!off && STC[f.status] ? '<circle cx="122" cy="22" r="11" fill="' + STC[f.status] + '" stroke="#0b0f15" stroke-width="4"/>' : '')
+        + '</svg>';
+}
+async function friendIcon(ctx, f) {
+    const pic = await friendPic(f.id);
+    const c = contexts.get(ctx);
+    if (!c || !pic) return;
+    const key = f.id + '|' + f.state + '|' + f.status + '|' + pic.at;
+    if (c.img === key) return;                // nur bei Änderung neu senden
+    c.img = key;
+    send('setImage', ctx, { image: 'data:image/svg+xml;base64,' + Buffer.from(friendSvg(pic, f)).toString('base64'), target: 0 });
+}
+
 async function poll() {
     if (!contexts.size) return;
     try { lastState = await nexus('GET', 'state'); lastError = ''; }
@@ -193,15 +234,40 @@ async function keyDown(ctx, action, s) {
             return r;
         }
         case 'avatar': return act('avatar', { id: (s.id || '').trim() });
-        case 'friend': return act('friend', { id: s.id || '', op: s.op || 'join' });
+        case 'friend': return null;      // kurz/halten wird in keyDown/keyUp unten unterschieden
         case 'overlay': return act('overlay', {});
         case 'speech': return act('speech', { op: s.mode === 'hold' ? 'start' : 'toggle' });
         case 'dial': return dialPress(ctx, s);
     }
     return null;
 }
+const HOLD_MS = 500;
+const holds = new Map();                      // context → { timer, done }
+async function friendOp(op, s) {
+    if (!s.id) throw new Error('Kein Freund gewählt.');
+    if (op === 'none') return null;
+    if (op === 'profile') return act('open', { tab: 'friends', user: s.id });
+    return act('friend', { id: s.id, op });
+}
+function friendDown(ctx, s) {
+    const h = { done: false };
+    h.timer = setTimeout(() => { h.done = true; runFeedback(ctx, friendOp(s.hold_op || 'invite', s)); }, HOLD_MS);
+    holds.set(ctx, h);
+}
+function friendUp(ctx, s) {
+    const h = holds.get(ctx);
+    holds.delete(ctx);
+    if (!h) return;
+    clearTimeout(h.timer);
+    if (!h.done) runFeedback(ctx, friendOp(s.op || 'smart', s));
+}
+function runFeedback(ctx, p) {
+    Promise.resolve(p).then(r => { if (r) send('showOk', ctx); setTimeout(poll, 400); })
+        .catch(e => { lastError = e.message; send('showAlert', ctx); send('logMessage', undefined, { message: 'VRC Nexus: ' + e.message }); });
+}
 async function keyUp(ctx, action, s) {
     const kind = action.slice(PREFIX.length);
+    if (kind === 'friend') return friendUp(ctx, s);
     if (kind === 'param' && s.mode === 'hold' && s.name) return act('param', { name: s.name, type: 'bool', value: false });
     if (kind === 'input' && s.hold) return act('input', { name: s.input || 'Jump', value: 0 });
     if (kind === 'speech' && s.mode === 'hold') return act('speech', { op: 'stop' });
@@ -216,9 +282,10 @@ function onMessage(raw) {
     switch (event) {
         case 'willAppear': contexts.set(context, { action, settings }); render(context); if (contexts.size === 1) schedule(); break;
         case 'willDisappear': contexts.delete(context); if (!contexts.size) clearInterval(pollTimer); break;
-        case 'didReceiveSettings': if (contexts.has(context)) { contexts.get(context).settings = settings; render(context); } break;
+        case 'didReceiveSettings': if (contexts.has(context)) { contexts.get(context).settings = settings; contexts.get(context).img = ''; render(context); } break;
         case 'didReceiveGlobalSettings': globals = Object.assign({ port: 17865, token: '' }, settings); poll(); break;
         case 'keyDown':
+            if (action === PREFIX + 'friend') { friendDown(context, settings); break; }
             keyDown(context, action, settings).then(r => { if (r && !['param', 'rotator', 'macro', 'speech', 'overlay'].includes(action.slice(PREFIX.length))) send('showOk', context); setTimeout(poll, 400); })
                 .catch(e => { lastError = e.message; send('showAlert', context); send('logMessage', undefined, { message: 'VRC Nexus: ' + e.message }); });
             break;
@@ -244,4 +311,4 @@ function connect() {
 }
 
 if (require.main === module) connect();
-module.exports = { MiniWs, onMessage, keyDown, render, dialRotate, _test: { contexts, setGlobals: g => { globals = g; }, get state() { return lastState; }, poll } };
+module.exports = { MiniWs, onMessage, keyDown, render, dialRotate, friendSvg, _test: { pics, holds, contexts, setGlobals: g => { globals = g; }, get state() { return lastState; }, poll } };

@@ -49,6 +49,7 @@ class LocalApi {
         if (!want.length || got.length !== want.length || !crypto.timingSafeEqual(got, want)) return this.send(res, 401, { error: 'Falscher Zugangsschlüssel.' });
         if (url.pathname.startsWith('/api/') && !this.tools.settings.get('int.api')) return this.send(res, 403, { error: 'Die Stream-Deck-Schnittstelle ist aus (Einstellungen → Integrationen).' });
         if (req.method === 'GET' && url.pathname === '/api/state') return this.send(res, 200, this.tools.apiState());
+        if (req.method === 'GET' && url.pathname === '/api/friend_image') return this.send(res, 200, await this.tools.friendImage(url.searchParams.get('id')));
         // Stream-Overlay für OBS (Browser-Quelle): /obs?token=…  (Stil: &theme=light, &hide=players,chat …)
         if (req.method === 'GET' && (url.pathname === '/chat' || url.pathname === '/chat.json')) {
             if (!this.tools.settings.get('int.obs')) return this.send(res, 403, { error: 'Stream-Overlay ist aus (Einstellungen → Integrationen).' });

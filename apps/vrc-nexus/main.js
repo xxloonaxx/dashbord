@@ -50,6 +50,7 @@ const host = {
     setLoginItem: on => { if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: on, args: ['--minimized'] }); },
     spawn: (exe, args) => spawn(exe, args, { detached: true, stdio: 'ignore', cwd: path.dirname(exe) }).unref(),
     speak: text => { if (win) win.webContents.executeJavaScript('window.speechSynthesis && speechSynthesis.speak(Object.assign(new SpeechSynthesisUtterance(' + JSON.stringify(String(text).slice(0, 300)) + '), { lang: "de-DE" }))').catch(() => {}); },
+    showUser: id => { if (!win) return; win.show(); win.focus(); win.webContents.executeJavaScript('window.NexusUI && NexusUI.openUser(' + JSON.stringify(id) + ')').catch(() => {}); },
     showTab: tab => { if (!win) return; win.show(); win.focus(); if (tab) win.webContents.executeJavaScript('window.NexusUI && NexusUI.tab(' + JSON.stringify(tab) + ')').catch(() => {}); },
     setTray: text => { if (tray) tray.setToolTip(text); },
     thumbnail: async file => (await nativeImage.createThumbnailFromPath(file, { width: 360, height: 220 })).toJPEG(80),

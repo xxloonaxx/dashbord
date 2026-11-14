@@ -53,10 +53,30 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
         for (const [k, [ctx, se]] of Object.entries(nk)) {
             const n = got.length;
             tx({ event: 'keyDown', action: 'de.ghostnode.vrcnexus.' + k, context: ctx, payload: { settings: se } });
+            tx({ event: 'keyUp', action: 'de.ghostnode.vrcnexus.' + k, context: ctx, payload: { settings: se } });
             const r = await wait(m => got.indexOf(m) >= n && m.context === ctx && ['showOk', 'showAlert', 'setState'].includes(m.event));
             console.log('Taste ' + k.padEnd(8), r.event + (r.payload ? ' ' + JSON.stringify(r.payload) : ''));
             assert.notStrictEqual(r.event, 'showAlert');
         }
+        // 1.7.9: Freund-Taste – Profilbild als Symbol, kurz = beitreten/anfragen, halten = zu mir einladen
+        const img = await wait(m => m.event === 'setImage' && m.context === 'ctxFr');
+        const svg = Buffer.from(img.payload.image.split(',')[1], 'base64').toString();
+        assert.ok(/^data:image\/svg\+xml;base64,/.test(img.payload.image) && svg.includes('<image') && /data:image\/(png|jpe?g|webp|gif);base64,/.test(svg), 'Profilbild fehlt im Symbol');
+        console.log('Taste Freund: Profilbild-Symbol', Math.round(img.payload.image.length / 1024) + ' KB');
+        let n2 = got.length;
+        const fs2 = { id: fid, op: 'smart', hold_op: 'invite' };
+        tx({ event: 'keyDown', action: 'de.ghostnode.vrcnexus.friend', context: 'ctxFr', payload: { settings: fs2 } });
+        await sleep(750);
+        tx({ event: 'keyUp', action: 'de.ghostnode.vrcnexus.friend', context: 'ctxFr', payload: { settings: fs2 } });
+        let r = await wait(m => got.indexOf(m) >= n2 && m.context === 'ctxFr' && ['showOk', 'showAlert'].includes(m.event));
+        console.log('Freund halten (zu mir einladen):', r.event);
+        assert.strictEqual(r.event, 'showOk');
+        n2 = got.length;
+        tx({ event: 'keyDown', action: 'de.ghostnode.vrcnexus.friend', context: 'ctxFr', payload: { settings: fs2 } });
+        tx({ event: 'keyUp', action: 'de.ghostnode.vrcnexus.friend', context: 'ctxFr', payload: { settings: fs2 } });
+        r = await wait(m => got.indexOf(m) >= n2 && m.context === 'ctxFr' && ['showOk', 'showAlert'].includes(m.event));
+        console.log('Freund kurz (beitreten/anfragen):', r.event);
+        assert.strictEqual(r.event, 'showOk');
         tx({ event: 'willAppear', action: 'de.ghostnode.vrcnexus.dial', context: 'ctxD', payload: { settings: { target: 'param', name: 'Hue', type: 'float' } } });
         tx({ event: 'dialRotate', action: 'de.ghostnode.vrcnexus.dial', context: 'ctxD', payload: { settings: { target: 'param', name: 'Hue', type: 'float', step: 0.1 }, ticks: 3 } });
         const fb = await wait(m => m.event === 'setFeedback' && m.context === 'ctxD' && m.payload.value === '0.3');
