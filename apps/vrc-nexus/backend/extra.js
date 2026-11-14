@@ -372,7 +372,6 @@ class Extra {
         try { [code, json] = await this.vrc.http({}, 'GET', '/visits'); } catch (e) { return last ? int(last.online) : null; }
         if (code !== 200 || typeof json !== 'number') return last ? int(last.online) : null;
         this.db.prepare('INSERT OR REPLACE INTO global_stats (ts, online) VALUES (?, ?)').run(now(), json);
-        this.db.prepare('DELETE FROM global_stats WHERE ts < ?').run(now() - 400 * 86400);
         return json;
     }
     async globalStats(days) {

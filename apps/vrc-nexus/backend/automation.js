@@ -139,8 +139,9 @@ class Automation {
         const afk = this.afkSince ? Math.round((Date.now() - this.afkSince) / 60000) : 0;
         const s = this.app.media ? this.app.media.now() : null, on = s && s.status === 'playing';
         const { fmt } = require('./media');
+        const bar = (f, n) => { const k = Math.max(0, Math.min(n, Math.round(f * n))); return '▰'.repeat(k) + '▱'.repeat(n - k); };
         return { musik: this.music || '–', musik_titel: on ? s.title : '–', musik_kuenstler: on ? s.artist || '–' : '–', musik_app: on ? s.app : '–',
-            musik_zeit: on && s.dur ? fmt(s.pos) + '/' + fmt(s.dur) : '', afk: this.afkSince ? 'AFK' : '', afk_zeit: afk + ' min', spieler_neu: this.lastPlayer || '–' };
+            musik_zeit: on && s.dur ? fmt(s.pos) + '/' + fmt(s.dur) : '', musik_balken: on && s.dur ? bar(s.pos / s.dur, 10) : '', afk: this.afkSince ? 'AFK' : '', afk_zeit: afk + ' min', spieler_neu: this.lastPlayer || '–' };
     }
     async action(act, input) {
         switch (act) {

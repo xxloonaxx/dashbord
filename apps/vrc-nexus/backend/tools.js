@@ -140,9 +140,10 @@ class Tools {
         if (this.app.backup) this.app.backup.start();
         if (this.app.chatmods) this.app.chatmods.start();
         if (this.app.media && this.settings.get('media.smtc') !== false) this.app.media.start();
+        if (this.app.osctools) this.app.osctools.start();
         if (this.app.osclog && !this.oscLogOn) { this.oscLogOn = true; this.app.osclog.attach(this.app.game.osc); }
     }
-    stop() { if (this.timer) clearInterval(this.timer); this.timer = null; if (this.app.auto) this.app.auto.stop(); if (this.app.insights) this.app.insights.stop(); if (this.app.osclog) this.app.osclog.stop(); if (this.app.stream) this.app.stream.stop(); if (this.app.chatmods) this.app.chatmods.stop(); if (this.app.media) this.app.media.stop(); this.api.stop(); this.rpc.close(); }
+    stop() { if (this.timer) clearInterval(this.timer); this.timer = null; if (this.app.auto) this.app.auto.stop(); if (this.app.insights) this.app.insights.stop(); if (this.app.osclog) this.app.osclog.stop(); if (this.app.stream) this.app.stream.stop(); if (this.app.chatmods) this.app.chatmods.stop(); if (this.app.media) this.app.media.stop(); if (this.app.osctools) this.app.osctools.stop(); this.api.stop(); this.rpc.close(); }
     applySettings(changed) {
         const all = changed.includes('*');
         if (all || changed.some(k => k.startsWith('int.api') || k === 'int.obs')) this.api.apply();

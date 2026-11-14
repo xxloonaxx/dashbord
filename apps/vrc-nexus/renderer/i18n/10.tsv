@@ -103,3 +103,62 @@ Welten, Begegnungen, Avatare, Videos aus dem VRChat-Log.	Worlds, encounters, ava
 Freunde online & VRChat weltweit.	Friends online & VRChat worldwide.	Amis en ligne & VRChat dans le monde.	オンラインのフレンドと世界のVRChat。
 Nur erledigte – offene bei VRChat bleiben immer.	Only handled ones – open ones at VRChat always stay.	Seulement celles traitées – celles ouvertes chez VRChat restent toujours.	処理済みのみ。VRChatで未処理のものは常に残ります。
 Wird bei Bedarf neu von VRChat geladen.	Reloaded from VRChat when needed.	Rechargé depuis VRChat si nécessaire.	必要に応じてVRChatから再取得されます。
+Schnelltexte	Quick texts	Textes rapides	クイックテキスト
+＋ Schnelltext aus Feld	＋ Quick text from field	＋ Texte rapide depuis le champ	＋ 入力欄からクイックテキスト
+Noch keine – Text oben eingeben und „＋ Schnelltext“.	None yet – enter text above and click “＋ Quick text”.	Aucun pour l'instant – saisis un texte ci-dessus puis « ＋ Texte rapide ».	まだありません。上にテキストを入力して「＋ クイックテキスト」を押してください。
+Name (optional)	Name (optional)	Nom (facultatif)	名前（任意）
+Geplant	Scheduled	Planifié	予約済み
+oder in	or in	ou dans	または
+Min.	Min.	Min.	分
+⏰ Feld-Text planen	⏰ Schedule field text	⏰ Planifier le texte	⏰ 入力テキストを予約
+Gesendete Nachrichten erscheinen hier.	Sent messages appear here.	Les messages envoyés apparaissent ici.	送信したメッセージがここに表示されます。
+Verlauf leeren	Clear history	Vider l'historique	履歴を消去
+Ins Feld	Into the field	Dans le champ	入力欄へ
+Erneut senden	Send again	Renvoyer	再送信
+Erst oben einen Text eingeben.	Enter a text above first.	Saisis d'abord un texte ci-dessus.	まず上にテキストを入力してください。
+Schnelltext gespeichert.	Quick text saved.	Texte rapide enregistré.	クイックテキストを保存しました。
+Geplant für #:#.	Scheduled for #:#.	Planifié pour #:#.	#:#に予約しました。
+Vorschau:	Preview:	Aperçu :	プレビュー：
+# / 144 – wird aufgeteilt	# / 144 – will be split	# / 144 – sera découpé	# / 144 – 分割して送信
+💬 gesendet	💬 sent	💬 envoyé	💬 送信しました
+OSC-Werkzeuge	OSC tools	Outils OSC	OSCツール
+Port-Test	Port test	Test des ports	ポートテスト
+Prüft, ob VRC Nexus OSC empfangen kann, ob gerade etwas von VRChat ankommt und ob Senden klappt.	Checks whether VRC Nexus can receive OSC, whether anything is arriving from VRChat and whether sending works.	Vérifie si VRC Nexus peut recevoir de l'OSC, si quelque chose arrive de VRChat et si l'envoi fonctionne.	VRC NexusがOSCを受信できるか、VRChatから何か届いているか、送信できるかを確認します。
+Test starten	Start test	Lancer le test	テスト開始
+Empfang auf Port # funktioniert	Receiving on port # works	La réception sur le port # fonctionne	ポート#での受信は正常です
+Empfang auf Port # gestört (Selbsttest kam nicht an)	Receiving on port # is broken (self-test did not arrive)	Réception sur le port # perturbée (l'auto-test n'est pas arrivé)	ポート#の受信に問題があります（セルフテストが届きません）
+Empfang auf Port # gestört (Empfang ist ausgeschaltet)	Receiving on port # is broken (receiving is turned off)	Réception sur le port # perturbée (réception désactivée)	ポート#の受信に問題があります（受信がオフです）
+VRChat sendet (zuletzt vor # s)	VRChat is sending (last # s ago)	VRChat envoie (dernier il y a # s)	VRChatから受信中（最終#秒前）
+Von VRChat kam seit # s nichts – ist VRChat offen?	Nothing from VRChat for # s – is VRChat open?	Rien de VRChat depuis # s – VRChat est-il ouvert ?	#秒間VRChatから何も届いていません。VRChatは起動していますか？
+Von VRChat kam noch nichts – VRChat starten und OSC im Action-Menü einschalten	Nothing from VRChat yet – start VRChat and enable OSC in the Action Menu	Rien de VRChat pour l'instant – lance VRChat et active l'OSC dans le menu d'action	まだVRChatから何も届いていません。VRChatを起動し、アクションメニューでOSCをオンにしてください
+Senden an #.#.#.#:# klappt	Sending to #.#.#.#:# works	L'envoi vers #.#.#.#:# fonctionne	#.#.#.#:#への送信は正常です
+Parameter-Szenen	Parameter scenes	Scènes de paramètres	パラメーターシーン
+Speichert die aktuellen Werte deiner Avatar-Parameter (ohne VRChat-eigene) – später mit einem Klick wieder setzen.	Saves the current values of your avatar parameters (without VRChat's own) – set them again later with one click.	Enregistre les valeurs actuelles des paramètres de ton avatar (sans ceux de VRChat) – à réappliquer plus tard en un clic.	アバターパラメーターの現在値を保存します（VRChat標準のものを除く）。後でワンクリックで再設定できます。
+Gerade empfangen:	Currently received:	Actuellement reçus :	現在受信中：
+＋ Aktuellen Stand speichern	＋ Save current state	＋ Enregistrer l'état actuel	＋ 現在の状態を保存
+Name, z. B. Party-Outfit	Name, e.g. party outfit	Nom, p. ex. tenue de fête	名前（例：パーティー衣装）
+▶ Setzen	▶ Apply	▶ Appliquer	▶ 適用
+# Werte	# values	# valeurs	#個の値
+anderer Avatar	other avatar	autre avatar	別のアバター
+Szene löschen?	Delete scene?	Supprimer la scène ?	シーンを削除しますか？
+Szene gespeichert.	Scene saved.	Scène enregistrée.	シーンを保存しました。
+# Parameter gesetzt.	# parameters set.	# paramètres appliqués.	#個のパラメーターを設定しました。
+Aufnahme & Wiedergabe	Recording & playback	Enregistrement & lecture	録画と再生
+Nimmt Änderungen deiner Avatar-Parameter mit Zeitablauf auf (z. B. eine Geste oder Show) und spielt sie wieder ab.	Records changes to your avatar parameters over time (e.g. a gesture or show) and plays them back.	Enregistre les changements de tes paramètres d'avatar dans le temps (p. ex. un geste ou un show) et les rejoue.	アバターパラメーターの変化を時間ごとに記録（ジェスチャーやショーなど）し、再生します。
+⏺ Aufnehmen	⏺ Record	⏺ Enregistrer	⏺ 録画
+⏺ Aufnahme läuft …	⏺ Recording …	⏺ Enregistrement …	⏺ 録画中 …
+⏹ Stopp & speichern	⏹ Stop & save	⏹ Arrêter & enregistrer	⏹ 停止して保存
+▶ Wiedergabe läuft …	▶ Playing …	▶ Lecture …	▶ 再生中 …
+Aufnahme gespeichert: # Änderungen in # s.	Recording saved: # changes in # s.	Enregistrement sauvegardé : # changements en # s.	録画を保存しました：#秒間で#件の変更。
+Aufnahme löschen?	Delete recording?	Supprimer l'enregistrement ?	録画を削除しますか？
+Nichts aufgenommen – es kamen keine Avatar-Parameter von VRChat (OSC an?).	Nothing recorded – no avatar parameters came from VRChat (is OSC on?).	Rien d'enregistré – aucun paramètre d'avatar reçu de VRChat (OSC activé ?).	何も録画されませんでした。VRChatからアバターパラメーターが届いていません（OSCはオン？）。
+Weiterleitung	Forwarding	Transfert	転送
+Leitet alles, was VRChat an VRC Nexus schickt, zusätzlich an andere OSC-Programme weiter (z. B. Gesichts-Tracking, Haptik). Je Zeile	Forwards everything VRChat sends to VRC Nexus to other OSC programs as well (e.g. face tracking, haptics). One per line:	Transmet aussi tout ce que VRChat envoie à VRC Nexus vers d'autres programmes OSC (p. ex. suivi du visage, haptique). Un par ligne :	VRChatからVRC Nexusに届くすべてを、他のOSCプログラム（フェイストラッキング、ハプティクスなど）にも転送します。1行に1つ：
+nur im eigenen Netz.	only on your own network.	uniquement sur ton propre réseau.	自分のネットワーク内のみ。
+Weiterleitung an	Forwarding on	Transfert activé	転送オン
+Weiterleitung gespeichert.	Forwarding saved.	Transfert enregistré.	転送設定を保存しました。
+# Pakete weitergeleitet	# packets forwarded	# paquets transférés	#個のパケットを転送
+Noch keine Avatar-Parameter empfangen – OSC in VRChat einschalten und kurz warten.	No avatar parameters received yet – turn on OSC in VRChat and wait a moment.	Aucun paramètre d'avatar reçu – active l'OSC dans VRChat et patiente un peu.	まだアバターパラメーターを受信していません。VRChatでOSCをオンにして少し待ってください。
+Erkennt alles aus der Windows-Mediensteuerung. Platzhalter	Detects everything from the Windows media controls. Placeholder	Détecte tout ce qui passe par les contrôles multimédias de Windows. Variable	Windowsのメディアコントロールからすべて検出。プレースホルダー
+für Rotator & Automatik.	for rotator & automation.	pour le rotateur & l'automatisation.	ローテーターと自動化用。
+Profil gespeichert.	Profile saved.	Profil enregistré.	プロフィールを保存しました。

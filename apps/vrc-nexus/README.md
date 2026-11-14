@@ -20,6 +20,21 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 2.1.0 – Chatbox-Extras, OSC-Werkzeuge, Profil vorbefüllt
+- **💬 Chatbox** (Spiel & OSC → Live & OSC):
+  - **⚡ Schnelltexte** mit Platzhaltern – Klick sendet, Umschalt+Klick holt den Text ins Feld.
+  - **Live-Vorschau** mit ausgefüllten Platzhaltern und Zähler (über 144 Zeichen wird aufgeteilt; das Feld nimmt jetzt bis zu 400 Zeichen).
+  - **🕘 Verlauf** der gesendeten Nachrichten: ✎ ins Feld oder ↻ erneut senden.
+  - **⏰ Geplante Nachrichten** zu einer Uhrzeit oder in N Minuten.
+  - Neuer Platzhalter `{musik_balken}` (▰▰▰▱▱▱) für Rotator, Module und Automatik.
+- **🧰 OSC-Werkzeuge** (neuer Reiter):
+  - **Port-Test**: Empfang (Selbsttest), kommt etwas von VRChat, klappt Senden.
+  - **Parameter-Szenen**: aktuelle Avatar-Werte (ohne VRChat-eigene) speichern und mit einem Klick wieder setzen.
+  - **Aufnahme & Wiedergabe** von Parameter-Änderungen mit Zeitablauf (½×, 1×, 2×).
+  - **Weiterleitung** von allem, was VRChat schickt, an weitere OSC-Programme (nur eigenes Netz, Schleifenschutz).
+- **Mein Profil**: Bio und Links werden automatisch mit dem vorbefüllt, was bei VRChat steht (VRChat liefert sie nur noch im öffentlichen Profil).
+- **Aufräumen** ist jetzt ehrlich: früher löschte der Abgleich fest Verlauf > 180 und Messwerte > 90 Tage – jetzt steuern das nur noch die Einstellungen (Vorgaben: Verlauf 180 Tage, Messwerte 1 Jahr, Spiel-Log & Benachrichtigungen für immer).
+
 ### Neu in 2.0.0 – Fix: Updater fand keine 1.10-Versionen
 - **Fix Auto-Update:** GitHub liefert die Release-Liste nach Text sortiert (1.9.2 vor 1.10.0) – der Updater las nur die ersten 20 Einträge und sah 1.10.x deshalb nie. Jetzt werden alle Seiten geladen und die höchste Versionsnummer gesucht.
 - Deshalb der Sprung auf **2.0.0**: „2.0.0“ steht auch in GitHubs Textsortierung ganz oben – so finden auch ältere Versionen mit dem alten Updater dieses Update von selbst.

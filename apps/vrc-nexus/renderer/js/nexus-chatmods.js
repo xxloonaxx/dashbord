@@ -5,7 +5,7 @@
     const esc = UI.esc, api = (a, d) => UI.api(a, d), toast = (m, bad) => UI.toast(m, bad);
     // Platzhalter je Modul (für die Hilfe-Chips unter der Vorlage)
     const PH = {
-        status: ['status_text', 'afk_text'], window: ['fenster', 'fenster_prozess', 'fenster_titel', 'modus'], media: ['musik'], vrchat: ['welt', 'spieler', 'avatar', 'dauer'],
+        status: ['status_text', 'afk_text'], window: ['fenster', 'fenster_prozess', 'fenster_titel', 'modus'], media: ['musik', 'musik_titel', 'musik_kuenstler', 'musik_app', 'musik_zeit', 'musik_balken'], vrchat: ['welt', 'spieler', 'avatar', 'dauer'],
         time: ['zeit', 'zeit_s', 'zone', 'zeitzone', 'datum', 'wochentag'], weather: ['wetter_symbol', 'wetter', 'temp', 'temp_gefuehlt', 'wind', 'luftfeuchte', 'ort'],
         system: ['cpu', 'gpu', 'gpu_temp', 'gpu_watt', 'ram', 'ram_pct', 'vram', 'gpu_name'], network: ['netz_down', 'netz_up', 'netz_spitze_down', 'netz_spitze_up', 'netz_summe_down', 'netz_summe_up'],
         twitch: ['twitch_zuschauer', 'twitch_spiel', 'twitch_dauer', 'twitch_kanal'], heart: ['puls'],

@@ -10,6 +10,7 @@ const { VrcAuthError, UserError, now, str, int, cut, arr } = U;
 const { Vrc, UID, SYNC_MIN, OFFLINE_SYNC, FEED_KEEP_DAYS, VERSION } = require('./vrchat');
 const { Extra, NOTIF_TYPES, NOTIF_RESPONSES } = require('./extra');
 const { GameLog, KINDS } = require('./gamelog');
+const { OscTools } = require('./osctools');
 const { Media } = require('./media');
 const { Settings } = require('./settings');
 const { Tools } = require('./tools');
@@ -64,6 +65,7 @@ class NexusApp {
         this.chatmods = opts.mobile ? null : new ChatMods(this, opts.crypt);
         this.tts = opts.mobile ? null : new Tts(this, opts.crypt);
         this.media = opts.mobile ? null : new Media(this);
+        this.osctools = opts.mobile ? null : new OscTools(this);
         this.vrc.onWatch = (name, world) => { if (this.settings.get('notify.watch')) this.tools.alert('🟢 ' + name + ' ist online', world ? 'in ' + world : 'gerade ins Spiel gekommen'); };
         this.vrc.onWatchEvent = (name, kind, world) => {
             const s = this.settings;
@@ -153,6 +155,7 @@ class NexusApp {
             if (act === 'cancel_login') { this.vrc.pending = null; return { ok: true }; }
             if (act.startsWith('client_')) return await this.client(act, input);
             if (act.startsWith('cam_')) return await this.cam.action(act, input);
+            if (act.startsWith('cbx_') || act.startsWith('osct_')) { if (!this.osctools) throw new UserError('Nur in der Windows-App.'); return await this.osctools.action(act, input); }
             if (act === 'media_status') return this.media ? this.media.status() : { available: false };
             if (act === 'media_ctl') { if (!this.media) throw new UserError('Nur in der Windows-App.'); return this.media.control(str(input.cmd), str(input.id)); }
             if (act.startsWith('auto_')) return await this.auto.action(act, input);
@@ -197,6 +200,7 @@ class NexusApp {
                 let sent = null;
                 if (str(input.kind) === 'chatbox' && truthy(input.translate)) { const c = await this.tr.chat(str(input.text), str(input.target)); input = Object.assign({}, input, { text: c.text }); sent = c.text; }
                 const nid = await g.oscSend(str(input.kind), input);
+                if (str(input.kind) === 'chatbox' && this.osctools && !truthy(input.clear)) this.osctools.addHist(sent || str(input.text));
                 // getippte Chatbox-Nachricht zusätzlich vorlesen (Sprachausgabe → „Chatbox-Nachrichten sprechen“)
                 if (str(input.kind) === 'chatbox' && this.tts && !truthy(input.clear)) { const tc = this.tts.cfg(); if (tc.enabled && tc.on_chat) this.tts.say(sent || str(input.text), 'chatbox').catch(() => {}); }
                 return { id: nid, osc: g.oscRecent(), sent };
@@ -883,10 +887,17 @@ class NexusApp {
                 if (act === 'moderate') await call('POST', '/auth/user/playermoderations', {}, body); else await call('PUT', '/auth/user/unplayermoderate', {}, body);
                 return { msg: act === 'moderate' ? 'Erledigt.' : 'Aufgehoben.' };
             }
+            case 'profile_get': {   // /auth/user liefert kein bio/bioLinks mehr → aus dem öffentlichen Profil nachladen
+                const u = await call('GET', '/users/' + enc(acc.vrc_id));
+                const prof = { pronouns: str(u.pronouns), bio: str(u.bio), links: arr(u.bioLinks).map(str).filter(l => /^https?:\/\/\S+$/i.test(l)).slice(0, 3) };
+                const me = Object.assign({}, acc.me || {}, { bio: prof.bio, bioLinks: prof.links, pronouns: prof.pronouns || str((acc.me || {}).pronouns) });
+                db.prepare('UPDATE accounts SET me_json = ? WHERE user_id = ?').run(JSON.stringify(U.meSlim(me)), UID);
+                return prof;
+            }
             case 'profile_save': {
                 const links = arr(input.links).map(l => str(l).trim()).filter(l => /^https?:\/\/\S+$/i.test(l)).slice(0, 3);
                 const u = await call('PUT', '/users/' + enc(acc.vrc_id), {}, { bio: cut(str(input.bio), 512), pronouns: cut(str(input.pronouns).trim(), 32), bioLinks: links });
-                if (u && u.id) db.prepare('UPDATE accounts SET me_json = ? WHERE user_id = ?').run(JSON.stringify(U.meSlim(u)), UID);
+                if (u && u.id) db.prepare('UPDATE accounts SET me_json = ? WHERE user_id = ?').run(JSON.stringify(U.meSlim(Object.assign({}, acc.me || {}, u, { bio: u.bio !== undefined ? u.bio : cut(str(input.bio), 512), bioLinks: u.bioLinks !== undefined ? u.bioLinks : links }))), UID);
                 return { msg: 'Profil gespeichert.' };
             }
             case 'settings': {

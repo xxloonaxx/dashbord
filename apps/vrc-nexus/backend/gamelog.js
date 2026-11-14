@@ -257,6 +257,7 @@ class Osc {
             let list = [];
             try { list = oscDecode(msg); } catch (e) { return; }
             this.lastPacket = Date.now();
+            if (this.rawTaps) for (const f of this.rawTaps) { try { f(msg); } catch (e) { /* egal */ } }   // z. B. Weiterleitung (osctools)
             for (const [address, args] of list) {
                 if (address === '/avatar/change' && args.length) { this.avatarId = str(args[0]); this.params = {}; }
                 else if (address.startsWith('/avatar/parameters/') && args.length) {
@@ -265,6 +266,7 @@ class Osc {
                 }
                 else if (address.startsWith('/usercamera/') && args.length) this.cam[address.slice(12)] = args.length === 1 ? args[0] : args;
                 if (this.onMessage) { try { this.onMessage(address, args); } catch (e) { /* egal */ } }
+                if (this.taps) for (const f of this.taps) { try { f(address, args); } catch (e) { /* egal */ } }
             }
         });
         s.bind(int(port) || 9001, '127.0.0.1');

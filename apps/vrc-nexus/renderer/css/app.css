@@ -476,3 +476,28 @@ body.mobile .vx-hbtn em { display: none; } body.mobile .vx-hbtn { min-width: 48p
 .vx-hdirect kbd { font-size: 0.56rem; padding: 0 4px; margin-left: 2px; border: 1px solid var(--border-color); border-radius: 3px; letter-spacing: 0; text-transform: none; }
 .vx-hdirect:hover span { transform: rotate(-30deg); }
 body.mobile .vx-hdirect kbd { display: none; }
+
+/* Chatbox-Extras & OSC-Werkzeuge */
+.cbx-prev { font-size: 0.78rem; margin: 4px 0; padding: 4px 8px; border-left: 2px solid rgba(var(--accent-rgb), 0.5); background: rgba(var(--accent-rgb), 0.06); white-space: pre-wrap; word-break: break-word; }
+.cbx-prev b { white-space: nowrap; margin-left: 6px; color: var(--accent-cyan); }
+.cbx-prev b.cbx-over { color: var(--accent-gold); }
+.cbx-quick { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.cbx-q { display: inline-flex; }
+.cbx-q .chip { border-right: 0; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cbx-x { background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); cursor: pointer; padding: 0 7px; font-size: 0.7rem; }
+.cbx-row .cbx-x { border: 0; }
+.cbx-x:hover { color: var(--accent-red); border-color: var(--accent-red); }
+.cbx-list { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; max-height: 260px; overflow: auto; }
+.cbx-row { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 4px; font-size: 0.82rem; }
+.cbx-row:hover { background: rgba(var(--accent-rgb), 0.06); }
+.cbx-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cbx-row .muted, .cbx-row .mono { white-space: nowrap; }
+#cbxBox input[type=text], #cbxBox input[type=time], #cbxBox input[type=number] { width: auto; flex: 1 1 100px; margin: 0; }
+.ot-t { font-size: 0.85rem; padding: 3px 0; }
+.ot-t.ok { color: var(--accent-green, #4ade80); }
+.ot-t.bad { color: var(--accent-gold); }
+.ot-rec { padding: 8px; border: 1px solid var(--accent-red); border-radius: 6px; margin-bottom: 8px; font-size: 0.85rem; animation: otPulse 1.6s ease-in-out infinite; }
+@keyframes otPulse { 50% { border-color: rgba(var(--accent-rgb), 0.3); } }
+#otBox textarea { width: 100%; font-family: var(--mono, monospace); }
+#otBox .nc-row input[type=text] { flex: 1 1 140px; width: auto; margin: 0; }
+.ot-speed { width: auto; margin: 0; padding: 2px 4px; }

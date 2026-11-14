@@ -14,7 +14,7 @@ const SYNC_MIN = 45;
 const OFFLINE_SYNC = 900;
 const FEED_KEEP_DAYS = 180;
 const UID = 1;   // die App hat genau ein Konto
-const VERSION = '2.0.0';
+const VERSION = '2.1.0';
 
 class Vrc {
     /**
@@ -277,9 +277,12 @@ class Vrc {
             let cOn = 0, cAct = 0;
             for (const id of Object.keys(fetched)) { if (onlineIds.has(id)) cOn++; else if (activeIds.has(id)) cAct++; }
             db.prepare('INSERT INTO stats (user_id, ts, online, active, total) VALUES (?, ?, ?, ?, ?)').run(UID, t, onlineIds.size || cOn, activeIds.size || cAct, allIds.size || Object.keys(fetched).length);
-            db.prepare('DELETE FROM stats WHERE user_id = ? AND ts < ?').run(UID, t - 90 * 86400);
-            db.prepare('DELETE FROM feed WHERE user_id = ? AND ts < ?').run(UID, t - FEED_KEEP_DAYS * 86400);
-            db.prepare("UPDATE accounts SET me_json = ?, display_name = ?, avatar = ?, last_error = '' WHERE user_id = ?").run(JSON.stringify(U.meSlim(me)), str(me.displayName), U.userImage(me), UID);
+            // Alte Einträge löscht jetzt tools.cleanup() nach den Einstellungen „Aufräumen“ (vorher fest: Verlauf 180, Messwerte 90 Tage)
+            // /auth/user enthält kein bio/bioLinks mehr → zuletzt bekannte Werte (aus /users/…) behalten
+            const prevMe = (() => { try { return JSON.parse(db.prepare('SELECT me_json FROM accounts WHERE user_id = ?').value(UID) || '{}') || {}; } catch (e) { return {}; } })();
+            const keepMe = Object.assign({}, me);
+            for (const k of ['bio', 'bioLinks', 'pronouns']) if (keepMe[k] === undefined && prevMe[k] !== undefined) keepMe[k] = prevMe[k];
+            db.prepare("UPDATE accounts SET me_json = ?, display_name = ?, avatar = ?, last_error = '' WHERE user_id = ?").run(JSON.stringify(U.meSlim(keepMe)), str(me.displayName), U.userImage(me), UID);
         });
         const l = U.location(me.location);
         if (l.world) worlds.push(l.world);

@@ -47,6 +47,7 @@
                 <button type="button" class="chip" data-sub="live">📡 Live &amp; OSC</button>
                 <button type="button" class="chip" data-sub="params">🎚 Parameter</button>
                 <button type="button" class="chip" data-sub="osclog">📜 OSC-Log</button>
+                <button type="button" class="chip" data-sub="osctools">🧰 OSC-Werkzeuge</button>
                 <button type="button" class="chip" data-sub="mods">🧩 Chatbox-Module</button>
                 <button type="button" class="chip" data-sub="cam">📷 Kamera</button>
                 <button type="button" class="chip" data-sub="macros">⚡ Makros</button>
@@ -62,7 +63,8 @@
                 <div class="nc-grid">
                     <form class="nc-card" id="ncChat">
                         <h4>💬 Chatbox</h4>
-                        <textarea name="text" maxlength="144" rows="3" placeholder="Text für die VRChat-Chatbox (max. 144 Zeichen)"></textarea>
+                        <textarea name="text" maxlength="400" rows="3" placeholder="Text für die VRChat-Chatbox (144 Zeichen je Nachricht, längere werden aufgeteilt) – Platzhalter wie {uhr} {musik} gehen auch"></textarea>
+                        <div class="cbx-prev" id="cbxPrev" hidden></div>
                         <div class="nc-row"><span class="muted small" id="ncChatN">0 / 144</span>
                             <label class="check small"><input type="checkbox" name="sound" checked> Ton</label>
                             <button type="button" class="btn btn-sm" data-typing="1" title="Tipp-Anzeige ein">⌨️ tippt …</button>
@@ -70,6 +72,7 @@
                             <button class="btn btn-sm btn-gold">Senden</button></div>
                         <button type="button" class="nc-link" data-save="chatbox">☆ als Schnellknopf speichern</button>
                     </form>
+                    <div class="nc-card" id="cbxBox"></div>
                     <form class="nc-card" id="ncParam">
                         <h4>🎛️ Avatar-Parameter</h4>
                         <div class="nc-row"><input type="text" name="name" placeholder="Parametername, z. B. Ears_Wiggle" list="ncParamList" required>
@@ -105,6 +108,7 @@
                 <div class="nc-pgrid" id="ncPList"></div>
             </div>
             <div class="nc-pane" data-p="mods" hidden><div id="cmBox"></div></div>
+            <div class="nc-pane" data-p="osctools" hidden><div id="otBox"></div></div>
             <div class="nc-pane" data-p="tts" hidden><div id="ttsBox"></div></div>
             <div class="nc-pane" data-p="osclog" hidden>
                 <div class="nc-row nc-filter">
@@ -338,6 +342,8 @@
         if (name === 'params') loadParams();
         if (name === 'cam') loadCam();
         if (name === 'osclog') loadOscLog();
+        if (name === 'live' && window.NexusOscTools) window.NexusOscTools.chat();
+        if (name === 'osctools' && window.NexusOscTools) window.NexusOscTools.open();
         if (name === 'mods' && window.NexusChatMods) window.NexusChatMods.open(document.getElementById('cmBox'));
         if (name === 'tts' && window.NexusTts) window.NexusTts.open(document.getElementById('ttsBox'));
         if (name === 'macros') loadMacros();

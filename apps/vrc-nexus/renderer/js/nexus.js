@@ -1590,12 +1590,24 @@
         f.desc.value = v.desc; f.dataset.touched = '1';
         f.requestSubmit();
     });
+    let profFetched = false;
     function fillProfile() {
         const f = $('#profileForm');
         if (f.dataset.touched) return;
         f.pronouns.value = state.me.pronouns || '';
         f.bio.value = state.me.bio || '';
         $$('input[name="links[]"]', f).forEach((i, k) => { i.value = (state.me.links || [])[k] || ''; });
+        // Bio & Links fehlen in den Kontodaten von VRChat → einmal aus dem öffentlichen Profil holen
+        if (!profFetched && !state.me.bio && !(state.me.links || []).length) {
+            profFetched = true;
+            api('profile_get').then(p => {
+                Object.assign(state.me, { bio: p.bio, links: p.links, pronouns: p.pronouns || state.me.pronouns });
+                if (f.dataset.touched) return;
+                f.pronouns.value = state.me.pronouns || '';
+                f.bio.value = p.bio || '';
+                $$('input[name="links[]"]', f).forEach((i, k) => { i.value = p.links[k] || ''; });
+            }).catch(() => { profFetched = false; });
+        }
     }
     $('#profileForm').addEventListener('input', e => { e.currentTarget.dataset.touched = '1'; });
     $('#profileForm').addEventListener('submit', e => {

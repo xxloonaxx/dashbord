@@ -805,7 +805,7 @@ test('1.10.2: Spielt gerade über die Windows-Mediensteuerung (Sitzungen, Platzh
     app.game.osc.stopListen();
     try {
         app.media.start();
-        const wait = async f => { for (let i = 0; i < 60 && !f(); i++) await new Promise(r => setTimeout(r, 100)); assert.ok(f(), 'Zeitüberschreitung'); };
+        const wait = async f => { for (let i = 0; i < 60 && !f(); i++) await new Promise(r => setTimeout(r, 100)); assert.ok(f(), 'Zeitüberschreitung bei ' + f.toString().slice(0, 90)); };
         await wait(() => app.media.now());
         const n = app.media.now();
         assert.strictEqual(n.app, 'Spotify'); assert.strictEqual(n.status, 'playing'); assert.strictEqual(n.title, 'Harder, Better, Faster, Stronger');
@@ -851,7 +851,7 @@ test('1.10.3: echtes PowerShell-Skript der Mediensteuerung antwortet (nur Window
     } finally { m.stop(); }
 });
 
-test('1.10.7: Datenbank aufräumen – Vorgabe löscht nichts, Zeiträume greifen, offene Benachrichtigungen bleiben', async () => {
+test('2.1.0: Datenbank aufräumen – „für immer“ löscht nichts, Zeiträume greifen, offene Benachrichtigungen bleiben', async () => {
     const { NexusApp } = require('../backend/app');
     const db = await openDatabase(null);
     const app = new NexusApp({ db, crypt: { encrypt: s => s, decrypt: s => s }, host: { userData: os.tmpdir() } });
@@ -865,8 +865,10 @@ test('1.10.7: Datenbank aufräumen – Vorgabe löscht nichts, Zeiträume greife
     db.prepare("INSERT INTO notif_log (user_id, id, type, created, active) VALUES (1, 'not_a', 'invite', ?, 1)").run(old);
     db.prepare("INSERT INTO notif_log (user_id, id, type, created, active) VALUES (1, 'not_b', 'invite', ?, 0)").run(old);
     const rows = k => app.tools.dbInfo().tables.find(t => t.key === k).rows;
+    app.settings.save({ 'sys.keep_feed': '0', 'sys.keep_stats': '0' });
     let r = app.tools.cleanup(false);
-    assert.strictEqual(rows('feed'), 2, 'Vorgabe „für immer“ löscht keinen Verlauf');
+    assert.strictEqual(rows('feed'), 2, '„für immer“ löscht keinen Verlauf');
+    assert.strictEqual(rows('stats'), 2);
     assert.strictEqual(rows('cache'), 1, 'nur Zwischenspeicher älter als 30 Tage weg');
     app.settings.save({ 'sys.keep_feed': '365', 'sys.keep_stats': '365', 'sys.keep_notifs': '365' });
     r = app.tools.cleanup(true);
@@ -901,6 +903,73 @@ test('2.0.0: Updater findet 1.10.x, obwohl GitHub die Releases als Text sortiert
         const mob = await new Updater(Object.assign({}, fake, { mobile: true })).check();
         assert.strictEqual(mob.version, '1.10.8', 'auch auf Android');
     } finally { delete process.env.NEXUS_UPDATE_API; srv.close(); }
+});
+
+test('2.1: Chatbox-Extras (Schnelltexte, Verlauf, Planen, Vorschau) & OSC-Werkzeuge (Port-Test, Weiterleitung, Szenen, Aufnahme)', async () => {
+    const dgram = require('dgram');
+    const { oscEncode, oscDecode } = require('../backend/gamelog');
+    const { NexusApp } = require('../backend/app');
+    const db = await openDatabase(null);
+    const app = new NexusApp({ db, crypt: { encrypt: s => s, decrypt: s => s }, host: { userData: os.tmpdir() } });
+    const g = app.game, o = g.osc, t = app.osctools;
+    // „VRChat“ = UDP-Empfänger für das, was VRC Nexus sendet
+    const vr = dgram.createSocket('udp4'), got = [];
+    vr.on('message', m => { try { for (const [a, args] of oscDecode(m)) got.push([a, args[0]]); } catch (e) { /* egal */ } });
+    await new Promise(r => vr.bind(0, '127.0.0.1', r));
+    const lp = 39000 + Math.floor(Math.random() * 2000);
+    g.saveCfg({ osc_listen_port: lp, osc_listen: false });   // Empfangsport für den Port-Test; danach Ziel auf den Test-Empfänger
+    o.configure('127.0.0.1', vr.address().port);
+    o.listen(lp);
+    t.start();
+    const wait = async f => { for (let i = 0; i < 50 && !f(); i++) await new Promise(r => setTimeout(r, 50)); assert.ok(f(), 'Zeitüberschreitung bei ' + f.toString().slice(0, 90)); };
+    const toNexus = (a, v) => new Promise(r => { const s = dgram.createSocket('udp4'); s.send(oscEncode(a, v), lp, '127.0.0.1', () => { s.close(); r(); }); });
+    try {
+        // Chatbox: Vorschau mit Platzhalter, Senden → Verlauf, Schnelltexte, Planen
+        const pv = await app.post({ act: 'cbx_preview', text: 'Hallo /n {zufall:x|x}' }, {});
+        assert.ok(pv.text.includes('x') && pv.len > 5, JSON.stringify(pv));
+        let d = await app.post({ act: 'cbx_quick_save', text: 'Bin AFK {uhr}', label: 'AFK' }, {});
+        assert.strictEqual(d.quick[0].label, 'AFK');
+        d = await app.post({ act: 'cbx_send', text: 'Hallo Welt' }, {});
+        await wait(() => got.some(x => x[0] === '/chatbox/input' && x[1] === 'Hallo Welt'));
+        assert.strictEqual(d.hist[0].text, 'Hallo Welt');
+        d = await app.post({ act: 'cbx_sched_add', text: 'Gleich gehts los', mins: '5' }, {});
+        assert.strictEqual(d.sched.length, 1); assert.ok(d.sched[0].at > Date.now() + 4 * 60000);
+        await assert.rejects(app.post({ act: 'cbx_sched_add', text: 'x', at: '25:99' }, {}));
+        db.setSetting('cbx_sched', JSON.stringify([{ id: 'a', text: 'Jetzt fällig', at: Date.now() - 1000 }]));
+        t.tick();
+        await wait(() => got.some(x => x[1] === 'Jetzt fällig'));
+        assert.strictEqual(t.cbx().sched.length, 0, 'fällige Nachricht gesendet und entfernt');
+        // Port-Test: Selbsttest über den Empfangsport
+        const pt = await app.post({ act: 'osct_test' }, {});
+        assert.ok(pt.listen.open && pt.listen.self && pt.send.ok, JSON.stringify(pt));
+        // Szenen: empfangene Parameter (ohne VRChat-eigene) speichern und wieder setzen
+        await toNexus('/avatar/parameters/Ears', true); await toNexus('/avatar/parameters/Hue', 0.25); await toNexus('/avatar/parameters/VelocityX', 1.5);
+        await wait(() => o.params.Ears === true && o.params.Hue === 0.25);
+        d = await app.post({ act: 'osct_scene_save', name: 'Test' }, {});
+        assert.strictEqual(d.scenes[0].n, 2, 'VelocityX (VRChat-eigen) nicht gespeichert');
+        got.length = 0;
+        await app.post({ act: 'osct_scene_apply', id: d.scenes[0].id }, {});
+        await wait(() => got.some(x => x[0] === '/avatar/parameters/Ears' && x[1] === true) && got.some(x => x[0] === '/avatar/parameters/Hue' && Math.abs(x[1] - 0.25) < 1e-6));
+        // Weiterleitung: eingehende Pakete gehen zusätzlich an ein anderes Programm
+        const other = dgram.createSocket('udp4'), fwd = [];
+        other.on('message', m => { for (const [a] of oscDecode(m)) fwd.push(a); });
+        await new Promise(r => other.bind(0, '127.0.0.1', r));
+        await assert.rejects(app.post({ act: 'osct_fwd', on: '1', targets: '8.8.8.8:9000' }, {}), /eigenen Netz/);
+        await assert.rejects(app.post({ act: 'osct_fwd', on: '1', targets: '127.0.0.1:' + lp }, {}), /Schleife/);
+        await app.post({ act: 'osct_fwd', on: '1', targets: '127.0.0.1:' + other.address().port }, {});
+        await toNexus('/avatar/parameters/Tail', 3);
+        await wait(() => fwd.includes('/avatar/parameters/Tail'));
+        other.close();
+        // Aufnahme & Wiedergabe
+        await app.post({ act: 'osct_rec_start', name: 'Wedeln', max: 10 }, {});
+        await toNexus('/avatar/parameters/Wag', 1); await new Promise(r => setTimeout(r, 120)); await toNexus('/avatar/parameters/Wag', 0);
+        await new Promise(r => setTimeout(r, 100));
+        d = await app.post({ act: 'osct_rec_stop' }, {});
+        assert.ok(d.recs[0].n >= 2, JSON.stringify(d.recs));
+        got.length = 0;
+        await app.post({ act: 'osct_rec_play', id: d.recs[0].id, speed: 4 }, {});
+        await wait(() => got.filter(x => x[0] === '/avatar/parameters/Wag').length >= 2);
+    } finally { t.stop(); o.stopListen(); vr.close(); app.tools.stop(); }
 });
 
 test('1.7: Wörterbuch (EN/FR/JA) vollständig und Platzhalter stimmen', () => {

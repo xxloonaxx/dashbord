@@ -1,5 +1,10 @@
 [
  {
+  "version": "2.1.0",
+  "title": "Chatbox-Extras, OSC-Werkzeuge, Profil vorbefüllt",
+  "body": "- **💬 Chatbox** (Spiel & OSC → Live & OSC):\n  - **⚡ Schnelltexte** mit Platzhaltern – Klick sendet, Umschalt+Klick holt den Text ins Feld.\n  - **Live-Vorschau** mit ausgefüllten Platzhaltern und Zähler (über 144 Zeichen wird aufgeteilt; das Feld nimmt jetzt bis zu 400 Zeichen).\n  - **🕘 Verlauf** der gesendeten Nachrichten: ✎ ins Feld oder ↻ erneut senden.\n  - **⏰ Geplante Nachrichten** zu einer Uhrzeit oder in N Minuten.\n  - Neuer Platzhalter `{musik_balken}` (▰▰▰▱▱▱) für Rotator, Module und Automatik.\n- **🧰 OSC-Werkzeuge** (neuer Reiter):\n  - **Port-Test**: Empfang (Selbsttest), kommt etwas von VRChat, klappt Senden.\n  - **Parameter-Szenen**: aktuelle Avatar-Werte (ohne VRChat-eigene) speichern und mit einem Klick wieder setzen.\n  - **Aufnahme & Wiedergabe** von Parameter-Änderungen mit Zeitablauf (½×, 1×, 2×).\n  - **Weiterleitung** von allem, was VRChat schickt, an weitere OSC-Programme (nur eigenes Netz, Schleifenschutz).\n- **Mein Profil**: Bio und Links werden automatisch mit dem vorbefüllt, was bei VRChat steht (VRChat liefert sie nur noch im öffentlichen Profil).\n- **Aufräumen** ist jetzt ehrlich: früher löschte der Abgleich fest Verlauf > 180 und Messwerte > 90 Tage – jetzt steuern das nur noch die Einstellungen (Vorgaben: Verlauf 180 Tage, Messwerte 1 Jahr, Spiel-Log & Benachrichtigungen für immer)."
+ },
+ {
   "version": "2.0.0",
   "title": "Fix: Updater fand keine 1.10-Versionen",
   "body": "- **Fix Auto-Update:** GitHub liefert die Release-Liste nach Text sortiert (1.9.2 vor 1.10.0) – der Updater las nur die ersten 20 Einträge und sah 1.10.x deshalb nie. Jetzt werden alle Seiten geladen und die höchste Versionsnummer gesucht.\n- Deshalb der Sprung auf **2.0.0**: „2.0.0“ steht auch in GitHubs Textsortierung ganz oben – so finden auch ältere Versionen mit dem alten Updater dieses Update von selbst.\n- Enthält alles aus 1.10.x (Datenbank aufräumen, Merken im Shop, Spielt gerade über die Windows-Mediensteuerung, Info-Push & Meldungen in den Benachrichtigungen, Shop im Store-Stil …)."
