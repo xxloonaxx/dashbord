@@ -38,7 +38,7 @@ class LocalApi {
     }
     async handle(req, res) {
         const url = new URL(req.url, 'http://127.0.0.1');
-        const obs = req.method === 'GET' && (url.pathname === '/obs' || url.pathname === '/obs.json' || url.pathname === '/chat');
+        const obs = req.method === 'GET' && ['/obs', '/obs.json', '/chat', '/chat.json'].includes(url.pathname);
         // Nur lokale Programme, keine fremden Webseiten (Browser schicken Origin mit). Ausnahme: die eigene OBS-Seite (OBS-Browserquelle)
         const origin = str(req.headers.origin);
         if (origin && !(obs && /^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(origin))) return this.send(res, 403, { error: 'Nicht erlaubt.' });

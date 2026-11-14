@@ -20,6 +20,10 @@ Alles aus dem Nexus des Dashboards:
   - OSC-Fernbedienung: Chatbox, Tipp-Anzeige, Avatar-Parameter, Eingaben, Schnellknöpfe, **Chatbox-Rotator**
 - Läuft im **Infobereich** weiter (Fenster schließen = minimieren), auf Wunsch **Start mit Windows**
 
+### Neu in 1.4.2
+- Fehler behoben: Das OBS-Chat-Overlay (`/chat`) konnte leer bleiben, wenn OBS einen Origin-Kopf mitschickt.
+- Neue automatische Tests für Stream-Bot (Twitch-Zeilen, Punkte, Mod-Rechte, Belohnungen), Cloud-Sicherung (Verschlüsselung, falsches Passwort, Manipulation) und OBS-Zugriff.
+
 ### Neu in 1.4.1
 - **☁ Cloud-Sicherung ins eigene Dashboard** (Einstellungen → Dashboard): App-Daten werden gepackt und mit **AES-256 verschlüsselt** (Schlüssel aus deinem Sicherungs-Passwort) und in Stücken hochgeladen – der Server sieht nur unlesbare Daten. Automatisch täglich möglich, die letzten N Sicherungen bleiben. „Wiederherstellen“ prüft die Sicherung und spielt sie beim nächsten Start ein (die alte Datei bleibt als Reserve).
 

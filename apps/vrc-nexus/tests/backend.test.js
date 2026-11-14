@@ -454,6 +454,69 @@ test('1.3: Parameter-Erkennung, Makros, Kamera, Automatik, Sprache, Rückblick',
     delete process.env.NEXUS_VRCHAT_DIR;
 });
 
+test('1.4: Stream-Bot (Twitch-Zeilen, Punkte, Befehle, Belohnungen), Cloud-Sicherung, OBS-Zugriff', async () => {
+    const { NexusApp } = require('../backend/app');
+    const { CloudBackup } = require('../backend/cloudbackup');
+    const http = require('http');
+    const db = await openDatabase(null);
+    const crypt = { encrypt: s => 'x' + Buffer.from(s).toString('base64'), decrypt: s => Buffer.from(s.slice(1), 'base64').toString() };
+    const app = new NexusApp({ db, crypt, host: { userData: os.tmpdir() } });
+    app.game.osc.stopListen();
+    const sent = [];
+    app.game.osc.send = async (a, ...x) => { sent.push(a + ' ' + JSON.stringify(x)); };
+    const sb = app.stream;
+    const said = [];
+    sb.twSend = t => { said.push(t); return true; };
+    sb.saveCfg({ greet: '1', p_per_msg: 2, p_msg_cooldown: 0 });
+    // echte Twitch-IRC-Zeile mit Tags
+    sb.twLine('@badges=moderator/1;display-name=ModKatze;mod=1;user-id=42 :modkatze!m@m.tmi.twitch.tv PRIVMSG #luna :Hallo!');
+    sb.twLine('@badges=;display-name=FoxFan;mod=0;user-id=7 :foxfan!f@f.tmi.twitch.tv PRIVMSG #luna :!punkte');
+    await U.sleep(20);
+    assert.ok(said.includes('Willkommen ModKatze! 👋'), said.join(' | '));
+    assert.ok(said.some(t => /^FoxFan hat 2 Punkte\./.test(t)), said.join(' | '));
+    sb.twLine('@badges=moderator/1;display-name=ModKatze;mod=1;user-id=42 :modkatze!m@m.tmi.twitch.tv PRIVMSG #luna :!addpunkte foxfan 100');
+    await U.sleep(20);
+    assert.strictEqual(sb.findUser('foxfan').a.p, 102);       // 2 (eine Nachricht) + 100
+    // Belohnung → Makro → OSC
+    const c = sb.cfg();
+    c.rewards = [{ name: 'ohren', cost: 50, script: 'param Ears = 1', cooldown: 0, response: '{user} löst ein ({kosten})' }];
+    sb.writeCfg(c);
+    sb.twLine('@badges=;display-name=FoxFan;mod=0;user-id=7 :foxfan!f@f.tmi.twitch.tv PRIVMSG #luna :!ohren');
+    await U.sleep(50);
+    assert.ok(sent.includes('/avatar/parameters/Ears [1]'), sent.join(' | '));
+    assert.strictEqual(sb.findUser('foxfan').a.p, 102 + 2 - 50);
+    assert.ok(said.includes('FoxFan löst ein (50)'), said.join(' | '));
+    // zu wenig Punkte → nichts passiert
+    sent.length = 0;
+    sb.twLine('@badges=;display-name=Arm;mod=0;user-id=9 :arm!a@a.tmi.twitch.tv PRIVMSG #luna :!ohren');
+    await U.sleep(30);
+    assert.ok(!sent.length && said.some(t => /kostet 50/.test(t)));
+    // nicht-Mod darf keine Punkte vergeben
+    sb.twLine('@badges=;display-name=Arm;mod=0;user-id=9 :arm!a@a.tmi.twitch.tv PRIVMSG #luna :!addpunkte arm 9999');
+    await U.sleep(20);
+    assert.ok(sb.findUser('arm').a.p < 100);
+    // Cloud-Sicherung: verschlüsselt, falsches Passwort scheitert, Manipulation fällt auf
+    const plain = Buffer.from('SQLite format 3\0' + 'x'.repeat(5000));
+    const blob = CloudBackup.seal(plain, 'Passwort123');
+    assert.ok(!blob.includes(Buffer.from('xxxxxxxx')));
+    assert.ok(CloudBackup.open(blob, 'Passwort123').equals(plain));
+    assert.throws(() => CloudBackup.open(blob, 'falsch!!'), /Falsches/);
+    blob[blob.length - 3] ^= 1;
+    assert.throws(() => CloudBackup.open(blob, 'Passwort123'), /Falsches/);
+    // OBS-Seiten: ohne Stream-Deck-Schnittstelle erreichbar, fremde Webseiten nicht
+    app.settings.save({ 'int.api': false, 'int.obs': true, 'int.api_port': 17991 });
+    app.tools.api.apply();
+    await U.sleep(100);
+    const tok = app.settings.get('int.api_token');
+    const get = (p, origin) => new Promise(res => http.get({ host: '127.0.0.1', port: 17991, path: p, headers: origin ? { Origin: origin } : {} }, r => { r.resume(); res(r.statusCode); }));
+    assert.strictEqual(await get('/obs.json?token=' + tok), 200);
+    assert.strictEqual(await get('/chat.json?token=' + tok, 'http://127.0.0.1:17991'), 200);
+    assert.strictEqual(await get('/obs.json?token=' + tok, 'https://boese.example'), 403);
+    assert.strictEqual(await get('/api/state?token=' + tok), 403);       // Stream-Deck-Teil bleibt aus
+    assert.strictEqual(await get('/obs.json?token=falsch'), 401);
+    app.tools.api.stop(); sb.stop(); app.tools.stop();
+});
+
 (async () => {
     let ok = 0;
     for (const [name, fn] of tests) {
