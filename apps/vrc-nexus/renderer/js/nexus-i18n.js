@@ -35,6 +35,10 @@
         const h = (t.match(HEAD) || [''])[0], rest = t.slice(h.length);
         const tl = (rest.match(TAIL) || [''])[0], core = rest.slice(0, rest.length - tl.length);
         if (core && d[core] !== undefined) return h + d[core] + tl;
+        // Zahlen als Platzhalter: „seit 4 h 5 min“ → Schlüssel „seit # h # min“
+        const nums = [];
+        const k = (core || t).replace(/\d+(?:[.,:]\d+)*/g, m => { nums.push(m); return '#'; });
+        if (nums.length && d[k] !== undefined) { let i = 0; return (core ? h : '') + d[k].replace(/#/g, () => nums[i++] ?? '') + (core ? tl : ''); }
         for (const [re, rep] of RX()) { if (re.test(core)) return h + core.replace(re, rep) + tl; }
         return null;
     }

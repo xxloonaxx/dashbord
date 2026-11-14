@@ -1,0 +1,330 @@
+# Einträge · ⚠ gerade kein OSC von VRChat	# entries · ⚠ no OSC from VRChat right now	# entrées · ⚠ aucun OSC de VRChat pour le moment	# 件 · ⚠ 現在VRChatからOSCを受信していません
+# Events · abgerufen vor # min	# events · fetched # min ago	# événements · récupérés il y a # min	# 件のイベント · # 分前に取得
+# Freunde	# friends	# amis	# 人のフレンド
+# Gruppen · # mit Kick-Rechten	# groups · # with kick rights	# groupes · # avec droit d'expulsion	# グループ · キック権限 # 件
+# Instanzen · # h # min im Spiel	# instances · # h # min in game	# instances · # h # min en jeu	# インスタンス · ゲーム内 # 時間 # 分
+# Jahr	# year	# an	# 年
+# Messpunkte	# data points	# points de mesure	# 計測点
+# Minute	# minute	# minute	# 分
+# Minuten	# minutes	# minutes	# 分
+# Mitgl	# memb	# memb	# 人
+# Mitglieder · du bist auch Mitglied	# members · you are a member too	# membres · tu es aussi membre	# 人のメンバー · あなたもメンバーです
+# Nachrichten · vor # Std	# messages · # h ago	# messages · il y a # h	# 件のメッセージ · # 時間前
+# Nachrichten · –	# messages · –	# messages · –	# 件のメッセージ · –
+# Parameter · ⚠ Kein OSC empfangen – in VRChat: Action-Menü → Optionen → OSC → Aktiviert	# parameters · ⚠ No OSC received – in VRChat: Action Menu → Options → OSC → Enabled	# paramètres · ⚠ Aucun OSC reçu – dans VRChat : menu d'action → Options → OSC → Activé	# パラメーター · ⚠ OSC未受信 – VRChatで アクションメニュー → オプション → OSC → 有効
+# Schritte	# steps	# étapes	# ステップ
+# Spalten	# columns	# colonnes	# 列
+# Std	# h	# h	# 時間
+# Tage	# days	# jours	# 日
+# Uhr	# o'clock	# h	# 時
+# Zuschauer bekannt	# known viewers	# spectateurs connus	# 人の視聴者を記録済み
+# gemeinsam	# together	# ensemble	# 一緒
+# gemeinsame Freunde	# mutual friends	# amis en commun	# 人の共通のフレンド
+# h # min gleichzeitig	# h # min together	# h # min en même temps	# 時間 # 分 一緒
+# min	# min	# min	# 分
+# verfügbar	# available	# disponibles	# 件 利用可能
+# von #	# of #	# sur #	# / #
+# · von	# · by	# · par	# · 作成者
+(# Tage	(# days	(# jours	(# 日
+(#, #) · Lieblingstag	(#, #) · favourite day	(#, #) · jour préféré	(#, #) · お気に入りの曜日
+(Gruppen, in denen du mindestens kicken darfst	(groups where you can at least kick	(groupes où tu peux au moins expulser	(少なくともキックできるグループ
+(Makro-Schritte, eine Zeile pro Schritt	(macro steps, one line per step	(étapes de macro, une ligne par étape	(マクロのステップ、1行に1つ
+(Platzhalter, /n	(placeholders, /n	(variables, /n	(プレースホルダー、/n
+(gleiche Instanz, # Tage	(same instance, # days	(même instance, # jours	(同じインスタンス、# 日
+(kommt von VRChat, sobald die Kamera offen ist	(sent by VRChat once the camera is open	(envoyé par VRChat dès que la caméra est ouverte	(カメラを開くとVRChatから届きます
+(nur für dich	(only for you	(seulement pour toi	(自分だけ
+(nächste # Tage	(next # days	(# prochains jours	(今後 # 日
+(nächster Abgleich in # s möglich	(next sync possible in # s	(prochaine synchro possible dans # s	(次の同期は # 秒後に可能
+(oder „📋 Direkt-Zugriff“). Erkannt werden	(or “📋 Quick access”). Recognised	(ou « 📋 Accès direct »). Reconnus	(または「📋 ダイレクトアクセス」)。認識されるもの
+(vorlesen	(read aloud	(lecture à voix haute	(読み上げ
+(über # Tage	(over # days	(plus de # jours	(# 日以上
+AFK	AFK	AFK	AFK
+AFK an	AFK on	AFK activé	AFK オン
+AFK aus	AFK off	AFK désactivé	AFK オフ
+AFK-Hinweis	AFK notice	Avis AFK	AFK通知
+AFK-Verdacht	Possibly AFK	AFK suspecté	AFKの疑い
+Abbestellen	Unsubscribe	Se désabonner	購読解除
+Abfrage alle	Poll every	Interroger toutes les	取得間隔
+Ablehnen	Decline	Refuser	拒否
+Abo-Verlängerung ({monate}	Resub ({monate}	Réabonnement ({monate}	サブスク継続 ({monate}
+Abonnenten/Mitglieder	Subscribers/members	Abonnés/membres	サブスク/メンバー
+Abonnenten/Mitglieder · # Punkte · #×	Subscribers/members · # points · #×	Abonnés/membres · # points · #×	サブスク/メンバー · # ポイント · #回
+Abos	Subs	Abonnements	サブスク
+Abschied	Farewell	Au revoir	お別れ
+Abstand „frei vor mir“ (cm	Distance “clear in front of me” (cm	Distance « libre devant moi » (cm	「前方の空き」距離 (cm
+Absturzberichte	Crash reports	Rapports de plantage	クラッシュレポート
+Abzug löst aus	Shutter fires	Déclenche l'obturateur	シャッターを切る
+Admin	Admin	Admin	管理者
+Adresse des Dashboards	Dashboard address	Adresse du tableau de bord	ダッシュボードのアドレス
+Aktion in VRChat (Makro-Schritte, optional	Action in VRChat (macro steps, optional	Action dans VRChat (étapes de macro, facultatif	VRChatでのアクション (マクロのステップ、任意
+Aktion, z. B. param Party = #	Action, e.g. param Party = #	Action, p. ex. param Party = #	アクション 例: param Party = #
+Aktionen	Actions	Actions	アクション
+Aktivität	Activity	Activité	アクティビティ
+Aktualisieren	Refresh	Actualiser	更新
+Aktuell	Current	Actuel	現在
+Aktuelle Auswahl als Vorlage merken	Save current selection as preset	Enregistrer la sélection comme modèle	現在の選択をプリセットとして保存
+Akzentfarbe	Accent colour	Couleur d'accent	アクセントカラー
+Aliase, z. B. ears, öhrchen	Aliases, e.g. ears, earsies	Alias, p. ex. ears, oreilles	エイリアス 例: ears, みみ
+Alle	All	Tous	すべて
+Alle # Minuten, die neuere Version gewinnt	Every # minutes, the newer version wins	Toutes les # minutes, la version la plus récente l'emporte	# 分ごと、新しい方が優先
+Alle Arten	All types	Tous les types	すべての種類
+Alle Ereignisse	All events	Tous les événements	すべてのイベント
+Alle Events als Kalender-Datei für Outlook / Google / Handy	All events as a calendar file for Outlook / Google / phone	Tous les événements en fichier calendrier pour Outlook / Google / mobile	全イベントをOutlook / Google / スマホ用カレンダーファイルで
+Alle Freunde	All friends	Tous les amis	すべてのフレンド
+Alle Freunde-Orte	All friend locations	Tous les lieux des amis	フレンドの全ロケーション
+Alle Gruppen	All groups	Tous les groupes	すべてのグループ
+Alle Kategorien	All categories	Toutes les catégories	すべてのカテゴリー
+Alle N Minuten	Every N minutes	Toutes les N minutes	N分ごと
+Alle Plattformen	All platforms	Toutes les plateformes	すべてのプラットフォーム
+Alle Stufen	All ranks	Tous les rangs	すべてのランク
+Alle alten Logs einlesen	Import all old logs	Importer tous les anciens logs	過去のログをすべて読み込む
+Alle deine Freunde waren in den letzten # Tagen online. 🎉	All your friends were online in the last # days. 🎉	Tous tes amis ont été en ligne ces # derniers jours. 🎉	すべてのフレンドが過去 # 日以内にオンラインでした。🎉
+Alle gelesen	All read	Tout lu	すべて既読
+Alle offenen als gelesen markieren	Mark all open as read	Marquer tout comme lu	未読をすべて既読にする
+Alle stoppen	Stop all	Tout arrêter	すべて停止
+Alles	Everything	Tout	すべて
+Alles zurücksetzen	Reset everything	Tout réinitialiser	すべてリセット
+Allgemein	General	Général	一般
+Als .ics speichern	Save as .ics	Enregistrer en .ics	.icsで保存
+Als PNG-Text „Description“ (lesbar im Screenshot-Manager, kompatibel mit anderen Tools	As PNG text “Description” (readable in screenshot managers, compatible with other tools	Comme texte PNG « Description » (lisible dans les gestionnaires de captures, compatible avec d'autres outils	PNGテキスト「Description」として (スクショ管理ツールで読め、他ツールと互換
+Als Vorlage	As preset	Comme modèle	プリセットとして
+Als gelesen markieren	Mark as read	Marquer comme lu	既読にする
+Alt	Old	Ancien	古い
+Am häufigsten	Most frequent	Le plus fréquent	最も多い
+Am meisten Zeit mit	Most time with	Le plus de temps avec	最も長く一緒にいた人
+An Gruppen-Events erinnern	Remind me of group events	Rappeler les événements de groupe	グループイベントをリマインド
+An/Aus	On/Off	Marche/Arrêt	オン/オフ
+Andere Spieler sehen das	Other players see this	Les autres joueurs le voient	他のプレイヤーに表示されます
+Andere zeigen	Show others	Afficher les autres	他を表示
+Animationen	Animations	Animations	アニメーション
+Ankündigungen von VRChat	Announcements from VRChat	Annonces de VRChat	VRChatからのお知らせ
+Annehmen	Accept	Accepter	承認
+Anpassen	Customise	Personnaliser	カスタマイズ
+Antwort im Chat	Reply in chat	Réponse dans le chat	チャットでの返信
+Antwort im Chat, z. B. {user} hat „Ohren“ eingelöst! 🐾	Reply in chat, e.g. {user} redeemed “Ears”! 🐾	Réponse dans le chat, p. ex. {user} a utilisé « Oreilles » ! 🐾	チャットでの返信 例: {user} が「みみ」を交換しました！🐾
+Antwort im Chat, z. B. 🎨 {user} hat die Farbe auf {#} gestellt	Reply in chat, e.g. 🎨 {user} set the colour to {#}	Réponse dans le chat, p. ex. 🎨 {user} a mis la couleur sur {#}	チャットでの返信 例: 🎨 {user} が色を {#} にしました
+Antworten – eine pro Zeile	Answers – one per line	Réponses – une par ligne	回答 – 1行に1つ
+Anzahl Sicherungen behalten	Number of backups to keep	Nombre de sauvegardes à conserver	保持するバックアップ数
+Anzeigedauer (Sekunden	Display time (seconds	Durée d'affichage (secondes	表示時間 (秒
+Anzeigen	Show	Afficher	表示
+Anzeigename	Display name	Nom affiché	表示名
+Anziehen	Wear	Porter	着用
+Arabisch	Arabic	Arabe	アラビア語
+Art	Type	Type	種類
+Arten	Types	Types	種類
+Ask Me	Ask Me	Ask Me	Ask Me
+Auch Gesendetes loggen (Chatbox, Parameter, Kamera	Also log what is sent (chatbox, parameters, camera	Journaliser aussi les envois (chatbox, paramètres, caméra	送信内容も記録 (チャットボックス、パラメーター、カメラ
+Auch im OBS-Chat-Overlay sichtbar. Im Chat: !stimme #	Also visible in the OBS chat overlay. In chat: !stimme #	Aussi visible dans l'overlay de chat OBS. Dans le chat : !stimme #	OBSチャットオーバーレイにも表示。チャットで: !stimme #
+Auch per Stream-Deck-Taste „Spracheingabe“, im SteamVR-Overlay und auf der Startseite	Also via the Stream Deck key “Voice input”, in the SteamVR overlay and on the home page	Aussi via la touche Stream Deck « Saisie vocale », dans l'overlay SteamVR et sur l'accueil	Stream Deckの「音声入力」キー、SteamVRオーバーレイ、ホームからも使えます
+Auch über die Flagge unten rechts umschaltbar	Can also be switched with the flag at the bottom right	Aussi modifiable via le drapeau en bas à droite	右下の国旗からも切り替えられます
+Auch über 🎨 unten rechts umschaltbar	Can also be switched with 🎨 at the bottom right	Aussi modifiable via 🎨 en bas à droite	右下の🎨からも切り替えられます
+Aufbewahren (Tage	Keep (days	Conserver (jours	保存期間 (日
+Aufbewahrt: # Tage	Kept: # days	Conservé : # jours	保存: # 日
+Auftritt	Entrance	Entrée	登場
+Aufzeichnung seit	Recording since	Enregistrement depuis	記録開始
+Aura	Aura	Aura	オーラ
+Aus	Off	Désactivé	オフ
+Aus dem Gruppen-Kalender (Mehr → Gruppen-Kalender	From the group calendar (More → Group calendar	Depuis le calendrier des groupes (Plus → Calendrier des groupes	グループカレンダーから (その他 → グループカレンダー
+Aus spart Datenvolumen	Off saves data	Désactivé économise des données	オフでデータ通信量を節約
+Aus: Schließen beendet die App	Off: closing quits the app	Désactivé : fermer quitte l'appli	オフ: 閉じるとアプリを終了
+Auslösen	Trigger	Déclencher	実行
+Aussehen	Appearance	Apparence	外観
+Auto-Horizont (Neigen	Auto horizon (tilt	Horizon auto (inclinaison	自動水平 (傾き
+Auto-Horizont (Rollen	Auto horizon (roll	Horizon auto (roulis	自動水平 (ロール
+Auto-Status & Einladungen	Auto status & invites	Statut auto & invitations	自動ステータス & 招待
+Automatik	Automation	Automatisation	オートメーション
+Automatisch aktualisieren alle	Auto-refresh every	Actualiser automatiquement toutes les	自動更新の間隔
+Automatisch installieren nur, wenn VRChat gerade nicht läuft	Installs automatically only while VRChat is not running	Installation automatique seulement si VRChat n'est pas lancé	VRChatが起動していない時だけ自動インストール
+Automatisch nach Updates suchen	Check for updates automatically	Rechercher les mises à jour automatiquement	自動的にアップデートを確認
+Bannen	Ban	Bannir	BAN
+Base (# MB	Base (# MB	Base (# Mo	ベース (# MB
+Base · # MB	Base · # MB	Base · # Mo	ベース · # MB
+Bearbeiten	Edit	Modifier	編集
+Befehle	Commands	Commandes	コマンド
+Befehle für Zuschauer	Commands for viewers	Commandes pour les spectateurs	視聴者向けコマンド
+Befehle vom Dashboard ausführen	Run commands from the dashboard	Exécuter les commandes du tableau de bord	ダッシュボードからのコマンドを実行
+Befehls-Baukasten	Command builder	Générateur de commandes	コマンドビルダー
+Befehls-Zeichen	Command prefix	Préfixe de commande	コマンド接頭辞
+Befehlspalette	Command palette	Palette de commandes	コマンドパレット
+Befehlspalette (Strg+K	Command palette (Ctrl+K	Palette de commandes (Ctrl+K	コマンドパレット (Ctrl+K
+Begegnungen	Encounters	Rencontres	出会い
+Begegnungen heute	Encounters today	Rencontres aujourd'hui	今日の出会い
+Begegnungen im Spiel	Encounters in game	Rencontres en jeu	ゲーム内の出会い
+Beginn	Start	Début	開始
+Begrüßung	Greeting	Salutation	あいさつ
+Bei VRChat entfernen	Remove at VRChat	Supprimer chez VRChat	VRChatから削除
+Beim Autostart nur im Infobereich starten	On autostart, start in the tray only	Au démarrage auto, démarrer dans la zone de notification	自動起動時はトレイのみで起動
+Beim Start und alle # Stunden (GitHub-Releases	At start and every # hours (GitHub releases	Au démarrage et toutes les # heures (versions GitHub	起動時と # 時間ごと (GitHubリリース
+Beim Start öffnen	Open at start	Ouvrir au démarrage	起動時に開く
+Beitreten	Join	Rejoindre	参加
+Beitreten (Spiel	Join (game	Rejoindre (jeu	参加 (ゲーム
+Beitreten (öffnet VRChat	Join (opens VRChat	Rejoindre (ouvre VRChat	参加 (VRChatを開く
+Beitrittsanfrage	Join request	Demande d'adhésion	参加リクエスト
+Beitrittsanfrage (#	Join request (#	Demande d'adhésion (#	参加リクエスト (#
+Beitrittsanfragen	Join requests	Demandes d'adhésion	参加リクエスト
+Belichtung	Exposure	Exposition	露出
+Beliebte Welten & VRChat weltweit	Popular worlds & VRChat worldwide	Mondes populaires & VRChat dans le monde	人気ワールド & 世界のVRChat
+Beliebteste Welten deiner Freunde	Your friends' most popular worlds	Mondes les plus populaires de tes amis	フレンドに人気のワールド
+Belohnung	Reward	Récompense	報酬
+Belohnungen	Rewards	Récompenses	報酬
+Benachrichtigen, sobald online (auch wenn Benachrichtigungen sonst aus sind	Notify when online (even if notifications are otherwise off	Prévenir dès qu'en ligne (même si les notifications sont désactivées	オンラインになったら通知 (通知がオフでも
+Benachrichtigung	Notification	Notification	通知
+Benachrichtigungen	Notifications	Notifications	通知
+Benachrichtigungen & Anzeige	Notifications & display	Notifications & affichage	通知 & 表示
+Benachrichtigungen in XSOverlay anzeigen	Show notifications in XSOverlay	Afficher les notifications dans XSOverlay	XSOverlayに通知を表示
+Benachrichtigungen vorlesen	Read notifications aloud	Lire les notifications à voix haute	通知を読み上げる
+Benutzer	Users	Utilisateurs	ユーザー
+Beobachten: im Profil das 👁-Symbol	Watch: the 👁 icon in the profile	Suivre : l'icône 👁 dans le profil	ウォッチ: プロフィールの👁アイコン
+Beobachtete Freunde	Watched friends	Amis suivis	ウォッチ中のフレンド
+Beobachtete Freunde kommen online	Watched friends come online	Les amis suivis se connectent	ウォッチ中のフレンドがオンラインに
+Beschreibung	Description	Description	説明
+Beschäftigt	Busy	Occupé	取り込み中
+Besitzer	Owner	Propriétaire	オーナー
+Beste Freunde	Best friends	Meilleurs amis	ベストフレンド
+Beste Zeit: Freitag & Samstag, meist um # Uhr, # Uhr, # Uhr	Best time: Friday & Saturday, mostly at #:00, #:00, #:00	Meilleur moment : vendredi & samedi, surtout à # h, # h, # h	ベストタイム: 金曜 & 土曜、主に # 時、# 時、# 時
+Besuche	Visits	Visites	訪問
+Bevorzugter Anbieter	Preferred provider	Fournisseur préféré	優先プロバイダー
+Bewegung & Haltung	Movement & pose	Mouvement & posture	動き & 姿勢
+Bienen	Bees	Abeilles	ハチ
+Bilder	Images	Images	画像
+Bilder pro Sekunde	Frames per second	Images par seconde	フレームレート
+Bilder, Emojis, Sticker und Inventar (Galerie	Images, emojis, stickers and inventory (gallery	Images, emojis, stickers et inventaire (galerie	画像、絵文字、ステッカー、インベントリ (ギャラリー
+Bildung	Education	Éducation	教育
+Binnen-I – FreundInnen	Binnen-I – FreundInnen	Binnen-I – FreundInnen	Binnen-I – FreundInnen
+Bio	Bio	Bio	自己紹介
+Bio (max. # Zeichen	Bio (max. # characters	Bio (max. # caractères	自己紹介 (最大 # 文字
+Bio-Links	Bio links	Liens de la bio	自己紹介リンク
+Bis	Until	Jusqu'à	まで
+Bisher {wert} Tode	{wert} deaths so far	{wert} morts jusqu'ici	これまで {wert} 回デス
+Bits ({menge}	Bits ({menge}	Bits ({menge}	ビッツ ({menge}
+Blende	Aperture	Ouverture	絞り
+Blick-Versatz X	Look offset X	Décalage du regard X	視線オフセット X
+Blick-Versatz Y	Look offset Y	Décalage du regard Y	視線オフセット Y
+Blockieren	Block	Bloquer	ブロック
+Blockiert	Blocked	Bloqué	ブロック済み
+Blockierte Gruppen	Blocked groups	Groupes bloqués	ブロックしたグループ
+Bonus	Bonus	Bonus	ボーナス
+Boop	Boop	Boop	ブープ
+Boop (#	Boop (#	Boop (#	ブープ (#
+Bot	Bot	Bot	ボット
+Bot-Konto	Bot account	Compte du bot	ボットアカウント
+Braucht die Client-ID einer eigenen Discord-Anwendung	Needs the client ID of your own Discord application	Nécessite l'ID client de ta propre application Discord	自分のDiscordアプリのクライアントIDが必要
+Breite (cm	Width (cm	Largeur (cm	幅 (cm
+Browser-Benachrichtigung, wenn jemand ins Spiel kommt	Browser notification when someone joins the game	Notification du navigateur quand quelqu'un entre en jeu	誰かがゲームに来たらブラウザ通知
+Browser-Quelle für OBS/Streamlabs	Browser source for OBS/Streamlabs	Source navigateur pour OBS/Streamlabs	OBS/Streamlabs用ブラウザソース
+Builder	Builder	Générateur	ビルダー
+CSV	CSV	CSV	CSV
+Chatbox	Chatbox	Chatbox	チャットボックス
+Chatbox in VRChat leeren	Clear the chatbox in VRChat	Vider la chatbox dans VRChat	VRChatのチャットボックスを消去
+Chatbox leeren	Clear chatbox	Vider la chatbox	チャットボックスを消去
+Chatbox übersetzen nach	Translate chatbox to	Traduire la chatbox en	チャットボックスの翻訳先
+Chatbox-Nachrichten standardmäßig übersetzen	Translate chatbox messages by default	Traduire les messages de chatbox par défaut	チャットボックスのメッセージを既定で翻訳
+Chatbox-Rotator	Chatbox rotator	Rotation de chatbox	チャットボックスローテーター
+Chinesisch (traditionell	Chinese (traditional	Chinois (traditionnel	中国語 (繁体字
+Chinesisch (vereinfacht	Chinese (simplified	Chinois (simplifié	中国語 (簡体字
+Cloud-Sicherung ins Dashboard	Cloud backup to the dashboard	Sauvegarde cloud vers le tableau de bord	ダッシュボードへのクラウドバックアップ
+Dabei seit	Member since	Membre depuis	登録日
+Danke fürs Foto	Thanks for the photo	Merci pour la photo	写真ありがとう
+Dann	Then	Alors	次に
+Dashboard	Dashboard	Tableau de bord	ダッシュボード
+Datei-ID kopieren	Copy file ID	Copier l'ID du fichier	ファイルIDをコピー
+Dateien	Files	Fichiers	ファイル
+Daten & Wartung	Data & maintenance	Données & maintenance	データ & メンテナンス
+Datenbank automatisch sichern	Back up the database automatically	Sauvegarder la base automatiquement	データベースを自動バックアップ
+Datenbank jetzt sichern	Back up the database now	Sauvegarder la base maintenant	今すぐデータベースをバックアップ
+Datenbank optimieren	Optimise database	Optimiser la base	データベースを最適化
+Datenordner	Data folder	Dossier de données	データフォルダー
+Dauer	Duration	Durée	時間
+Dauer-Werte höchstens alle … ms speichern	Save continuous values at most every … ms	Enregistrer les valeurs continues au plus toutes les … ms	連続値の保存間隔 (最短 … ms
+Deckkraft (%	Opacity (%	Opacité (%	不透明度 (%
+DeepL	DeepL	DeepL	DeepL
+Deine Käufe im Store und Marktplatz	Your purchases in the store and marketplace	Tes achats dans la boutique et le marché	ストアとマーケットプレイスでの購入
+Deine Woche	Your week	Ta semaine	あなたの1週間
+Deine meistbesuchten Welten	Your most visited worlds	Tes mondes les plus visités	よく訪れるワールド
+Deutsch	German	Allemand	ドイツ語
+Di # Uhr: # Min. online (# Tage	Tue #:00: # min online (# days	Mar # h : # min en ligne (# jours	火 # 時: # 分オンライン (# 日
+Di # Uhr: #× online gekommen	Tue #:00: came online #×	Mar # h : connecté #×	火 # 時: #回オンライン
+Di: # min	Tue: # min	Mar : # min	火: # 分
+Diagramme	Charts	Graphiques	グラフ
+Die Adresse funktioniert nur auf diesem PC	The address only works on this PC	L'adresse ne fonctionne que sur ce PC	このアドレスはこのPCでのみ有効です
+Die Einschätzung ist nur ein Vorschlag aus Vertrauensstufe, Kontoalter, Freundschaft, früheren Begegnungen und deiner Warnliste – entscheiden tust du	The rating is only a suggestion based on trust rank, account age, friendship, past encounters and your watch list – you decide	L'évaluation n'est qu'une suggestion basée sur le rang de confiance, l'âge du compte, l'amitié, les rencontres passées et ta liste d'alerte – c'est toi qui décides	この評価は信頼ランク・アカウント年齢・フレンド関係・過去の出会い・警告リストからの提案にすぎません – 決めるのはあなたです
+Die letzten Parameter-Änderungen	The latest parameter changes	Les derniers changements de paramètres	最近のパラメーター変更
+Diese Liste ist leer	This list is empty	Cette liste est vide	このリストは空です
+Direkt-Zugriff	Quick access	Accès direct	ダイレクトアクセス
+Direkt-Zugriff – was erkannt wird	Quick access – what is recognised	Accès direct – ce qui est reconnu	ダイレクトアクセス – 認識されるもの
+Discord Client-ID	Discord client ID	ID client Discord	DiscordクライアントID
+Discord Rich Presence	Discord Rich Presence	Discord Rich Presence	Discord Rich Presence
+Discord-Namen	Discord names	Noms Discord	Discord名
+Discord-Namen deiner VRChat-Freunde finden	Find your VRChat friends' Discord names	Trouver les noms Discord de tes amis VRChat	VRChatフレンドのDiscord名を探す
+Discord-Status „Spielt VRChat in	Discord status “Playing VRChat in	Statut Discord « Joue à VRChat dans	Discordステータス「VRChatをプレイ中:
+Discord-Webhook	Discord webhook	Webhook Discord	Discord Webhook
+Do # Uhr: # Min. online (# Tage	Thu #:00: # min online (# days	Jeu # h : # min en ligne (# jours	木 # 時: # 分オンライン (# 日
+Do # Uhr: #× online gekommen	Thu #:00: came online #×	Jeu # h : connecté #×	木 # 時: #回オンライン
+Do: # min	Thu: # min	Jeu : # min	木: # 分
+Dolly-Pfade sichtbar	Dolly paths visible	Trajectoires dolly visibles	ドリーパスを表示
+Doppelpunkt – Freund:innen	Colon – Freund:innen	Deux-points – Freund:innen	コロン – Freund:innen
+Drehen	Rotate	Pivoter	回転
+Drehgeschwindigkeit	Rotation speed	Vitesse de rotation	回転速度
+Drohne	Drone	Drone	ドローン
+Druck	Print	Impression	プリント
+Du bist gerade in	You are currently in	Tu es actuellement dans	現在のワールド
+Durchschnitt	Average	Moyenne	平均
+Dänisch	Danish	Danois	デンマーク語
+Eigene Befehle	Custom commands	Commandes perso	カスタムコマンド
+Eigene Gruppen	Own groups	Mes groupes	自分のグループ
+Eigene Listen (mit Komma trennen	Custom lists (comma-separated	Listes perso (séparées par des virgules	カスタムリスト (カンマ区切り
+Ein Text	One text	Un texte	テキスト1つ
+Ein-/Ausblenden jederzeit mit dem Controller: linke obere Taste (B / Y / Menü) doppelt drücken – änderbar in SteamVR → Einstellungen → Controller → Belegung → VRC Nexus	Show/hide any time with the controller: double-press the upper left button (B / Y / Menu) – change in SteamVR → Settings → Controllers → Bindings → VRC Nexus	Afficher/masquer à tout moment avec la manette : double appui sur le bouton haut gauche (B / Y / Menu) – modifiable dans SteamVR → Paramètres → Manettes → Assignations → VRC Nexus	コントローラーでいつでも表示/非表示: 左上ボタン (B / Y / メニュー) をダブルクリック – SteamVR → 設定 → コントローラー → バインド → VRC Nexus で変更可
+Eingebaut	Built-in	Intégré	内蔵
+Eingereichte Meldungen ansehen und löschen	View and delete submitted reports	Voir et supprimer les signalements envoyés	送信した通報を表示・削除
+Einladen	Invite	Inviter	招待
+Einladung	Invite	Invitation	招待
+Einladung (#	Invite (#	Invitation (#	招待 (#
+Einladung anfragen	Request invite	Demander une invitation	招待をリクエスト
+Einladungen	Invites	Invitations	招待
+Einladungs-Anfragen	Invite requests	Demandes d'invitation	招待リクエスト
+Einladungsanfrage	Invite request	Demande d'invitation	招待リクエスト
+Einladungsanfrage (#	Invite request (#	Demande d'invitation (#	招待リクエスト (#
+Einladungsnachrichten	Invite messages	Messages d'invitation	招待メッセージ
+Einsatz	Stake	Mise	賭け金
+Einstellungen	Settings	Paramètres	設定
+Einstellungen exportieren	Export settings	Exporter les paramètres	設定をエクスポート
+Einstellungen von VRChat sichern und wiederherstellen	Back up and restore VRChat settings	Sauvegarder et restaurer les paramètres de VRChat	VRChatの設定をバックアップ・復元
+Einträge löschen, die es bei VRChat nicht mehr gibt	Delete entries that no longer exist at VRChat	Supprimer les entrées qui n'existent plus chez VRChat	VRChatに存在しない項目を削除
+Emoji	Emoji	Emoji	絵文字
+Emojis	Emojis	Emojis	絵文字
+Empfangs-Port	Receive port	Port de réception	受信ポート
+Empfindlichkeit	Sensitivity	Sensibilité	感度
+Ende	End	Fin	終了
+Englisch	English	Anglais	英語
+Englisch (UK	English (UK	Anglais (RU	英語 (英国
+Englisch (US	English (US	Anglais (US	英語 (米国
+English	English	English	English
+Entfernen	Remove	Supprimer	削除
+Entwicklerwerkzeuge mit F#	Developer tools with F#	Outils de développement avec F#	F# で開発者ツール
+Ereignisse	Events	Événements	イベント
+Ereignisse pro Tag (# Tage	Events per day (# days	Événements par jour (# jours	1日あたりのイベント (# 日
+Erinnerungen	Reminders	Rappels	リマインダー
+Erkennt	Detects	Détecte	検出
+Erkennung	Detection	Détection	検出
+Erkunden	Explore	Explorer	探索
+Erst einen DeepL- oder Google-Schlüssel eintragen	Enter a DeepL or Google key first	Saisis d'abord une clé DeepL ou Google	先にDeepLまたはGoogleのキーを入力してください
+Erster im Chat (Bonus	First in chat (bonus	Premier dans le chat (bonus	チャット一番乗り (ボーナス
+Erweitert	Advanced	Avancé	詳細
+Esc	Esc	Échap	Esc
+Event anlegen	Create event	Créer un événement	イベントを作成
+Event im VRChat-Kalender	Event in the VRChat calendar	Événement dans le calendrier VRChat	VRChatカレンダーのイベント
+Event löschen	Delete event	Supprimer l'événement	イベントを削除
+Export	Export	Export	エクスポート
+Farbton	Hue	Teinte	色相
+Favorit	Favourite	Favori	お気に入り
+Favoriten	Favourites	Favoris	お気に入り
+Favoriten + VRChat-Favoriten	Favourites + VRChat favourites	Favoris + favoris VRChat	お気に入り + VRChatのお気に入り
+Fehlersuche	Troubleshooting	Dépannage	トラブルシューティング
+Fenster schließen = im Infobereich weiterlaufen	Close window = keep running in the tray	Fermer la fenêtre = continuer dans la zone de notification	ウィンドウを閉じる = トレイで動作継続
+Fertige Adressen stehen unten auf dieser Seite. Läuft auch ohne die Stream-Deck-Schnittstelle	Ready-made addresses are at the bottom of this page. Also works without the Stream Deck interface	Les adresses prêtes sont en bas de cette page. Fonctionne aussi sans l'interface Stream Deck	完成したアドレスはこのページの下にあります。Stream Deckインターフェースなしでも動作します
+Feuer	Fire	Feu	炎
+Film & Medien	Film & media	Cinéma & médias	映画 & メディア
+Filtern	Filter	Filtrer	フィルター
+Filtern (Name, Memo, Sprache	Filter (name, memo, language	Filtrer (nom, mémo, langue	フィルター (名前、メモ、言語
+Finnisch	Finnish	Finnois	フィンランド語
