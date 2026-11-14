@@ -236,6 +236,19 @@ Windows SmartScreen fragt beim ersten Start nach (die EXE ist nicht signiert): �
 - Datenbank: `%APPDATA%\VRC Nexus\nexus.sqlite` (Tray-Menü → „Datenordner öffnen“). Zum Sichern einfach diese Datei kopieren.
 - VRChat wird sparsam abgefragt (Freunde höchstens alle 45 s), die VRChat-API ist inoffiziell.
 
+## Windows-Dateien signieren (gegen die SmartScreen-Warnung)
+Ohne Signatur zeigt Windows „Der Computer wurde durch Windows geschützt – Unbekannter Herausgeber“. Der Build signiert automatisch, sobald im Repository unter *Settings → Secrets and variables → Actions* eines davon angelegt ist (Werte nie in den Code schreiben):
+
+**A) Azure Trusted Signing** (ca. 10 $/Monat, Identitätsprüfung bei Microsoft)
+1. Im Azure-Portal ein *Trusted Signing Account* anlegen, Identität prüfen lassen, ein *Certificate Profile* („Public Trust“) erstellen.
+2. Eine App-Registrierung (Entra ID) mit Client-Secret anlegen und ihr auf dem Account die Rolle *Trusted Signing Certificate Profile Signer* geben.
+3. Secrets: `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_SIGN_ENDPOINT` (z. B. `https://weu.codesigning.azure.net/`), `AZURE_SIGN_ACCOUNT` (Account-Name), `AZURE_SIGN_PROFILE` (Profil-Name), `AZURE_SIGN_PUBLISHER` (Name genau wie im Zertifikat).
+
+**B) Code-Signing-Zertifikat** (PFX von einer Zertifizierungsstelle)
+- Secrets: `WIN_CSC_LINK` = die PFX-Datei als Base64 (`[Convert]::ToBase64String([IO.File]::ReadAllBytes("cert.pfx"))`), `WIN_CSC_KEY_PASSWORD` = Passwort.
+
+Der Build prüft danach jede EXE mit `Get-AuthenticodeSignature` und bricht bei ungültiger Signatur ab; die Release-Notizen sagen dann „digital signiert“. Hinweis: Auch signiert verschwindet die SmartScreen-Warnung erst, wenn genug Installationen zusammengekommen sind („Reputation“) – der Herausgeber steht aber sofort mit Namen da.
+
 ## Entwickeln
 
 ```

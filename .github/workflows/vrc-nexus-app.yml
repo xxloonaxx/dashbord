@@ -67,9 +67,50 @@ jobs:
           Invoke-WebRequest "$base/bin/win64/openvr_api.dll" -OutFile openvr_api.dll
           dotnet build -c Release -nologo
           Get-ChildItem bin/Release/net48
-      - name: EXE bauen (portabel + Installer)
+      # Signieren schaltet sich ein, sobald die Secrets angelegt sind (sonst unsigniert wie bisher):
+      #   Azure Trusted Signing: AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET,
+      #                          AZURE_SIGN_ENDPOINT, AZURE_SIGN_ACCOUNT, AZURE_SIGN_PROFILE, AZURE_SIGN_PUBLISHER
+      #   oder Zertifikat (PFX):  WIN_CSC_LINK (PFX als Base64), WIN_CSC_KEY_PASSWORD
+      - name: EXE bauen (portabel + Installer, signiert falls eingerichtet)
         working-directory: app
-        run: npx electron-builder --win portable nsis --x64 --publish never
+        shell: bash
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZ_ENDPOINT: ${{ secrets.AZURE_SIGN_ENDPOINT }}
+          AZ_ACCOUNT: ${{ secrets.AZURE_SIGN_ACCOUNT }}
+          AZ_PROFILE: ${{ secrets.AZURE_SIGN_PROFILE }}
+          AZ_PUBLISHER: ${{ secrets.AZURE_SIGN_PUBLISHER }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          ARGS=()
+          if [ -n "$AZURE_CLIENT_SECRET" ] && [ -n "$AZ_ACCOUNT" ] && [ -n "$AZ_PROFILE" ]; then
+            echo "🔏 Signiere mit Azure Trusted Signing"
+            ARGS+=("-c.win.azureSignOptions.endpoint=$AZ_ENDPOINT" "-c.win.azureSignOptions.codeSigningAccountName=$AZ_ACCOUNT"
+                   "-c.win.azureSignOptions.certificateProfileName=$AZ_PROFILE" "-c.win.azureSignOptions.publisherName=$AZ_PUBLISHER")
+            echo "SIGNED=1" >> "$GITHUB_ENV"
+          elif [ -n "$WIN_CSC_LINK" ]; then
+            echo "🔏 Signiere mit Code-Signing-Zertifikat"
+            export CSC_LINK="$WIN_CSC_LINK" CSC_KEY_PASSWORD="$WIN_CSC_KEY_PASSWORD"
+            echo "SIGNED=1" >> "$GITHUB_ENV"
+          else
+            echo "ℹ Keine Signatur eingerichtet – baue unsigniert"
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+          fi
+          unset WIN_CSC_LINK WIN_CSC_KEY_PASSWORD
+          npx electron-builder --win portable nsis --x64 --publish never "${ARGS[@]}"
+      - name: Signatur prüfen
+        if: env.SIGNED == '1'
+        working-directory: app
+        shell: pwsh
+        run: |
+          foreach ($f in Get-ChildItem dist/*.exe) {
+            $s = Get-AuthenticodeSignature $f.FullName
+            Write-Host "$($f.Name): $($s.Status) – $($s.SignerCertificate.Subject)"
+            if ($s.Status -ne 'Valid') { throw "Signatur ungültig: $($f.Name)" }
+          }
       - name: Artefakt hochladen
         uses: actions/upload-artifact@v4
         with:
@@ -88,13 +129,15 @@ jobs:
           VER=$(node -p "require('./app/package.json').version")
           TAG="vrc-nexus-v$VER"
           MSG=$(printf '%s' "$HEAD_MSG" | head -n 1)
+          if [ "$SIGNED" = "1" ]; then SIGNTXT="Die Windows-Dateien sind digital signiert. Android fragt nach „Installation aus unbekannten Quellen“."
+          else SIGNTXT="Die Dateien sind nicht signiert: Windows SmartScreen → „Weitere Informationen“ → „Trotzdem ausführen“; Android fragt nach „Installation aus unbekannten Quellen“."; fi
           NOTES=$(printf '%s\n' "## VRC Nexus $VER" "" \
             "| Datei | Wofür |" "|---|---|" \
             "| VRC-Nexus-$VER-Setup.exe | Windows-Installer |" \
             "| VRC-Nexus-$VER-portable.exe | Windows ohne Installation |" \
             "| VRC-Nexus-$VER-android.apk | Android (ohne PC-Funktionen) |" \
             "| VRC-Nexus.streamDeckPlugin | Stream-Deck-Plugin (Doppelklick installiert) |" "" \
-            "Die Dateien sind nicht signiert: Windows SmartScreen → „Weitere Informationen“ → „Trotzdem ausführen“; Android fragt nach „Installation aus unbekannten Quellen“." "" \
+            "$SIGNTXT" "" \
             "Stand: ${GITHUB_SHA:0:7} vom $(date -u '+%d.%m.%Y %H:%M') UTC – $MSG")
           if ! gh release view "$TAG" -R "$REPO" > /dev/null 2>&1; then
             gh release create "$TAG" -R "$REPO" --target "$GITHUB_SHA" --title "VRC Nexus $VER" --notes "$NOTES" || sleep 15

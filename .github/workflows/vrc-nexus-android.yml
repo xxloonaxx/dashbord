@@ -106,10 +106,11 @@ jobs:
             "| VRC-Nexus-$VER-portable.exe | Windows ohne Installation |" \
             "| VRC-Nexus-$VER-android.apk | Android (ohne PC-Funktionen) |" \
             "| VRC-Nexus.streamDeckPlugin | Stream-Deck-Plugin (Doppelklick installiert) |" "" \
-            "Die Dateien sind nicht signiert: Windows SmartScreen → „Weitere Informationen“ → „Trotzdem ausführen“; Android fragt nach „Installation aus unbekannten Quellen“." "" \
+            "Die Windows-Dateien werden gerade gebaut. Ohne Signatur: Windows SmartScreen → „Weitere Informationen“ → „Trotzdem ausführen“; Android fragt nach „Installation aus unbekannten Quellen“." "" \
             "Stand: ${GITHUB_SHA:0:7} vom $(date -u '+%d.%m.%Y %H:%M') UTC – $MSG")
           if ! gh release view "$TAG" -R "$REPO" > /dev/null 2>&1; then
             gh release create "$TAG" -R "$REPO" --target "$GITHUB_SHA" --title "VRC Nexus $VER" --notes "$NOTES" || sleep 15
           fi
           gh release upload "$TAG" -R "$REPO" --clobber VRC-Nexus-*-android.apk
-          gh release edit "$TAG" -R "$REPO" --notes "$NOTES"
+          # Notizen nur übernehmen, solange der Windows-Build sie noch nicht geschrieben hat (der kennt den Signatur-Stand)
+          if ! gh release view "$TAG" -R "$REPO" --json assets -q '.assets[].name' | grep -q 'Setup.exe$'; then gh release edit "$TAG" -R "$REPO" --notes "$NOTES"; fi
